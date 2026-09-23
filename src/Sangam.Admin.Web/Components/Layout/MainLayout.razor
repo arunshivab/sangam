@@ -1,0 +1,33 @@
+@inherits LayoutComponentBase
+
+<div class="sg-admin">
+  <aside class="sg-sidebar">
+    <div class="sg-sidebar-brand">
+      <SangamLockup MarkSize="22" Mode="SangamMarkMode.Reversed" />
+      <span class="sg-admin-badge">ADMIN</span>
+    </div>
+    <nav class="sg-sidebar-nav" aria-label="Console sections">
+      <a class="sg-nav-item sg-nav-item--active" href="/" aria-current="page"><LipiIcon Name="@LipiconName.Home" Size="16" Class="sg-nav-icon" /> Overview</a>
+      <a class="sg-nav-item" href="/users"><LipiIcon Name="@LipiconName.Users" Size="16" Class="sg-nav-icon" /> Users</a>
+      <a class="sg-nav-item" href="/organisations"><LipiIcon Name="@LipiconName.BranchLocation" Size="16" Class="sg-nav-icon" /> Organisations</a>
+      <a class="sg-nav-item" href="/apps"><LipiIcon Name="@LipiconName.MobileApp" Size="16" Class="sg-nav-icon" /> Applications</a>
+      <a class="sg-nav-item" href="/audit"><LipiIcon Name="@LipiconName.AuditLog" Size="16" Class="sg-nav-icon" /> Audit log</a>
+      <a class="sg-nav-item" href="/settings"><LipiIcon Name="@LipiconName.Settings" Size="16" Class="sg-nav-icon" /> Settings</a>
+    </nav>
+    <div class="sg-operator">
+      <span class="sg-operator-label">OPERATOR</span>
+      <span class="sg-operator-email">not signed in</span>
+      <span class="sg-operator-role">role: —</span>
+    </div>
+  </aside>
+
+  <div class="sg-admin-main">
+    <header class="sg-admin-topbar">
+      <span class="sg-env">DEVELOPMENT · local</span>
+      <span class="sg-mfa">MFA not configured · PR-06</span>
+    </header>
+    <main class="sg-admin-body">
+      @Body
+    </main>
+  </div>
+</div>

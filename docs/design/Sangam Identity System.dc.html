@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,300&family=Mukta:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Cormorant+Garamond:wght@400;500&family=EB+Garamond:wght@400;500&family=Hind:wght@400;500&family=Noto+Sans+Devanagari:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #F7F5F0; }
+  a { color: #1F5A52; text-decoration: none; }
+  a:hover { color: #8A6A2F; }
+</style>
+</helmet>
+
+<div style="font-family:Mukta,sans-serif;color:#14202E;background:#F7F5F0">
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="p" viewBox="0 0 64 64">
+      <rect x="3.25" y="16.25" width="57.5" height="31.5" rx="15.75" fill="none" stroke="#0F3B38" stroke-width="5.5" />
+      <g stroke="#0F3B38" stroke-width="4" stroke-linecap="round"><path d="M33 26.5 H51" /><path d="M33 37.5 H51" /></g>
+      <circle cx="20" cy="32" r="6.25" fill="#8A6A2F" />
+    </symbol>
+    <symbol id="pw" viewBox="0 0 64 64">
+      <rect x="3.25" y="16.25" width="57.5" height="31.5" rx="15.75" fill="none" stroke="#FFFFFF" stroke-width="5.5" />
+      <g stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"><path d="M33 26.5 H51" /><path d="M33 37.5 H51" /></g>
+      <circle cx="20" cy="32" r="6.25" fill="#FFFFFF" />
+    </symbol>
+    <symbol id="pc" viewBox="0 0 64 64">
+      <rect x="3.25" y="16.25" width="57.5" height="31.5" rx="15.75" fill="none" stroke="#F2EFE8" stroke-width="5.5" />
+      <g stroke="#F2EFE8" stroke-width="4" stroke-linecap="round"><path d="M33 26.5 H51" /><path d="M33 37.5 H51" /></g>
+      <circle cx="20" cy="32" r="6.25" fill="#D9C9A8" />
+    </symbol>
+    <symbol id="pb" viewBox="0 0 64 64">
+      <rect x="3.25" y="16.25" width="57.5" height="31.5" rx="15.75" fill="none" stroke="#000000" stroke-width="5.5" />
+      <g stroke="#000000" stroke-width="4" stroke-linecap="round"><path d="M33 26.5 H51" /><path d="M33 37.5 H51" /></g>
+      <circle cx="20" cy="32" r="6.25" fill="#000000" />
+    </symbol>
+    <symbol id="pbad" viewBox="0 0 64 64">
+      <rect x="3.25" y="16.25" width="57.5" height="31.5" rx="15.75" fill="none" stroke="#7B3FE4" stroke-width="5.5" />
+      <g stroke="#7B3FE4" stroke-width="4" stroke-linecap="round"><path d="M33 26.5 H51" /><path d="M33 37.5 H51" /></g>
+      <circle cx="20" cy="32" r="6.25" fill="#E91E8C" />
+    </symbol>
+  </svg>
+
+  <div style="position:sticky;top:0;z-index:20;background:rgba(247,245,240,0.94);backdrop-filter:blur(8px);border-bottom:1px solid #E2DDD0">
+    <div style="max-width:1160px;margin:0 auto;padding:12px 32px;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:10px;margin-right:auto">
+        <svg viewBox="0 0 64 64" width="30" height="30"><use href="#p" /></svg>
+        <span style="font-family:Newsreader,serif;font-size:21px;font-weight:500;letter-spacing:-0.01em">sangam</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6B6A63;letter-spacing:0.14em;padding-left:8px;border-left:1px solid #DCD6C8">IDENTITY SYSTEM v1.0</span>
+      </div>
+      <nav style="display:flex;gap:18px;font-size:14px;color:#1F5A52;flex-wrap:wrap">
+        <a href="#logo">Logo</a><a href="#colour">Colour</a><a href="#type">Type</a><a href="#space">Space</a><a href="#components">Components</a><a href="#ornament">Ornament</a><a href="#tokens">Tokens</a>
+      </nav>
+    </div>
+  </div>
+
+  <div style="max-width:1160px;margin:0 auto;padding:56px 32px 120px;display:flex;flex-direction:column;gap:72px">
+
+    <header style="display:flex;flex-direction:column;gap:20px;max-width:780px">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.16em;color:#8A6A2F">BRAND FOUNDATION</span>
+      <h1 style="font-family:Newsreader,serif;font-weight:400;font-size:58px;line-height:1.02;letter-spacing:-0.015em;margin:0">The Sangam visual identity</h1>
+      <p style="font-size:19px;line-height:1.65;color:#3E4A48;margin:0;font-weight:300;text-wrap:pretty">One palm leaf, threaded to the next. Everything below extends that single idea: a system of records that only becomes useful when it can be bound together. The tone is a well-kept archive rather than a product launch — quiet, legible, and built to be trusted with the thing people are least willing to lose.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:#E2DDD0;border:1px solid #E2DDD0;margin-top:12px">
+        <div style="background:#F7F5F0;padding:18px 20px"><div style="font-family:Newsreader,serif;font-size:18px;margin-bottom:5px">Quiet authority</div><div style="font-size:14px;line-height:1.5;color:#5C5F5C;font-weight:300">Nothing moves, flashes or gradients. Emphasis comes from weight and space.</div></div>
+        <div style="background:#F7F5F0;padding:18px 20px"><div style="font-family:Newsreader,serif;font-size:18px;margin-bottom:5px">Rooted, not costumed</div><div style="font-size:14px;line-height:1.5;color:#5C5F5C;font-weight:300">Indian reference lives in colour, script support and proportion — never in decoration.</div></div>
+        <div style="background:#F7F5F0;padding:18px 20px"><div style="font-family:Newsreader,serif;font-size:18px;margin-bottom:5px">Restraint over ornament</div><div style="font-size:14px;line-height:1.5;color:#5C5F5C;font-weight:300">One accent, one rule, one dot. If an element can be removed, remove it.</div></div>
+      </div>
+    </header>
+
+    <section id="logo" style="display:flex;flex-direction:column;gap:28px">
+      <div style="display:flex;align-items:baseline;gap:14px;border-bottom:1px solid #E2DDD0;padding-bottom:12px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8A6A2F;letter-spacing:0.14em">01</span>
+        <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:34px;margin:0;letter-spacing:-0.01em">Logo usage</h2>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px">
+        <div style="background:#FFFFFF;border:1px solid #E7E2D6;padding:28px;display:flex;flex-direction:column;gap:18px">
+          <div style="height:120px;display:flex;align-items:center;justify-content:center;gap:14px">
+            <svg viewBox="0 0 64 64" width="52" height="52"><use href="#p" /></svg>
+            <span style="font-family:Newsreader,serif;font-size:42px;font-weight:500;letter-spacing:-0.012em;color:#0F3B38">sangam</span>
+          </div>
+          <div><div style="font-size:15px;font-weight:600">Primary lockup</div><div style="font-size:14px;color:#5C5F5C;font-weight:300;line-height:1.5">Horizontal. Mark height = cap height × 1.6. Gap = one hole-diameter. Default everywhere.</div></div>
+        </div>
+        <div style="background:#FFFFFF;border:1px solid #E7E2D6;padding:28px;display:flex;flex-direction:column;gap:18px">
+          <div style="height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px">
+            <svg viewBox="0 0 64 64" width="46" height="46"><use href="#p" /></svg>
+            <span style="font-family:Newsreader,serif;font-size:27px;font-weight:500;letter-spacing:-0.01em;color:#0F3B38">sangam</span>
+          </div>
+          <div><div style="font-size:15px;font-weight:600">Stacked lockup</div><div style="font-size:14px;color:#5C5F5C;font-weight:300;line-height:1.5">Narrow contexts only: app splash, square badges, print colophon. Never below 72 px wide.</div></div>
+        </div>
+        <div style="background:#FFFFFF;border:1px solid #E7E2D6;padding:28px;display:flex;flex-direction:column;gap:18px">
+          <div style="height:120px;display:flex;align-items:center;justify-content:center;gap:14px">
+            <svg viewBox="0 0 64 64" width="50" height="50"><use href="#p" /></svg>
+            <span style="font-family:Newsreader,serif;font-size:30px;font-weight:500;color:#0F3B38">sangam <span style="font-family:Mukta,sans-serif;font-size:15px;font-weight:600;letter-spacing:0.14em;color:#8A6A2F;vertical-align:0.3em">ID</span></span>
+          </div>
+          <div><div style="font-size:15px;font-weight:600">Functional lockup</div><div style="font-size:14px;color:#5C5F5C;font-weight:300;line-height:1.5">Consent screens, developer console, docs. ID is a tracked sans suffix, never equal weight.</div></div>
+        </div>
+        <div style="background:#FFFFFF;border:1px solid #E7E2D6;padding:28px;display:flex;flex-direction:column;gap:18px">
+          <div style="height:120px;display:flex;align-items:center;justify-content:center;gap:16px">
+            <svg viewBox="0 0 64 64" width="52" height="52"><use href="#p" /></svg>
+            <div style="width:60px;height:60px;border-radius:13px;background:#0F3B38;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 64 64" width="36" height="36"><use href="#pc" /></svg></div>
+          </div>
+          <div><div style="font-size:15px;font-weight:600">Mark only</div><div style="font-size:14px;color:#5C5F5C;font-weight:300;line-height:1.5">Favicon, app icon, avatar, OAuth button. Permitted once the wordmark appears elsewhere on screen.</div></div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px">
+        <div style="background:#FFFFFF;border:1px solid #E7E2D6;padding:28px;display:flex;flex-direction:column;gap:16px">
+          <div style="font-size:15px;font-weight:600">Clear space</div>
+          <div style="background:#F2EFE8;padding:30px;display:flex;align-items:center;justify-content:center">
+            <div style="border:1px dashed #8A6A2F;padding:19px;display:flex;align-items:center;gap:14px">
+              <svg viewBox="0 0 64 64" width="44" height="44"><use href="#p" /></svg>
+              <span style="font-family:Newsreader,serif;font-size:34px;font-weight:500;color:#0F3B38">sangam</span>
+            </div>
+          </div>
+          <div style="font-size:14px;color:#5C5F5C;font-weight:300;line-height:1.55">The unit is <b style="font-weight:600;color:#14202E">x = the cord hole's diameter</b> (0.195 × mark height). Keep x clear on all four sides; no type, rule or image edge inside it. In cramped UI chrome, x may drop to 0.75x — never lower.</div>
+        </div>
+        <div style="background:#FFFFFF;border:1px solid #E7E2D6;padding:28px;display:flex;flex-direction:column;gap:16px">
+          <div style="font-size:15px;font-weight:600">Minimum sizes</div>
+          <div style="background:#F2EFE8;padding:26px 30px;display:flex;align-items:flex-end;gap:32px;flex-wrap:wrap">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><svg viewBox="0 0 64 64" width="16" height="16"><use href="#p" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#6B6A63">16 px</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><svg viewBox="0 0 64 64" width="24" height="24"><use href="#p" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#6B6A63">24 px</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><div style="display:flex;align-items:center;gap:7px"><svg viewBox="0 0 64 64" width="26" height="26"><use href="#p" /></svg><span style="font-family:Newsreader,serif;font-size:17px;font-weight:500;color:#0F3B38">sangam</span></div><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#6B6A63">96 px wide</span></div>
+          </div>
+          <ul style="margin:0;padding-left:18px;font-size:14px;color:#5C5F5C;font-weight:300;line-height:1.7">
+            <li>Mark alone, screen: <b style="font-weight:600;color:#14202E">16 px</b>. Below this the cord hole closes up — ship a 1-bit 16 px hinted favicon instead of scaling the SVG.</li>
+            <li>Primary lockup, screen: <b style="font-weight:600;color:#14202E">96 px wide</b>.</li>
+            <li>Mark alone, print: <b style="font-weight:600;color:#14202E">6 mm</b>. Lockup, print: <b style="font-weight:600;color:#14202E">28 mm</b>.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7E2D6;padding:28px;display:flex;flex-direction:column;gap:20px">
+        <div><div style="font-size:15px;font-weight:600">Misuse</div><div style="font-size:14px;color:#5C5F5C;font-weight:300">Six things that break the mark. Each is a real failure seen in partner decks.</div></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="background:#F2EFE8;height:94px;display:flex;align-items:center;justify-content:center;border:1px solid #EFE7D8"><svg viewBox="0 0 64 64" width="56" height="56" style="transform:scaleX(1.45)"><use href="#p" /></svg></div>
+            <div style="font-size:13px;color:#9C3B24;font-weight:600">✕ Never stretch or condense</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="background:#F2EFE8;height:94px;display:flex;align-items:center;justify-content:center;border:1px solid #EFE7D8"><svg viewBox="0 0 64 64" width="56" height="56" style="transform:rotate(-14deg)"><use href="#p" /></svg></div>
+            <div style="font-size:13px;color:#9C3B24;font-weight:600">✕ Never rotate or tilt</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="background:#F2EFE8;height:94px;display:flex;align-items:center;justify-content:center;border:1px solid #EFE7D8"><svg viewBox="0 0 64 64" width="56" height="56" style="filter:drop-shadow(3px 5px 4px rgba(0,0,0,0.45))"><use href="#p" /></svg></div>
+            <div style="font-size:13px;color:#9C3B24;font-weight:600">✕ No shadows, bevels or glow</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="background:#F2EFE8;height:94px;display:flex;align-items:center;justify-content:center;border:1px solid #EFE7D8"><svg viewBox="0 0 64 64" width="56" height="56"><use href="#pbad" /></svg></div>
+            <div style="font-size:13px;color:#9C3B24;font-weight:600">✕ No off-palette recolouring</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="height:94px;display:flex;align-items:center;justify-content:center;border:1px solid #EFE7D8;background:linear-gradient(120deg,#7B3FE4,#2BC0E4)"><svg viewBox="0 0 64 64" width="56" height="56"><use href="#pw" /></svg></div>
+            <div style="font-size:13px;color:#9C3B24;font-weight:600">✕ Never on gradients or busy art</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="background:#F2EFE8;height:94px;display:flex;align-items:center;justify-content:center;gap:2px;border:1px solid #EFE7D8;overflow:hidden"><span style="font-size:13px;color:#14202E">Partner</span><svg viewBox="0 0 64 64" width="42" height="42"><use href="#p" /></svg><span style="font-size:13px;color:#14202E">Portal</span></div>
+            <div style="font-size:13px;color:#9C3B24;font-weight:600">✕ Never crowd the clear space</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="colour" style="display:flex;flex-direction:column;gap:28px">
+      <div style="display:flex;align-items:baseline;gap:14px;border-bottom:1px solid #E2DDD0;padding-bottom:12px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8A6A2F;letter-spacing:0.14em">02</span>
+        <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:34px;margin:0;letter-spacing:-0.01em">Colour</h2>
+      </div>
+      <p style="margin:0;max-width:720px;font-size:16px;line-height:1.65;color:#3E4A48;font-weight:300;text-wrap:pretty">The palette is pulled from the material the mark depicts: the dark blue-green of iron-gall and lampblack ink, the cream of a dried palm folio, and the ochre of the binding cord. Nothing in it is borrowed from software convention — no startup violet, no corporate blue, no Material ramp.</p>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px">
+        <div style="background:#0F3B38;color:#F2EFE8;padding:26px;display:flex;flex-direction:column;gap:14px;min-height:210px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;opacity:0.75">SIGNATURE</div>
+          <div style="font-family:Newsreader,serif;font-size:27px;margin-top:auto">Sangam Teal</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;opacity:0.9">#0F3B38<br />rgb(15 59 56)<br />hsl(176 59% 15%)</div>
+          <div style="font-size:13px;line-height:1.5;opacity:0.85">12.33:1 on white · AAA. The ink of a manuscript, not a brand blue.</div>
+        </div>
+        <div style="background:#F2EFE8;color:#14202E;padding:26px;display:flex;flex-direction:column;gap:14px;min-height:210px;border:1px solid #E7E2D6">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:#6B6A63">SUPPORTING NEUTRAL</div>
+          <div style="font-family:Newsreader,serif;font-size:27px;margin-top:auto">Manuscript Cream</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;color:#3E4A48">#F2EFE8<br />rgb(242 239 232)<br />hsl(42 28% 93%)</div>
+          <div style="font-size:13px;line-height:1.5;color:#5C5F5C">10.74:1 against Sangam Teal. The page, never pure white — screens of clinical data are kinder on cream.</div>
+        </div>
+        <div style="background:#8A6A2F;color:#FFFFFF;padding:26px;display:flex;flex-direction:column;gap:14px;min-height:210px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;opacity:0.85">WARM ACCENT</div>
+          <div style="font-family:Newsreader,serif;font-size:27px;margin-top:auto">Cord Ochre</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;opacity:0.95">#8A6A2F<br />rgb(138 106 47)<br />hsl(39 49% 36%)</div>
+          <div style="font-size:13px;line-height:1.5;opacity:0.9">5.02:1 on white · AA. The binding cord. Used for one thing per screen, never for large fills.</div>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7E2D6;overflow:auto">
+        <div style="padding:22px 26px 6px;font-size:15px;font-weight:600">Secondary shades</div>
+        <table style="width:100%;border-collapse:collapse;font-size:14px;min-width:620px">
+          <thead>
+            <tr style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#6B6A63;text-align:left">
+              <th style="padding:12px 26px;font-weight:400">SWATCH</th><th style="padding:12px 10px;font-weight:400">HEX</th><th style="padding:12px 10px;font-weight:400">RGB</th><th style="padding:12px 10px;font-weight:400">HSL</th><th style="padding:12px 10px;font-weight:400">ON WHITE</th><th style="padding:12px 26px 12px 10px;font-weight:400">ON TEAL</th>
+            </tr>
+          </thead>
+          <tbody style="font-weight:300;color:#3E4A48">
+            <tr style="border-top:1px solid #EFEAE0"><td style="padding:12px 26px"><div style="display:flex;align-items:center;gap:12px"><span style="width:26px;height:26px;background:#14202E;display:inline-block"></span><b style="font-weight:600;color:#14202E">Ink</b></div></td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace">#14202E</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace">20 32 46</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace">212 39% 13%</td><td style="padding:12px 10px">16.46 · AAA</td><td style="padding:12px 26px 12px 10px">1.33 · ✕</td></tr>
+            <tr style="border-top:1px solid #EFEAE0"><td style="padding:12px 26px"><div style="display:flex;align-items:center;gap:12px"><span style="width:26px;height:26px;background:#1F5A52;display:inline-block"></span><b style="font-weight:600;color:#14202E">Palm Shade</b></div></td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace">#1F5A52</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace">31 90 82</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace">172 49% 24%</td><td style="padding:12px 10px">7.95 · AAA</td><td style="padding:12px 26px 12px 10px">1.55 · ✕</td></tr>
+            <tr style="border-top:1px solid #EFEAE0"><td style="padding:12px 26px"><div style="display:flex;align-items:center;gap:12px"><span style="width:26px;height:26px;background:#CBD9D3;display:inline-block"></span><b style="font-weight:600;color:#14202E">Leaf Mist</b></div></td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace">#CBD9D3</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace">203 217 211</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace">154 16% 82%</td><td style="padding:12px 10px">1.46 · surface only</td><td style="padding:12px 26px 12px 10px">8.46 · AAA</td></tr>
+            <tr style="border-top:1px solid #EFEAE0"><td style="padding:12px 26px"><div style="display:flex;align-items:center;gap:12px"><span style="width:26px;height:26px;background:#D9C9A8;display:inline-block"></span><b style="font-weight:600;color:#14202E">Sandalwood</b></div></td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace">#D9C9A8</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace">217 201 168</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace">40 39% 75%</td><td style="padding:12px 10px">1.63 · surface only</td><td style="padding:12px 26px 12px 10px">7.56 · AAA</td></tr>
+            <tr style="border-top:1px solid #EFEAE0"><td style="padding:12px 26px"><div style="display:flex;align-items:center;gap:12px"><span style="width:26px;height:26px;background:#9C3B24;display:inline-block"></span><b style="font-weight:600;color:#14202E">Sindoor</b></div></td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace">#9C3B24</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace">156 59 36</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace">12 63% 38%</td><td style="padding:12px 10px">6.85 · AAA</td><td style="padding:12px 26px 12px 10px">1.80 · ✕</td></tr>
+            <tr style="border-top:1px solid #EFEAE0"><td style="padding:12px 26px"><div style="display:flex;align-items:center;gap:12px"><span style="width:26px;height:26px;background:#6B6A63;display:inline-block"></span><b style="font-weight:600;color:#14202E">Slate</b></div></td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace">#6B6A63</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace">107 106 99</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace">53 4% 40%</td><td style="padding:12px 10px">5.43 · AA</td><td style="padding:12px 26px 12px 10px">2.27 · ✕</td></tr>
+          </tbody>
+        </table>
+        <div style="padding:14px 26px 22px;font-size:13px;color:#6B6A63;font-weight:300;line-height:1.55">Leaf Mist and Sandalwood are surface and border tones only — never set text in them. Ratios marked ✕ against teal mean the colour must not be used as text on a Sangam Teal ground; use Manuscript Cream or Leaf Mist there.</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px">
+        <div style="background:#FFFFFF;border:1px solid #E7E2D6;border-left:4px solid #276B4E;padding:22px;display:flex;flex-direction:column;gap:8px"><div style="font-size:15px;font-weight:600;color:#276B4E">Success</div><div style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;color:#3E4A48">#276B4E<br />rgb(39 107 78)<br />hsl(154 47% 29%)<br />6.36:1 on white · AAA</div><div style="font-size:13px;color:#5C5F5C;font-weight:300;line-height:1.5">Verified, consent granted, session active. A muted leaf green, not a notification green.</div></div>
+        <div style="background:#FFFFFF;border:1px solid #E7E2D6;border-left:4px solid #7E5A14;padding:22px;display:flex;flex-direction:column;gap:8px"><div style="font-size:15px;font-weight:600;color:#7E5A14">Warning</div><div style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;color:#3E4A48">#7E5A14<br />rgb(126 90 20)<br />hsl(40 73% 29%)<br />6.25:1 on white · AAA</div><div style="font-size:13px;color:#5C5F5C;font-weight:300;line-height:1.5">Turmeric, darkened to pass on white. Expiring token, unverified partner, scope drift.</div></div>
+        <div style="background:#FFFFFF;border:1px solid #E7E2D6;border-left:4px solid #9C3B24;padding:22px;display:flex;flex-direction:column;gap:8px"><div style="font-size:15px;font-weight:600;color:#9C3B24">Danger</div><div style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;color:#3E4A48">#9C3B24<br />rgb(156 59 36)<br />hsl(12 63% 38%)<br />6.85:1 on white · AAA</div><div style="font-size:13px;color:#5C5F5C;font-weight:300;line-height:1.5">Sindoor earth-red. Revocation, failed auth, destructive actions only — never marketing.</div></div>
+        <div style="background:#FFFFFF;border:1px solid #E7E2D6;border-left:4px solid #1F5A52;padding:22px;display:flex;flex-direction:column;gap:8px"><div style="font-size:15px;font-weight:600;color:#1F5A52">Info</div><div style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;color:#3E4A48">#1F5A52<br />rgb(31 90 82)<br />hsl(172 49% 24%)<br />7.95:1 on white · AAA</div><div style="font-size:13px;color:#5C5F5C;font-weight:300;line-height:1.5">A lighter step of the signature, so neutral system messages stay in family.</div></div>
+      </div>
+    </section>
+
+    <section id="type" style="display:flex;flex-direction:column;gap:28px">
+      <div style="display:flex;align-items:baseline;gap:14px;border-bottom:1px solid #E2DDD0;padding-bottom:12px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8A6A2F;letter-spacing:0.14em">03</span>
+        <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:34px;margin:0;letter-spacing:-0.01em">Typography</h2>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px">
+        <div style="background:#FFFFFF;border:1px solid #E7E2D6;border-top:3px solid #0F3B38;padding:26px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;color:#8A6A2F">DISPLAY · CHOSEN</span></div>
+          <div style="font-family:Newsreader,serif;font-size:44px;line-height:1.05;letter-spacing:-0.015em">Newsreader</div>
+          <div style="font-family:Newsreader,serif;font-size:19px;font-weight:300;line-height:1.5;color:#3E4A48">Register once. Be known everywhere.</div>
+          <div style="font-size:14px;color:#5C5F5C;font-weight:300;line-height:1.55">A working text serif with an optical-size axis, so the same family holds a 64 px headline and a 17 px paragraph. Sturdier than Cormorant at UI sizes, warmer than a Garamond revival, and it doesn't read as a wedding invitation.</div>
+        </div>
+        <div style="background:#FFFFFF;border:1px solid #E7E2D6;padding:26px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;color:#6B6A63">DISPLAY · ALTERNATE</span>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:44px;line-height:1.05">Cormorant Garamond</div>
+          <div style="font-size:14px;color:#5C5F5C;font-weight:300;line-height:1.55">The most elegant option and the most fragile: hairline strokes disappear under 24 px and on low-DPI clinic monitors. Use only if headlines never drop below 36 px.</div>
+        </div>
+        <div style="background:#FFFFFF;border:1px solid #E7E2D6;padding:26px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;color:#6B6A63">DISPLAY · ALTERNATE</span>
+          <div style="font-family:'EB Garamond',serif;font-size:44px;line-height:1.05">EB Garamond</div>
+          <div style="font-size:14px;color:#5C5F5C;font-weight:300;line-height:1.55">Bookish and dependable, with a real italic. Slightly generic in open-source circles — you will meet it in three other docs sites the same week.</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px">
+        <div style="background:#FFFFFF;border:1px solid #E7E2D6;border-top:3px solid #0F3B38;padding:26px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;color:#8A6A2F">BODY · CHOSEN</span>
+          <div style="font-family:Mukta,sans-serif;font-size:38px;font-weight:500;line-height:1.1">Mukta</div>
+          <div style="font-family:Mukta,sans-serif;font-size:17px;line-height:1.6;font-weight:400">One account across every clinic you visit.</div>
+          <div style="font-family:'Noto Sans Devanagari',sans-serif;font-size:19px;line-height:1.7;color:#0F3B38">संगम — एक पहचान, अनेक सेवाएँ</div>
+          <div style="font-size:14px;color:#5C5F5C;font-weight:300;line-height:1.55">Devanagari and Latin drawn together by the Ek Type team, so the two scripts share weight and rhythm on a bilingual consent screen. Open apertures, low contrast, seven weights, and no personality that competes with the serif.</div>
+        </div>
+        <div style="background:#FFFFFF;border:1px solid #E7E2D6;padding:26px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;color:#6B6A63">BODY · ALTERNATE</span>
+          <div style="font-family:Hind,sans-serif;font-size:38px;font-weight:500;line-height:1.1">Hind</div>
+          <div style="font-size:14px;color:#5C5F5C;font-weight:300;line-height:1.55">The same bilingual discipline with a slightly narrower Latin — better for dense tables and admin consoles, marginally less warm in running text.</div>
+        </div>
+        <div style="background:#FFFFFF;border:1px solid #E7E2D6;padding:26px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;color:#6B6A63">BODY · ALTERNATE</span>
+          <div style="font-family:'Noto Sans Devanagari',sans-serif;font-size:38px;font-weight:500;line-height:1.1">Noto Sans Devanagari</div>
+          <div style="font-size:14px;color:#5C5F5C;font-weight:300;line-height:1.55">The safety net: widest script coverage for a platform that will eventually need Tamil, Telugu and Bangla. Neutral to the point of anonymity — keep it as the fallback, not the voice.</div>
+        </div>
+      </div>
+
+      <div style="background:#0F3B38;color:#F2EFE8;padding:26px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:22px;align-items:center">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;color:#D9C9A8">MONO · CHOSEN</span>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:32px">JetBrains Mono</div>
+          <div style="font-size:14px;line-height:1.55;opacity:0.85;font-weight:300">Tall x-height, unmistakable 0/O and 1/l/I — the pairs that matter when someone reads an ABHA number or a client secret aloud over a phone line. Alternates: IBM Plex Mono (more formal), Space Mono (too characterful).</div>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.9;background:rgba(0,0,0,0.22);padding:18px;overflow:auto">POST /v1/oauth/token<br />client_id: sg_live_0lI1O0<br />scope: openid profile abha.read<br />expires_in: 3600</div>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7E2D6;overflow:auto">
+        <div style="padding:22px 26px 8px;font-size:15px;font-weight:600">Type scale</div>
+        <table style="width:100%;border-collapse:collapse;font-size:14px;min-width:640px">
+          <thead><tr style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#6B6A63;text-align:left"><th style="padding:12px 26px;font-weight:400">TOKEN</th><th style="padding:12px 10px;font-weight:400">SIZE / LH</th><th style="padding:12px 10px;font-weight:400">TRACKING</th><th style="padding:12px 26px 12px 10px;font-weight:400">SPECIMEN</th></tr></thead>
+          <tbody style="color:#3E4A48;font-weight:300">
+            <tr style="border-top:1px solid #EFEAE0"><td style="padding:12px 26px;font-family:'JetBrains Mono',monospace;font-size:12px">display-64</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace;font-size:12px">64 / 1.02</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace;font-size:12px">-0.02em</td><td style="padding:10px 26px 10px 10px;font-family:Newsreader,serif;font-size:64px;line-height:1.02;letter-spacing:-0.02em;color:#14202E">Sangam</td></tr>
+            <tr style="border-top:1px solid #EFEAE0"><td style="padding:12px 26px;font-family:'JetBrains Mono',monospace;font-size:12px">display-48</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace;font-size:12px">48 / 1.06</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace;font-size:12px">-0.015em</td><td style="padding:10px 26px 10px 10px;font-family:Newsreader,serif;font-size:48px;line-height:1.06;letter-spacing:-0.015em;color:#14202E">Consent</td></tr>
+            <tr style="border-top:1px solid #EFEAE0"><td style="padding:12px 26px;font-family:'JetBrains Mono',monospace;font-size:12px">head-38</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace;font-size:12px">38 / 1.12</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace;font-size:12px">-0.01em</td><td style="padding:10px 26px 10px 10px;font-family:Newsreader,serif;font-size:38px;line-height:1.12;letter-spacing:-0.01em;color:#14202E">Your records</td></tr>
+            <tr style="border-top:1px solid #EFEAE0"><td style="padding:12px 26px;font-family:'JetBrains Mono',monospace;font-size:12px">head-30</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace;font-size:12px">30 / 1.2</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace;font-size:12px">-0.01em</td><td style="padding:10px 26px 10px 10px;font-family:Newsreader,serif;font-size:30px;line-height:1.2;color:#14202E">Section heading</td></tr>
+            <tr style="border-top:1px solid #EFEAE0"><td style="padding:12px 26px;font-family:'JetBrains Mono',monospace;font-size:12px">title-24</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace;font-size:12px">24 / 1.3</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace;font-size:12px">-0.005em</td><td style="padding:10px 26px 10px 10px;font-family:Mukta,sans-serif;font-size:24px;font-weight:600;line-height:1.3;color:#14202E">Card title</td></tr>
+            <tr style="border-top:1px solid #EFEAE0"><td style="padding:12px 26px;font-family:'JetBrains Mono',monospace;font-size:12px">title-21</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace;font-size:12px">21 / 1.4</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace;font-size:12px">0</td><td style="padding:10px 26px 10px 10px;font-family:Mukta,sans-serif;font-size:21px;font-weight:500;line-height:1.4;color:#14202E">Subsection label</td></tr>
+            <tr style="border-top:1px solid #EFEAE0"><td style="padding:12px 26px;font-family:'JetBrains Mono',monospace;font-size:12px">body-18</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace;font-size:12px">18 / 1.65</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace;font-size:12px">0</td><td style="padding:10px 26px 10px 10px;font-family:Mukta,sans-serif;font-size:18px;line-height:1.65">Long-form reading size</td></tr>
+            <tr style="border-top:1px solid #EFEAE0"><td style="padding:12px 26px;font-family:'JetBrains Mono',monospace;font-size:12px">body-16</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace;font-size:12px">16 / 1.6</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace;font-size:12px">0</td><td style="padding:10px 26px 10px 10px;font-family:Mukta,sans-serif;font-size:16px;line-height:1.6">Default UI text · संगम पहचान</td></tr>
+            <tr style="border-top:1px solid #EFEAE0"><td style="padding:12px 26px;font-family:'JetBrains Mono',monospace;font-size:12px">body-14</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace;font-size:12px">14 / 1.55</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace;font-size:12px">0.005em</td><td style="padding:10px 26px 10px 10px;font-family:Mukta,sans-serif;font-size:14px;line-height:1.55">Secondary and helper text</td></tr>
+            <tr style="border-top:1px solid #EFEAE0"><td style="padding:12px 26px;font-family:'JetBrains Mono',monospace;font-size:12px">caption-12</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace;font-size:12px">12 / 1.5</td><td style="padding:12px 10px;font-family:'JetBrains Mono',monospace;font-size:12px">0.12em · caps</td><td style="padding:10px 26px 10px 10px;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.12em;text-transform:uppercase">METADATA LABEL</td></tr>
+          </tbody>
+        </table>
+        <div style="padding:14px 26px 22px;font-size:13px;color:#6B6A63;font-weight:300;line-height:1.55">12 px is a floor, reserved for mono metadata and never for sentences. Devanagari runs 1 step larger in line-height (add 0.1) to clear the shirorekha and matras.</div>
+      </div>
+    </section>
+
+    <section id="space" style="display:flex;flex-direction:column;gap:28px">
+      <div style="display:flex;align-items:baseline;gap:14px;border-bottom:1px solid #E2DDD0;padding-bottom:12px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8A6A2F;letter-spacing:0.14em">04</span>
+        <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:34px;margin:0;letter-spacing:-0.01em">Space and grid</h2>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px">
+        <div style="background:#FFFFFF;border:1px solid #E7E2D6;padding:26px;display:flex;flex-direction:column;gap:16px">
+          <div><div style="font-size:15px;font-weight:600">Base unit: 4 px</div><div style="font-size:14px;color:#5C5F5C;font-weight:300;line-height:1.55">4 px base, 8 px rhythm. Everything below 16 px steps by 4 so icon and input metrics stay exact; everything above steps by 8 or 16 so layouts stay coarse and calm.</div></div>
+          <div style="display:flex;flex-direction:column;gap:7px">
+            <div style="display:flex;align-items:center;gap:12px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;width:66px;color:#6B6A63">space-1</span><span style="height:14px;width:4px;background:#1F5A52;display:inline-block"></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6B6A63">4</span></div>
+            <div style="display:flex;align-items:center;gap:12px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;width:66px;color:#6B6A63">space-2</span><span style="height:14px;width:8px;background:#1F5A52;display:inline-block"></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6B6A63">8</span></div>
+            <div style="display:flex;align-items:center;gap:12px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;width:66px;color:#6B6A63">space-3</span><span style="height:14px;width:12px;background:#1F5A52;display:inline-block"></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6B6A63">12</span></div>
+            <div style="display:flex;align-items:center;gap:12px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;width:66px;color:#6B6A63">space-4</span><span style="height:14px;width:16px;background:#1F5A52;display:inline-block"></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6B6A63">16</span></div>
+            <div style="display:flex;align-items:center;gap:12px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;width:66px;color:#6B6A63">space-6</span><span style="height:14px;width:24px;background:#1F5A52;display:inline-block"></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6B6A63">24</span></div>
+            <div style="display:flex;align-items:center;gap:12px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;width:66px;color:#6B6A63">space-8</span><span style="height:14px;width:32px;background:#1F5A52;display:inline-block"></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6B6A63">32</span></div>
+            <div style="display:flex;align-items:center;gap:12px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;width:66px;color:#6B6A63">space-12</span><span style="height:14px;width:48px;background:#1F5A52;display:inline-block"></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6B6A63">48</span></div>
+            <div style="display:flex;align-items:center;gap:12px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;width:66px;color:#6B6A63">space-16</span><span style="height:14px;width:64px;background:#1F5A52;display:inline-block"></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6B6A63">64</span></div>
+            <div style="display:flex;align-items:center;gap:12px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;width:66px;color:#6B6A63">space-24</span><span style="height:14px;width:96px;background:#1F5A52;display:inline-block"></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6B6A63">96</span></div>
+          </div>
+        </div>
+        <div style="background:#FFFFFF;border:1px solid #E7E2D6;padding:26px;display:flex;flex-direction:column;gap:16px">
+          <div><div style="font-size:15px;font-weight:600">Grid</div><div style="font-size:14px;color:#5C5F5C;font-weight:300;line-height:1.55">12 columns, 24 px gutters, 1160 px max content width, 32 px page margins (24 on tablet, 16 on phone). Auth and consent screens use a single 400 px column centred in the viewport — a decision screen gets no sidebar.</div></div>
+          <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:6px;height:110px">
+            <span style="background:#CBD9D3"></span><span style="background:#CBD9D3"></span><span style="background:#CBD9D3"></span><span style="background:#CBD9D3"></span><span style="background:#CBD9D3"></span><span style="background:#CBD9D3"></span><span style="background:#CBD9D3"></span><span style="background:#CBD9D3"></span><span style="background:#CBD9D3"></span><span style="background:#CBD9D3"></span><span style="background:#CBD9D3"></span><span style="background:#CBD9D3"></span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#5C5F5C;font-weight:300;line-height:1.5">
+            <div><b style="font-weight:600;color:#14202E">Radius</b> — 2 px on inputs and buttons, 4 px on cards, 12 px on app icons. The mark is the only fully round shape in the system.</div>
+            <div><b style="font-weight:600;color:#14202E">Borders</b> — 1 px #E7E2D6 on cream, 1 px rgba(242,239,232,0.18) on teal. No shadows anywhere except a 2 px focus ring.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="components" style="display:flex;flex-direction:column;gap:28px">
+      <div style="display:flex;align-items:baseline;gap:14px;border-bottom:1px solid #E2DDD0;padding-bottom:12px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8A6A2F;letter-spacing:0.14em">05</span>
+        <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:34px;margin:0;letter-spacing:-0.01em">Components</h2>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7E2D6;padding:26px;display:flex;flex-direction:column;gap:20px">
+        <div style="font-size:15px;font-weight:600">Buttons <span style="font-weight:300;color:#6B6A63;font-size:14px">— 44 px tall, 2 px radius, 150 ms colour transition. Hover them.</span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center">
+          <button type="button" style="font-family:Mukta,sans-serif;font-size:15px;font-weight:600;color:#F2EFE8;background:#0F3B38;border:1px solid #0F3B38;border-radius:2px;padding:0 24px;height:44px;cursor:pointer;transition:background 150ms" style-hover="background:#1F5A52;border-color:#1F5A52">Continue</button>
+          <button type="button" style="font-family:Mukta,sans-serif;font-size:15px;font-weight:600;color:#0F3B38;background:transparent;border:1px solid #0F3B38;border-radius:2px;padding:0 24px;height:44px;cursor:pointer;transition:background 150ms" style-hover="background:#E7EDEA">Use another account</button>
+          <button type="button" style="font-family:Mukta,sans-serif;font-size:15px;font-weight:600;color:#1F5A52;background:transparent;border:1px solid transparent;border-radius:2px;padding:0 12px;height:44px;cursor:pointer;transition:color 150ms" style-hover="color:#8A6A2F">Learn more →</button>
+          <button type="button" style="font-family:Mukta,sans-serif;font-size:15px;font-weight:600;color:#9C3B24;background:transparent;border:1px solid #D9B3A8;border-radius:2px;padding:0 24px;height:44px;cursor:pointer;transition:background 150ms" style-hover="background:#9C3B24;color:#FFFFFF;border-color:#9C3B24">Revoke access</button>
+          <button type="button" disabled="" style="font-family:Mukta,sans-serif;font-size:15px;font-weight:600;color:#9A9890;background:#EFEAE0;border:1px solid #E7E2D6;border-radius:2px;padding:0 24px;height:44px;cursor:not-allowed">Continue</button>
+        </div>
+        <div style="background:#0F3B38;padding:22px;display:flex;flex-wrap:wrap;gap:14px;align-items:center">
+          <button type="button" style="font-family:Mukta,sans-serif;font-size:15px;font-weight:600;color:#0F3B38;background:#F2EFE8;border:1px solid #F2EFE8;border-radius:2px;padding:0 24px;height:44px;cursor:pointer;transition:background 150ms" style-hover="background:#D9C9A8;border-color:#D9C9A8">Continue</button>
+          <button type="button" style="font-family:Mukta,sans-serif;font-size:15px;font-weight:600;color:#F2EFE8;background:transparent;border:1px solid rgba(242,239,232,0.5);border-radius:2px;padding:0 24px;height:44px;cursor:pointer;transition:background 150ms" style-hover="background:rgba(242,239,232,0.12)">Cancel</button>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#CBD9D3;letter-spacing:0.1em">ON TEAL</span>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7E2D6;padding:26px;display:flex;flex-direction:column;gap:20px">
+        <div style="font-size:15px;font-weight:600">Inputs <span style="font-weight:300;color:#6B6A63;font-size:14px">— label above, helper below, 2 px focus ring in Cord Ochre. Click to focus.</span></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:20px">
+          <label style="display:flex;flex-direction:column;gap:7px"><span style="font-size:14px;font-weight:500">Mobile number</span><input type="text" placeholder="98765 43210" style="font-family:Mukta,sans-serif;font-size:16px;height:44px;padding:0 12px;border:1px solid #D7D2C6;border-radius:2px;background:#FFFFFF;color:#14202E;outline:none" style-focus="border-color:#8A6A2F;box-shadow:0 0 0 2px rgba(138,106,47,0.28)" /><span style="font-size:13px;color:#6B6A63;font-weight:300">Default</span></label>
+          <label style="display:flex;flex-direction:column;gap:7px"><span style="font-size:14px;font-weight:500">Mobile number</span><input type="text" value="98765 43210" style="font-family:Mukta,sans-serif;font-size:16px;height:44px;padding:0 12px;border:1px solid #8A6A2F;border-radius:2px;background:#FFFFFF;color:#14202E;outline:none;box-shadow:0 0 0 2px rgba(138,106,47,0.28)" /><span style="font-size:13px;color:#8A6A2F;font-weight:300">Focused</span></label>
+          <label style="display:flex;flex-direction:column;gap:7px"><span style="font-size:14px;font-weight:500">ABHA address</span><input type="text" value="ravi@sangam" style="font-family:Mukta,sans-serif;font-size:16px;height:44px;padding:0 12px;border:1px solid #9C3B24;border-radius:2px;background:#FDF7F5;color:#14202E;outline:none" /><span style="font-size:13px;color:#9C3B24;font-weight:400">Not a registered address</span></label>
+          <label style="display:flex;flex-direction:column;gap:7px"><span style="font-size:14px;font-weight:500;color:#9A9890">Organisation</span><input type="text" value="Aarogya Clinic Suite" disabled="" style="font-family:Mukta,sans-serif;font-size:16px;height:44px;padding:0 12px;border:1px solid #E7E2D6;border-radius:2px;background:#F4F1EA;color:#9A9890" /><span style="font-size:13px;color:#9A9890;font-weight:300">Disabled · set by the partner</span></label>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px">
+        <div style="background:#FFFFFF;border:1px solid #E7E2D6;border-radius:4px;padding:24px;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;align-items:center;gap:12px"><svg viewBox="0 0 64 64" width="26" height="26"><use href="#p" /></svg><span style="font-family:Newsreader,serif;font-size:21px">Connected app</span></div>
+          <div style="font-size:14px;color:#5C5F5C;font-weight:300;line-height:1.6">Aarogya Clinic Suite has read access to your profile and visit history since 12 March 2026.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;background:#EDF1EF;color:#1F5A52;padding:4px 8px;border-radius:2px">profile</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;background:#EDF1EF;color:#1F5A52;padding:4px 8px;border-radius:2px">abha.read</span></div>
+          <div style="border-top:1px solid #EFEAE0;padding-top:12px;font-size:14px;color:#1F5A52;font-weight:500">Standard card</div>
+        </div>
+        <div style="background:#F2EFE8;border:1px solid #E2DDD0;border-radius:4px;padding:24px;display:flex;flex-direction:column;gap:14px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;color:#8A6A2F">SESSION</div>
+          <div style="font-family:Newsreader,serif;font-size:21px">Active on 3 devices</div>
+          <div style="font-size:14px;color:#5C5F5C;font-weight:300;line-height:1.6">Cream card on the cream page, separated by border alone. Use for secondary or historical information.</div>
+        </div>
+        <div style="background:#0F3B38;border-radius:4px;padding:24px;display:flex;flex-direction:column;gap:14px;color:#F2EFE8">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;color:#D9C9A8">IDENTITY</div>
+          <div style="font-family:Newsreader,serif;font-size:21px">ravi.menon@sangam</div>
+          <div style="font-size:14px;opacity:0.82;font-weight:300;line-height:1.6">Inverse card. One per screen at most — it is the loudest object the system allows.</div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="background:#EDF1EF;border-left:3px solid #1F5A52;padding:16px 20px;display:flex;gap:14px;align-items:flex-start"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#1F5A52;letter-spacing:0.1em;padding-top:2px">INFO</span><div style="font-size:14px;color:#3E4A48;line-height:1.55">Sangam never sees the clinical data held by a partner — only the fact that you granted access.</div></div>
+        <div style="background:#EDF2EC;border-left:3px solid #276B4E;padding:16px 20px;display:flex;gap:14px;align-items:flex-start"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#276B4E;letter-spacing:0.1em;padding-top:2px">SUCCESS</span><div style="font-size:14px;color:#3E4A48;line-height:1.55">Identity verified. Your ABHA address is linked to this account.</div></div>
+        <div style="background:#F6F1E4;border-left:3px solid #7E5A14;padding:16px 20px;display:flex;gap:14px;align-items:flex-start"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7E5A14;letter-spacing:0.1em;padding-top:2px">WARNING</span><div style="font-size:14px;color:#3E4A48;line-height:1.55">This partner's certificate expires in 14 days. Renew before 6 October to avoid interrupted sign-ins.</div></div>
+        <div style="background:#F9EFEC;border-left:3px solid #9C3B24;padding:16px 20px;display:flex;gap:14px;align-items:flex-start"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9C3B24;letter-spacing:0.1em;padding-top:2px">DANGER</span><div style="font-size:14px;color:#3E4A48;line-height:1.55">Revoking access signs you out of Aarogya Clinic Suite on every device. This cannot be undone.</div></div>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7E2D6;padding:0;display:flex;flex-direction:column">
+        <div style="padding:22px 26px 14px;font-size:15px;font-weight:600">Navigation</div>
+        <div style="display:flex;align-items:center;gap:22px;padding:0 26px;border-bottom:1px solid #EFEAE0;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:9px;padding:14px 0"><svg viewBox="0 0 64 64" width="24" height="24"><use href="#p" /></svg><span style="font-family:Newsreader,serif;font-size:19px;font-weight:500;color:#0F3B38">sangam</span></div>
+          <div style="display:flex;gap:24px;font-size:15px;margin-left:auto;flex-wrap:wrap">
+            <span style="padding:14px 0;border-bottom:2px solid #8A6A2F;color:#14202E;font-weight:500">Overview</span>
+            <span style="padding:14px 0;border-bottom:2px solid transparent;color:#5C5F5C">Connected apps</span>
+            <span style="padding:14px 0;border-bottom:2px solid transparent;color:#5C5F5C">Devices</span>
+            <span style="padding:14px 0;border-bottom:2px solid transparent;color:#5C5F5C">Audit log</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:minmax(0,200px) minmax(0,1fr)">
+          <div style="background:#0F3B38;padding:20px 0;display:flex;flex-direction:column">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;color:#8FAFA6;padding:0 20px 12px">CONSOLE</span>
+            <span style="padding:10px 20px;color:#F2EFE8;font-size:15px;background:rgba(242,239,232,0.1);border-left:3px solid #D9C9A8">Tenants</span>
+            <span style="padding:10px 20px;color:#CBD9D3;font-size:15px;border-left:3px solid transparent">Applications</span>
+            <span style="padding:10px 20px;color:#CBD9D3;font-size:15px;border-left:3px solid transparent">Scopes</span>
+            <span style="padding:10px 20px;color:#CBD9D3;font-size:15px;border-left:3px solid transparent">Keys</span>
+          </div>
+          <div style="padding:26px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6B6A63;letter-spacing:0.1em">TENANTS / AAROGYA</div>
+            <div style="font-family:Newsreader,serif;font-size:27px">Aarogya Health Network</div>
+            <div style="font-size:14px;color:#5C5F5C;font-weight:300;line-height:1.6">Sidebar navigation is always teal, always left, never collapsible below 4 items. The active item carries a Sandalwood rule — the only place that colour touches an edge.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="ornament" style="display:flex;flex-direction:column;gap:28px">
+      <div style="display:flex;align-items:baseline;gap:14px;border-bottom:1px solid #E2DDD0;padding-bottom:12px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8A6A2F;letter-spacing:0.14em">06</span>
+        <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:34px;margin:0;letter-spacing:-0.01em">Ornament and illustration</h2>
+      </div>
+      <div style="background:#FFFFFF;border:1px solid #E7E2D6;padding:30px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:30px">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="font-size:15px;font-weight:600">Should Sangam illustrate? Mostly no.</div>
+          <p style="margin:0;font-size:15px;line-height:1.65;color:#3E4A48;font-weight:300;text-wrap:pretty">Spot illustration is how infrastructure brands start to look like consumer apps, and an identity layer that draws smiling doctors invites the question of what else it is embellishing. The system allows exactly three graphic devices — a rule, a dot and a drop cap — all derived from the mark. Where a diagram is genuinely needed (auth flows, tenancy models), draw it as a technical figure: 1.5 px strokes, palette colours only, mono labels, no perspective, no isometric cubes.</p>
+          <div style="font-size:15px;font-weight:600;margin-top:8px">Devanagari as decoration</div>
+          <p style="margin:0;font-size:15px;line-height:1.65;color:#3E4A48;font-weight:300;text-wrap:pretty">सं may appear once per surface, as a watermark at 4–6% opacity behind a page header, or debossed on physical collateral. It is never a button, never an icon, never coloured. Real Devanagari in the interface is always content, never pattern — the respect shown to the script is the brand argument.</p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div style="background:#F2EFE8;padding:24px;position:relative;overflow:hidden">
+            <span style="position:absolute;right:14px;top:-14px;font-family:'Noto Sans Devanagari',sans-serif;font-size:96px;color:#0F3B38;opacity:0.06;line-height:1">सं</span>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;color:#8A6A2F;position:relative">WATERMARK · 6%</div>
+            <div style="font-family:Newsreader,serif;font-size:27px;position:relative;margin-top:6px">Audit log</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;color:#6B6A63">CORD RULE · SECTION DIVIDER</div>
+            <div style="display:flex;align-items:center;gap:10px"><span style="height:1px;background:#D7D2C6;flex:1"></span><span style="width:7px;height:7px;border-radius:50%;background:#8A6A2F"></span><span style="height:1px;background:#D7D2C6;flex:1"></span></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;color:#6B6A63">DROP CAP · LONG-FORM ONLY</div>
+            <p style="margin:0;font-size:15px;line-height:1.7;color:#3E4A48;font-weight:300"><span style="float:left;font-family:Newsreader,serif;font-size:58px;line-height:0.82;padding:5px 10px 0 0;color:#0F3B38">A</span> palm-leaf folio is useless alone and durable in a bundle. Drop caps appear in documentation, the annual transparency report and the manifesto page — never in the product interface, where they would slow a reader who is trying to sign in.</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;color:#6B6A63">CORD DOT · STATUS ATOM</div>
+            <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:14px;color:#3E4A48">
+              <span style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#276B4E"></span>Active</span>
+              <span style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#7E5A14"></span>Expiring</span>
+              <span style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#9C3B24"></span>Revoked</span>
+              <span style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#B9B5AA"></span>Dormant</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tokens" style="display:flex;flex-direction:column;gap:20px">
+      <div style="display:flex;align-items:baseline;gap:14px;border-bottom:1px solid #E2DDD0;padding-bottom:12px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8A6A2F;letter-spacing:0.14em">07</span>
+        <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:34px;margin:0;letter-spacing:-0.01em">Tokens</h2>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+        <button type="button" onClick="{{ copy }}" style="font-family:Mukta,sans-serif;font-size:14px;font-weight:600;color:#F2EFE8;background:#0F3B38;border:1px solid #0F3B38;border-radius:2px;height:40px;padding:0 20px;cursor:pointer" style-hover="background:#1F5A52">{{ copyLabel }}</button>
+        <button type="button" onClick="{{ download }}" style="font-family:Mukta,sans-serif;font-size:14px;font-weight:600;color:#0F3B38;background:transparent;border:1px solid #0F3B38;border-radius:2px;height:40px;padding:0 20px;cursor:pointer" style-hover="background:#E7EDEA">Download {{ fileName }}</button>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6B6A63;letter-spacing:0.1em">FORMAT: {{ formatLabel }}</span>
+      </div>
+      <div style="background:#0B2C2A;color:#D8E2DD;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.75;padding:24px;overflow:auto"><pre id="sangam-tokens" style="margin:0;white-space:pre-wrap;word-break:break-word">{{ tokenText }}</pre></div>
+    </section>
+
+    <footer style="border-top:1px solid #E2DDD0;padding-top:24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <svg viewBox="0 0 64 64" width="22" height="22"><use href="#p" /></svg>
+      <span style="font-size:14px;color:#6B6A63;font-weight:300">Sangam identity system · v1.0 · palm-leaf mark, round 03 geometry</span>
+    </footer>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;tokenFormat&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;css&quot;,&quot;json&quot;],&quot;default&quot;:&quot;css&quot;,&quot;tsType&quot;:&quot;\&quot;css\&quot; | \&quot;json\&quot;&quot;,&quot;section&quot;:&quot;Tokens&quot;}}">
+const CSS = `:root {
+  /* Primary */
+  --sg-teal:            #0F3B38;  /* signature — 12.33:1 on white */
+  --sg-cream:           #F2EFE8;  /* supporting neutral */
+  --sg-ochre:           #8A6A2F;  /* warm accent — 5.02:1 on white */
+
+  /* Secondary */
+  --sg-ink:             #14202E;
+  --sg-palm-shade:      #1F5A52;
+  --sg-leaf-mist:       #CBD9D3;
+  --sg-sandalwood:      #D9C9A8;
+  --sg-sindoor:         #9C3B24;
+  --sg-slate:           #6B6A63;
+
+  /* Surfaces */
+  --sg-paper:           #F7F5F0;
+  --sg-surface:         #FFFFFF;
+  --sg-deep:            #0B2C2A;
+  --sg-border:          #E7E2D6;
+  --sg-border-strong:   #D7D2C6;
+  --sg-border-inverse:  rgba(242,239,232,0.18);
+
+  /* Semantic */
+  --sg-success:         #276B4E;
+  --sg-warning:         #7E5A14;
+  --sg-danger:          #9C3B24;
+  --sg-info:            #1F5A52;
+  --sg-success-bg:      #EDF2EC;
+  --sg-warning-bg:      #F6F1E4;
+  --sg-danger-bg:       #F9EFEC;
+  --sg-info-bg:         #EDF1EF;
+
+  /* Type */
+  --sg-font-display:    "Newsreader", Georgia, serif;
+  --sg-font-body:       "Mukta", "Noto Sans Devanagari", system-ui, sans-serif;
+  --sg-font-mono:       "JetBrains Mono", ui-monospace, monospace;
+
+  --sg-display-64:      64px/1.02;   --sg-display-64-ls:  -0.02em;
+  --sg-display-48:      48px/1.06;   --sg-display-48-ls:  -0.015em;
+  --sg-head-38:         38px/1.12;   --sg-head-38-ls:     -0.01em;
+  --sg-head-30:         30px/1.2;    --sg-head-30-ls:     -0.01em;
+  --sg-title-24:        24px/1.3;    --sg-title-24-ls:    -0.005em;
+  --sg-title-21:        21px/1.4;
+  --sg-body-18:         18px/1.65;
+  --sg-body-16:         16px/1.6;
+  --sg-body-14:         14px/1.55;   --sg-body-14-ls:     0.005em;
+  --sg-caption-12:      12px/1.5;    --sg-caption-12-ls:  0.12em;
+
+  /* Space — 4px base */
+  --sg-space-1: 4px;   --sg-space-2: 8px;   --sg-space-3: 12px;
+  --sg-space-4: 16px;  --sg-space-6: 24px;  --sg-space-8: 32px;
+  --sg-space-12: 48px; --sg-space-16: 64px; --sg-space-24: 96px;
+
+  /* Shape */
+  --sg-radius-control:  2px;
+  --sg-radius-card:     4px;
+  --sg-radius-appicon:  12px;
+  --sg-control-height:  44px;
+  --sg-focus-ring:      0 0 0 2px rgba(138,106,47,0.28);
+  --sg-grid-max:        1160px;
+  --sg-grid-gutter:     24px;
+  --sg-logo-clearspace: 0.195; /* x = clearspace * mark height */
+}`;
+
+class Component extends DCLogic {
+  state = { copied: false };
+  get json() {
+    const out = {};
+    CSS.split("\n").forEach(l => {
+      const m = l.match(/^\s*(--sg-[\w-]+):\s*([^;]+);/);
+      if (m) out[m[1].replace("--sg-", "")] = m[2].trim();
+    });
+    return JSON.stringify(out, null, 2);
+  }
+  get text() { return (this.props.tokenFormat ?? "css") === "json" ? this.json : CSS; }
+  renderVals() {
+    const isJson = (this.props.tokenFormat ?? "css") === "json";
+    return {
+      tokenText: this.text,
+      formatLabel: isJson ? "JSON" : "CSS CUSTOM PROPERTIES",
+      fileName: isJson ? "sangam-tokens.json" : "sangam-tokens.css",
+      copyLabel: this.state.copied ? "Copied ✓" : "Copy tokens",
+      copy: () => {
+        navigator.clipboard.writeText(this.text).then(() => {
+          this.setState({ copied: true });
+          setTimeout(() => this.setState({ copied: false }), 1800);
+        });
+      },
+      download: () => {
+        const name = isJson ? "sangam-tokens.json" : "sangam-tokens.css";
+        const blob = new Blob([this.text], { type: isJson ? "application/json" : "text/css" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

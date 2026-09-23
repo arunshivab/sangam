@@ -1,0 +1,45 @@
+# .NET build output
+bin/
+obj/
+artifacts/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+.idea/
+*.swp
+
+# Test and coverage output
+TestResults/
+coverage/
+*.coverage
+*.trx
+
+# Publish output
+publish/
+*.nupkg
+*.snupkg
+!localpackages/*.nupkg
+
+# Secrets and local overrides — never commit these
+appsettings.*.local.json
+*.local.json
+.env
+.env.*
+!.env.example
+secrets.json
+*.pfx
+*.pem
+*.key
+
+# Docker volumes and Caddy state (dev stack)
+deploy/.data/
+
+# OS noise
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Node (if a front-end toolchain is ever added)
+node_modules/

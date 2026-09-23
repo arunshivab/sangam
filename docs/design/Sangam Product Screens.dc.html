@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500;6..72,600&family=Mukta:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Devanagari:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #EDEAE2; }
+  a { color: #1F5A52; text-decoration: none; }
+  a:hover { color: #8A6A2F; }
+  input, button, select { font-family: Mukta, sans-serif; }
+</style>
+</helmet>
+
+<div style="font-family:Mukta,sans-serif;color:#14202E">
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="p" viewBox="0 0 64 64">
+      <rect x="3.25" y="16.25" width="57.5" height="31.5" rx="15.75" fill="none" stroke="#0F3B38" stroke-width="5.5" />
+      <g stroke="#0F3B38" stroke-width="4" stroke-linecap="round"><path d="M33 26.5 H51" /><path d="M33 37.5 H51" /></g>
+      <circle cx="20" cy="32" r="6.25" fill="#8A6A2F" />
+    </symbol>
+    <symbol id="pc" viewBox="0 0 64 64">
+      <rect x="3.25" y="16.25" width="57.5" height="31.5" rx="15.75" fill="none" stroke="#F2EFE8" stroke-width="5.5" />
+      <g stroke="#F2EFE8" stroke-width="4" stroke-linecap="round"><path d="M33 26.5 H51" /><path d="M33 37.5 H51" /></g>
+      <circle cx="20" cy="32" r="6.25" fill="#D9C9A8" />
+    </symbol>
+    <symbol id="pmist" viewBox="0 0 64 64">
+      <rect x="3.25" y="16.25" width="57.5" height="31.5" rx="15.75" fill="none" stroke="#CBD9D3" stroke-width="5.5" />
+      <g stroke="#CBD9D3" stroke-width="4" stroke-linecap="round"><path d="M33 26.5 H51" /><path d="M33 37.5 H51" /></g>
+      <circle cx="20" cy="32" r="6.25" fill="#CBD9D3" />
+    </symbol>
+    <symbol id="tick" viewBox="0 0 24 24">
+      <path d="M4 12.5 L9.5 18 L20 6.5" fill="none" stroke="#276B4E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
+    <symbol id="shield" viewBox="0 0 24 24">
+      <path d="M12 2.5 L20 5.5 V12 C20 16.8 16.4 20.4 12 21.5 C7.6 20.4 4 16.8 4 12 V5.5 Z" fill="none" stroke="#1F5A52" stroke-width="1.6" stroke-linejoin="round" />
+      <path d="M8.5 12.2 L11 14.7 L15.6 9.8" fill="none" stroke="#1F5A52" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
+  </svg>
+
+  <div style="max-width:1320px;margin:0 auto;padding:52px 28px 120px;display:flex;flex-direction:column;gap:56px">
+
+    <header style="display:flex;flex-direction:column;gap:18px;max-width:780px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <svg viewBox="0 0 64 64" width="28" height="28"><use href="#p" /></svg>
+        <span style="font-family:Newsreader,serif;font-size:22px;font-weight:500">sangam</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6B6A63;letter-spacing:0.14em;padding-left:10px;border-left:1px solid #D7D2C6">PRODUCT SCREENS · 12</span>
+      </div>
+      <h1 style="font-family:Newsreader,serif;font-weight:400;font-size:46px;line-height:1.05;letter-spacing:-0.015em;margin:0">Authentication, portal and admin</h1>
+      <p style="margin:0;font-size:17px;line-height:1.65;color:#3E4A48;font-weight:300;text-wrap:pretty">Every screen is built from the v1.0 tokens in <span style="font-family:'JetBrains Mono',monospace;font-size:14px">sangam-tokens.css</span>. Auth screens are laid out as server-rendered Razor Pages — every state shown here is a distinct server response, nothing depends on JavaScript. Annotations sit to the right of each screen.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;font-family:'JetBrains Mono',monospace;font-size:11px;color:#1F5A52">
+        <span style="background:#FFFFFF;border:1px solid #E7E2D6;padding:6px 10px">400 px auth column · works at 320</span>
+        <span style="background:#FFFFFF;border:1px solid #E7E2D6;padding:6px 10px">44 px minimum target</span>
+        <span style="background:#FFFFFF;border:1px solid #E7E2D6;padding:6px 10px">AA or better everywhere</span>
+        <span style="background:#FFFFFF;border:1px solid #E7E2D6;padding:6px 10px">no layout shift between states</span>
+      </div>
+    </header>
+
+    <section id="s1" style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;border-bottom:1px solid #DDD8CB;padding-bottom:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8A6A2F;letter-spacing:0.14em">01</span>
+        <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:28px;margin:0">Login</h2>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6B6A63">id.sangamid.in/login · Razor Page</span>
+      </div>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,268px);gap:22px;align-items:start">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px">
+
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6B6A63;letter-spacing:0.12em">VARIANT A · PARTNER: LIPI</span>
+            <div style="background:#F7F5F0;border:1px solid #E2DDD0;padding:34px 20px;display:flex;justify-content:center">
+              <div style="width:100%;max-width:400px;display:flex;flex-direction:column;gap:20px">
+                <div style="display:flex;align-items:center;justify-content:center;gap:9px">
+                  <svg viewBox="0 0 64 64" width="26" height="26"><use href="#p" /></svg>
+                  <span style="font-family:Newsreader,serif;font-size:21px;font-weight:500;color:#0F3B38">sangam</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;background:#FFFFFF;border:1px solid #E7E2D6;border-left:3px solid #1D4E89;padding:10px 12px">
+                  <span style="width:26px;height:26px;border-radius:6px;background:#1D4E89;color:#fff;font-family:'Noto Sans Devanagari',sans-serif;font-size:14px;display:flex;align-items:center;justify-content:center;flex:none">लि</span>
+                  <span style="font-size:14px;color:#3E4A48">Signing in to <b style="font-weight:600;color:#14202E">LiPi</b></span>
+                </div>
+                <div style="background:#FFFFFF;border:1px solid #E7E2D6;border-radius:4px;padding:26px;display:flex;flex-direction:column;gap:16px">
+                  <h3 style="font-family:Newsreader,serif;font-weight:400;font-size:28px;margin:0;letter-spacing:-0.01em">Sign in</h3>
+                  <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:14px;font-weight:500">Email</span><input type="email" placeholder="ravi@example.in" style="height:44px;padding:0 12px;font-size:16px;border:1px solid #D7D2C6;border-radius:2px;background:#fff;outline:none;box-sizing:border-box;width:100%" style-focus="border-color:#8A6A2F;box-shadow:0 0 0 2px rgba(138,106,47,0.28)" /></label>
+                  <label style="display:flex;flex-direction:column;gap:6px">
+                    <span style="display:flex;justify-content:space-between;align-items:baseline;gap:10px"><span style="font-size:14px;font-weight:500">Password</span><a href="#s5" style="font-size:13px">Forgot password?</a></span>
+                    <input type="password" value="············" style="height:44px;padding:0 12px;font-size:16px;border:1px solid #D7D2C6;border-radius:2px;background:#fff;outline:none;box-sizing:border-box;width:100%" style-focus="border-color:#8A6A2F;box-shadow:0 0 0 2px rgba(138,106,47,0.28)" />
+                  </label>
+                  <div style="display:flex;align-items:center;gap:9px;background:#F2EFE8;border:1px solid #E7E2D6;padding:9px 12px">
+                    <svg viewBox="0 0 24 24" width="17" height="17" style="flex:none"><use href="#shield" /></svg>
+                    <span style="font-size:13px;color:#3E4A48">Verified without a challenge</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6B6A63;margin-left:auto">TURNSTILE</span>
+                  </div>
+                  <button type="button" style="height:44px;font-size:15px;font-weight:600;color:#F2EFE8;background:#0F3B38;border:1px solid #0F3B38;border-radius:2px;cursor:pointer;transition:background 150ms" style-hover="background:#1F5A52;border-color:#1F5A52">Sign in</button>
+                  <div style="display:flex;align-items:center;gap:10px"><span style="height:1px;background:#EFEAE0;flex:1"></span><span style="width:5px;height:5px;border-radius:50%;background:#D9C9A8"></span><span style="height:1px;background:#EFEAE0;flex:1"></span></div>
+                  <div style="font-size:14px;color:#5C5F5C;text-align:center">New to Sangam? <a href="#s2" style="font-weight:500">Create an account</a></div>
+                </div>
+                <div style="display:flex;justify-content:center;gap:14px;font-size:13px;color:#6B6A63;flex-wrap:wrap">
+                  <a href="#s1">Terms</a><span style="color:#CBC7BB">·</span><a href="#s1">Privacy</a><span style="color:#CBC7BB">·</span><a href="#s1">Help</a><span style="color:#CBC7BB">·</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px">id.sangamid.in</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6B6A63;letter-spacing:0.12em">VARIANT B · PARTNER: AAROGYA HEALTH · MOBILE 320</span>
+            <div style="background:#F7F5F0;border:1px solid #E2DDD0;padding:34px 20px;display:flex;justify-content:center">
+              <div style="width:320px;max-width:100%;display:flex;flex-direction:column;gap:18px">
+                <div style="display:flex;align-items:center;justify-content:center;gap:9px">
+                  <svg viewBox="0 0 64 64" width="24" height="24"><use href="#p" /></svg>
+                  <span style="font-family:Newsreader,serif;font-size:19px;font-weight:500;color:#0F3B38">sangam</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;background:#FFFFFF;border:1px solid #E7E2D6;border-left:3px solid #2E7D52;padding:10px 12px">
+                  <span style="width:26px;height:26px;border-radius:6px;background:#2E7D52;color:#fff;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none">A</span>
+                  <span style="font-size:14px;color:#3E4A48;line-height:1.3">Signing in to <b style="font-weight:600;color:#14202E">Aarogya Health</b></span>
+                </div>
+                <div style="background:#FFFFFF;border:1px solid #E7E2D6;border-radius:4px;padding:20px;display:flex;flex-direction:column;gap:14px">
+                  <h3 style="font-family:Newsreader,serif;font-weight:400;font-size:25px;margin:0">Sign in</h3>
+                  <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:14px;font-weight:500">Email</span><input type="email" placeholder="ravi@example.in" style="height:44px;padding:0 12px;font-size:16px;border:1px solid #D7D2C6;border-radius:2px;background:#fff;outline:none;box-sizing:border-box;width:100%" style-focus="border-color:#8A6A2F;box-shadow:0 0 0 2px rgba(138,106,47,0.28)" /></label>
+                  <label style="display:flex;flex-direction:column;gap:6px"><span style="display:flex;justify-content:space-between;gap:8px"><span style="font-size:14px;font-weight:500">Password</span><a href="#s5" style="font-size:13px">Forgot?</a></span><input type="password" value="············" style="height:44px;padding:0 12px;font-size:16px;border:1px solid #D7D2C6;border-radius:2px;background:#fff;outline:none;box-sizing:border-box;width:100%" style-focus="border-color:#8A6A2F;box-shadow:0 0 0 2px rgba(138,106,47,0.28)" /></label>
+                  <div style="display:flex;align-items:center;gap:9px;background:#F2EFE8;border:1px solid #E7E2D6;padding:9px 12px">
+                    <svg viewBox="0 0 24 24" width="17" height="17" style="flex:none"><use href="#shield" /></svg>
+                    <span style="font-size:13px;color:#3E4A48">Verified without a challenge</span>
+                  </div>
+                  <button type="button" style="height:44px;font-size:15px;font-weight:600;color:#F2EFE8;background:#0F3B38;border:1px solid #0F3B38;border-radius:2px;cursor:pointer" style-hover="background:#1F5A52">Sign in</button>
+                  <div style="font-size:14px;color:#5C5F5C;text-align:center">New here? <a href="#s2" style="font-weight:500">Create an account</a></div>
+                </div>
+                <div style="display:flex;justify-content:center;gap:12px;font-size:13px;color:#6B6A63"><a href="#s1">Terms</a><span style="color:#CBC7BB">·</span><a href="#s1">Privacy</a><span style="color:#CBC7BB">·</span><a href="#s1">Help</a></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <aside style="background:#FFFFFF;border:1px solid #E7E2D6;padding:20px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8A6A2F;letter-spacing:0.12em">WHY IT LOOKS LIKE THIS</span>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">Partner identity is a <b style="font-weight:600;color:#14202E">chip above the card and a 3 px left rule</b> — it colours nothing structural. Swap LiPi for Aarogya and the form is pixel-identical, so a phishing clone can't hide behind a partner skin.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">The Sangam wordmark sits <b style="font-weight:600;color:#14202E">above</b> the partner chip. The user is on our domain; the partner is context, not host.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">Turnstile is a passive strip, not a widget slot: invisible verification still gets a visible, non-shifting line of reassurance. Failure swaps the same strip to an interactive challenge — same height, no reflow.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">400 px column, 320 px floor, 16 px inputs (below that iOS zooms on focus).</div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="s2" style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;border-bottom:1px solid #DDD8CB;padding-bottom:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8A6A2F;letter-spacing:0.14em">02</span>
+        <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:28px;margin:0">Registration</h2>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6B6A63">id.sangamid.in/register</span>
+      </div>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,268px);gap:22px;align-items:start">
+        <div style="background:#F7F5F0;border:1px solid #E2DDD0;padding:34px 20px;display:flex;justify-content:center">
+          <div style="width:100%;max-width:400px;display:flex;flex-direction:column;gap:18px">
+            <div style="display:flex;align-items:center;justify-content:center;gap:9px"><svg viewBox="0 0 64 64" width="26" height="26"><use href="#p" /></svg><span style="font-family:Newsreader,serif;font-size:21px;font-weight:500;color:#0F3B38">sangam</span></div>
+            <div style="display:flex;align-items:center;gap:10px;background:#FFFFFF;border:1px solid #E7E2D6;border-left:3px solid #1D4E89;padding:10px 12px">
+              <span style="width:26px;height:26px;border-radius:6px;background:#1D4E89;color:#fff;font-family:'Noto Sans Devanagari',sans-serif;font-size:14px;display:flex;align-items:center;justify-content:center;flex:none">लि</span>
+              <span style="font-size:14px;color:#3E4A48">Creating your account for <b style="font-weight:600;color:#14202E">LiPi</b></span>
+            </div>
+            <div style="background:#FFFFFF;border:1px solid #E7E2D6;border-radius:4px;padding:26px;display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;flex-direction:column;gap:5px">
+                <h3 style="font-family:Newsreader,serif;font-weight:400;font-size:28px;margin:0;letter-spacing:-0.01em">Create your account</h3>
+                <p style="margin:0;font-size:14px;color:#5C5F5C;font-weight:300;line-height:1.5">One account for every clinic and app that uses Sangam.</p>
+              </div>
+              <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:14px;font-weight:500">Full name</span><input type="text" placeholder="Ravi Menon" style="height:44px;padding:0 12px;font-size:16px;border:1px solid #D7D2C6;border-radius:2px;background:#fff;outline:none;box-sizing:border-box;width:100%" style-focus="border-color:#8A6A2F;box-shadow:0 0 0 2px rgba(138,106,47,0.28)" /></label>
+              <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:14px;font-weight:500">Email</span><input type="email" value="ravi.menon@example.in" style="height:44px;padding:0 12px;font-size:16px;border:1px solid #D7D2C6;border-radius:2px;background:#fff;outline:none;box-sizing:border-box;width:100%" style-focus="border-color:#8A6A2F;box-shadow:0 0 0 2px rgba(138,106,47,0.28)" /></label>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:14px;font-weight:500">Password</span><input type="password" value="················" style="height:44px;padding:0 12px;font-size:16px;border:1px solid #8A6A2F;border-radius:2px;background:#fff;outline:none;box-shadow:0 0 0 2px rgba(138,106,47,0.28);box-sizing:border-box;width:100%" /></label>
+                <div style="display:flex;gap:5px;height:4px"><span style="flex:1;background:#276B4E"></span><span style="flex:1;background:#276B4E"></span><span style="flex:1;background:#276B4E"></span><span style="flex:1;background:#E2DDD0"></span></div>
+                <div style="display:flex;justify-content:space-between;gap:10px;font-size:13px"><span style="color:#276B4E;font-weight:500">Strong</span><span style="color:#6B6A63;font-weight:300">12+ characters, not a known breach</span></div>
+              </div>
+              <label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer"><input type="checkbox" style="width:18px;height:18px;margin-top:2px;accent-color:#0F3B38;flex:none" /><span style="font-size:14px;color:#3E4A48;line-height:1.5;font-weight:300">I accept the <a href="#s2">Terms of Service</a> and have read the <a href="#s2">Privacy Notice</a>.</span></label>
+              <div style="display:flex;align-items:center;gap:9px;background:#F2EFE8;border:1px solid #E7E2D6;padding:9px 12px"><svg viewBox="0 0 24 24" width="17" height="17" style="flex:none"><use href="#shield" /></svg><span style="font-size:13px;color:#3E4A48">Verified without a challenge</span><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6B6A63;margin-left:auto">TURNSTILE</span></div>
+              <button type="button" style="height:44px;font-size:15px;font-weight:600;color:#F2EFE8;background:#0F3B38;border:1px solid #0F3B38;border-radius:2px;cursor:pointer" style-hover="background:#1F5A52">Create account</button>
+              <div style="font-size:14px;color:#5C5F5C;text-align:center">Already registered? <a href="#s1" style="font-weight:500">Sign in</a></div>
+            </div>
+          </div>
+        </div>
+        <aside style="background:#FFFFFF;border:1px solid #E7E2D6;padding:20px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8A6A2F;letter-spacing:0.12em">NOTES</span>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">Strength meter is <b style="font-weight:600;color:#14202E">four fixed segments plus a fixed-height caption row</b> — it fills in on server round-trip or client hint without ever moving the button.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">Strength language is factual ("not a known breach"), not gamified. No confetti, no "awesome password!".</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">ToS is an explicit unchecked box — never pre-ticked, never buried in the button's fine print.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">Copy says what the account <i>is</i> before asking for anything: one account, many clinics.</div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="s3" style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;border-bottom:1px solid #DDD8CB;padding-bottom:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8A6A2F;letter-spacing:0.14em">03 · 04</span>
+        <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:28px;margin:0">Email verification — sent, then confirmed</h2>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6B6A63">/verify-sent · /verify?token=…</span>
+      </div>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,268px);gap:22px;align-items:start">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:18px">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6B6A63;letter-spacing:0.12em">03 · SENT — RESEND LOCKED, THEN AVAILABLE</span>
+            <div style="background:#F7F5F0;border:1px solid #E2DDD0;padding:30px 20px;display:flex;justify-content:center">
+              <div style="width:100%;max-width:400px;display:flex;flex-direction:column;gap:18px">
+                <div style="display:flex;align-items:center;justify-content:center;gap:9px"><svg viewBox="0 0 64 64" width="26" height="26"><use href="#p" /></svg><span style="font-family:Newsreader,serif;font-size:21px;font-weight:500;color:#0F3B38">sangam</span></div>
+                <div style="background:#FFFFFF;border:1px solid #E7E2D6;border-radius:4px;padding:26px;display:flex;flex-direction:column;gap:16px;text-align:center;align-items:center">
+                  <span style="width:46px;height:46px;border:1px solid #D9C9A8;background:#F6F1E4;border-radius:50%;display:flex;align-items:center;justify-content:center"><span style="width:10px;height:10px;border-radius:50%;background:#8A6A2F"></span></span>
+                  <h3 style="font-family:Newsreader,serif;font-weight:400;font-size:27px;margin:0">Check your email</h3>
+                  <p style="margin:0;font-size:15px;line-height:1.6;color:#3E4A48;font-weight:300">We sent a verification link to<br /><span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#14202E">ravi.menon@example.in</span></p>
+                  <p style="margin:0;font-size:14px;line-height:1.55;color:#6B6A63;font-weight:300">The link is valid for 30 minutes and can be used once.</p>
+                  <button type="button" disabled="" style="width:100%;height:44px;font-size:15px;font-weight:600;color:#9A9890;background:#EFEAE0;border:1px solid #E7E2D6;border-radius:2px;cursor:not-allowed">Resend in 0:47</button>
+                  <div style="width:100%;border-top:1px solid #EFEAE0;padding-top:14px;font-size:13px;color:#6B6A63;font-weight:300;line-height:1.55">Wrong address? <a href="#s2">Change it</a> · Stuck? <a href="#s3">help@sangamid.in</a></div>
+                </div>
+                <div style="background:#FFFFFF;border:1px dashed #D7D2C6;padding:14px;display:flex;flex-direction:column;gap:10px">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6B6A63;letter-spacing:0.12em">AFTER 60 S — SAME BOX, SAME HEIGHT</span>
+                  <button type="button" style="height:44px;font-size:15px;font-weight:600;color:#0F3B38;background:transparent;border:1px solid #0F3B38;border-radius:2px;cursor:pointer" style-hover="background:#E7EDEA">Resend verification email</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6B6A63;letter-spacing:0.12em">04 · CONFIRMED</span>
+            <div style="background:#F7F5F0;border:1px solid #E2DDD0;padding:30px 20px;display:flex;justify-content:center">
+              <div style="width:100%;max-width:400px;display:flex;flex-direction:column;gap:18px">
+                <div style="display:flex;align-items:center;justify-content:center;gap:9px"><svg viewBox="0 0 64 64" width="26" height="26"><use href="#p" /></svg><span style="font-family:Newsreader,serif;font-size:21px;font-weight:500;color:#0F3B38">sangam</span></div>
+                <div style="background:#FFFFFF;border:1px solid #E7E2D6;border-radius:4px;padding:26px;display:flex;flex-direction:column;gap:16px;text-align:center;align-items:center">
+                  <span style="width:46px;height:46px;border:1px solid #BFD6C7;background:#EDF2EC;border-radius:50%;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="24" height="24"><use href="#tick" /></svg></span>
+                  <h3 style="font-family:Newsreader,serif;font-weight:400;font-size:27px;margin:0">Email verified</h3>
+                  <p style="margin:0;font-size:15px;line-height:1.6;color:#3E4A48;font-weight:300">Your Sangam account is active. You can now continue to LiPi.</p>
+                  <button type="button" style="width:100%;height:44px;font-size:15px;font-weight:600;color:#F2EFE8;background:#0F3B38;border:1px solid #0F3B38;border-radius:2px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px" style-hover="background:#1F5A52"><span style="width:20px;height:20px;border-radius:5px;background:#1D4E89;color:#fff;font-family:'Noto Sans Devanagari',sans-serif;font-size:11px;display:flex;align-items:center;justify-content:center">लि</span>Continue to LiPi</button>
+                  <a href="#s9" style="font-size:14px;font-weight:500">Go to your Sangam account instead</a>
+                </div>
+                <div style="display:flex;justify-content:center;gap:14px;font-size:13px;color:#6B6A63"><a href="#s3">Terms</a><span style="color:#CBC7BB">·</span><a href="#s3">Privacy</a><span style="color:#CBC7BB">·</span><a href="#s3">Help</a></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <aside style="background:#FFFFFF;border:1px solid #E7E2D6;padding:20px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8A6A2F;letter-spacing:0.12em">NOTES</span>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">No JavaScript timer: the page is served with a <span style="font-family:'JetBrains Mono',monospace;font-size:13px">&lt;meta http-equiv="refresh" content="60"&gt;</span>, and the server decides whether the resend button comes back enabled.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">Disabled and enabled states are the <b style="font-weight:600;color:#14202E">same button box</b> — the countdown lives inside the label, so nothing jumps when it unlocks.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">The success state repeats the partner mark inside the button so the user knows exactly where "continue" leads.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">Status uses the cord dot and the tick, not an illustration.</div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="s5" style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;border-bottom:1px solid #DDD8CB;padding-bottom:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8A6A2F;letter-spacing:0.14em">05 · 06</span>
+        <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:28px;margin:0">Forgot password · Reset password</h2>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6B6A63">/forgot · /reset?token=…</span>
+      </div>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,268px);gap:22px;align-items:start">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:18px">
+          <div style="background:#F7F5F0;border:1px solid #E2DDD0;padding:30px 20px;display:flex;justify-content:center">
+            <div style="width:100%;max-width:400px;display:flex;flex-direction:column;gap:18px">
+              <div style="display:flex;align-items:center;justify-content:center;gap:9px"><svg viewBox="0 0 64 64" width="26" height="26"><use href="#p" /></svg><span style="font-family:Newsreader,serif;font-size:21px;font-weight:500;color:#0F3B38">sangam</span></div>
+              <div style="background:#FFFFFF;border:1px solid #E7E2D6;border-radius:4px;padding:26px;display:flex;flex-direction:column;gap:16px">
+                <div style="display:flex;flex-direction:column;gap:5px">
+                  <h3 style="font-family:Newsreader,serif;font-weight:400;font-size:27px;margin:0">Reset your password</h3>
+                  <p style="margin:0;font-size:14px;color:#5C5F5C;font-weight:300;line-height:1.5">Enter the email on your Sangam account and we will send a single-use link.</p>
+                </div>
+                <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:14px;font-weight:500">Email</span><input type="email" placeholder="ravi@example.in" style="height:44px;padding:0 12px;font-size:16px;border:1px solid #D7D2C6;border-radius:2px;background:#fff;outline:none;box-sizing:border-box;width:100%" style-focus="border-color:#8A6A2F;box-shadow:0 0 0 2px rgba(138,106,47,0.28)" /></label>
+                <div style="display:flex;align-items:center;gap:9px;background:#F2EFE8;border:1px solid #E7E2D6;padding:9px 12px"><svg viewBox="0 0 24 24" width="17" height="17" style="flex:none"><use href="#shield" /></svg><span style="font-size:13px;color:#3E4A48">Verified without a challenge</span><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6B6A63;margin-left:auto">TURNSTILE</span></div>
+                <button type="button" style="height:44px;font-size:15px;font-weight:600;color:#F2EFE8;background:#0F3B38;border:1px solid #0F3B38;border-radius:2px;cursor:pointer" style-hover="background:#1F5A52">Send reset link</button>
+                <div style="font-size:13px;color:#6B6A63;font-weight:300;line-height:1.55;border-top:1px solid #EFEAE0;padding-top:14px">For your safety we show the same confirmation whether or not an account exists. <a href="#s1">Back to sign in</a></div>
+              </div>
+            </div>
+          </div>
+          <div style="background:#F7F5F0;border:1px solid #E2DDD0;padding:30px 20px;display:flex;justify-content:center">
+            <div style="width:100%;max-width:400px;display:flex;flex-direction:column;gap:18px">
+              <div style="display:flex;align-items:center;justify-content:center;gap:9px"><svg viewBox="0 0 64 64" width="26" height="26"><use href="#p" /></svg><span style="font-family:Newsreader,serif;font-size:21px;font-weight:500;color:#0F3B38">sangam</span></div>
+              <div style="background:#FFFFFF;border:1px solid #E7E2D6;border-radius:4px;padding:26px;display:flex;flex-direction:column;gap:16px">
+                <h3 style="font-family:Newsreader,serif;font-weight:400;font-size:27px;margin:0">Choose a new password</h3>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:14px;font-weight:500">New password</span><input type="password" value="··············" style="height:44px;padding:0 12px;font-size:16px;border:1px solid #D7D2C6;border-radius:2px;background:#fff;outline:none;box-sizing:border-box;width:100%" style-focus="border-color:#8A6A2F;box-shadow:0 0 0 2px rgba(138,106,47,0.28)" /></label>
+                  <div style="display:flex;gap:5px;height:4px"><span style="flex:1;background:#7E5A14"></span><span style="flex:1;background:#7E5A14"></span><span style="flex:1;background:#E2DDD0"></span><span style="flex:1;background:#E2DDD0"></span></div>
+                  <div style="display:flex;justify-content:space-between;gap:10px;font-size:13px"><span style="color:#7E5A14;font-weight:500">Fair</span><span style="color:#6B6A63;font-weight:300">Add length rather than symbols</span></div>
+                </div>
+                <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:14px;font-weight:500">Confirm new password</span><input type="password" value="··············" style="height:44px;padding:0 12px;font-size:16px;border:1px solid #D7D2C6;border-radius:2px;background:#fff;outline:none;box-sizing:border-box;width:100%" style-focus="border-color:#8A6A2F;box-shadow:0 0 0 2px rgba(138,106,47,0.28)" /></label>
+                <div style="background:#F2EFE8;border:1px solid #E7E2D6;padding:12px 14px;display:flex;flex-direction:column;gap:7px">
+                  <div style="display:flex;gap:9px;align-items:center;font-size:13px;color:#3E4A48"><svg viewBox="0 0 24 24" width="15" height="15"><use href="#tick" /></svg>At least 12 characters</div>
+                  <div style="display:flex;gap:9px;align-items:center;font-size:13px;color:#3E4A48"><svg viewBox="0 0 24 24" width="15" height="15"><use href="#tick" /></svg>Not used on this account before</div>
+                  <div style="display:flex;gap:9px;align-items:center;font-size:13px;color:#6B6A63"><span style="width:15px;display:flex;justify-content:center;color:#9A9890">—</span>Not found in a public breach list</div>
+                </div>
+                <button type="button" style="height:44px;font-size:15px;font-weight:600;color:#F2EFE8;background:#0F3B38;border:1px solid #0F3B38;border-radius:2px;cursor:pointer" style-hover="background:#1F5A52">Set new password</button>
+                <div style="font-size:13px;color:#6B6A63;font-weight:300;line-height:1.55">Setting a new password signs you out of Sangam on all devices.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <aside style="background:#FFFFFF;border:1px solid #E7E2D6;padding:20px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8A6A2F;letter-spacing:0.12em">NOTES</span>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">No partner chip on recovery flows. Account recovery is between the user and Sangam; partner branding here would be an attack surface.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">Enumeration-safe copy is stated plainly rather than hidden — being told why the confirmation is vague builds more trust than a vague confirmation alone.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">Requirement list is rendered in all states with the same three rows; only the leading glyph changes.</div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="s7" style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;border-bottom:1px solid #DDD8CB;padding-bottom:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8A6A2F;letter-spacing:0.14em">07</span>
+        <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:28px;margin:0">Consent</h2>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6B6A63">id.sangamid.in/consent · the trust moment</span>
+      </div>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,268px);gap:22px;align-items:start">
+        <div style="background:#F7F5F0;border:1px solid #E2DDD0;padding:36px 20px;display:flex;justify-content:center">
+          <div style="width:100%;max-width:520px;display:flex;flex-direction:column;gap:20px">
+            <div style="display:flex;align-items:center;justify-content:center;gap:9px"><svg viewBox="0 0 64 64" width="26" height="26"><use href="#p" /></svg><span style="font-family:Newsreader,serif;font-size:21px;font-weight:500;color:#0F3B38">sangam</span></div>
+            <div style="background:#FFFFFF;border:1px solid #E7E2D6;border-radius:4px;padding:30px;display:flex;flex-direction:column;gap:22px">
+              <div style="display:flex;align-items:center;justify-content:center;gap:18px">
+                <span style="width:54px;height:54px;border-radius:12px;background:#1D4E89;color:#fff;font-family:'Noto Sans Devanagari',sans-serif;font-size:24px;display:flex;align-items:center;justify-content:center">लि</span>
+                <span style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#8A6A2F"><span style="font-size:20px;line-height:1">→</span><span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.1em;color:#6B6A63">REQUESTS</span></span>
+                <span style="width:54px;height:54px;border-radius:12px;background:#0F3B38;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 64 64" width="34" height="34"><use href="#pc" /></svg></span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px;text-align:center">
+                <h3 style="font-family:Newsreader,serif;font-weight:400;font-size:30px;margin:0;line-height:1.2;letter-spacing:-0.01em">LiPi would like to use your Sangam account</h3>
+                <p style="margin:0;font-size:14px;color:#5C5F5C;font-weight:300;line-height:1.55">LiPi is a verified partner operated by Lipi Systems Pvt Ltd, Bengaluru.</p>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;background:#F2EFE8;border:1px solid #E7E2D6;padding:12px 14px">
+                <span style="width:36px;height:36px;border-radius:50%;background:#0F3B38;color:#F2EFE8;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none">RM</span>
+                <span style="display:flex;flex-direction:column;min-width:0"><span style="font-size:15px;font-weight:500">Ravi Menon</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6B6A63;overflow:hidden;text-overflow:ellipsis">ravi.menon@example.in</span></span>
+                <a href="#s1" style="margin-left:auto;font-size:14px;font-weight:500;white-space:nowrap">Switch account</a>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:18px">
+                <div style="display:flex;flex-direction:column;gap:10px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;color:#276B4E">WILL BE SHARED</div>
+                  <div style="display:flex;gap:9px;align-items:flex-start;font-size:14px;color:#3E4A48;line-height:1.45"><svg viewBox="0 0 24 24" width="16" height="16" style="flex:none;margin-top:2px"><use href="#tick" /></svg><span>Your name<br /><span style="font-size:13px;color:#6B6A63;font-weight:300">Ravi Menon</span></span></div>
+                  <div style="display:flex;gap:9px;align-items:flex-start;font-size:14px;color:#3E4A48;line-height:1.45"><svg viewBox="0 0 24 24" width="16" height="16" style="flex:none;margin-top:2px"><use href="#tick" /></svg><span>Your email address<br /><span style="font-size:13px;color:#6B6A63;font-weight:300">ravi.menon@example.in</span></span></div>
+                  <div style="display:flex;gap:9px;align-items:flex-start;font-size:14px;color:#3E4A48;line-height:1.45"><svg viewBox="0 0 24 24" width="16" height="16" style="flex:none;margin-top:2px"><use href="#tick" /></svg><span>Organisations you belong to<br /><span style="font-size:13px;color:#6B6A63;font-weight:300">Aarogya Health Network, KMC Manipal</span></span></div>
+                  <div style="display:flex;gap:6px;flex-wrap:wrap;padding-top:2px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;background:#EDF1EF;color:#1F5A52;padding:4px 8px">openid</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;background:#EDF1EF;color:#1F5A52;padding:4px 8px">profile</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;background:#EDF1EF;color:#1F5A52;padding:4px 8px">orgs.read</span></div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:10px;background:#FBFAF6;border:1px solid #EFEAE0;padding:14px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;color:#9C3B24">WILL NOT BE SHARED</div>
+                  <div style="display:flex;gap:9px;align-items:center;font-size:14px;color:#3E4A48"><span style="width:16px;text-align:center;color:#9C3B24;flex:none">✕</span>Your password</div>
+                  <div style="display:flex;gap:9px;align-items:center;font-size:14px;color:#3E4A48"><span style="width:16px;text-align:center;color:#9C3B24;flex:none">✕</span>Data held by other apps</div>
+                  <div style="display:flex;gap:9px;align-items:center;font-size:14px;color:#3E4A48"><span style="width:16px;text-align:center;color:#9C3B24;flex:none">✕</span>Clinical records or prescriptions</div>
+                  <div style="display:flex;gap:9px;align-items:center;font-size:14px;color:#3E4A48"><span style="width:16px;text-align:center;color:#9C3B24;flex:none">✕</span>Your sign-in history</div>
+                  <div style="display:flex;gap:9px;align-items:center;font-size:14px;color:#3E4A48"><span style="width:16px;text-align:center;color:#9C3B24;flex:none">✕</span>Payment details</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <button type="button" style="flex:1;min-width:130px;height:48px;font-size:15px;font-weight:600;color:#0F3B38;background:transparent;border:1px solid #0F3B38;border-radius:2px;cursor:pointer" style-hover="background:#E7EDEA">Cancel</button>
+                <button type="button" style="flex:2;min-width:180px;height:48px;font-size:15px;font-weight:600;color:#F2EFE8;background:#0F3B38;border:1px solid #0F3B38;border-radius:2px;cursor:pointer" style-hover="background:#1F5A52">Allow access</button>
+              </div>
+              <div style="border-top:1px solid #EFEAE0;padding-top:14px;font-size:13px;color:#6B6A63;font-weight:300;line-height:1.6">You can withdraw this access at any time at <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#1F5A52">account.sangamid.in</span>. LiPi's use of your data is governed by <a href="#s7">their privacy policy</a>, not Sangam's.</div>
+            </div>
+          </div>
+        </div>
+        <aside style="background:#FFFFFF;border:1px solid #E7E2D6;padding:20px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8A6A2F;letter-spacing:0.12em">NOTES · TRUST MOMENT</span>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">The arrow points <b style="font-weight:600;color:#14202E">from the partner to Sangam</b> and is labelled REQUESTS — the partner is asking, Sangam is holding. Reversing it would imply data flowing outward by default.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">The "will not be shared" column is given equal visual weight. Most consent screens omit it; it is the single strongest trust signal on the page.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">Real values are shown next to each claim ("Ravi Menon"), so consent is to specific data, not to a category.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">Allow is visually dominant but Cancel is a full 48 px button, never a text link — declining must not feel like an error path.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">Liability is stated in plain words: after approval, the partner's policy governs.</div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="s8" style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;border-bottom:1px solid #DDD8CB;padding-bottom:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8A6A2F;letter-spacing:0.14em">08</span>
+        <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:28px;margin:0">Sign out</h2>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6B6A63">id.sangamid.in/logout</span>
+      </div>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,268px);gap:22px;align-items:start">
+        <div style="background:#F7F5F0;border:1px solid #E2DDD0;padding:34px 20px;display:flex;justify-content:center">
+          <div style="width:100%;max-width:400px;display:flex;flex-direction:column;gap:18px">
+            <div style="display:flex;align-items:center;justify-content:center;gap:9px"><svg viewBox="0 0 64 64" width="26" height="26"><use href="#p" /></svg><span style="font-family:Newsreader,serif;font-size:21px;font-weight:500;color:#0F3B38">sangam</span></div>
+            <div style="background:#FFFFFF;border:1px solid #E7E2D6;border-radius:4px;padding:26px;display:flex;flex-direction:column;gap:16px">
+              <h3 style="font-family:Newsreader,serif;font-weight:400;font-size:27px;margin:0">Sign out of Sangam?</h3>
+              <p style="margin:0;font-size:15px;line-height:1.6;color:#3E4A48;font-weight:300">You will be signed out of Sangam on this browser. Apps you are already signed in to may keep their own session until it expires.</p>
+              <div style="display:flex;flex-direction:column;gap:9px;background:#F2EFE8;border:1px solid #E7E2D6;padding:14px">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;color:#6B6A63">SIGNED IN AS</div>
+                <div style="display:flex;align-items:center;gap:10px"><span style="width:32px;height:32px;border-radius:50%;background:#0F3B38;color:#F2EFE8;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center">RM</span><span style="font-size:14px;color:#3E4A48">ravi.menon@example.in</span></div>
+              </div>
+              <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <button type="button" style="flex:1;min-width:130px;height:44px;font-size:15px;font-weight:600;color:#0F3B38;background:transparent;border:1px solid #0F3B38;border-radius:2px;cursor:pointer" style-hover="background:#E7EDEA">Stay signed in</button>
+                <button type="button" style="flex:1;min-width:130px;height:44px;font-size:15px;font-weight:600;color:#F2EFE8;background:#0F3B38;border:1px solid #0F3B38;border-radius:2px;cursor:pointer" style-hover="background:#1F5A52">Sign out</button>
+              </div>
+              <div style="border-top:1px solid #EFEAE0;padding-top:14px;display:flex;align-items:center;gap:9px;font-size:14px"><span style="width:20px;height:20px;border-radius:5px;background:#1D4E89;color:#fff;font-family:'Noto Sans Devanagari',sans-serif;font-size:11px;display:flex;align-items:center;justify-content:center;flex:none">लि</span><a href="#s1">Return to LiPi without signing out</a></div>
+            </div>
+          </div>
+        </div>
+        <aside style="background:#FFFFFF;border:1px solid #E7E2D6;padding:20px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8A6A2F;letter-spacing:0.12em">NOTES</span>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">Sign-out is honest about its scope: federated logout is not guaranteed, so we say so instead of implying a clean sweep.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">Both buttons are equal width — this is a fork, not a warning. Sign out is not styled destructive; nothing is being deleted.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">The return path back to the partner is always offered, so a mis-click costs one tap.</div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="s9" style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;border-bottom:1px solid #DDD8CB;padding-bottom:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8A6A2F;letter-spacing:0.14em">09</span>
+        <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:28px;margin:0">Portal dashboard</h2>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6B6A63">account.sangamid.in · Blazor Server · 1024 min</span>
+      </div>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,268px);gap:22px;align-items:start">
+        <div style="border:1px solid #E2DDD0;background:#F7F5F0;overflow:auto">
+          <div style="min-width:1024px">
+            <div style="background:#FFFFFF;border-bottom:1px solid #E7E2D6;padding:0 28px;display:flex;align-items:center;gap:26px">
+              <div style="display:flex;align-items:center;gap:9px;padding:14px 0"><svg viewBox="0 0 64 64" width="24" height="24"><use href="#p" /></svg><span style="font-family:Newsreader,serif;font-size:19px;font-weight:500;color:#0F3B38">sangam</span></div>
+              <div style="display:flex;gap:22px;font-size:15px;margin-left:8px">
+                <span style="padding:16px 0;border-bottom:2px solid #8A6A2F;font-weight:500">Overview</span>
+                <a href="#s10" style="padding:16px 0;border-bottom:2px solid transparent;color:#5C5F5C">Connected apps</a>
+                <span style="padding:16px 0;border-bottom:2px solid transparent;color:#5C5F5C">Devices</span>
+                <span style="padding:16px 0;border-bottom:2px solid transparent;color:#5C5F5C">Audit log</span>
+                <span style="padding:16px 0;border-bottom:2px solid transparent;color:#5C5F5C">Personal details</span>
+              </div>
+              <div style="margin-left:auto;display:flex;align-items:center;gap:10px"><span style="font-size:14px;color:#5C5F5C">Ravi Menon</span><span style="width:34px;height:34px;border-radius:50%;background:#0F3B38;color:#F2EFE8;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center">RM</span></div>
+            </div>
+            <div style="padding:34px 28px 40px;display:flex;flex-direction:column;gap:26px">
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <h3 style="font-family:Newsreader,serif;font-weight:400;font-size:38px;margin:0;letter-spacing:-0.01em">Namaste, Ravi</h3>
+                <p style="margin:0;font-size:16px;color:#5C5F5C;font-weight:300">This is everything Sangam knows about you and everyone you have let in.</p>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+                <div style="background:#FFFFFF;border:1px solid #E7E2D6;border-radius:4px;padding:20px;display:flex;flex-direction:column;gap:6px"><span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;color:#6B6A63">LINKED APPS</span><span style="font-family:Newsreader,serif;font-size:38px;line-height:1">4</span><span style="font-size:13px;color:#5C5F5C;font-weight:300">Last linked 12 Mar 2026</span></div>
+                <div style="background:#FFFFFF;border:1px solid #E7E2D6;border-radius:4px;padding:20px;display:flex;flex-direction:column;gap:6px"><span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;color:#6B6A63">ORGANISATIONS</span><span style="font-family:Newsreader,serif;font-size:38px;line-height:1">2</span><span style="font-size:13px;color:#5C5F5C;font-weight:300">Aarogya Health Network · KMC Manipal</span></div>
+                <div style="background:#FFFFFF;border:1px solid #E7E2D6;border-radius:4px;padding:20px;display:flex;flex-direction:column;gap:6px"><span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;color:#6B6A63">LAST SIGN-IN</span><span style="font-family:Newsreader,serif;font-size:38px;line-height:1">Today</span><span style="font-size:13px;color:#5C5F5C;font-weight:300">09:14 · Chrome on Android · Kochi</span></div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px">
+                <a href="#s10" style="background:#FFFFFF;border:1px solid #E7E2D6;border-radius:4px;padding:22px;display:flex;flex-direction:column;gap:8px;color:inherit" style-hover="border-color:#8A6A2F"><span style="font-family:Newsreader,serif;font-size:22px;color:#14202E">Connected apps</span><span style="font-size:14px;color:#5C5F5C;font-weight:300;line-height:1.55">See what each app can read, and withdraw access in one click.</span><span style="font-size:14px;color:#1F5A52;font-weight:500;margin-top:4px">Manage →</span></a>
+                <div style="background:#FFFFFF;border:1px solid #E7E2D6;border-radius:4px;padding:22px;display:flex;flex-direction:column;gap:8px" style-hover="border-color:#8A6A2F"><span style="font-family:Newsreader,serif;font-size:22px">Devices and sessions</span><span style="font-size:14px;color:#5C5F5C;font-weight:300;line-height:1.55">Three active sessions. Sign out of anything you don't recognise.</span><span style="font-size:14px;color:#1F5A52;font-weight:500;margin-top:4px">Manage →</span></div>
+                <div style="background:#FFFFFF;border:1px solid #E7E2D6;border-radius:4px;padding:22px;display:flex;flex-direction:column;gap:8px" style-hover="border-color:#8A6A2F"><span style="font-family:Newsreader,serif;font-size:22px">Security</span><span style="font-size:14px;color:#5C5F5C;font-weight:300;line-height:1.55">Password set 4 months ago. Two-factor authentication is off.</span><span style="display:flex;align-items:center;gap:8px;font-size:13px;color:#7E5A14;margin-top:4px"><span style="width:8px;height:8px;border-radius:50%;background:#7E5A14"></span>Turn on 2FA</span></div>
+                <div style="background:#FFFFFF;border:1px solid #E7E2D6;border-radius:4px;padding:22px;display:flex;flex-direction:column;gap:8px" style-hover="border-color:#8A6A2F"><span style="font-family:Newsreader,serif;font-size:22px">Personal details</span><span style="font-size:14px;color:#5C5F5C;font-weight:300;line-height:1.55">Name, email and preferred language — संगम supports Devanagari input.</span><span style="font-size:14px;color:#1F5A52;font-weight:500;margin-top:4px">Manage →</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <aside style="background:#FFFFFF;border:1px solid #E7E2D6;padding:20px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8A6A2F;letter-spacing:0.12em">NOTES</span>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">Numbers are set in the display serif, not a dashboard sans — this is a personal record, not a metrics product.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">The only coloured status on the page is the 2FA nudge, in Warning. One thing asks for attention; everything else is calm.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">Top-bar navigation, no sidebar: the portal has five destinations and a sidebar would imply an operator tool.</div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="s10" style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;border-bottom:1px solid #DDD8CB;padding-bottom:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8A6A2F;letter-spacing:0.14em">10</span>
+        <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:28px;margin:0">Linked apps · populated and empty</h2>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6B6A63">account.sangamid.in/apps</span>
+      </div>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,268px);gap:22px;align-items:start">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="border:1px solid #E2DDD0;background:#F7F5F0;overflow:auto">
+            <div style="min-width:1024px;padding:28px">
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:18px">
+                <div style="display:flex;flex-direction:column;gap:4px"><h3 style="font-family:Newsreader,serif;font-weight:400;font-size:30px;margin:0">Connected apps</h3><p style="margin:0;font-size:15px;color:#5C5F5C;font-weight:300">Four apps can use your Sangam account. Withdrawing access is immediate.</p></div>
+                <button type="button" style="height:40px;padding:0 16px;font-size:14px;font-weight:600;color:#0F3B38;background:transparent;border:1px solid #0F3B38;border-radius:2px;cursor:pointer" style-hover="background:#E7EDEA">Download access report</button>
+              </div>
+              <div style="background:#FFFFFF;border:1px solid #E7E2D6;border-radius:4px">
+                <div style="display:grid;grid-template-columns:minmax(0,2.2fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.4fr) 120px;gap:16px;padding:12px 20px;border-bottom:1px solid #EFEAE0;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#6B6A63"><span>APPLICATION</span><span>LINKED</span><span>LAST USED</span><span>ORGANISATIONS</span><span></span></div>
+                <div style="display:grid;grid-template-columns:minmax(0,2.2fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.4fr) 120px;gap:16px;padding:16px 20px;border-bottom:1px solid #EFEAE0;align-items:center" style-hover="background:#FBFAF6">
+                  <div style="display:flex;align-items:center;gap:12px;min-width:0"><span style="width:38px;height:38px;border-radius:9px;background:#1D4E89;color:#fff;font-family:'Noto Sans Devanagari',sans-serif;font-size:16px;display:flex;align-items:center;justify-content:center;flex:none">लि</span><span style="display:flex;flex-direction:column;min-width:0"><span style="font-size:15px;font-weight:500">LiPi</span><span style="font-size:13px;color:#6B6A63;font-weight:300">Script and document tooling</span></span></div>
+                  <span style="font-size:14px;color:#3E4A48">12 Mar 2026</span>
+                  <span style="display:flex;align-items:center;gap:8px;font-size:14px;color:#3E4A48"><span style="width:8px;height:8px;border-radius:50%;background:#276B4E;flex:none"></span>Today</span>
+                  <span style="font-size:13px;color:#3E4A48">Aarogya Health Network</span>
+                  <button type="button" style="height:36px;font-size:14px;font-weight:600;color:#0F3B38;background:transparent;border:1px solid #D7D2C6;border-radius:2px;cursor:pointer" style-hover="border-color:#0F3B38;background:#E7EDEA">Manage</button>
+                </div>
+                <div style="display:grid;grid-template-columns:minmax(0,2.2fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.4fr) 120px;gap:16px;padding:16px 20px;border-bottom:1px solid #EFEAE0;align-items:center" style-hover="background:#FBFAF6">
+                  <div style="display:flex;align-items:center;gap:12px;min-width:0"><span style="width:38px;height:38px;border-radius:9px;background:#2E7D52;color:#fff;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none">A</span><span style="display:flex;flex-direction:column;min-width:0"><span style="font-size:15px;font-weight:500">Aarogya Clinic Suite</span><span style="font-size:13px;color:#6B6A63;font-weight:300">Outpatient records</span></span></div>
+                  <span style="font-size:14px;color:#3E4A48">04 Jan 2026</span>
+                  <span style="display:flex;align-items:center;gap:8px;font-size:14px;color:#3E4A48"><span style="width:8px;height:8px;border-radius:50%;background:#276B4E;flex:none"></span>2 days ago</span>
+                  <span style="font-size:13px;color:#3E4A48">Aarogya Health Network</span>
+                  <button type="button" style="height:36px;font-size:14px;font-weight:600;color:#0F3B38;background:transparent;border:1px solid #D7D2C6;border-radius:2px;cursor:pointer" style-hover="border-color:#0F3B38;background:#E7EDEA">Manage</button>
+                </div>
+                <div style="display:grid;grid-template-columns:minmax(0,2.2fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.4fr) 120px;gap:16px;padding:16px 20px;border-bottom:1px solid #EFEAE0;align-items:center" style-hover="background:#FBFAF6">
+                  <div style="display:flex;align-items:center;gap:12px;min-width:0"><span style="width:38px;height:38px;border-radius:9px;background:#6B4E9C;color:#fff;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none">S</span><span style="display:flex;flex-direction:column;min-width:0"><span style="font-size:15px;font-weight:500">Setu Labs</span><span style="font-size:13px;color:#6B6A63;font-weight:300">Diagnostics reporting</span></span></div>
+                  <span style="font-size:14px;color:#3E4A48">28 Nov 2025</span>
+                  <span style="display:flex;align-items:center;gap:8px;font-size:14px;color:#3E4A48"><span style="width:8px;height:8px;border-radius:50%;background:#B9B5AA;flex:none"></span>5 months ago</span>
+                  <span style="font-size:13px;color:#3E4A48">KMC Manipal</span>
+                  <button type="button" style="height:36px;font-size:14px;font-weight:600;color:#9C3B24;background:transparent;border:1px solid #D9B3A8;border-radius:2px;cursor:pointer" style-hover="background:#9C3B24;color:#FFFFFF;border-color:#9C3B24">Revoke</button>
+                </div>
+                <div style="display:grid;grid-template-columns:minmax(0,2.2fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.4fr) 120px;gap:16px;padding:16px 20px;align-items:center" style-hover="background:#FBFAF6">
+                  <div style="display:flex;align-items:center;gap:12px;min-width:0"><span style="width:38px;height:38px;border-radius:9px;background:#8A6A2F;color:#fff;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none">P</span><span style="display:flex;flex-direction:column;min-width:0"><span style="font-size:15px;font-weight:500">Patra Billing</span><span style="font-size:13px;color:#6B6A63;font-weight:300">Claims and invoicing</span></span></div>
+                  <span style="font-size:14px;color:#3E4A48">19 Sep 2025</span>
+                  <span style="display:flex;align-items:center;gap:8px;font-size:14px;color:#3E4A48"><span style="width:8px;height:8px;border-radius:50%;background:#7E5A14;flex:none"></span>Consent expiring</span>
+                  <span style="font-size:13px;color:#3E4A48">Aarogya Health Network</span>
+                  <button type="button" style="height:36px;font-size:14px;font-weight:600;color:#0F3B38;background:transparent;border:1px solid #D7D2C6;border-radius:2px;cursor:pointer" style-hover="border-color:#0F3B38;background:#E7EDEA">Manage</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="border:1px solid #E2DDD0;background:#F7F5F0;padding:28px">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6B6A63;letter-spacing:0.12em">EMPTY STATE</span>
+            <div style="background:#FFFFFF;border:1px solid #E7E2D6;border-radius:4px;padding:48px 28px;margin-top:10px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center">
+              <svg viewBox="0 0 64 64" width="52" height="52" style="opacity:0.9"><use href="#pmist" /></svg>
+              <h4 style="font-family:Newsreader,serif;font-weight:400;font-size:26px;margin:0">No apps linked yet</h4>
+              <p style="margin:0;max-width:430px;font-size:15px;line-height:1.6;color:#5C5F5C;font-weight:300">When you sign in to a healthcare app with Sangam, it will appear here with exactly what it can read. Nothing is shared until you approve it.</p>
+              <a href="#s7" style="font-size:15px;font-weight:500;margin-top:4px">How consent works →</a>
+            </div>
+          </div>
+        </div>
+        <aside style="background:#FFFFFF;border:1px solid #E7E2D6;padding:20px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8A6A2F;letter-spacing:0.12em">NOTES</span>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">Row action changes with age: apps unused for months lead with <b style="font-weight:600;color:#14202E">Revoke</b> rather than Manage. The system nudges toward less access, never more.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">Cord-dot status: green active, ochre expiring, grey dormant. No badges, no pills — the dot is enough.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">The empty state uses the mark in Leaf Mist at 52 px — the one place an outline mark is permitted, because nothing else is on the page.</div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="s11" style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;border-bottom:1px solid #DDD8CB;padding-bottom:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8A6A2F;letter-spacing:0.14em">11</span>
+        <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:28px;margin:0">Admin dashboard</h2>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6B6A63">admin.sangamid.in · MFA mandatory</span>
+      </div>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,268px);gap:22px;align-items:start">
+        <div style="border:1px solid #0B2C2A;overflow:auto">
+          <div style="min-width:1024px;display:grid;grid-template-columns:216px minmax(0,1fr);background:#0B2C2A;color:#F2EFE8">
+            <div style="background:#082321;padding:18px 0;display:flex;flex-direction:column;gap:4px;border-right:1px solid rgba(242,239,232,0.12)">
+              <div style="display:flex;align-items:center;gap:9px;padding:0 18px 14px"><svg viewBox="0 0 64 64" width="22" height="22"><use href="#pc" /></svg><span style="font-family:Newsreader,serif;font-size:18px;font-weight:500">sangam</span><span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.12em;color:#0B2C2A;background:#D9C9A8;padding:2px 5px">ADMIN</span></div>
+              <span style="padding:10px 18px;font-size:15px;background:rgba(242,239,232,0.1);border-left:3px solid #D9C9A8">Overview</span>
+              <a href="#s12" style="padding:10px 18px;font-size:15px;color:#CBD9D3;border-left:3px solid transparent">Users</a>
+              <span style="padding:10px 18px;font-size:15px;color:#CBD9D3;border-left:3px solid transparent">Tenants</span>
+              <span style="padding:10px 18px;font-size:15px;color:#CBD9D3;border-left:3px solid transparent">Applications</span>
+              <span style="padding:10px 18px;font-size:15px;color:#CBD9D3;border-left:3px solid transparent">Scopes</span>
+              <span style="padding:10px 18px;font-size:15px;color:#CBD9D3;border-left:3px solid transparent">Keys</span>
+              <span style="padding:10px 18px;font-size:15px;color:#CBD9D3;border-left:3px solid transparent">Audit log</span>
+              <div style="margin-top:auto;padding:16px 18px 0;border-top:1px solid rgba(242,239,232,0.12);display:flex;flex-direction:column;gap:4px"><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8FAFA6;letter-spacing:0.1em">OPERATOR</span><span style="font-size:14px">p.iyer@sangamid.in</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8FAFA6">role: platform-admin</span></div>
+            </div>
+            <div style="display:flex;flex-direction:column">
+              <div style="display:flex;align-items:center;gap:14px;padding:14px 24px;border-bottom:1px solid rgba(242,239,232,0.12);background:#0F3B38">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.12em;color:#D9C9A8">PRODUCTION · ap-south-1</span>
+                <span style="display:flex;align-items:center;gap:7px;font-size:13px;color:#CBD9D3;margin-left:auto"><svg viewBox="0 0 24 24" width="15" height="15" style="flex:none"><use href="#shield" /></svg>MFA verified · session expires in 12 min</span>
+                <button type="button" style="height:34px;padding:0 14px;font-size:13px;font-weight:600;color:#F2EFE8;background:transparent;border:1px solid rgba(242,239,232,0.5);border-radius:2px;cursor:pointer" style-hover="background:rgba(242,239,232,0.12)">Extend</button>
+              </div>
+              <div style="padding:26px 24px 32px;display:flex;flex-direction:column;gap:22px">
+                <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap">
+                  <h3 style="font-family:Newsreader,serif;font-weight:400;font-size:30px;margin:0">Platform overview</h3>
+                  <div style="display:flex;gap:10px;flex-wrap:wrap">
+                    <button type="button" style="height:36px;padding:0 14px;font-size:13px;font-weight:600;color:#0B2C2A;background:#D9C9A8;border:1px solid #D9C9A8;border-radius:2px;cursor:pointer" style-hover="background:#F2EFE8;border-color:#F2EFE8">Register application</button>
+                    <button type="button" style="height:36px;padding:0 14px;font-size:13px;font-weight:600;color:#F2EFE8;background:transparent;border:1px solid rgba(242,239,232,0.5);border-radius:2px;cursor:pointer" style-hover="background:rgba(242,239,232,0.12)">Invite operator</button>
+                    <button type="button" style="height:36px;padding:0 14px;font-size:13px;font-weight:600;color:#F2EFE8;background:transparent;border:1px solid rgba(242,239,232,0.5);border-radius:2px;cursor:pointer" style-hover="background:rgba(242,239,232,0.12)">Rotate signing key</button>
+                  </div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">
+                  <div style="background:#16403C;border:1px solid rgba(242,239,232,0.14);padding:16px;display:flex;flex-direction:column;gap:5px"><span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#8FAFA6">TOTAL USERS</span><span style="font-family:'JetBrains Mono',monospace;font-size:27px">128,420</span><span style="font-size:12px;color:#CBD9D3">+1,204 this week</span></div>
+                  <div style="background:#16403C;border:1px solid rgba(242,239,232,0.14);padding:16px;display:flex;flex-direction:column;gap:5px"><span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#8FAFA6">DAILY ACTIVE</span><span style="font-family:'JetBrains Mono',monospace;font-size:27px">21,338</span><span style="font-size:12px;color:#CBD9D3">16.6% of base</span></div>
+                  <div style="background:#16403C;border:1px solid rgba(242,239,232,0.14);padding:16px;display:flex;flex-direction:column;gap:5px"><span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#8FAFA6">APPLICATIONS</span><span style="font-family:'JetBrains Mono',monospace;font-size:27px">37</span><span style="font-size:12px;color:#CBD9D3">3 awaiting review</span></div>
+                  <div style="background:#16403C;border:1px solid rgba(242,239,232,0.14);padding:16px;display:flex;flex-direction:column;gap:5px"><span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#8FAFA6">UPTIME 30 D</span><span style="font-family:'JetBrains Mono',monospace;font-size:27px">99.98%</span><span style="display:flex;align-items:center;gap:7px;font-size:12px;color:#CBD9D3"><span style="width:7px;height:7px;border-radius:50%;background:#5FBF8F"></span>All regions healthy</span></div>
+                </div>
+                <div style="background:#16403C;border:1px solid rgba(242,239,232,0.14)">
+                  <div style="padding:14px 18px;border-bottom:1px solid rgba(242,239,232,0.14);display:flex;align-items:center;gap:12px"><span style="font-size:16px;font-weight:600">Recent audit events</span><a href="#s11" style="margin-left:auto;font-size:13px;color:#D9C9A8">Full log →</a></div>
+                  <div style="display:grid;grid-template-columns:150px 200px minmax(0,1fr) 150px;gap:14px;padding:10px 18px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#8FAFA6;border-bottom:1px solid rgba(242,239,232,0.1)"><span>TIME (IST)</span><span>ACTOR</span><span>ACTION</span><span>SOURCE</span></div>
+                  <div style="display:grid;grid-template-columns:150px 200px minmax(0,1fr) 150px;gap:14px;padding:11px 18px;font-size:13px;border-bottom:1px solid rgba(242,239,232,0.08)"><span style="font-family:'JetBrains Mono',monospace;color:#CBD9D3">09:41:02</span><span style="color:#F2EFE8">p.iyer@sangamid.in</span><span style="color:#F2EFE8">Rotated signing key <span style="font-family:'JetBrains Mono',monospace;color:#D9C9A8">kid_9f2a</span></span><span style="font-family:'JetBrains Mono',monospace;color:#8FAFA6">10.4.2.18</span></div>
+                  <div style="display:grid;grid-template-columns:150px 200px minmax(0,1fr) 150px;gap:14px;padding:11px 18px;font-size:13px;border-bottom:1px solid rgba(242,239,232,0.08)"><span style="font-family:'JetBrains Mono',monospace;color:#CBD9D3">09:22:47</span><span style="color:#F2EFE8">system</span><span style="color:#F2EFE8">Approved application <b style="font-weight:600">Patra Billing</b></span><span style="font-family:'JetBrains Mono',monospace;color:#8FAFA6">worker-3</span></div>
+                  <div style="display:grid;grid-template-columns:150px 200px minmax(0,1fr) 150px;gap:14px;padding:11px 18px;font-size:13px;border-bottom:1px solid rgba(242,239,232,0.08);background:rgba(156,59,36,0.16)"><span style="font-family:'JetBrains Mono',monospace;color:#F0C9BE">08:58:11</span><span style="color:#F2EFE8">n.rao@sangamid.in</span><span style="color:#F2EFE8">Failed MFA challenge ×3 — account locked</span><span style="font-family:'JetBrains Mono',monospace;color:#F0C9BE">103.21.8.7</span></div>
+                  <div style="display:grid;grid-template-columns:150px 200px minmax(0,1fr) 150px;gap:14px;padding:11px 18px;font-size:13px"><span style="font-family:'JetBrains Mono',monospace;color:#CBD9D3">08:30:05</span><span style="color:#F2EFE8">a.kulkarni@sangamid.in</span><span style="color:#F2EFE8">Updated scope <span style="font-family:'JetBrains Mono',monospace;color:#D9C9A8">orgs.read</span> for tenant KMC</span><span style="font-family:'JetBrains Mono',monospace;color:#8FAFA6">10.4.2.31</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <aside style="background:#FFFFFF;border:1px solid #E7E2D6;padding:20px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8A6A2F;letter-spacing:0.12em">NOTES</span>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">Admin inverts the same tokens rather than introducing a second palette: cream becomes ink, teal becomes the page. An operator can never mistake this for the user portal.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">Sandalwood is reserved here for <b style="font-weight:600;color:#14202E">operator-only affordances</b> — the ADMIN badge, the active nav rule, the one destructive-capable primary button.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">Session expiry and MFA state are permanent chrome, not a toast. Operator identity and region sit on screen at all times.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">Stats are mono, not serif — the opposite of the portal. Operators scan digits; users read sentences.</div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="s12" style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;border-bottom:1px solid #DDD8CB;padding-bottom:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8A6A2F;letter-spacing:0.14em">12</span>
+        <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:28px;margin:0">Users table · bulk actions and empty filter</h2>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6B6A63">admin.sangamid.in/users</span>
+      </div>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,268px);gap:22px;align-items:start">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="border:1px solid #0B2C2A;overflow:auto">
+            <div style="min-width:1024px;background:#0B2C2A;color:#F2EFE8;padding:24px">
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:18px;flex-wrap:wrap">
+                <div style="display:flex;flex-direction:column;gap:3px"><h3 style="font-family:Newsreader,serif;font-weight:400;font-size:28px;margin:0">Users</h3><span style="font-size:14px;color:#9DB3AC">128,420 total · 3 selected</span></div>
+                <button type="button" style="height:36px;padding:0 14px;font-size:13px;font-weight:600;color:#0B2C2A;background:#D9C9A8;border:1px solid #D9C9A8;border-radius:2px;cursor:pointer" style-hover="background:#F2EFE8;border-color:#F2EFE8">Export CSV</button>
+              </div>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+                <input type="search" placeholder="Search name, email or user id" style="flex:1;min-width:240px;height:40px;padding:0 12px;font-size:15px;color:#F2EFE8;background:#16403C;border:1px solid rgba(242,239,232,0.24);border-radius:2px;outline:none;box-sizing:border-box" style-focus="border-color:#D9C9A8;box-shadow:0 0 0 2px rgba(217,201,168,0.35)" />
+                <select style="height:40px;padding:0 10px;font-size:14px;color:#F2EFE8;background:#16403C;border:1px solid rgba(242,239,232,0.24);border-radius:2px"><option>Status: any</option><option>Active</option><option>Locked</option><option>Unverified</option></select>
+                <select style="height:40px;padding:0 10px;font-size:14px;color:#F2EFE8;background:#16403C;border:1px solid rgba(242,239,232,0.24);border-radius:2px"><option>Tenant: any</option><option>Aarogya Health Network</option><option>KMC Manipal</option></select>
+                <button type="button" style="height:40px;padding:0 14px;font-size:13px;font-weight:600;color:#F2EFE8;background:transparent;border:1px solid rgba(242,239,232,0.5);border-radius:2px;cursor:pointer" style-hover="background:rgba(242,239,232,0.12)">More filters</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:14px;background:#16403C;border:1px solid #D9C9A8;padding:10px 14px;margin-bottom:12px;flex-wrap:wrap">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.1em;color:#D9C9A8">3 SELECTED</span>
+                <button type="button" style="height:32px;padding:0 12px;font-size:13px;font-weight:600;color:#F2EFE8;background:transparent;border:1px solid rgba(242,239,232,0.5);border-radius:2px;cursor:pointer" style-hover="background:rgba(242,239,232,0.12)">Resend verification</button>
+                <button type="button" style="height:32px;padding:0 12px;font-size:13px;font-weight:600;color:#F2EFE8;background:transparent;border:1px solid rgba(242,239,232,0.5);border-radius:2px;cursor:pointer" style-hover="background:rgba(242,239,232,0.12)">Add to tenant</button>
+                <button type="button" style="height:32px;padding:0 12px;font-size:13px;font-weight:600;color:#F0C9BE;background:transparent;border:1px solid rgba(240,201,190,0.55);border-radius:2px;cursor:pointer" style-hover="background:#9C3B24;color:#FFFFFF;border-color:#9C3B24">Lock accounts</button>
+                <span style="margin-left:auto;font-size:13px;color:#9DB3AC">Bulk actions are logged to the audit trail with your operator id.</span>
+              </div>
+              <div style="background:#16403C;border:1px solid rgba(242,239,232,0.14)">
+                <div style="display:grid;grid-template-columns:38px minmax(0,2.2fr) minmax(0,1.6fr) 90px 130px 110px;gap:14px;padding:11px 16px;border-bottom:1px solid rgba(242,239,232,0.14);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#8FAFA6;align-items:center"><input type="checkbox" style="width:16px;height:16px;accent-color:#D9C9A8" /><span>NAME / EMAIL</span><span>ORGANISATIONS</span><span>APPS</span><span>STATUS</span><span></span></div>
+                <div style="display:grid;grid-template-columns:38px minmax(0,2.2fr) minmax(0,1.6fr) 90px 130px 110px;gap:14px;padding:12px 16px;border-bottom:1px solid rgba(242,239,232,0.08);align-items:center;background:rgba(217,201,168,0.08)"><input type="checkbox" checked="" style="width:16px;height:16px;accent-color:#D9C9A8" /><span style="display:flex;flex-direction:column;min-width:0"><span style="font-size:14px">Ravi Menon</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#9DB3AC">ravi.menon@example.in</span></span><span style="font-size:13px;color:#CBD9D3">Aarogya, KMC Manipal</span><span style="font-family:'JetBrains Mono',monospace;font-size:14px">4</span><span style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="width:8px;height:8px;border-radius:50%;background:#5FBF8F"></span>Active</span><button type="button" style="height:32px;font-size:13px;font-weight:600;color:#F2EFE8;background:transparent;border:1px solid rgba(242,239,232,0.4);border-radius:2px;cursor:pointer" style-hover="background:rgba(242,239,232,0.12)">Manage</button></div>
+                <div style="display:grid;grid-template-columns:38px minmax(0,2.2fr) minmax(0,1.6fr) 90px 130px 110px;gap:14px;padding:12px 16px;border-bottom:1px solid rgba(242,239,232,0.08);align-items:center;background:rgba(217,201,168,0.08)"><input type="checkbox" checked="" style="width:16px;height:16px;accent-color:#D9C9A8" /><span style="display:flex;flex-direction:column;min-width:0"><span style="font-size:14px">Anjali Kulkarni</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#9DB3AC">anjali.k@kmcmanipal.in</span></span><span style="font-size:13px;color:#CBD9D3">KMC Manipal</span><span style="font-family:'JetBrains Mono',monospace;font-size:14px">2</span><span style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="width:8px;height:8px;border-radius:50%;background:#E0A93F"></span>Unverified</span><button type="button" style="height:32px;font-size:13px;font-weight:600;color:#F2EFE8;background:transparent;border:1px solid rgba(242,239,232,0.4);border-radius:2px;cursor:pointer" style-hover="background:rgba(242,239,232,0.12)">Manage</button></div>
+                <div style="display:grid;grid-template-columns:38px minmax(0,2.2fr) minmax(0,1.6fr) 90px 130px 110px;gap:14px;padding:12px 16px;border-bottom:1px solid rgba(242,239,232,0.08);align-items:center;background:rgba(217,201,168,0.08)"><input type="checkbox" checked="" style="width:16px;height:16px;accent-color:#D9C9A8" /><span style="display:flex;flex-direction:column;min-width:0"><span style="font-size:14px">Nikhil Rao</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#9DB3AC">n.rao@aarogya.in</span></span><span style="font-size:13px;color:#CBD9D3">Aarogya Health Network</span><span style="font-family:'JetBrains Mono',monospace;font-size:14px">1</span><span style="display:flex;align-items:center;gap:8px;font-size:13px;color:#F0C9BE"><span style="width:8px;height:8px;border-radius:50%;background:#C2603F"></span>Locked</span><button type="button" style="height:32px;font-size:13px;font-weight:600;color:#F2EFE8;background:transparent;border:1px solid rgba(242,239,232,0.4);border-radius:2px;cursor:pointer" style-hover="background:rgba(242,239,232,0.12)">Manage</button></div>
+                <div style="display:grid;grid-template-columns:38px minmax(0,2.2fr) minmax(0,1.6fr) 90px 130px 110px;gap:14px;padding:12px 16px;border-bottom:1px solid rgba(242,239,232,0.08);align-items:center"><input type="checkbox" style="width:16px;height:16px;accent-color:#D9C9A8" /><span style="display:flex;flex-direction:column;min-width:0"><span style="font-size:14px">Fatima Sheikh</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#9DB3AC">f.sheikh@example.in</span></span><span style="font-size:13px;color:#CBD9D3">—</span><span style="font-family:'JetBrains Mono',monospace;font-size:14px">0</span><span style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="width:8px;height:8px;border-radius:50%;background:#5FBF8F"></span>Active</span><button type="button" style="height:32px;font-size:13px;font-weight:600;color:#F2EFE8;background:transparent;border:1px solid rgba(242,239,232,0.4);border-radius:2px;cursor:pointer" style-hover="background:rgba(242,239,232,0.12)">Manage</button></div>
+                <div style="display:grid;grid-template-columns:38px minmax(0,2.2fr) minmax(0,1.6fr) 90px 130px 110px;gap:14px;padding:12px 16px;align-items:center"><input type="checkbox" style="width:16px;height:16px;accent-color:#D9C9A8" /><span style="display:flex;flex-direction:column;min-width:0"><span style="font-size:14px">Joseph Mathew</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#9DB3AC">joseph.m@example.in</span></span><span style="font-size:13px;color:#CBD9D3">Aarogya Health Network</span><span style="font-family:'JetBrains Mono',monospace;font-size:14px">3</span><span style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="width:8px;height:8px;border-radius:50%;background:#5FBF8F"></span>Active</span><button type="button" style="height:32px;font-size:13px;font-weight:600;color:#F2EFE8;background:transparent;border:1px solid rgba(242,239,232,0.4);border-radius:2px;cursor:pointer" style-hover="background:rgba(242,239,232,0.12)">Manage</button></div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding-top:12px;font-size:13px;color:#9DB3AC;flex-wrap:wrap"><span style="font-family:'JetBrains Mono',monospace;font-size:12px">Showing 1–5 of 128,420</span><span style="display:flex;gap:8px"><button type="button" style="height:32px;padding:0 12px;font-size:13px;color:#9DB3AC;background:transparent;border:1px solid rgba(242,239,232,0.2);border-radius:2px;cursor:not-allowed">Previous</button><button type="button" style="height:32px;padding:0 12px;font-size:13px;color:#F2EFE8;background:transparent;border:1px solid rgba(242,239,232,0.5);border-radius:2px;cursor:pointer" style-hover="background:rgba(242,239,232,0.12)">Next</button></span></div>
+            </div>
+          </div>
+          <div style="border:1px solid #0B2C2A;background:#0B2C2A;padding:24px;overflow:auto">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8FAFA6;letter-spacing:0.12em">EMPTY STATE · FILTERS RETURN NOTHING</span>
+            <div style="min-width:640px;background:#16403C;border:1px solid rgba(242,239,232,0.14);margin-top:10px;padding:44px 24px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;color:#F2EFE8">
+              <svg viewBox="0 0 64 64" width="44" height="44" style="opacity:0.55"><use href="#pmist" /></svg>
+              <div style="font-family:Newsreader,serif;font-size:24px">No users match these filters</div>
+              <div style="font-size:14px;color:#9DB3AC;max-width:420px;line-height:1.55">Status <span style="font-family:'JetBrains Mono',monospace;color:#D9C9A8">locked</span> · tenant <span style="font-family:'JetBrains Mono',monospace;color:#D9C9A8">KMC Manipal</span> · search <span style="font-family:'JetBrains Mono',monospace;color:#D9C9A8">"menon"</span></div>
+              <button type="button" style="height:36px;padding:0 16px;font-size:13px;font-weight:600;color:#0B2C2A;background:#D9C9A8;border:1px solid #D9C9A8;border-radius:2px;cursor:pointer;margin-top:4px" style-hover="background:#F2EFE8;border-color:#F2EFE8">Clear all filters</button>
+            </div>
+          </div>
+        </div>
+        <aside style="background:#FFFFFF;border:1px solid #E7E2D6;padding:20px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8A6A2F;letter-spacing:0.12em">NOTES</span>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">The bulk bar appears <b style="font-weight:600;color:#14202E">in flow above the table</b>, not as a floating overlay — it pushes nothing and hides no rows.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">Selected rows carry a Sandalwood wash so selection survives scrolling out of the bar's sight.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">Status dots are lightened for dark ground (#5FBF8F, #E0A93F, #C2603F) to hold 4.5:1 against #16403C — the light-mode semantics would fail here.</div>
+          <div style="font-size:14px;line-height:1.55;color:#3E4A48;font-weight:300">The empty state restates the active filters verbatim, so an operator can see why the result is empty.</div>
+        </aside>
+      </div>
+    </section>
+
+    <footer style="border-top:1px solid #DDD8CB;padding-top:22px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <svg viewBox="0 0 64 64" width="22" height="22"><use href="#p" /></svg>
+      <span style="font-size:14px;color:#6B6A63;font-weight:300">12 screens · tokens in <span style="font-family:'JetBrains Mono',monospace;font-size:13px">sangam-tokens.css</span> · palm-leaf mark, round 03 geometry</span>
+    </footer>
+  </div>
+</div>
+
+</x-dc>
+</body>
+</html>

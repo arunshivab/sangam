@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Sangam.Identity.Infrastructure.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sangam.Identity.Infrastructure\Sangam.Identity.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

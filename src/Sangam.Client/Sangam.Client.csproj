@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The NuGet SDK partner applications install. Thin wrapper over
+       Microsoft.AspNetCore.Authentication.OpenIdConnect with Sangam helpers.
+       Filled in PR-07; packable from that PR onwards. -->
+
+  <PropertyGroup>
+    <RootNamespace>Sangam.Client</RootNamespace>
+    <PackageId>Sangam.Client</PackageId>
+    <Description>Sign in with Sangam — OpenID Connect client helpers for ASP.NET Core partner applications.</Description>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sangam.Shared\Sangam.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

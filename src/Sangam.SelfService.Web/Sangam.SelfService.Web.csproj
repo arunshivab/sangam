@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- account.sangamid.in — self-service account portal (Blazor Server, authenticated, 1024 px minimum). -->
+
+  <PropertyGroup>
+    <RootNamespace>Sangam.SelfService.Web</RootNamespace>
+    <Description>Sangam identity platform — self-service account portal.</Description>
+    <UserSecretsId>sangam-selfservice-web</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sangam.Identity.Application\Sangam.Identity.Application.csproj" />
+    <ProjectReference Include="..\Sangam.Identity.Infrastructure\Sangam.Identity.Infrastructure.csproj" />
+    <ProjectReference Include="..\Sangam.Shared\Sangam.Shared.csproj" />
+    <ProjectReference Include="..\Sangam.Web.Shared\Sangam.Web.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sangam.SelfService.Web.Tests" />
+  </ItemGroup>
+
+</Project>

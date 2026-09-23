@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!-- Razor Class Library shared by the three web hosts only:
+       Sangam.Identity.Server (Razor Pages), Sangam.SelfService.Web and
+       Sangam.Admin.Web (Blazor Server). Holds the design tokens, brand CSS,
+       LiPi Sans (self-hosted), LiPicons and the palm-leaf mark / lockup components. Served under
+       /_content/Sangam.Web.Shared/. Never referenced by Sangam.Client. -->
+
+  <PropertyGroup>
+    <RootNamespace>Sangam.Web.Shared</RootNamespace>
+    <Description>Sangam identity platform — shared web assets and brand components.</Description>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="LiPicons.Blazor" />
+  </ItemGroup>
+
+</Project>

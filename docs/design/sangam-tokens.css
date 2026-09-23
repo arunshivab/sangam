@@ -1,0 +1,130 @@
+/* Sangam identity system — design tokens v1.0
+   Shared by id.sangamid.in (Razor Pages), account.sangamid.in and
+   admin.sangamid.in (Blazor Server). Import once, in that order:
+       @import "sangam-tokens.css";
+   Colour ratios in comments are measured against #FFFFFF unless noted. */
+
+:root {
+  /* ---- Primary ---------------------------------------------------- */
+  --sg-teal:            #0F3B38;  /* signature            12.33:1 AAA */
+  --sg-cream:           #F2EFE8;  /* supporting neutral               */
+  --sg-ochre:           #8A6A2F;  /* warm accent           5.02:1 AA  */
+
+  /* ---- Secondary -------------------------------------------------- */
+  --sg-ink:             #14202E;  /*                      16.46:1 AAA */
+  --sg-palm-shade:      #1F5A52;  /*                       7.95:1 AAA */
+  --sg-leaf-mist:       #CBD9D3;  /* surface / border only            */
+  --sg-sandalwood:      #D9C9A8;  /* surface / border only            */
+  --sg-sindoor:         #9C3B24;  /*                       6.85:1 AAA */
+  --sg-slate:           #6B6A63;  /*                       5.43:1 AA  */
+
+  /* ---- Surfaces --------------------------------------------------- */
+  --sg-paper:           #F7F5F0;
+  --sg-surface:         #FFFFFF;
+  --sg-surface-sunk:    #F2EFE8;
+  --sg-deep:            #0B2C2A;  /* admin chrome                     */
+  --sg-deep-2:          #0F3B38;
+  --sg-deep-3:          #16403C;  /* admin card                       */
+  --sg-border:          #E7E2D6;
+  --sg-border-strong:   #D7D2C6;
+  --sg-border-inverse:  rgba(242, 239, 232, 0.18);
+
+  /* ---- Semantic --------------------------------------------------- */
+  --sg-success:         #276B4E;  /*                       6.36:1 AAA */
+  --sg-warning:         #7E5A14;  /*                       6.25:1 AAA */
+  --sg-danger:          #9C3B24;  /*                       6.85:1 AAA */
+  --sg-info:            #1F5A52;  /*                       7.95:1 AAA */
+  --sg-success-bg:      #EDF2EC;
+  --sg-warning-bg:      #F6F1E4;
+  --sg-danger-bg:       #F9EFEC;
+  --sg-info-bg:         #EDF1EF;
+
+  /* ---- Type ------------------------------------------------------- */
+  --sg-font-display:    "Newsreader", Georgia, serif;
+  --sg-font-body:       "Mukta", "Noto Sans Devanagari", system-ui, sans-serif;
+  --sg-font-mono:       "JetBrains Mono", ui-monospace, monospace;
+
+  --sg-display-64:      64px/1.02;  --sg-display-64-ls: -0.02em;
+  --sg-display-48:      48px/1.06;  --sg-display-48-ls: -0.015em;
+  --sg-head-38:         38px/1.12;  --sg-head-38-ls:    -0.01em;
+  --sg-head-30:         30px/1.2;   --sg-head-30-ls:    -0.01em;
+  --sg-title-24:        24px/1.3;   --sg-title-24-ls:   -0.005em;
+  --sg-title-21:        21px/1.4;
+  --sg-body-18:         18px/1.65;
+  --sg-body-16:         16px/1.6;
+  --sg-body-14:         14px/1.55;  --sg-body-14-ls:    0.005em;
+  --sg-caption-12:      12px/1.5;   --sg-caption-12-ls: 0.12em;
+  /* Devanagari runs +0.1 line-height to clear shirorekha and matras. */
+
+  /* ---- Space — 4px base ------------------------------------------- */
+  --sg-space-1: 4px;   --sg-space-2: 8px;   --sg-space-3: 12px;
+  --sg-space-4: 16px;  --sg-space-6: 24px;  --sg-space-8: 32px;
+  --sg-space-12: 48px; --sg-space-16: 64px; --sg-space-24: 96px;
+
+  /* ---- Shape ------------------------------------------------------ */
+  --sg-radius-control:  2px;
+  --sg-radius-card:     4px;
+  --sg-radius-appicon:  12px;
+  --sg-control-height:  44px;      /* = minimum touch target          */
+  --sg-focus-ring:      0 0 0 2px rgba(138, 106, 47, 0.28);
+  --sg-focus-ring-dark: 0 0 0 2px rgba(217, 201, 168, 0.45);
+  --sg-grid-max:        1160px;
+  --sg-grid-gutter:     24px;
+  --sg-auth-column:     400px;     /* single-column auth measure      */
+  --sg-logo-clearspace: 0.195;     /* x = clearspace * mark height    */
+}
+
+/* ---- Base ---------------------------------------------------------- */
+body {
+  margin: 0;
+  background: var(--sg-paper);
+  color: var(--sg-ink);
+  font: var(--sg-body-16) var(--sg-font-body);
+}
+a { color: var(--sg-palm-shade); text-decoration: none; }
+a:hover { color: var(--sg-ochre); }
+
+/* ---- Controls ------------------------------------------------------ */
+.sg-field {
+  width: 100%;
+  height: var(--sg-control-height);
+  padding: 0 var(--sg-space-3);
+  font: var(--sg-body-16) var(--sg-font-body);
+  color: var(--sg-ink);
+  background: var(--sg-surface);
+  border: 1px solid var(--sg-border-strong);
+  border-radius: var(--sg-radius-control);
+  box-sizing: border-box;
+}
+.sg-field:focus { outline: none; border-color: var(--sg-ochre); box-shadow: var(--sg-focus-ring); }
+.sg-field[aria-invalid="true"] { border-color: var(--sg-danger); background: var(--sg-danger-bg); }
+.sg-field:disabled { background: #F4F1EA; border-color: var(--sg-border); color: #9A9890; }
+
+.sg-btn {
+  min-height: var(--sg-control-height);
+  padding: 0 var(--sg-space-6);
+  font: 600 15px/1 var(--sg-font-body);
+  border-radius: var(--sg-radius-control);
+  cursor: pointer;
+  transition: background 150ms, color 150ms, border-color 150ms;
+}
+.sg-btn--primary   { color: var(--sg-cream); background: var(--sg-teal); border: 1px solid var(--sg-teal); }
+.sg-btn--primary:hover { background: var(--sg-palm-shade); border-color: var(--sg-palm-shade); }
+.sg-btn--secondary { color: var(--sg-teal); background: transparent; border: 1px solid var(--sg-teal); }
+.sg-btn--secondary:hover { background: #E7EDEA; }
+.sg-btn--tertiary  { color: var(--sg-palm-shade); background: transparent; border: 1px solid transparent; }
+.sg-btn--tertiary:hover { color: var(--sg-ochre); }
+.sg-btn--danger    { color: var(--sg-danger); background: transparent; border: 1px solid #D9B3A8; }
+.sg-btn--danger:hover { color: #FFFFFF; background: var(--sg-danger); border-color: var(--sg-danger); }
+.sg-btn:disabled   { color: #9A9890; background: #EFEAE0; border-color: var(--sg-border); cursor: not-allowed; }
+
+/* ---- Admin scope: same tokens, inverted surfaces -------------------- */
+[data-scope="admin"] {
+  --sg-paper:        var(--sg-deep);
+  --sg-surface:      var(--sg-deep-3);
+  --sg-surface-sunk: #0E3533;
+  --sg-border:       rgba(242, 239, 232, 0.14);
+  --sg-border-strong:rgba(242, 239, 232, 0.24);
+  --sg-ink:          var(--sg-cream);
+  --sg-slate:        #9DB3AC;
+}

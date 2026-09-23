@@ -1,0 +1,121 @@
+/* admin.sangamid.in — dark operator chrome. sangam-tokens.css re-maps the
+   surface tokens under [data-scope="admin"]; this file only lays out the
+   216 px sidebar + 1fr grid, the top bar and the mono-numeral stat cards. */
+
+body { min-width: 1024px; }
+
+/* FocusOnNavigate moves focus to the page heading; a heading is not a control,
+   so it gets no ring (interactive elements keep the ochre focus ring). */
+.sg-admin-title:focus { outline: none; }
+
+.sg-admin {
+  display: grid;
+  grid-template-columns: 216px 1fr;
+  min-height: 100vh;
+}
+
+.sg-sidebar {
+  display: flex;
+  flex-direction: column;
+  background: #082321;
+  border-right: 1px solid rgba(242, 239, 232, 0.12);
+}
+.sg-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sg-space-3);
+  padding: 18px;
+}
+.sg-admin-badge {
+  font: 500 9px/1 var(--sg-font-mono);
+  letter-spacing: 0.12em;
+  padding: 4px 6px;
+  color: #0B2C2A;
+  background: var(--sg-sandalwood);
+  border-radius: var(--sg-radius-control);
+}
+.sg-sidebar-nav { display: flex; flex-direction: column; margin-top: var(--sg-space-2); }
+.sg-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  font: 500 var(--sg-body-14) var(--sg-font-body);
+  color: #9DB3AC;
+  border-left: 3px solid transparent;
+  transition: color 150ms, background 150ms;
+}
+.sg-nav-icon { flex: none; opacity: 0.85; }
+.sg-nav-item:hover { color: var(--sg-cream); background: rgba(242, 239, 232, 0.06); }
+.sg-nav-item--active {
+  color: var(--sg-cream);
+  background: rgba(242, 239, 232, 0.1);
+  border-left-color: var(--sg-sandalwood);
+}
+.sg-operator {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px;
+  border-top: 1px solid rgba(242, 239, 232, 0.12);
+}
+.sg-operator-label {
+  font: 500 9px/1 var(--sg-font-mono);
+  letter-spacing: 0.12em;
+  color: #8FAFA6;
+}
+.sg-operator-email { font: 400 13px/1.4 var(--sg-font-body); color: var(--sg-cream); }
+.sg-operator-role { font: 400 11px/1.4 var(--sg-font-mono); color: var(--sg-sandalwood); }
+
+.sg-admin-main { display: flex; flex-direction: column; min-width: 0; }
+.sg-admin-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  padding: 0 28px;
+  background: var(--sg-deep-2);
+  font: 500 11px/1 var(--sg-font-mono);
+  letter-spacing: 0.12em;
+  color: var(--sg-sandalwood);
+}
+.sg-mfa { color: #9DB3AC; letter-spacing: 0.06em; }
+
+.sg-admin-body { padding: 34px 28px; }
+.sg-admin-title {
+  margin: 0;
+  font: 500 var(--sg-head-30) var(--sg-font-display);
+  letter-spacing: var(--sg-head-30-ls);
+  color: var(--sg-cream);
+}
+.sg-admin-subtitle {
+  margin: var(--sg-space-2) 0 var(--sg-space-8);
+  font: var(--sg-body-14) var(--sg-font-body);
+  color: #9DB3AC;
+}
+
+.sg-admin-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sg-grid-gutter);
+}
+.sg-admin-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sg-space-2);
+  padding: var(--sg-space-6);
+  background: var(--sg-deep-3);
+  border: 1px solid rgba(242, 239, 232, 0.14);
+  border-radius: var(--sg-radius-card);
+}
+.sg-admin-stat-label {
+  font: 500 10px/1.5 var(--sg-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8FAFA6;
+}
+.sg-admin-stat-value {
+  font: 500 27px/1.2 var(--sg-font-mono);
+  color: var(--sg-cream);
+}

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Application services, commands, queries and the interfaces that
+       Sangam.Identity.Infrastructure implements. Knows the domain; knows
+       nothing about EF Core, HTTP or any concrete provider. -->
+
+  <PropertyGroup>
+    <RootNamespace>Sangam.Identity.Application</RootNamespace>
+    <Description>Sangam identity platform — application layer (use cases and abstractions).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sangam.Identity.Domain\Sangam.Identity.Domain.csproj" />
+    <ProjectReference Include="..\Sangam.Shared\Sangam.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

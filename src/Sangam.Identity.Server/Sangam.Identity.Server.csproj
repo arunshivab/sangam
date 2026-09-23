@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- id.sangamid.in — the OpenID Connect / OAuth 2 server and the eight
+       authentication screens (Razor Pages; every state must work with
+       JavaScript disabled). OpenIddict and the OIDC endpoints arrive in PR-02. -->
+
+  <PropertyGroup>
+    <RootNamespace>Sangam.Identity.Server</RootNamespace>
+    <Description>Sangam identity platform — OpenID Connect server and authentication screens.</Description>
+    <UserSecretsId>sangam-identity-server</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sangam.Identity.Application\Sangam.Identity.Application.csproj" />
+    <ProjectReference Include="..\Sangam.Identity.Infrastructure\Sangam.Identity.Infrastructure.csproj" />
+    <ProjectReference Include="..\Sangam.Shared\Sangam.Shared.csproj" />
+    <ProjectReference Include="..\Sangam.Web.Shared\Sangam.Web.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sangam.Identity.Server.Tests" />
+  </ItemGroup>
+
+</Project>

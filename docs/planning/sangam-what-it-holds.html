@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SangamID — What It Holds</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Manrope:wght@300;400;500;600;700;800&family=Mukta:wght@200;300;400;500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0B3A4E;
+    --ink-deep: #062734;
+    --cream: #F5F1E8;
+    --cream-warm: #EFE8D8;
+    --paper: #FAFAF7;
+    --text: #1A1F2C;
+    --muted: #6B6F7A;
+    --border: #D4CFC0;
+    --accent: #C97B6E;
+    --success: #4F7B5C;
+    --danger: #A8323A;
+    --page-bg: #ECE7DB;
+    --shadow: 0 30px 60px -20px rgba(11,58,78,0.18), 0 18px 36px -18px rgba(11,58,78,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--page-bg);
+    color: var(--text);
+    font-family: 'Manrope', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.6;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    background: var(--paper);
+    min-height: 100vh;
+    box-shadow: var(--shadow);
+  }
+
+  /* ===== Hero ===== */
+  .hero {
+    background: var(--ink);
+    color: var(--cream);
+    padding: 72px 64px 56px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: 'सं';
+    position: absolute;
+    font-family: 'Mukta', sans-serif;
+    font-weight: 200;
+    font-size: 560px;
+    color: rgba(245,241,232,0.04);
+    right: -80px;
+    top: -160px;
+    line-height: 1;
+    pointer-events: none;
+  }
+  .wordmark {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 500;
+    font-size: 28px;
+    letter-spacing: 0.02em;
+    position: relative;
+    z-index: 1;
+    margin-bottom: 40px;
+  }
+  .wordmark .mark {
+    font-family: 'Mukta', sans-serif;
+    font-weight: 300;
+    font-size: 24px;
+    color: var(--accent);
+  }
+  .wordmark .domains {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: rgba(245,241,232,0.5);
+    letter-spacing: 0.06em;
+    font-weight: 400;
+  }
+  .hero h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 500;
+    font-size: clamp(42px, 5vw, 64px);
+    line-height: 1.05;
+    letter-spacing: -0.015em;
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
+    max-width: 820px;
+  }
+  .hero h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+  .hero p {
+    font-size: 17px;
+    line-height: 1.65;
+    color: rgba(245,241,232,0.78);
+    max-width: 680px;
+    position: relative;
+    z-index: 1;
+  }
+  .hero-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 32px;
+    position: relative;
+    z-index: 1;
+  }
+  .hero-tag {
+    padding: 6px 14px;
+    border: 1px solid rgba(245,241,232,0.25);
+    border-radius: 999px;
+    font-size: 12px;
+    color: rgba(245,241,232,0.85);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.02em;
+  }
+
+  /* ===== Meta strip ===== */
+  .meta-strip {
+    background: var(--cream-warm);
+    padding: 20px 64px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .meta-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+  }
+  .meta-value {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 500;
+    font-size: 20px;
+    color: var(--ink-deep);
+    letter-spacing: -0.01em;
+  }
+  .meta-value small {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 400;
+    font-size: 13px;
+    color: var(--muted);
+    display: block;
+    letter-spacing: 0;
+  }
+
+  /* ===== Section blocks ===== */
+  section {
+    padding: 56px 64px 24px;
+    border-bottom: 1px solid rgba(11,58,78,0.08);
+  }
+  section:last-child { border-bottom: none; }
+
+  .section-head {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 32px;
+    margin-bottom: 32px;
+  }
+  .section-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    padding-top: 8px;
+    text-transform: uppercase;
+    border-top: 2px solid var(--accent);
+    display: inline-block;
+    height: fit-content;
+    padding-right: 20px;
+  }
+  .section-heading {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 500;
+    font-size: 34px;
+    color: var(--ink-deep);
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    margin-bottom: 10px;
+  }
+  .section-lede {
+    font-size: 15px;
+    color: var(--muted);
+    line-height: 1.7;
+    max-width: 720px;
+  }
+
+  /* ===== Feature cards ===== */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  .feature-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 22px 24px;
+    transition: box-shadow 0.2s;
+  }
+  .feature-card:hover {
+    box-shadow: 0 8px 24px -12px rgba(11,58,78,0.15);
+  }
+  .feature-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .feature-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--cream-warm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink);
+    flex-shrink: 0;
+  }
+  .feature-icon svg { width: 16px; height: 16px; }
+  .feature-name {
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--ink-deep);
+  }
+  .feature-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* ===== Section 1: Holds table ===== */
+  .holds-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+  }
+  .holds-column h4 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .holds-column.holds h4 { color: var(--success); border-bottom-color: rgba(79,123,92,0.3); }
+  .holds-column.does-not h4 { color: var(--danger); border-bottom-color: rgba(168,50,58,0.3); }
+
+  .holds-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(11,58,78,0.06);
+  }
+  .holds-item:last-child { border-bottom: none; }
+  .holds-item .marker {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .holds .marker { background: var(--success); }
+  .does-not .marker { background: var(--danger); }
+  .holds-item .content {
+    flex: 1;
+  }
+  .holds-item .content .title {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+  .holds-item .content .detail {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.55;
+  }
+
+  /* ===== Data model box ===== */
+  .data-model {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .data-entity {
+    padding: 16px;
+    border: 1px solid var(--cream-warm);
+    border-radius: 8px;
+    background: var(--paper);
+  }
+  .data-entity-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 8px;
+    letter-spacing: 0.02em;
+  }
+  .data-entity-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.55;
+    margin-bottom: 10px;
+  }
+  .data-entity-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .data-field {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 2px 7px;
+    background: var(--cream-warm);
+    border-radius: 3px;
+    color: var(--ink);
+  }
+
+  /* ===== Endpoints ===== */
+  .endpoints {
+    background: #1F2D3A;
+    color: rgba(245,241,232,0.9);
+    border-radius: 12px;
+    padding: 24px 28px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 2;
+  }
+  .endpoint-row {
+    display: grid;
+    grid-template-columns: 60px 260px 1fr;
+    gap: 14px;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(245,241,232,0.06);
+  }
+  .endpoint-row:last-child { border-bottom: none; }
+  .endpoint-verb {
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    padding-top: 4px;
+  }
+  .endpoint-path {
+    color: var(--cream);
+    padding-top: 4px;
+  }
+  .endpoint-desc {
+    color: rgba(245,241,232,0.55);
+    font-family: 'Manrope', sans-serif;
+    font-size: 12px;
+    padding-top: 4px;
+    line-height: 1.6;
+  }
+
+  /* ===== Domain map ===== */
+  .domain-map {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  .domain-item {
+    background: white;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--ink);
+    border-radius: 6px;
+    padding: 14px 18px;
+  }
+  .domain-item .url {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-deep);
+    margin-bottom: 4px;
+  }
+  .domain-item .purpose {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .domain-item.primary { border-left-color: var(--accent); background: var(--cream-warm); }
+
+  /* ===== Deferred grid ===== */
+  .deferred-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .deferred-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: rgba(107,111,122,0.06);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .deferred-item .clock {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 2px 6px;
+    background: var(--cream-warm);
+    border-radius: 3px;
+    color: var(--ink);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+  }
+
+  /* ===== Timeline ===== */
+  .timeline {
+    position: relative;
+    padding-left: 28px;
+    border-left: 2px solid var(--border);
+  }
+  .timeline-item {
+    position: relative;
+    padding-bottom: 24px;
+  }
+  .timeline-item:last-child { padding-bottom: 0; }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -35px;
+    top: 6px;
+    width: 12px;
+    height: 12px;
+    background: var(--ink);
+    border-radius: 50%;
+    border: 3px solid var(--paper);
+    box-shadow: 0 0 0 2px var(--border);
+  }
+  .timeline-item.milestone::before { background: var(--accent); }
+  .timeline-when {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+  .timeline-what {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 500;
+    font-size: 20px;
+    color: var(--ink-deep);
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+  .timeline-detail {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* ===== Footer ===== */
+  footer {
+    background: var(--ink-deep);
+    color: rgba(245,241,232,0.6);
+    padding: 40px 64px;
+    text-align: center;
+    font-size: 13px;
+  }
+  footer .devanagari-foot {
+    font-family: 'Mukta', sans-serif;
+    font-weight: 200;
+    font-size: 32px;
+    color: var(--accent);
+    margin-bottom: 12px;
+    letter-spacing: 0.05em;
+  }
+  footer .foot-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 16px;
+    color: var(--cream);
+    margin-bottom: 8px;
+  }
+
+  /* ===== Print / responsive ===== */
+  @media (max-width: 900px) {
+    .hero, section, .meta-strip, footer { padding-left: 28px; padding-right: 28px; }
+    .meta-strip { grid-template-columns: 1fr 1fr; }
+    .section-head { grid-template-columns: 1fr; gap: 12px; }
+    .feature-grid, .holds-list, .domain-map, .deferred-grid { grid-template-columns: 1fr; }
+    .data-model { grid-template-columns: 1fr; }
+    .endpoint-row { grid-template-columns: 60px 1fr; }
+    .endpoint-desc { grid-column: 1 / -1; padding-left: 74px; padding-top: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- ===== HERO ===== -->
+  <section class="hero" style="border-bottom: none;">
+    <div class="wordmark">
+      SangamID <span class="mark">सं</span>
+      <span class="domains">sangamid.com · sangamid.in · sangamid.co.in</span>
+    </div>
+    <h1>One identity. <em>Many homes.</em></h1>
+    <p>A jointly-owned, open-source identity and tenancy platform serving three founding companies' commercial applications. Users register once, work across every partner app. Data stays in India, ownership stays with the founders, and the platform stays free at the identity layer — forever.</p>
+    <div class="hero-tags">
+      <span class="hero-tag">.NET 8</span>
+      <span class="hero-tag">Blazor</span>
+      <span class="hero-tag">OpenIddict</span>
+      <span class="hero-tag">PostgreSQL</span>
+      <span class="hero-tag">Apache 2.0</span>
+      <span class="hero-tag">DPDPA-first</span>
+      <span class="hero-tag">India-hosted</span>
+    </div>
+  </section>
+
+  <!-- ===== META STRIP ===== -->
+  <div class="meta-strip">
+    <div class="meta-item">
+      <div class="meta-label">Ownership</div>
+      <div class="meta-value">Joint LLP<small>3 founding companies, equal thirds</small></div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">License</div>
+      <div class="meta-value">Apache 2.0<small>Open source, permissive</small></div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Hosting</div>
+      <div class="meta-value">India<small>Oracle Cloud Mumbai (v0) → E2E</small></div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Cost to users</div>
+      <div class="meta-value">₹0<small>Apps monetise; platform is free</small></div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION 1: WHAT IT HOLDS / DOESN'T ===== -->
+  <section>
+    <div class="section-head">
+      <div class="section-number">01 · Scope</div>
+      <div>
+        <h2 class="section-heading">What SangamID holds — and what it doesn't</h2>
+        <p class="section-lede">Scope discipline is the single most important design rule. Every future feature request must pass one test: "Does every partner app need this?" If just one, it belongs in that app — not in SangamID.</p>
+      </div>
+    </div>
+
+    <div class="holds-list">
+      <div class="holds-column holds">
+        <h4>✓ SangamID Holds</h4>
+        <div class="holds-item">
+          <div class="marker">✓</div>
+          <div class="content">
+            <div class="title">User identity</div>
+            <div class="detail">One User = one identity across every app and org. Email is the natural key. Credentials, name, phone, verification status, MFA state.</div>
+          </div>
+        </div>
+        <div class="holds-item">
+          <div class="marker">✓</div>
+          <div class="content">
+            <div class="title">Organisations (tenants)</div>
+            <div class="detail">Clinics, hospitals, construction firms, labs — any real-world entity users belong to. Type-classified, metadata-rich, cross-app.</div>
+          </div>
+        </div>
+        <div class="holds-item">
+          <div class="marker">✓</div>
+          <div class="content">
+            <div class="title">Memberships & roles</div>
+            <div class="detail">Which user belongs to which org, with which role, in the context of which app. The same person can be admin in LiPi and viewer in Apollo HIS for the same clinic.</div>
+          </div>
+        </div>
+        <div class="holds-item">
+          <div class="marker">✓</div>
+          <div class="content">
+            <div class="title">Partner app registry</div>
+            <div class="detail">Registered OIDC clients — LiPi, Apollo HIS, Compliance app. Client secrets, redirect URIs, allowed scopes, per-app roles.</div>
+          </div>
+        </div>
+        <div class="holds-item">
+          <div class="marker">✓</div>
+          <div class="content">
+            <div class="title">Consent records</div>
+            <div class="detail">Explicit, versioned, timestamped. Which user consented to which app, for what data, at which policy version. DPDPA-defensible by design.</div>
+          </div>
+        </div>
+        <div class="holds-item">
+          <div class="marker">✓</div>
+          <div class="content">
+            <div class="title">Audit trail</div>
+            <div class="detail">Every identity event — login, registration, consent, membership change, admin action — append-only, retained per regulatory requirement.</div>
+          </div>
+        </div>
+        <div class="holds-item">
+          <div class="marker">✓</div>
+          <div class="content">
+            <div class="title">Sessions & tokens</div>
+            <div class="detail">Active login sessions, OIDC/OAuth 2 tokens, refresh tokens with rotation, JWKS with rotating keys.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="holds-column does-not">
+        <h4>✗ SangamID Does NOT Hold</h4>
+        <div class="holds-item">
+          <div class="marker">✗</div>
+          <div class="content">
+            <div class="title">Clinical or domain data</div>
+            <div class="detail">Patient records, treatment plans, dosimetry, scans — all live in LiPi / HIS / their own databases, keyed by the SangamID user ID.</div>
+          </div>
+        </div>
+        <div class="holds-item">
+          <div class="marker">✗</div>
+          <div class="content">
+            <div class="title">Payment or billing info</div>
+            <div class="detail">Each partner app handles its own subscriptions, invoices, customer billing. The platform doesn't touch money.</div>
+          </div>
+        </div>
+        <div class="holds-item">
+          <div class="marker">✗</div>
+          <div class="content">
+            <div class="title">App-specific settings</div>
+            <div class="detail">UI preferences, notification rules, workflow configurations belong to each app's own database — not to shared identity.</div>
+          </div>
+        </div>
+        <div class="holds-item">
+          <div class="marker">✗</div>
+          <div class="content">
+            <div class="title">Business documents</div>
+            <div class="detail">Contracts, agreements, quotes, reports live in the partner apps that own those workflows. SangamID is identity plumbing only.</div>
+          </div>
+        </div>
+        <div class="holds-item">
+          <div class="marker">✗</div>
+          <div class="content">
+            <div class="title">Communications</div>
+            <div class="detail">Email between users, chat messages, notifications beyond identity events — all in the apps that own those relationships.</div>
+          </div>
+        </div>
+        <div class="holds-item">
+          <div class="marker">✗</div>
+          <div class="content">
+            <div class="title">App-level permissions logic</div>
+            <div class="detail">SangamID stores roles; it doesn't enforce what a "doctor" role can do inside LiPi. That authorisation logic lives in each app.</div>
+          </div>
+        </div>
+        <div class="holds-item">
+          <div class="marker">✗</div>
+          <div class="content">
+            <div class="title">Any commercial activity</div>
+            <div class="detail">The platform never sells, markets, or bills. Every commercial relationship is between the user and a specific partner app.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SECTION 2: FEATURES ===== -->
+  <section>
+    <div class="section-head">
+      <div class="section-number">02 · Features (v0)</div>
+      <div>
+        <h2 class="section-heading">What ships in the first 90 days</h2>
+        <p class="section-lede">The minimum viable set for one partner app to run in production. Every item below is scoped, planned, and included in the v0 sprint plan.</p>
+      </div>
+    </div>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-card-header">
+          <div class="feature-icon">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0 1c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+          </div>
+          <div class="feature-name">Registration &amp; email verification</div>
+        </div>
+        <div class="feature-desc">Email + password with rate limiting, CAPTCHA (Cloudflare Turnstile), verification via emailed link, resend flow.</div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-card-header">
+          <div class="feature-icon">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M12 6V4a4 4 0 1 0-8 0v2H2v10h12V6zm-6-2a2 2 0 1 1 4 0v2H6z"/></svg>
+          </div>
+          <div class="feature-name">Login &amp; session management</div>
+        </div>
+        <div class="feature-desc">Argon2id hashing, account lockout on failed attempts, sliding-expiry sessions, "log out everywhere" support.</div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-card-header">
+          <div class="feature-icon">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M13 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1zM4 5h8v1H4zM4 8h8v1H4zM4 11h5v1H4z"/></svg>
+          </div>
+          <div class="feature-name">Full OIDC / OAuth 2 server</div>
+        </div>
+        <div class="feature-desc">Authorization Code with PKCE, refresh token rotation, DPoP, JWKS with rotating keys, discovery endpoint, token introspection.</div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-card-header">
+          <div class="feature-icon">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M6 2h4v2h3v10H3V4h3zM7 3v1h2V3zM4 5v8h8V5z"/></svg>
+          </div>
+          <div class="feature-name">Password reset</div>
+        </div>
+        <div class="feature-desc">Time-limited emailed link, single-use tokens, session invalidation on password change via security stamp rotation.</div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-card-header">
+          <div class="feature-icon">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v2H2zM2 7h12v2H2zM2 11h12v2H2z"/></svg>
+          </div>
+          <div class="feature-name">Organisation management</div>
+        </div>
+        <div class="feature-desc">Create, edit, classify by type (clinic, hospital, lab, construction firm). Metadata-flexible via JSONB. Add/remove members.</div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-card-header">
+          <div class="feature-icon">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1L2 4v5c0 3.5 2.5 6.5 6 7 3.5-.5 6-3.5 6-7V4z"/></svg>
+          </div>
+          <div class="feature-name">Consent management</div>
+        </div>
+        <div class="feature-desc">First-time consent screen naming the specific app and specific data. Versioned. Self-service revocation. Re-consent when policy changes.</div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-card-header">
+          <div class="feature-icon">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M14 3H2v10h12zM3 4h10v2H3zM3 7h10v5H3z"/></svg>
+          </div>
+          <div class="feature-name">Admin UI (Blazor)</div>
+        </div>
+        <div class="feature-desc">Operator dashboard with MFA-mandatory access. User search, org management, app registration, secret rotation, audit log viewer.</div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-card-header">
+          <div class="feature-icon">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm0 10c-1.67 0-3.14-.83-4-2.1.02-1.33 2.67-2.05 4-2.05 1.33 0 3.98.73 4 2.05A4.98 4.98 0 0 1 8 14z"/></svg>
+          </div>
+          <div class="feature-name">Self-service portal (Blazor)</div>
+        </div>
+        <div class="feature-desc">Users manage profile, view/revoke linked apps, see sessions, export their data (DPDPA), delete account with cascade.</div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-card-header">
+          <div class="feature-icon">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 2v12h12V2zm11 11H3V3h10zM5 5h6v1H5zM5 7h6v1H5zM5 9h6v1H5zM5 11h4v1H5z"/></svg>
+          </div>
+          <div class="feature-name">Append-only audit log</div>
+        </div>
+        <div class="feature-desc">Every identity event captured. Actor, action, target, IP, user-agent, timestamp. Immutable via DB-level rules. Searchable in admin UI.</div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-card-header">
+          <div class="feature-icon">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 4h12v2H2zM2 7h12v2H2zM2 10h12v2H2zM4 5v6h1V5zM11 5v6h1V5z"/></svg>
+          </div>
+          <div class="feature-name">Role model per (User, Org, App)</div>
+        </div>
+        <div class="feature-desc">Roles scoped to the (user, org, app) triple. Same person can hold different roles in the same org across different apps.</div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-card-header">
+          <div class="feature-icon">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 1h8l2 2v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zm7 1v3h3z"/></svg>
+          </div>
+          <div class="feature-name">NuGet SDK (Sangam.Client)</div>
+        </div>
+        <div class="feature-desc">Partner apps integrate in ~10 lines of code. Thin wrapper over OIDC middleware with helpful extensions (.GetOrgs(), .HasRoleInOrg()).</div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-card-header">
+          <div class="feature-icon">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8zm-.5 4h1v5h-1zm.5 8a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/></svg>
+          </div>
+          <div class="feature-name">DPDPA rights, self-service</div>
+        </div>
+        <div class="feature-desc">Right to access (data export within 30 days), right to correction, right to erasure, right to withdraw consent — all buttons in the portal.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SECTION 3: DATA MODEL ===== -->
+  <section>
+    <div class="section-head">
+      <div class="section-number">03 · Data model</div>
+      <div>
+        <h2 class="section-heading">The eight core entities</h2>
+        <p class="section-lede">These are the load-bearing entities of the platform. Get them right and the platform flexes gracefully as partners, features, and use cases grow. Every other data structure sits on top of these.</p>
+      </div>
+    </div>
+
+    <div class="data-model">
+      <div class="data-entity">
+        <div class="data-entity-name">User</div>
+        <div class="data-entity-desc">One human = one row. Ever. Email is the natural key.</div>
+        <div class="data-entity-fields">
+          <span class="data-field">id</span>
+          <span class="data-field">email</span>
+          <span class="data-field">name</span>
+          <span class="data-field">status</span>
+          <span class="data-field">mfa</span>
+        </div>
+      </div>
+      <div class="data-entity">
+        <div class="data-entity-name">Organisation</div>
+        <div class="data-entity-desc">A real-world entity users belong to. Clinic, firm, department.</div>
+        <div class="data-entity-fields">
+          <span class="data-field">id</span>
+          <span class="data-field">name</span>
+          <span class="data-field">org_type</span>
+          <span class="data-field">metadata</span>
+        </div>
+      </div>
+      <div class="data-entity">
+        <div class="data-entity-name">App</div>
+        <div class="data-entity-desc">A registered partner application. OIDC client.</div>
+        <div class="data-entity-fields">
+          <span class="data-field">id</span>
+          <span class="data-field">client_id</span>
+          <span class="data-field">redirect_uris</span>
+          <span class="data-field">scopes</span>
+        </div>
+      </div>
+      <div class="data-entity">
+        <div class="data-entity-name">OrgMembership</div>
+        <div class="data-entity-desc">The core relationship. User × Org × App × Role.</div>
+        <div class="data-entity-fields">
+          <span class="data-field">user_id</span>
+          <span class="data-field">org_id</span>
+          <span class="data-field">app_id</span>
+          <span class="data-field">role_id</span>
+        </div>
+      </div>
+      <div class="data-entity">
+        <div class="data-entity-name">Role</div>
+        <div class="data-entity-desc">A named capability set defined by each App.</div>
+        <div class="data-entity-fields">
+          <span class="data-field">app_id</span>
+          <span class="data-field">code</span>
+          <span class="data-field">permissions</span>
+        </div>
+      </div>
+      <div class="data-entity">
+        <div class="data-entity-name">Consent</div>
+        <div class="data-entity-desc">User's explicit, versioned permission for an App.</div>
+        <div class="data-entity-fields">
+          <span class="data-field">user_id</span>
+          <span class="data-field">app_id</span>
+          <span class="data-field">version</span>
+          <span class="data-field">granted_at</span>
+        </div>
+      </div>
+      <div class="data-entity">
+        <div class="data-entity-name">Session</div>
+        <div class="data-entity-desc">An active login. Device, IP, sliding expiry.</div>
+        <div class="data-entity-fields">
+          <span class="data-field">user_id</span>
+          <span class="data-field">device</span>
+          <span class="data-field">expires_at</span>
+        </div>
+      </div>
+      <div class="data-entity">
+        <div class="data-entity-name">AuditEvent</div>
+        <div class="data-entity-desc">Append-only record of every significant action.</div>
+        <div class="data-entity-fields">
+          <span class="data-field">actor</span>
+          <span class="data-field">action</span>
+          <span class="data-field">target</span>
+          <span class="data-field">timestamp</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SECTION 4: OIDC ENDPOINTS ===== -->
+  <section>
+    <div class="section-head">
+      <div class="section-number">04 · Public API</div>
+      <div>
+        <h2 class="section-heading">The OIDC endpoints partner apps talk to</h2>
+        <p class="section-lede">Every partner app — LiPi, Apollo HIS, Compliance app — interacts with SangamID through these standard OIDC endpoints. Nothing custom, nothing proprietary. Full standards compliance means partner apps can switch identity providers if ever needed.</p>
+      </div>
+    </div>
+
+    <div class="endpoints">
+      <div class="endpoint-row">
+        <div class="endpoint-verb">GET</div>
+        <div class="endpoint-path">/.well-known/openid-configuration</div>
+        <div class="endpoint-desc">Discovery document listing all endpoints and capabilities</div>
+      </div>
+      <div class="endpoint-row">
+        <div class="endpoint-verb">GET</div>
+        <div class="endpoint-path">/authorize</div>
+        <div class="endpoint-desc">Start the login flow — user redirected here from partner app</div>
+      </div>
+      <div class="endpoint-row">
+        <div class="endpoint-verb">POST</div>
+        <div class="endpoint-path">/token</div>
+        <div class="endpoint-desc">Exchange authorization code for tokens; refresh token rotation</div>
+      </div>
+      <div class="endpoint-row">
+        <div class="endpoint-verb">GET</div>
+        <div class="endpoint-path">/userinfo</div>
+        <div class="endpoint-desc">Retrieve user's claims — orgs, roles, permissions</div>
+      </div>
+      <div class="endpoint-row">
+        <div class="endpoint-verb">GET</div>
+        <div class="endpoint-path">/jwks</div>
+        <div class="endpoint-desc">Public signing keys for verifying tokens; rotates automatically</div>
+      </div>
+      <div class="endpoint-row">
+        <div class="endpoint-verb">POST</div>
+        <div class="endpoint-path">/introspect</div>
+        <div class="endpoint-desc">Server-to-server token validation (RFC 7662)</div>
+      </div>
+      <div class="endpoint-row">
+        <div class="endpoint-verb">POST</div>
+        <div class="endpoint-path">/revoke</div>
+        <div class="endpoint-desc">Revoke a token before its natural expiry (RFC 7009)</div>
+      </div>
+      <div class="endpoint-row">
+        <div class="endpoint-verb">GET</div>
+        <div class="endpoint-path">/logout</div>
+        <div class="endpoint-desc">End the SangamID session, redirect back to partner app</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SECTION 5: DOMAIN MAP ===== -->
+  <section>
+    <div class="section-head">
+      <div class="section-number">05 · Domains</div>
+      <div>
+        <h2 class="section-heading">Where SangamID lives on the internet</h2>
+        <p class="section-lede">All three domains registered. <code>sangamid.in</code> is the canonical primary; the other two redirect to it. Subdomains separate concerns cleanly — auth, self-service, admin, docs each in their own place.</p>
+      </div>
+    </div>
+
+    <div class="domain-map">
+      <div class="domain-item primary">
+        <div class="url">sangamid.in</div>
+        <div class="purpose">Canonical primary · public landing site &amp; partner list</div>
+      </div>
+      <div class="domain-item">
+        <div class="url">sangamid.com → sangamid.in</div>
+        <div class="purpose">301 redirect · global fallback</div>
+      </div>
+      <div class="domain-item">
+        <div class="url">sangamid.co.in → sangamid.in</div>
+        <div class="purpose">301 redirect · defensive registration</div>
+      </div>
+      <div class="domain-item">
+        <div class="url">id.sangamid.in</div>
+        <div class="purpose">OIDC auth server · where users log in</div>
+      </div>
+      <div class="domain-item">
+        <div class="url">account.sangamid.in</div>
+        <div class="purpose">Self-service portal · profile, consents, sessions, data export</div>
+      </div>
+      <div class="domain-item">
+        <div class="url">admin.sangamid.in</div>
+        <div class="purpose">Operator admin UI · restricted to founders, MFA-mandatory</div>
+      </div>
+      <div class="domain-item">
+        <div class="url">docs.sangamid.in</div>
+        <div class="purpose">Integration docs for partner developers &amp; contributors</div>
+      </div>
+      <div class="domain-item">
+        <div class="url">status.sangamid.in</div>
+        <div class="purpose">Uptime page · public status (v1+)</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SECTION 6: DEFERRED ===== -->
+  <section>
+    <div class="section-head">
+      <div class="section-number">06 · Deferred</div>
+      <div>
+        <h2 class="section-heading">Explicitly NOT in v0 — deliberately deferred</h2>
+        <p class="section-lede">Scope discipline demands saying no. These features are all valuable and all planned for v1 or later. Building them in v0 would sink the 90-day launch timeline. Every one of these will land in Year 1 or Year 2.</p>
+      </div>
+    </div>
+
+    <div class="deferred-grid">
+      <div class="deferred-item"><span class="clock">v1</span>End-user MFA (TOTP, WebAuthn)</div>
+      <div class="deferred-item"><span class="clock">v1</span>Magic link / passwordless login</div>
+      <div class="deferred-item"><span class="clock">v1</span>Social login (Google, Microsoft)</div>
+      <div class="deferred-item"><span class="clock">v1</span>Multi-language UI (Hindi, Tamil, Bengali)</div>
+      <div class="deferred-item"><span class="clock">v1</span>Org admin invite flow</div>
+      <div class="deferred-item"><span class="clock">v1</span>Org-level branding</div>
+      <div class="deferred-item"><span class="clock">v1</span>Advanced audit search &amp; CSV export</div>
+      <div class="deferred-item"><span class="clock">v1</span>Dark mode</div>
+      <div class="deferred-item"><span class="clock">v1</span>First independent VAPT (security audit)</div>
+      <div class="deferred-item"><span class="clock">v2</span>SAML 2.0 support</div>
+      <div class="deferred-item"><span class="clock">v2</span>SCIM provisioning</div>
+      <div class="deferred-item"><span class="clock">v2</span>Hierarchical orgs (parent/child)</div>
+      <div class="deferred-item"><span class="clock">v2</span>Passkeys / WebAuthn</div>
+      <div class="deferred-item"><span class="clock">v2</span>Mobile SDKs</div>
+      <div class="deferred-item"><span class="clock">v2</span>Webhooks for identity events</div>
+      <div class="deferred-item"><span class="clock">v2</span>Multi-region HA deployment</div>
+    </div>
+  </section>
+
+  <!-- ===== SECTION 7: TIMELINE ===== -->
+  <section>
+    <div class="section-head">
+      <div class="section-number">07 · Roadmap</div>
+      <div>
+        <h2 class="section-heading">90 days to beta launch</h2>
+        <p class="section-lede">From founder agreement to a partner app running on SangamID identity in production. Three sprints of 30 days each; three founders working part-time; no external hires for v0.</p>
+      </div>
+    </div>
+
+    <div class="timeline">
+      <div class="timeline-item milestone">
+        <div class="timeline-when">Day 1 · Kickoff</div>
+        <div class="timeline-what">Legal &amp; repo setup</div>
+        <div class="timeline-detail">Engage lawyer, file LLP incorporation, register GitHub org, initial repo skeleton with Apache 2.0 licence, sign founder agreement.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-when">Day 15-30</div>
+        <div class="timeline-what">Authentication core</div>
+        <div class="timeline-detail">OIDC server working end-to-end. Registration, login, email verification, password reset. Staging environment live on Oracle Cloud Mumbai.</div>
+      </div>
+      <div class="timeline-item milestone">
+        <div class="timeline-when">Day 30 · Milestone</div>
+        <div class="timeline-what">Basic auth works</div>
+        <div class="timeline-detail">A test client app can complete full OIDC flow against staging. LLP filing submitted.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-when">Day 31-45</div>
+        <div class="timeline-what">Orgs, apps, consent</div>
+        <div class="timeline-detail">Organisation model, app registry, consent screen, role assignment. Token claims carry org and role context.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-when">Day 46-60</div>
+        <div class="timeline-what">Admin UI &amp; audit</div>
+        <div class="timeline-detail">Blazor admin UI with MFA. Full audit log with search. Self-service portal for users. DPDPA data export &amp; account deletion.</div>
+      </div>
+      <div class="timeline-item milestone">
+        <div class="timeline-when">Day 60 · Milestone</div>
+        <div class="timeline-what">Feature complete</div>
+        <div class="timeline-detail">All v0 features shipped to staging. Ready for partner integration. T&amp;C and Privacy Policy signed off by lawyer.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-when">Day 61-75</div>
+        <div class="timeline-what">SDK &amp; first app integration</div>
+        <div class="timeline-detail">Sangam.Client NuGet published. Integration guide written. First partner app (chosen among the three) integrated in dev/staging.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-when">Day 76-89</div>
+        <div class="timeline-what">Beta launch</div>
+        <div class="timeline-detail">10-50 real beta users on the first partner app. Daily triage during beta. Fix forward, don't roll back unless catastrophic.</div>
+      </div>
+      <div class="timeline-item milestone">
+        <div class="timeline-when">Day 90 · v0 SHIPPED</div>
+        <div class="timeline-what">v0 in production</div>
+        <div class="timeline-detail">Beta successful. Retrospective complete. Plan for app #2 integration drafted. Take a weekend off. Then plan v1.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer>
+    <div class="devanagari-foot">सङ्गम</div>
+    <div class="foot-title">SangamID — One identity. Many homes.</div>
+    <div>Jointly owned. Open source. India-hosted. Free forever at the identity layer.</div>
+    <div style="margin-top: 20px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.08em;">
+      Apache 2.0 · A joint project of [Founder Companies A · B · C]
+    </div>
+  </footer>
+
+</div>
+
+</body>
+</html>

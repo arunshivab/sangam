@@ -1,0 +1,83 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Foundation";
+}
+
+<div class="sg-auth-lockup">
+  <component type="typeof(SangamLockup)" render-mode="Static" param-MarkSize="26" />
+</div>
+
+<section class="sg-card">
+  <h1 class="sg-card-title">Foundation check</h1>
+  <p class="sg-card-body">
+    This page exists only to verify that the design tokens, the brand CSS and the
+    palm-leaf components render correctly in the Razor Pages host. It is replaced
+    by the sign-in screen in PR-03.
+  </p>
+
+  <div class="sg-cord-rule" role="presentation"></div>
+
+  <h2 class="sg-section-label">Lockups</h2>
+  <div class="sg-row">
+    <component type="typeof(SangamLockup)" render-mode="Static" param-MarkSize="26" />
+    <component type="typeof(SangamLockup)" render-mode="Static" param-MarkSize="26" param-Functional="true" />
+  </div>
+  <div class="sg-row sg-row--teal">
+    <component type="typeof(SangamLockup)" render-mode="Static" param-MarkSize="26" param-Mode="SangamMarkMode.Reversed" />
+    <component type="typeof(SangamLockup)" render-mode="Static" param-MarkSize="26" param-Mode="SangamMarkMode.Reversed" param-Functional="true" />
+  </div>
+
+  <h2 class="sg-section-label">Mark</h2>
+  <div class="sg-row">
+    <component type="typeof(SangamMark)" render-mode="Static" param-Size="16" />
+    <component type="typeof(SangamMark)" render-mode="Static" param-Size="24" />
+    <component type="typeof(SangamMark)" render-mode="Static" param-Size="32" />
+    <component type="typeof(SangamMark)" render-mode="Static" param-Size="52" />
+    <span class="sg-mono-ink"><component type="typeof(SangamMark)" render-mode="Static" param-Size="32" param-Mode="SangamMarkMode.Mono" /></span>
+    <component type="typeof(SangamMark)" render-mode="Static" param-Size="52" param-Mode="SangamMarkMode.LeafMist" />
+  </div>
+
+  <h2 class="sg-section-label">Icons (LiPicons)</h2>
+  <div class="sg-row sg-row--icons">
+    <component type="typeof(LipiIcon)" render-mode="Static" param-Name="LipiconName.LogIn" param-Size="24" param-Title="@("Sign in")" />
+    <component type="typeof(LipiIcon)" render-mode="Static" param-Name="LipiconName.Lock" param-Size="24" param-Title="@("Password")" />
+    <component type="typeof(LipiIcon)" render-mode="Static" param-Name="LipiconName.Email" param-Size="24" param-Title="@("Email")" />
+    <component type="typeof(LipiIcon)" render-mode="Static" param-Name="LipiconName.AuditLog" param-Size="24" param-Title="@("Audit log")" />
+    <component type="typeof(LipiIcon)" render-mode="Static" param-Name="LipiconName.ExternalLink" param-Size="24" param-Title="@("External link")" />
+    <component type="typeof(LipiIcon)" render-mode="Static" param-Name="LipiconName.CheckCircle" param-Size="24" param-Variant="LipiconVariant.Fill" param-Title="@("Verified")" />
+    <component type="typeof(LipiIcon)" render-mode="Static" param-Name="LipiconName.LogOut" param-Size="24" param-Variant="LipiconVariant.Bold" param-Title="@("Sign out")" />
+  </div>
+
+  <h2 class="sg-section-label">Type (LiPi Sans, one family, ten scripts)</h2>
+  <p class="sg-type-sample">Sign in · साइन इन · உள்நுழை · സൈൻ ഇൻ · ಸೈನ್ ಇನ್ · সাইন ইন · સાઇન ઇન · ਸਾਈਨ ਇਨ · ସାଇନ ଇନ · సైన్ ఇన్</p>
+  <p class="sg-type-sample sg-type-sample--num">0123456789 · ₹1,25,000 · <em>italic</em> · <strong>bold</strong></p>
+
+  <h2 class="sg-section-label">Palette</h2>
+  <div class="sg-swatches">
+    <span class="sg-swatch" style="background: var(--sg-teal)"><span class="sg-swatch-label sg-swatch-label--light">teal</span></span>
+    <span class="sg-swatch" style="background: var(--sg-cream)"><span class="sg-swatch-label">cream</span></span>
+    <span class="sg-swatch" style="background: var(--sg-ochre)"><span class="sg-swatch-label sg-swatch-label--light">ochre</span></span>
+    <span class="sg-swatch" style="background: var(--sg-ink)"><span class="sg-swatch-label sg-swatch-label--light">ink</span></span>
+    <span class="sg-swatch" style="background: var(--sg-palm-shade)"><span class="sg-swatch-label sg-swatch-label--light">palm</span></span>
+    <span class="sg-swatch" style="background: var(--sg-leaf-mist)"><span class="sg-swatch-label">mist</span></span>
+    <span class="sg-swatch" style="background: var(--sg-sandalwood)"><span class="sg-swatch-label">sandal</span></span>
+    <span class="sg-swatch" style="background: var(--sg-sindoor)"><span class="sg-swatch-label sg-swatch-label--light">sindoor</span></span>
+    <span class="sg-swatch" style="background: var(--sg-slate)"><span class="sg-swatch-label sg-swatch-label--light">slate</span></span>
+  </div>
+
+  <h2 class="sg-section-label">Controls</h2>
+  <label class="sg-label" for="demo-email">Email</label>
+  <input id="demo-email" class="sg-field" type="email" placeholder="you@example.in" autocomplete="off" />
+  <div class="sg-row sg-row--buttons">
+    <button type="button" class="sg-btn sg-btn--primary">Primary</button>
+    <button type="button" class="sg-btn sg-btn--secondary">Secondary</button>
+    <button type="button" class="sg-btn sg-btn--danger">Danger</button>
+    <button type="button" class="sg-btn sg-btn--primary" disabled>Disabled</button>
+  </div>
+
+  <h2 class="sg-section-label">Status atoms</h2>
+  <p class="sg-status-line"><span class="sg-cord-dot sg-cord-dot--active"></span>Active <span class="sg-cord-dot sg-cord-dot--expiring"></span>Expiring <span class="sg-cord-dot sg-cord-dot--dormant"></span>Dormant</p>
+
+  <p class="sg-meta">host <code>@Model.Host</code> · operator @Model.Operator · v@(Model.Version)</p>
+</section>

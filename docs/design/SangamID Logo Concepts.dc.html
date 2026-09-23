@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&family=Noto+Serif+Devanagari:wght@500;600;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #EFECE4; }
+  a { color: #A85A28; }
+  a:hover { color: #14202E; }
+</style>
+</helmet>
+
+<div style="font-family:Archivo,sans-serif;color:#14202E;padding:56px 40px 96px;max-width:1240px;margin:0 auto">
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="m1" viewBox="0 0 64 64">
+      <g fill="none" stroke-width="9.5" stroke-linecap="round">
+        <path d="M13 8 V19 C13 30 32 27 32 38" stroke="#14202E" />
+        <path d="M51 8 V19 C51 30 32 27 32 38" stroke="#2F6B62" />
+        <path d="M32 38 V56" stroke="#14202E" />
+      </g>
+    </symbol>
+    <symbol id="m2" viewBox="0 0 64 64">
+      <g fill="none" stroke-width="9.5" stroke-linecap="square">
+        <path d="M44 9 H24 A11 11 0 0 0 24 31 H32" stroke="#A85A28" />
+        <path d="M20 55 H40 A11 11 0 0 0 40 33 H32" stroke="#14202E" />
+        <path d="M32 6 V58" stroke="#14202E" />
+      </g>
+    </symbol>
+    <symbol id="m3" viewBox="0 0 64 64">
+      <text x="30" y="52" text-anchor="middle" font-family="Archivo, sans-serif" font-weight="800" font-size="62" fill="#14202E">S</text>
+      <rect x="30" y="28" width="30" height="8" rx="4" fill="#A85A28" />
+    </symbol>
+    <symbol id="m4" viewBox="0 0 64 64">
+      <text x="32" y="50" text-anchor="middle" font-family="'Noto Serif Devanagari', serif" font-weight="600" font-size="46" fill="#14202E">स</text>
+      <circle cx="44" cy="10" r="4.6" fill="#A85A28" />
+    </symbol>
+    <symbol id="m5" viewBox="0 0 64 64">
+      <g fill="none" stroke="#14202E" stroke-width="5.5">
+        <circle cx="32" cy="32" r="27" />
+        <path d="M32 9 L55 32 L32 55 L9 32 Z" stroke-linejoin="round" />
+      </g>
+      <circle cx="32" cy="32" r="7" fill="#A85A28" />
+    </symbol>
+    <symbol id="m6" viewBox="0 0 64 64">
+      <rect x="3.5" y="15.5" width="57" height="33" rx="16.5" fill="none" stroke="#14202E" stroke-width="5.5" />
+      <g stroke="#14202E" stroke-width="4" stroke-linecap="round">
+        <path d="M33 26 H50" />
+        <path d="M33 38 H50" />
+      </g>
+      <circle cx="20" cy="32" r="6.5" fill="#8A6A2F" />
+    </symbol>
+    <symbol id="m1b" viewBox="0 0 64 64">
+      <g fill="none" stroke-width="9.5" stroke-linecap="round">
+        <path d="M13 8 V19 C13 30 32 27 32 38" stroke="#000000" />
+        <path d="M51 8 V19 C51 30 32 27 32 38" stroke="#000000" />
+        <path d="M32 38 V56" stroke="#000000" />
+      </g>
+    </symbol>
+    <symbol id="m2b" viewBox="0 0 64 64">
+      <g fill="none" stroke-width="9.5" stroke-linecap="square">
+        <path d="M44 9 H24 A11 11 0 0 0 24 31 H32" stroke="#000000" />
+        <path d="M20 55 H40 A11 11 0 0 0 40 33 H32" stroke="#000000" />
+        <path d="M32 6 V58" stroke="#000000" />
+      </g>
+    </symbol>
+    <symbol id="m3b" viewBox="0 0 64 64">
+      <text x="30" y="52" text-anchor="middle" font-family="Archivo, sans-serif" font-weight="800" font-size="62" fill="#000000">S</text>
+      <rect x="30" y="28" width="30" height="8" rx="4" fill="#000000" />
+    </symbol>
+    <symbol id="m4b" viewBox="0 0 64 64">
+      <text x="32" y="50" text-anchor="middle" font-family="'Noto Serif Devanagari', serif" font-weight="600" font-size="46" fill="#000000">स</text>
+      <circle cx="44" cy="10" r="4.6" fill="#000000" />
+    </symbol>
+    <symbol id="m5b" viewBox="0 0 64 64">
+      <g fill="none" stroke="#000000" stroke-width="5.5">
+        <circle cx="32" cy="32" r="27" />
+        <path d="M32 9 L55 32 L32 55 L9 32 Z" stroke-linejoin="round" />
+      </g>
+      <circle cx="32" cy="32" r="7" fill="#000000" />
+    </symbol>
+    <symbol id="m6b" viewBox="0 0 64 64">
+      <rect x="3.5" y="15.5" width="57" height="33" rx="16.5" fill="none" stroke="#000000" stroke-width="5.5" />
+      <g stroke="#000000" stroke-width="4" stroke-linecap="round">
+        <path d="M33 26 H50" />
+        <path d="M33 38 H50" />
+      </g>
+      <circle cx="20" cy="32" r="6.5" fill="#000000" />
+    </symbol>
+    <symbol id="m1w" viewBox="0 0 64 64">
+      <g fill="none" stroke-width="9.5" stroke-linecap="round">
+        <path d="M13 8 V19 C13 30 32 27 32 38" stroke="#FFFFFF" />
+        <path d="M51 8 V19 C51 30 32 27 32 38" stroke="#FFFFFF" />
+        <path d="M32 38 V56" stroke="#FFFFFF" />
+      </g>
+    </symbol>
+    <symbol id="m2w" viewBox="0 0 64 64">
+      <g fill="none" stroke-width="9.5" stroke-linecap="square">
+        <path d="M44 9 H24 A11 11 0 0 0 24 31 H32" stroke="#FFFFFF" />
+        <path d="M20 55 H40 A11 11 0 0 0 40 33 H32" stroke="#FFFFFF" />
+        <path d="M32 6 V58" stroke="#FFFFFF" />
+      </g>
+    </symbol>
+    <symbol id="m3w" viewBox="0 0 64 64">
+      <text x="30" y="52" text-anchor="middle" font-family="Archivo, sans-serif" font-weight="800" font-size="62" fill="#FFFFFF">S</text>
+      <rect x="30" y="28" width="30" height="8" rx="4" fill="#FFFFFF" />
+    </symbol>
+    <symbol id="m4w" viewBox="0 0 64 64">
+      <text x="32" y="50" text-anchor="middle" font-family="'Noto Serif Devanagari', serif" font-weight="600" font-size="46" fill="#FFFFFF">स</text>
+      <circle cx="44" cy="10" r="4.6" fill="#FFFFFF" />
+    </symbol>
+    <symbol id="m5w" viewBox="0 0 64 64">
+      <g fill="none" stroke="#FFFFFF" stroke-width="5.5">
+        <circle cx="32" cy="32" r="27" />
+        <path d="M32 9 L55 32 L32 55 L9 32 Z" stroke-linejoin="round" />
+      </g>
+      <circle cx="32" cy="32" r="7" fill="#FFFFFF" />
+    </symbol>
+    <symbol id="m6w" viewBox="0 0 64 64">
+      <rect x="3.5" y="15.5" width="57" height="33" rx="16.5" fill="none" stroke="#FFFFFF" stroke-width="5.5" />
+      <g stroke="#FFFFFF" stroke-width="4" stroke-linecap="round">
+        <path d="M33 26 H50" />
+        <path d="M33 38 H50" />
+      </g>
+      <circle cx="20" cy="32" r="6.5" fill="#FFFFFF" />
+    </symbol>
+    <symbol id="p" viewBox="0 0 64 64">
+      <rect x="3.25" y="16.25" width="57.5" height="31.5" rx="15.75" fill="none" stroke="#14202E" stroke-width="5.5" />
+      <g stroke="#14202E" stroke-width="4" stroke-linecap="round">
+        <path d="M33 26.5 H51" />
+        <path d="M33 37.5 H51" />
+      </g>
+      <circle cx="20" cy="32" r="6.25" fill="#8A6A2F" />
+    </symbol>
+    <symbol id="pb" viewBox="0 0 64 64">
+      <rect x="3.25" y="16.25" width="57.5" height="31.5" rx="15.75" fill="none" stroke="#000000" stroke-width="5.5" />
+      <g stroke="#000000" stroke-width="4" stroke-linecap="round">
+        <path d="M33 26.5 H51" />
+        <path d="M33 37.5 H51" />
+      </g>
+      <circle cx="20" cy="32" r="6.25" fill="#000000" />
+    </symbol>
+    <symbol id="pw" viewBox="0 0 64 64">
+      <rect x="3.25" y="16.25" width="57.5" height="31.5" rx="15.75" fill="none" stroke="#FFFFFF" stroke-width="5.5" />
+      <g stroke="#FFFFFF" stroke-width="4" stroke-linecap="round">
+        <path d="M33 26.5 H51" />
+        <path d="M33 37.5 H51" />
+      </g>
+      <circle cx="20" cy="32" r="6.25" fill="#FFFFFF" />
+    </symbol>
+  </svg>
+
+  <header style="display:flex;flex-direction:column;gap:14px;margin-bottom:48px;max-width:720px">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#8A8274">Identity marks / round 01</div>
+    <h1 style="font-family:Newsreader,serif;font-weight:400;font-size:48px;line-height:1.05;margin:0;letter-spacing:-0.01em">SangamID — six logo directions</h1>
+    <p style="font-family:Newsreader,serif;font-weight:300;font-size:17px;line-height:1.55;margin:0;color:#4A4636;text-wrap:pretty">Each direction is shown as a standalone mark, a horizontal lockup, in single colour on light and dark, and at favicon / header / hero scale. SVG source sits beside every concept for iteration. Two-colour system throughout: ink <span style="font-family:'JetBrains Mono',monospace;font-size:13px">#14202E</span> plus one warm accent per direction.</p>
+  </header>
+
+
+  <section id="3a" style="background:#FFFFFF;border:1px solid #DFD9CC;padding:30px;margin-bottom:22px;display:flex;flex-direction:column;gap:24px">
+    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#A85A28;letter-spacing:0.1em">ROUND 03 · 3a</span>
+      <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:30px;margin:0;letter-spacing:-0.01em">Palm leaf — lowercase setting</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px">
+
+      <div style="background:#F7F5F0;border:1px solid #E9E3D6;padding:26px 24px;display:flex;flex-direction:column;gap:22px;min-width:0">
+        <div style="display:flex;align-items:center;gap:14px;min-width:0">
+          <svg viewBox="0 0 64 64" width="46" height="46" style="flex:none"><use href="#p" /></svg>
+          <div style="font-family:Newsreader,serif;font-size:36px;font-weight:500;letter-spacing:-0.01em;min-width:0">sangam</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px">
+          <div style="display:flex;align-items:center;gap:7px"><svg viewBox="0 0 64 64" width="16" height="16"><use href="#p" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#8A8274">16</span></div>
+          <div style="background:#14202E;padding:9px 12px;display:flex;align-items:center;gap:9px"><svg viewBox="0 0 64 64" width="22" height="22"><use href="#pw" /></svg><span style="font-family:Newsreader,serif;font-size:15px;color:#FFFFFF;font-weight:500">sangam</span></div>
+        </div>
+        <p style="font-family:Newsreader,serif;font-weight:300;font-size:14px;line-height:1.55;margin:0;color:#57534A;text-wrap:pretty">Lowercase drops the announcement and leaves a quiet, level word — the palm-leaf pill and the round shoulders of s, a, n, g sit on the same optical rhythm, so mark and word read as one object.</p>
+      </div>
+
+      <div style="background:#F7F5F0;border:1px solid #E9E3D6;padding:26px 24px;display:flex;flex-direction:column;gap:22px;min-width:0">
+        <div style="display:flex;align-items:center;gap:14px;min-width:0">
+          <svg viewBox="0 0 64 64" width="46" height="46" style="flex:none"><use href="#p" /></svg>
+          <div style="font-family:Newsreader,serif;font-size:36px;font-weight:500;letter-spacing:-0.01em;min-width:0">sangam <span style="font-family:Archivo,sans-serif;font-size:19px;font-weight:600;letter-spacing:0.12em;color:#8A6A2F;vertical-align:0.24em">ID</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px">
+          <div style="display:flex;align-items:center;gap:7px"><svg viewBox="0 0 64 64" width="16" height="16"><use href="#p" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#8A8274">16</span></div>
+          <div style="background:#14202E;padding:9px 12px;display:flex;align-items:center;gap:9px"><svg viewBox="0 0 64 64" width="22" height="22"><use href="#pw" /></svg><span style="font-family:Newsreader,serif;font-size:15px;color:#FFFFFF;font-weight:500">sangam ID</span></div>
+        </div>
+        <p style="font-family:Newsreader,serif;font-weight:300;font-size:14px;line-height:1.55;margin:0;color:#57534A;text-wrap:pretty">The one place caps still earn their keep: ID stays uppercase so it reads as an initialism, and the lowercase name makes the suffix legible instead of competing.</p>
+      </div>
+
+      <div style="background:#F7F5F0;border:1px solid #E9E3D6;padding:26px 24px;display:flex;flex-direction:column;gap:22px;min-width:0">
+        <div style="display:flex;align-items:center;gap:14px;min-width:0">
+          <svg viewBox="0 0 64 64" width="46" height="46" style="flex:none"><use href="#p" /></svg>
+          <div style="font-family:Newsreader,serif;font-size:36px;font-weight:500;letter-spacing:-0.015em;min-width:0">sangam<span style="color:#8A6A2F">ID</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px">
+          <div style="display:flex;align-items:center;gap:7px"><svg viewBox="0 0 64 64" width="16" height="16"><use href="#p" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#8A8274">16</span></div>
+          <div style="background:#14202E;padding:9px 12px;display:flex;align-items:center;gap:9px"><svg viewBox="0 0 64 64" width="22" height="22"><use href="#pw" /></svg><span style="font-family:Newsreader,serif;font-size:15px;color:#FFFFFF;font-weight:500">sangamID</span></div>
+        </div>
+        <p style="font-family:Newsreader,serif;font-weight:300;font-size:14px;line-height:1.55;margin:0;color:#57534A;text-wrap:pretty">Lowercase rescues this setting somewhat — it now reads as a handle rather than an SDK — but the closed-up ID still crowds the mark below 24 px.</p>
+      </div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;padding-top:4px">
+      <div style="width:88px;height:88px;border-radius:19px;background:#14202E;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 64 64" width="50" height="50"><use href="#pw" /></svg></div>
+      <div style="width:88px;height:88px;border-radius:19px;background:#F2EFE8;border:1px solid #E2DCCF;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 64 64" width="50" height="50"><use href="#p" /></svg></div>
+      <div style="width:88px;height:88px;border:1px solid #E9E3D6;background:#fff;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 64 64" width="50" height="50"><use href="#pb" /></svg></div>
+      <p style="font-family:Newsreader,serif;font-weight:300;font-size:15px;line-height:1.55;margin:0;color:#57534A;max-width:360px;text-wrap:pretty">Lowercase also lowers the cap-height, so the wordmark now aligns to the leaf rather than overshooting it. Risk to watch: at 16 px in a browser tab title, a lowercase name loses a little authority next to capitalised partner brands.</p>
+    </div>
+  
+    <div style="background:#14202E;color:#D9D4C7;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.7;padding:16px"><pre style="margin:0;white-space:pre-wrap;word-break:break-word">&lt;!-- final palm-leaf mark (round 03 geometry) --&gt;
+&lt;!-- single colour: set every ink and accent value to currentColor --&gt;
+&lt;svg view<span>Box</span>="0 0 64 64"&gt;
+  &lt;rect x="3.25" y="16.25" width="57.5" height="31.5" rx="15.75"
+        fill="none" stroke="#14202E" stroke-width="5.5"/&gt;
+  &lt;g stroke="#14202E" stroke-width="4" stroke-linecap="round"&gt;
+    &lt;path d="M33 26.5 H51"/&gt;&lt;path d="M33 37.5 H51"/&gt;
+  &lt;/g&gt;
+  &lt;circle cx="20" cy="32" r="6.25" fill="#8A6A2F"/&gt;
+&lt;/svg&gt;</pre></div>
+  </section>
+
+<section id="2a" style="background:#FFFFFF;border:1px solid #DFD9CC;padding:30px;margin-bottom:22px;display:flex;flex-direction:column;gap:24px">
+    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#A85A28;letter-spacing:0.1em">ROUND 02 · 2a</span>
+      <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:30px;margin:0;letter-spacing:-0.01em">Palm leaf — how to write the name</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px">
+
+      <div style="background:#F7F5F0;border:1px solid #E9E3D6;padding:26px 24px;display:flex;flex-direction:column;gap:22px;min-width:0">
+        <div style="display:flex;align-items:center;gap:14px;min-width:0">
+          <svg viewBox="0 0 64 64" width="46" height="46" style="flex:none"><use href="#p" /></svg>
+          <div style="font-family:Newsreader,serif;font-size:36px;font-weight:500;letter-spacing:-0.01em;min-width:0">Sangam</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px">
+          <div style="display:flex;align-items:center;gap:7px"><svg viewBox="0 0 64 64" width="16" height="16"><use href="#p" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#8A8274">16</span></div>
+          <div style="background:#14202E;padding:9px 12px;display:flex;align-items:center;gap:9px"><svg viewBox="0 0 64 64" width="22" height="22"><use href="#pw" /></svg><span style="font-family:Newsreader,serif;font-size:15px;color:#FFFFFF;font-weight:500">Sangam</span></div>
+        </div>
+        <p style="font-family:Newsreader,serif;font-weight:300;font-size:14px;line-height:1.55;margin:0;color:#57534A;text-wrap:pretty">Recommended. Sayable, ownable, and it lets the mark carry the weight. "Sign in with Sangam" is a sentence a doctor would actually say.</p>
+      </div>
+
+      <div style="background:#F7F5F0;border:1px solid #E9E3D6;padding:26px 24px;display:flex;flex-direction:column;gap:22px;min-width:0">
+        <div style="display:flex;align-items:center;gap:14px;min-width:0">
+          <svg viewBox="0 0 64 64" width="46" height="46" style="flex:none"><use href="#p" /></svg>
+          <div style="font-family:Newsreader,serif;font-size:36px;font-weight:500;letter-spacing:-0.01em;min-width:0">Sangam <span style="font-family:Archivo,sans-serif;font-size:19px;font-weight:600;letter-spacing:0.12em;color:#8A6A2F;vertical-align:0.24em">ID</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px">
+          <div style="display:flex;align-items:center;gap:7px"><svg viewBox="0 0 64 64" width="16" height="16"><use href="#p" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#8A8274">16</span></div>
+          <div style="background:#14202E;padding:9px 12px;display:flex;align-items:center;gap:9px"><svg viewBox="0 0 64 64" width="22" height="22"><use href="#pw" /></svg><span style="font-family:Newsreader,serif;font-size:15px;color:#FFFFFF;font-weight:500">Sangam ID</span></div>
+        </div>
+        <p style="font-family:Newsreader,serif;font-weight:300;font-size:14px;line-height:1.55;margin:0;color:#57534A;text-wrap:pretty">Use where the function must be explicit — console chrome, docs, consent screens. The ID sits as a small tracked suffix, never the same size as the name.</p>
+      </div>
+
+      <div style="background:#F7F5F0;border:1px solid #E9E3D6;padding:26px 24px;display:flex;flex-direction:column;gap:22px;min-width:0">
+        <div style="display:flex;align-items:center;gap:14px;min-width:0">
+          <svg viewBox="0 0 64 64" width="46" height="46" style="flex:none"><use href="#p" /></svg>
+          <div style="font-family:Newsreader,serif;font-size:36px;font-weight:500;letter-spacing:-0.015em;min-width:0">Sangam<span style="color:#8A6A2F">ID</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px">
+          <div style="display:flex;align-items:center;gap:7px"><svg viewBox="0 0 64 64" width="16" height="16"><use href="#p" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#8A8274">16</span></div>
+          <div style="background:#14202E;padding:9px 12px;display:flex;align-items:center;gap:9px"><svg viewBox="0 0 64 64" width="22" height="22"><use href="#pw" /></svg><span style="font-family:Newsreader,serif;font-size:15px;color:#FFFFFF;font-weight:500">SangamID</span></div>
+        </div>
+        <p style="font-family:Newsreader,serif;font-weight:300;font-size:14px;line-height:1.55;margin:0;color:#57534A;text-wrap:pretty">Keep for the domain, package names and repo. Set as a logotype it reads like an SDK and the closed-up ID crowds the mark at small sizes.</p>
+      </div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;padding-top:4px">
+      <div style="width:88px;height:88px;border-radius:19px;background:#14202E;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 64 64" width="50" height="50"><use href="#pw" /></svg></div>
+      <div style="width:88px;height:88px;border-radius:19px;background:#F2EFE8;border:1px solid #E2DCCF;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 64 64" width="50" height="50"><use href="#p" /></svg></div>
+      <div style="width:88px;height:88px;border:1px solid #E9E3D6;background:#fff;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 64 64" width="50" height="50"><use href="#pb" /></svg></div>
+      <p style="font-family:Newsreader,serif;font-weight:300;font-size:15px;line-height:1.55;margin:0;color:#57534A;max-width:360px;text-wrap:pretty">Optical tuning from round 01: leaf edge pulled marginally wider, rules lengthened to 51, cord hole reduced to r6.25 so the counter between hole and leaf edge survives at 16 px.</p>
+    </div>
+  </section>
+
+  <div style="display:flex;flex-direction:column;gap:22px">
+
+    <article style="background:#FFFFFF;border:1px solid #DFD9CC;padding:30px;display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:34px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="background:#F7F5F0;border:1px solid #E9E3D6;height:190px;display:flex;align-items:center;justify-content:center">
+          <svg viewBox="0 0 64 64" width="104" height="104" style="color:#14202E;--a:#2F6B62"><use href="#m1" /></svg>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div style="background:#FFFFFF;border:1px solid #E9E3D6;height:104px;display:flex;align-items:center;justify-content:center">
+            <svg viewBox="0 0 64 64" width="54" height="54" style="color:#000"><use href="#m1b" /></svg>
+          </div>
+          <div style="background:#14202E;height:104px;display:flex;align-items:center;justify-content:center">
+            <svg viewBox="0 0 64 64" width="54" height="54" style="color:#fff"><use href="#m1w" /></svg>
+          </div>
+        </div>
+        <div style="background:#F7F5F0;border:1px solid #E9E3D6;padding:22px;display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <svg viewBox="0 0 64 64" width="38" height="38" style="color:#14202E;--a:#2F6B62"><use href="#m1" /></svg>
+            <div style="font-size:26px;font-weight:600;letter-spacing:-0.02em">Sangam<span style="color:#2F6B62">ID</span></div>
+          </div>
+          <div style="display:flex;align-items:flex-end;gap:26px">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><svg viewBox="0 0 64 64" width="16" height="16" style="color:#14202E;--a:#2F6B62"><use href="#m1" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#8A8274">16</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><svg viewBox="0 0 64 64" width="28" height="28" style="color:#14202E;--a:#2F6B62"><use href="#m1" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#8A8274">28</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><svg viewBox="0 0 64 64" width="72" height="72" style="color:#14202E;--a:#2F6B62"><use href="#m1" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#8A8274">72</span></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+        <div style="display:flex;align-items:baseline;gap:12px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#A85A28;letter-spacing:0.1em">01</span>
+          <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:30px;margin:0;letter-spacing:-0.01em">Confluence</h2>
+        </div>
+        <p style="font-family:Newsreader,serif;font-weight:300;font-size:16px;line-height:1.6;margin:0;color:#43403A;text-wrap:pretty">Two streams enter from opposite sides, bend toward each other and leave as a single stem — the literal sangam, drawn with the restraint of a wayfinding glyph rather than an illustration. The two inbound strokes carry different colours (ink and river-teal) so that "two becoming one" survives even when the mark is 16 px; in single colour the geometry still reads because the junction is a clean visual weld, not an overlap. It doubles as a lowercase-y / arrow-down, which quietly suggests "sign in here" at the top of a login screen.</p>
+        <div style="background:#14202E;color:#D9D4C7;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.7;padding:16px"><pre style="margin:0;white-space:pre-wrap;word-break:break-word">&lt;svg view<span>Box</span>="0 0 64 64" fill="none" stroke-width="9.5" stroke-linecap="round"&gt;
+  &lt;path d="M13 8 V19 C13 30 32 27 32 38" stroke="#14202E"/&gt;
+  &lt;path d="M51 8 V19 C51 30 32 27 32 38" stroke="#2F6B62"/&gt;
+  &lt;path d="M32 38 V56" stroke="#14202E"/&gt;
+&lt;/svg&gt;</pre></div>
+      </div>
+    </article>
+
+    <article style="background:#FFFFFF;border:1px solid #DFD9CC;padding:30px;display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:34px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="background:#F7F5F0;border:1px solid #E9E3D6;height:190px;display:flex;align-items:center;justify-content:center">
+          <svg viewBox="0 0 64 64" width="104" height="104" style="color:#14202E;--a:#A85A28"><use href="#m2" /></svg>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div style="background:#FFFFFF;border:1px solid #E9E3D6;height:104px;display:flex;align-items:center;justify-content:center">
+            <svg viewBox="0 0 64 64" width="54" height="54" style="color:#000"><use href="#m2b" /></svg>
+          </div>
+          <div style="background:#14202E;height:104px;display:flex;align-items:center;justify-content:center">
+            <svg viewBox="0 0 64 64" width="54" height="54" style="color:#fff"><use href="#m2w" /></svg>
+          </div>
+        </div>
+        <div style="background:#F7F5F0;border:1px solid #E9E3D6;padding:22px;display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <svg viewBox="0 0 64 64" width="38" height="38" style="color:#14202E;--a:#A85A28"><use href="#m2" /></svg>
+            <div style="font-size:26px;font-weight:600;letter-spacing:-0.02em">Sangam<span style="color:#A85A28">ID</span></div>
+          </div>
+          <div style="display:flex;align-items:flex-end;gap:26px">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><svg viewBox="0 0 64 64" width="16" height="16" style="color:#14202E;--a:#A85A28"><use href="#m2" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#8A8274">16</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><svg viewBox="0 0 64 64" width="28" height="28" style="color:#14202E;--a:#A85A28"><use href="#m2" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#8A8274">28</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><svg viewBox="0 0 64 64" width="72" height="72" style="color:#14202E;--a:#A85A28"><use href="#m2" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#8A8274">72</span></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+        <div style="display:flex;align-items:baseline;gap:12px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#A85A28;letter-spacing:0.1em">02</span>
+          <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:30px;margin:0;letter-spacing:-0.01em">S / I monogram</h2>
+        </div>
+        <p style="font-family:Newsreader,serif;font-weight:300;font-size:16px;line-height:1.6;margin:0;color:#43403A;text-wrap:pretty">An S built from two half-round hooks, split apart and threaded onto a single vertical I. Read one way it is the initials SI; read another it is two counterparts clasped onto a shared spine — which is exactly what a federated identity layer does. The construction is strictly one stroke weight and one radius, so it engraves, embroiders and reverses out cleanly; the hooks and the spine can be coloured separately to hint that the partners differ while the backbone does not. Strong app-icon candidate because the vertical spine gives it a confident centre of gravity in a square.</p>
+        <div style="background:#14202E;color:#D9D4C7;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.7;padding:16px"><pre style="margin:0;white-space:pre-wrap;word-break:break-word">&lt;svg view<span>Box</span>="0 0 64 64" fill="none" stroke-width="9.5" stroke-linecap="square"&gt;
+  &lt;path d="M44 9 H24 A11 11 0 0 0 24 31 H32" stroke="#A85A28"/&gt;
+  &lt;path d="M20 55 H40 A11 11 0 0 0 40 33 H32" stroke="#14202E"/&gt;
+  &lt;path d="M32 6 V58" stroke="#14202E"/&gt;
+&lt;/svg&gt;</pre></div>
+      </div>
+    </article>
+
+    <article style="background:#FFFFFF;border:1px solid #DFD9CC;padding:30px;display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:34px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="background:#F7F5F0;border:1px solid #E9E3D6;height:190px;display:flex;align-items:center;justify-content:center;padding:0 24px">
+          <div style="font-size:44px;font-weight:700;letter-spacing:-0.035em;display:flex;align-items:center;gap:6px">Sangam<span style="display:inline-block;width:26px;height:8px;background:#A85A28;border-radius:4px"></span>ID</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div style="background:#FFFFFF;border:1px solid #E9E3D6;height:104px;display:flex;align-items:center;justify-content:center">
+            <svg viewBox="0 0 64 64" width="54" height="54" style="color:#000"><use href="#m3b" /></svg>
+          </div>
+          <div style="background:#14202E;height:104px;display:flex;align-items:center;justify-content:center">
+            <svg viewBox="0 0 64 64" width="54" height="54" style="color:#fff"><use href="#m3w" /></svg>
+          </div>
+        </div>
+        <div style="background:#F7F5F0;border:1px solid #E9E3D6;padding:22px;display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <svg viewBox="0 0 64 64" width="38" height="38" style="color:#14202E;--a:#A85A28"><use href="#m3" /></svg>
+            <div style="font-size:26px;font-weight:700;letter-spacing:-0.03em">Sangam<span style="color:#A85A28">ID</span></div>
+          </div>
+          <div style="display:flex;align-items:flex-end;gap:26px">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><svg viewBox="0 0 64 64" width="16" height="16" style="color:#14202E;--a:#A85A28"><use href="#m3" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#8A8274">16</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><svg viewBox="0 0 64 64" width="28" height="28" style="color:#14202E;--a:#A85A28"><use href="#m3" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#8A8274">28</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><svg viewBox="0 0 64 64" width="72" height="72" style="color:#14202E;--a:#A85A28"><use href="#m3" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#8A8274">72</span></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+        <div style="display:flex;align-items:baseline;gap:12px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#A85A28;letter-spacing:0.1em">03</span>
+          <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:30px;margin:0;letter-spacing:-0.01em">Wordmark with a joint</h2>
+        </div>
+        <p style="font-family:Newsreader,serif;font-weight:300;font-size:16px;line-height:1.6;margin:0;color:#43403A;text-wrap:pretty">No symbol at all: a tightly tracked grotesque wordmark in which a short accent bar sits between "Sangam" and "ID" — a coupler, not a separator, so the name reads as one object made of two parts. The reduced mark is simply the capital S with that same bar docked at its waist, which keeps favicon and wordmark provably from the same drawing. This is the least decorative and most infrastructural option; it ages well, translates instantly into a Devanagari companion wordmark, and never competes with partner brands sitting next to it on a consent screen.</p>
+        <div style="background:#14202E;color:#D9D4C7;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.7;padding:16px"><pre style="margin:0;white-space:pre-wrap;word-break:break-word">&lt;!-- reduced mark: outline the S before shipping --&gt;
+&lt;svg view<span>Box</span>="0 0 64 64"&gt;
+  &lt;text x="30" y="52" text-anchor="middle" font-family="Archivo"
+        font-weight="800" font-size="62" fill="#14202E"&gt;S&lt;/text&gt;
+  &lt;rect x="30" y="28" width="30" height="8" rx="4" fill="#A85A28"/&gt;
+&lt;/svg&gt;</pre></div>
+      </div>
+    </article>
+
+    <article style="background:#FFFFFF;border:1px solid #DFD9CC;padding:30px;display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:34px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="background:#F7F5F0;border:1px solid #E9E3D6;height:190px;display:flex;align-items:center;justify-content:center">
+          <svg viewBox="0 0 64 64" width="104" height="104" style="color:#14202E;--a:#A85A28"><use href="#m4" /></svg>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div style="background:#FFFFFF;border:1px solid #E9E3D6;height:104px;display:flex;align-items:center;justify-content:center">
+            <svg viewBox="0 0 64 64" width="54" height="54" style="color:#000"><use href="#m4b" /></svg>
+          </div>
+          <div style="background:#14202E;height:104px;display:flex;align-items:center;justify-content:center">
+            <svg viewBox="0 0 64 64" width="54" height="54" style="color:#fff"><use href="#m4w" /></svg>
+          </div>
+        </div>
+        <div style="background:#F7F5F0;border:1px solid #E9E3D6;padding:22px;display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <svg viewBox="0 0 64 64" width="38" height="38" style="color:#14202E;--a:#A85A28"><use href="#m4" /></svg>
+            <div style="font-size:26px;font-weight:600;letter-spacing:-0.02em">Sangam<span style="color:#A85A28">ID</span></div>
+          </div>
+          <div style="display:flex;align-items:flex-end;gap:26px">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><svg viewBox="0 0 64 64" width="16" height="16" style="color:#14202E;--a:#A85A28"><use href="#m4" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#8A8274">16</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><svg viewBox="0 0 64 64" width="28" height="28" style="color:#14202E;--a:#A85A28"><use href="#m4" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#8A8274">28</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><svg viewBox="0 0 64 64" width="72" height="72" style="color:#14202E;--a:#A85A28"><use href="#m4" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#8A8274">72</span></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+        <div style="display:flex;align-items:baseline;gap:12px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#A85A28;letter-spacing:0.1em">04</span>
+          <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:30px;margin:0;letter-spacing:-0.01em">सं — the first syllable</h2>
+        </div>
+        <p style="font-family:Newsreader,serif;font-weight:300;font-size:16px;line-height:1.6;margin:0;color:#43403A;text-wrap:pretty">The Devanagari syllable सं, drawn as the mark itself, with the anusvāra lifted out as a free accent dot in warm ochre. The move is deliberately understated: a reader of Devanagari sees the name begin; everyone else sees a calm, well-balanced glyph with a floating dot, which is also the shape of a status indicator. It carries cultural warmth without a single ornament, and the detached dot becomes a reusable brand atom (session active, verified, consent granted) across the product. Needs a custom-drawn, outlined letterform before shipping so the counters stay open at 16 px.</p>
+        <div style="background:#14202E;color:#D9D4C7;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.7;padding:16px"><pre style="margin:0;white-space:pre-wrap;word-break:break-word">&lt;!-- draft: convert the glyph to outlines for production --&gt;
+&lt;svg view<span>Box</span>="0 0 64 64"&gt;
+  &lt;text x="32" y="50" text-anchor="middle" font-size="46" font-weight="600"
+        font-family="Noto Serif Devanagari" fill="#14202E"&gt;स&lt;/text&gt;
+  &lt;circle cx="44" cy="10" r="4.6" fill="#A85A28"/&gt;
+&lt;/svg&gt;</pre></div>
+      </div>
+    </article>
+
+    <article style="background:#FFFFFF;border:1px solid #DFD9CC;padding:30px;display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:34px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="background:#F7F5F0;border:1px solid #E9E3D6;height:190px;display:flex;align-items:center;justify-content:center">
+          <svg viewBox="0 0 64 64" width="104" height="104" style="color:#14202E;--a:#A85A28"><use href="#m5" /></svg>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div style="background:#FFFFFF;border:1px solid #E9E3D6;height:104px;display:flex;align-items:center;justify-content:center">
+            <svg viewBox="0 0 64 64" width="54" height="54" style="color:#000"><use href="#m5b" /></svg>
+          </div>
+          <div style="background:#14202E;height:104px;display:flex;align-items:center;justify-content:center">
+            <svg viewBox="0 0 64 64" width="54" height="54" style="color:#fff"><use href="#m5w" /></svg>
+          </div>
+        </div>
+        <div style="background:#F7F5F0;border:1px solid #E9E3D6;padding:22px;display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <svg viewBox="0 0 64 64" width="38" height="38" style="color:#14202E;--a:#A85A28"><use href="#m5" /></svg>
+            <div style="font-size:26px;font-weight:500;letter-spacing:0.02em">Sangam<span style="color:#A85A28">ID</span></div>
+          </div>
+          <div style="display:flex;align-items:flex-end;gap:26px">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><svg viewBox="0 0 64 64" width="16" height="16" style="color:#14202E;--a:#A85A28"><use href="#m5" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#8A8274">16</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><svg viewBox="0 0 64 64" width="28" height="28" style="color:#14202E;--a:#A85A28"><use href="#m5" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#8A8274">28</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><svg viewBox="0 0 64 64" width="72" height="72" style="color:#14202E;--a:#A85A28"><use href="#m5" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#8A8274">72</span></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+        <div style="display:flex;align-items:baseline;gap:12px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#A85A28;letter-spacing:0.1em">05</span>
+          <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:30px;margin:0;letter-spacing:-0.01em">Yantra, reduced</h2>
+        </div>
+        <p style="font-family:Newsreader,serif;font-weight:300;font-size:16px;line-height:1.6;margin:0;color:#43403A;text-wrap:pretty">A yantra stripped to its three structural moves: enclosing circle, inscribed square turned on point, and the bindu at centre. Sacred geometry is a diagram of ordered relationships, which is a surprisingly literal description of an identity system — many participants arranged around one trusted centre. Kept to a single stroke weight and a solid centre dot, it stays legible as a favicon where a real yantra would collapse into mud, and it is the most obviously Indian of the six without borrowing a single decorative motif. Pairs with a lighter, wider-tracked wordmark to avoid feeling like a badge.</p>
+        <div style="background:#14202E;color:#D9D4C7;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.7;padding:16px"><pre style="margin:0;white-space:pre-wrap;word-break:break-word">&lt;svg view<span>Box</span>="0 0 64 64"&gt;
+  &lt;g fill="none" stroke="#14202E" stroke-width="5.5"&gt;
+    &lt;circle cx="32" cy="32" r="27"/&gt;
+    &lt;path d="M32 9 L55 32 L32 55 L9 32 Z" stroke-linejoin="round"/&gt;
+  &lt;/g&gt;
+  &lt;circle cx="32" cy="32" r="7" fill="#A85A28"/&gt;
+&lt;/svg&gt;</pre></div>
+      </div>
+    </article>
+
+    <article style="background:#FFFFFF;border:1px solid #DFD9CC;padding:30px;display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:34px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="background:#F7F5F0;border:1px solid #E9E3D6;height:190px;display:flex;align-items:center;justify-content:center">
+          <svg viewBox="0 0 64 64" width="104" height="104" style="color:#14202E;--a:#8A6A2F"><use href="#m6" /></svg>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div style="background:#FFFFFF;border:1px solid #E9E3D6;height:104px;display:flex;align-items:center;justify-content:center">
+            <svg viewBox="0 0 64 64" width="54" height="54" style="color:#000"><use href="#m6b" /></svg>
+          </div>
+          <div style="background:#14202E;height:104px;display:flex;align-items:center;justify-content:center">
+            <svg viewBox="0 0 64 64" width="54" height="54" style="color:#fff"><use href="#m6w" /></svg>
+          </div>
+        </div>
+        <div style="background:#F7F5F0;border:1px solid #E9E3D6;padding:22px;display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <svg viewBox="0 0 64 64" width="38" height="38" style="color:#14202E;--a:#8A6A2F"><use href="#m6" /></svg>
+            <div style="font-family:Newsreader,serif;font-size:28px;font-weight:500;letter-spacing:-0.01em">Sangam<span style="color:#8A6A2F">ID</span></div>
+          </div>
+          <div style="display:flex;align-items:flex-end;gap:26px">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><svg viewBox="0 0 64 64" width="16" height="16" style="color:#14202E;--a:#8A6A2F"><use href="#m6" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#8A8274">16</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><svg viewBox="0 0 64 64" width="28" height="28" style="color:#14202E;--a:#8A6A2F"><use href="#m6" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#8A8274">28</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><svg viewBox="0 0 64 64" width="72" height="72" style="color:#14202E;--a:#8A6A2F"><use href="#m6" /></svg><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#8A8274">72</span></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+        <div style="display:flex;align-items:baseline;gap:12px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#A85A28;letter-spacing:0.1em">06</span>
+          <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:30px;margin:0;letter-spacing:-0.01em">Palm leaf</h2>
+        </div>
+        <p style="font-family:Newsreader,serif;font-weight:300;font-size:16px;line-height:1.6;margin:0;color:#43403A;text-wrap:pretty">A single palm-leaf folio seen flat: the rounded leaf edge, two incised lines of text, and the cord hole that binds one leaf to the next. That hole is the whole idea — a record is only useful when it can be threaded to every other record, which is the argument for a shared identity layer. It is the warmest of the six and the most obviously kin to LiPi, and because the silhouette is a horizontal pill with one strong dot, it holds together at 16 px better than any of the other figurative options. Best paired with a serif wordmark; it looks wrong next to a hard grotesque.</p>
+        <div style="background:#14202E;color:#D9D4C7;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.7;padding:16px"><pre style="margin:0;white-space:pre-wrap;word-break:break-word">&lt;svg view<span>Box</span>="0 0 64 64"&gt;
+  &lt;rect x="3.5" y="15.5" width="57" height="33" rx="16.5"
+        fill="none" stroke="#14202E" stroke-width="5.5"/&gt;
+  &lt;g stroke="#14202E" stroke-width="4" stroke-linecap="round"&gt;
+    &lt;path d="M33 26 H50"/&gt;&lt;path d="M33 38 H50"/&gt;
+  &lt;/g&gt;
+  &lt;circle cx="20" cy="32" r="6.5" fill="#8A6A2F"/&gt;
+&lt;/svg&gt;</pre></div>
+      </div>
+    </article>
+
+  </div>
+
+  <section style="margin-top:44px;background:#FFFFFF;border:1px solid #DFD9CC;padding:30px;display:flex;flex-direction:column;gap:22px">
+    <h2 style="font-family:Newsreader,serif;font-weight:400;font-size:26px;margin:0">In situ — 512 px app icons and a login header</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:18px">
+      <div style="width:104px;height:104px;border-radius:22px;background:#14202E;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 64 64" width="58" height="58" style="color:#F2EFE8"><use href="#m1w" /></svg></div>
+      <div style="width:104px;height:104px;border-radius:22px;background:#14202E;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 64 64" width="58" height="58" style="color:#F2EFE8"><use href="#m2w" /></svg></div>
+      <div style="width:104px;height:104px;border-radius:22px;background:#F2EFE8;border:1px solid #E2DCCF;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 64 64" width="58" height="58" style="color:#14202E;--a:#A85A28"><use href="#m3" /></svg></div>
+      <div style="width:104px;height:104px;border-radius:22px;background:#F2EFE8;border:1px solid #E2DCCF;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 64 64" width="58" height="58" style="color:#14202E;--a:#A85A28"><use href="#m4" /></svg></div>
+      <div style="width:104px;height:104px;border-radius:22px;background:#14202E;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 64 64" width="58" height="58" style="color:#F2EFE8"><use href="#m5w" /></svg></div>
+      <div style="width:104px;height:104px;border-radius:22px;background:#F2EFE8;border:1px solid #E2DCCF;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 64 64" width="58" height="58" style="color:#14202E;--a:#8A6A2F"><use href="#m6" /></svg></div>
+    </div>
+    <div style="border:1px solid #E9E3D6;background:#FBFAF7;padding:0;max-width:520px">
+      <div style="border-bottom:1px solid #EDE7DA;padding:14px 18px;display:flex;align-items:center;gap:10px">
+        <svg viewBox="0 0 64 64" width="26" height="26" style="color:#14202E;--a:#2F6B62"><use href="#m1" /></svg>
+        <span style="font-size:17px;font-weight:600;letter-spacing:-0.02em">Sangam<span style="color:#2F6B62">ID</span></span>
+      </div>
+      <div style="padding:26px 18px 30px;display:flex;flex-direction:column;gap:14px">
+        <div style="font-family:Newsreader,serif;font-size:21px">Continue to Aarogya Clinic Suite</div>
+        <div style="height:40px;border:1px solid #DDD7C9;background:#fff"></div>
+        <div style="height:40px;border:1px solid #DDD7C9;background:#fff"></div>
+        <div style="height:42px;background:#14202E;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500">Sign in</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+</x-dc>
+</body>
+</html>

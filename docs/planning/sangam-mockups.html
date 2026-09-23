@@ -1,0 +1,1685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sangam — Visual Mockups (with LiPi as example partner)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Italiana&family=Manrope:wght@300;400;500;600;700;800&family=Mukta:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ===== Design Tokens ===== */
+  :root {
+    /* Sangam palette — quiet authority */
+    --sangam-ink: #0B3A4E;
+    --sangam-ink-deep: #062734;
+    --sangam-cream: #F5F1E8;
+    --sangam-cream-warm: #EFE8D8;
+    --sangam-paper: #FAFAF7;
+    --sangam-text: #1A1F2C;
+    --sangam-muted: #6B6F7A;
+    --sangam-border: #D4CFC0;
+    --sangam-accent: #C97B6E;
+    --sangam-success: #4F7B5C;
+
+    /* LiPi palette — editorial / script-literary */
+    --lipi-indigo: #1A1F4A;
+    --lipi-indigo-deep: #0E1132;
+    --lipi-saffron: #C97B3C;
+    --lipi-parchment: #F7F2E8;
+    --lipi-text: #2A2522;
+    --lipi-muted: #6E6862;
+    --lipi-border: #D9CFB8;
+    --lipi-sindoor: #A8323A;
+
+    /* Page background */
+    --page-bg: #ECE7DB;
+    --frame-shadow: 0 30px 60px -20px rgba(11,58,78,0.18), 0 18px 36px -18px rgba(11,58,78,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--page-bg);
+    color: #1A1F2C;
+    font-family: 'Manrope', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.55;
+  }
+
+  /* ===== Page-level navigation & headings ===== */
+
+  .doc-header {
+    padding: 80px 40px 40px;
+    text-align: center;
+    border-bottom: 1px solid rgba(11,58,78,0.1);
+    background: linear-gradient(180deg, var(--page-bg) 0%, rgba(245,241,232,0.6) 100%);
+  }
+  .doc-header h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 500;
+    font-size: clamp(36px, 5vw, 56px);
+    color: var(--sangam-ink-deep);
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+  }
+  .doc-header h1 .devanagari {
+    font-family: 'Mukta', sans-serif;
+    font-weight: 300;
+    color: var(--sangam-accent);
+    font-size: 0.85em;
+    margin-right: 8px;
+    vertical-align: 1px;
+  }
+  .doc-header p {
+    font-size: 16px;
+    color: var(--sangam-muted);
+    max-width: 640px;
+    margin: 0 auto;
+  }
+
+  .section {
+    padding: 64px 24px 40px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .section-header {
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(11,58,78,0.12);
+  }
+  .section-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--sangam-accent);
+    margin-bottom: 8px;
+  }
+  .section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 500;
+    font-size: 32px;
+    color: var(--sangam-ink-deep);
+    letter-spacing: -0.01em;
+    margin-bottom: 10px;
+  }
+  .section-description {
+    font-size: 15px;
+    color: var(--sangam-muted);
+    max-width: 700px;
+    line-height: 1.7;
+  }
+
+  .annotation {
+    background: var(--sangam-cream-warm);
+    border-left: 3px solid var(--sangam-ink);
+    padding: 14px 18px;
+    border-radius: 0 8px 8px 0;
+    margin: 24px 0;
+    font-size: 14px;
+    color: var(--sangam-text);
+  }
+  .annotation strong {
+    color: var(--sangam-ink-deep);
+    font-weight: 600;
+  }
+
+  /* ===== Browser frame ===== */
+  .browser-frame {
+    background: white;
+    border-radius: 12px;
+    box-shadow: var(--frame-shadow);
+    overflow: hidden;
+    margin: 32px 0;
+    border: 1px solid rgba(11,58,78,0.08);
+  }
+  .browser-chrome {
+    background: linear-gradient(180deg, #ECE6D6 0%, #E0D9C6 100%);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+  }
+  .browser-dots {
+    display: flex;
+    gap: 6px;
+  }
+  .browser-dots span {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.15);
+  }
+  .browser-dots span:nth-child(1) { background: #E07767; }
+  .browser-dots span:nth-child(2) { background: #DFAA47; }
+  .browser-dots span:nth-child(3) { background: #66A659; }
+  .browser-url {
+    flex: 1;
+    background: rgba(255,255,255,0.6);
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: #4A4640;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .browser-url svg { width: 12px; height: 12px; flex-shrink: 0; }
+  .browser-body {
+    background: white;
+  }
+
+  /* ============================================================ */
+  /* LiPi styles — Editorial, literary, script-honoring          */
+  /* ============================================================ */
+
+  .lipi-page {
+    background: var(--lipi-parchment);
+    color: var(--lipi-text);
+    font-family: 'Manrope', sans-serif;
+  }
+
+  .lipi-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 28px 56px;
+    border-bottom: 1px solid rgba(26,31,74,0.08);
+  }
+  .lipi-wordmark {
+    font-family: 'Italiana', serif;
+    font-size: 30px;
+    color: var(--lipi-indigo);
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .lipi-wordmark .script {
+    font-family: 'Mukta', sans-serif;
+    font-weight: 300;
+    font-size: 26px;
+    color: var(--lipi-saffron);
+  }
+  .lipi-nav-links {
+    display: flex;
+    gap: 36px;
+    align-items: center;
+  }
+  .lipi-nav-links a {
+    color: var(--lipi-text);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .lipi-nav-links a:hover { color: var(--lipi-saffron); }
+  .lipi-btn {
+    background: var(--lipi-indigo);
+    color: var(--lipi-parchment);
+    padding: 10px 22px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    transition: background 0.2s;
+  }
+  .lipi-btn:hover { background: var(--lipi-indigo-deep); }
+
+  .lipi-hero {
+    padding: 80px 56px 100px;
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 60px;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .lipi-hero::before {
+    content: 'अ';
+    position: absolute;
+    font-family: 'Mukta', sans-serif;
+    font-size: 480px;
+    color: rgba(201,123,60,0.06);
+    right: -40px;
+    top: -100px;
+    line-height: 1;
+    pointer-events: none;
+  }
+  .lipi-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--lipi-saffron);
+    margin-bottom: 18px;
+  }
+  .lipi-hero h1 {
+    font-family: 'Italiana', serif;
+    font-weight: 400;
+    font-size: 64px;
+    color: var(--lipi-indigo);
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+    margin-bottom: 24px;
+  }
+  .lipi-hero h1 em {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-weight: 500;
+    color: var(--lipi-sindoor);
+  }
+  .lipi-hero p {
+    font-size: 17px;
+    line-height: 1.7;
+    color: var(--lipi-muted);
+    margin-bottom: 36px;
+    max-width: 480px;
+  }
+  .lipi-hero-cta {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+  }
+  .lipi-btn-primary {
+    background: var(--lipi-indigo);
+    color: var(--lipi-parchment);
+    padding: 14px 32px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.2s;
+  }
+  .lipi-btn-primary:hover { background: var(--lipi-indigo-deep); transform: translateY(-1px); }
+  .lipi-btn-secondary {
+    color: var(--lipi-indigo);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 14px 4px;
+    border-bottom: 1.5px solid var(--lipi-indigo);
+  }
+
+  .lipi-scripts-display {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+  }
+  .lipi-scripts-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 18px;
+    align-items: baseline;
+  }
+  .lipi-script-char {
+    font-family: 'Mukta', sans-serif;
+    font-size: 96px;
+    color: var(--lipi-indigo);
+    line-height: 1;
+    font-weight: 300;
+  }
+  .lipi-script-char:nth-child(2) { color: var(--lipi-saffron); }
+  .lipi-script-char:nth-child(3) { color: var(--lipi-sindoor); }
+  .lipi-script-char:nth-child(4) { color: var(--lipi-indigo); opacity: 0.7; }
+  .lipi-scripts-label {
+    margin-top: 24px;
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 16px;
+    color: var(--lipi-muted);
+  }
+
+  /* ============================================================ */
+  /* Sangam styles — Quiet authority                              */
+  /* ============================================================ */
+
+  .sangam-page {
+    background: var(--sangam-cream);
+    color: var(--sangam-text);
+    font-family: 'Manrope', sans-serif;
+    min-height: 600px;
+  }
+
+  .sangam-shell {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    min-height: 640px;
+  }
+
+  /* Left side: brand panel */
+  .sangam-brand-panel {
+    background: var(--sangam-ink);
+    color: var(--sangam-cream);
+    padding: 48px 56px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+  }
+  .sangam-brand-panel::before {
+    content: 'सं';
+    position: absolute;
+    font-family: 'Mukta', sans-serif;
+    font-weight: 300;
+    font-size: 600px;
+    color: rgba(245,241,232,0.03);
+    bottom: -180px;
+    left: -60px;
+    line-height: 1;
+    pointer-events: none;
+  }
+  .sangam-wordmark {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 500;
+    font-size: 26px;
+    color: var(--sangam-cream);
+    letter-spacing: 0.02em;
+    position: relative;
+    z-index: 1;
+  }
+  .sangam-wordmark .mark {
+    font-family: 'Mukta', sans-serif;
+    font-weight: 300;
+    font-size: 22px;
+    color: var(--sangam-accent);
+  }
+  .sangam-brand-content {
+    position: relative;
+    z-index: 1;
+  }
+  .sangam-brand-quote {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 400;
+    font-style: italic;
+    font-size: 28px;
+    line-height: 1.35;
+    color: var(--sangam-cream);
+    margin-bottom: 18px;
+    letter-spacing: -0.005em;
+  }
+  .sangam-brand-quote em {
+    font-style: normal;
+    color: var(--sangam-accent);
+  }
+  .sangam-brand-attribution {
+    font-size: 13px;
+    color: rgba(245,241,232,0.6);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.04em;
+  }
+  .sangam-brand-foot {
+    position: relative;
+    z-index: 1;
+    font-size: 12px;
+    color: rgba(245,241,232,0.5);
+  }
+
+  /* Right side: form panel */
+  .sangam-form-panel {
+    padding: 56px 64px;
+    background: var(--sangam-paper);
+    display: flex;
+    flex-direction: column;
+  }
+  .sangam-partner-context {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--sangam-cream-warm);
+    border-radius: 8px;
+    margin-bottom: 36px;
+    align-self: flex-start;
+  }
+  .sangam-partner-context .partner-logo {
+    width: 28px;
+    height: 28px;
+    background: var(--lipi-indigo);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--lipi-parchment);
+    font-family: 'Italiana', serif;
+    font-size: 14px;
+  }
+  .sangam-partner-context .partner-text {
+    font-size: 12px;
+    color: var(--sangam-muted);
+  }
+  .sangam-partner-context .partner-text strong {
+    color: var(--sangam-text);
+    font-weight: 600;
+  }
+
+  .sangam-form-heading {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 500;
+    font-size: 36px;
+    color: var(--sangam-ink-deep);
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    margin-bottom: 8px;
+  }
+  .sangam-form-subheading {
+    font-size: 14px;
+    color: var(--sangam-muted);
+    margin-bottom: 32px;
+  }
+
+  .sangam-field {
+    margin-bottom: 18px;
+  }
+  .sangam-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--sangam-text);
+    margin-bottom: 6px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  .sangam-field input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--sangam-border);
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 15px;
+    color: var(--sangam-text);
+    background: white;
+    transition: border 0.2s, box-shadow 0.2s;
+  }
+  .sangam-field input:focus {
+    outline: none;
+    border-color: var(--sangam-ink);
+    box-shadow: 0 0 0 3px rgba(11,58,78,0.08);
+  }
+  .sangam-field-hint {
+    font-size: 12px;
+    color: var(--sangam-muted);
+    margin-top: 4px;
+  }
+  .sangam-field-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 6px;
+  }
+  .sangam-field-meta a {
+    font-size: 12px;
+    color: var(--sangam-ink);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .sangam-btn-primary {
+    width: 100%;
+    background: var(--sangam-ink);
+    color: var(--sangam-cream);
+    padding: 13px;
+    border: none;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background 0.2s;
+  }
+  .sangam-btn-primary:hover { background: var(--sangam-ink-deep); }
+
+  .sangam-btn-secondary {
+    width: 100%;
+    background: transparent;
+    color: var(--sangam-ink);
+    padding: 13px;
+    border: 1px solid var(--sangam-border);
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .sangam-btn-secondary:hover { background: var(--sangam-cream); }
+
+  /* Themed variant — when partner customises */
+  .sangam-form-panel.themed-lipi .sangam-btn-primary {
+    background: var(--lipi-indigo);
+  }
+  .sangam-form-panel.themed-lipi .sangam-btn-primary:hover {
+    background: var(--lipi-indigo-deep);
+  }
+  .sangam-form-panel.themed-lipi .sangam-field input:focus {
+    border-color: var(--lipi-indigo);
+    box-shadow: 0 0 0 3px rgba(26,31,74,0.08);
+  }
+  .sangam-form-panel.themed-lipi .sangam-field-meta a {
+    color: var(--lipi-indigo);
+  }
+
+  .sangam-divider {
+    text-align: center;
+    margin: 24px 0;
+    position: relative;
+    font-size: 12px;
+    color: var(--sangam-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .sangam-divider::before,
+  .sangam-divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 40%;
+    height: 1px;
+    background: var(--sangam-border);
+  }
+  .sangam-divider::before { left: 0; }
+  .sangam-divider::after { right: 0; }
+
+  .sangam-form-footer {
+    margin-top: auto;
+    padding-top: 32px;
+    font-size: 13px;
+    color: var(--sangam-muted);
+    text-align: center;
+  }
+  .sangam-form-footer a {
+    color: var(--sangam-ink);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .sangam-tiny-print {
+    font-size: 11px;
+    color: var(--sangam-muted);
+    text-align: center;
+    margin-top: 16px;
+  }
+  .sangam-tiny-print a { color: var(--sangam-muted); }
+
+  /* Captcha indicator */
+  .turnstile-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: #F8F5EE;
+    border: 1px solid var(--sangam-border);
+    border-radius: 6px;
+    margin: 12px 0 16px;
+    font-size: 12px;
+    color: var(--sangam-muted);
+  }
+  .turnstile-indicator .check {
+    width: 16px;
+    height: 16px;
+    background: var(--sangam-success);
+    border-radius: 4px;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .turnstile-indicator .check::after {
+    content: '✓';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  /* ===== Consent screen specifics ===== */
+  .consent-page {
+    background: var(--sangam-cream);
+    padding: 64px;
+  }
+  .consent-card {
+    max-width: 560px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 12px;
+    border: 1px solid var(--sangam-border);
+    overflow: hidden;
+  }
+  .consent-header {
+    padding: 32px 40px 24px;
+    background: var(--sangam-cream-warm);
+    border-bottom: 1px solid var(--sangam-border);
+  }
+  .consent-app-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .consent-partner-logo {
+    width: 48px;
+    height: 48px;
+    background: var(--lipi-indigo);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--lipi-parchment);
+    font-family: 'Italiana', serif;
+    font-size: 22px;
+  }
+  .consent-arrow {
+    color: var(--sangam-muted);
+    font-size: 20px;
+  }
+  .consent-sangam-logo {
+    width: 48px;
+    height: 48px;
+    background: var(--sangam-ink);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--sangam-cream);
+    font-family: 'Mukta', sans-serif;
+    font-size: 22px;
+    font-weight: 300;
+  }
+  .consent-heading {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 500;
+    font-size: 26px;
+    color: var(--sangam-ink-deep);
+    line-height: 1.25;
+    margin-bottom: 6px;
+  }
+  .consent-sub {
+    font-size: 14px;
+    color: var(--sangam-muted);
+  }
+  .consent-body {
+    padding: 28px 40px;
+  }
+  .consent-section-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--sangam-muted);
+    margin-bottom: 12px;
+  }
+  .consent-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--sangam-cream-warm);
+  }
+  .consent-item:last-child { border-bottom: none; }
+  .consent-item-icon {
+    width: 18px;
+    height: 18px;
+    background: var(--sangam-cream-warm);
+    border-radius: 4px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--sangam-ink);
+    font-size: 11px;
+  }
+  .consent-item-content {
+    flex: 1;
+  }
+  .consent-item-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--sangam-text);
+    margin-bottom: 2px;
+  }
+  .consent-item-desc {
+    font-size: 13px;
+    color: var(--sangam-muted);
+    line-height: 1.5;
+  }
+  .consent-notice {
+    background: #F8F5EE;
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 24px;
+    font-size: 13px;
+    color: var(--sangam-text);
+    line-height: 1.6;
+  }
+  .consent-notice strong {
+    color: var(--sangam-ink-deep);
+  }
+  .consent-actions {
+    padding: 24px 40px 32px;
+    display: flex;
+    gap: 12px;
+    border-top: 1px solid var(--sangam-border);
+    background: var(--sangam-paper);
+  }
+  .consent-actions .sangam-btn-primary {
+    margin-top: 0;
+  }
+
+  /* ===== Self-service portal ===== */
+  .self-service-page {
+    background: var(--sangam-paper);
+    min-height: 700px;
+  }
+  .ss-header {
+    padding: 18px 40px;
+    border-bottom: 1px solid var(--sangam-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+  }
+  .ss-user-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+  }
+  .ss-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--sangam-cream-warm);
+    color: var(--sangam-ink);
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+  .ss-layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: 600px;
+  }
+  .ss-sidebar {
+    padding: 32px 24px;
+    border-right: 1px solid var(--sangam-border);
+    background: var(--sangam-paper);
+  }
+  .ss-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    color: var(--sangam-muted);
+    text-decoration: none;
+    font-size: 14px;
+    margin-bottom: 2px;
+    cursor: pointer;
+  }
+  .ss-nav-item.active {
+    background: var(--sangam-cream-warm);
+    color: var(--sangam-ink-deep);
+    font-weight: 600;
+  }
+  .ss-nav-item:hover { background: var(--sangam-cream); }
+  .ss-content {
+    padding: 36px 48px;
+    background: var(--sangam-paper);
+  }
+  .ss-content h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 500;
+    font-size: 30px;
+    color: var(--sangam-ink-deep);
+    margin-bottom: 8px;
+  }
+  .ss-content p.intro {
+    color: var(--sangam-muted);
+    margin-bottom: 28px;
+    font-size: 14px;
+  }
+  .ss-app-card {
+    background: white;
+    border: 1px solid var(--sangam-border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .ss-app-logo {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-family: 'Italiana', serif;
+    font-size: 20px;
+  }
+  .ss-app-logo.lipi { background: var(--lipi-indigo); color: var(--lipi-parchment); }
+  .ss-app-logo.his { background: #2A6B5C; }
+  .ss-app-info {
+    flex: 1;
+  }
+  .ss-app-name {
+    font-weight: 600;
+    font-size: 16px;
+    margin-bottom: 4px;
+    color: var(--sangam-text);
+  }
+  .ss-app-meta {
+    font-size: 12px;
+    color: var(--sangam-muted);
+    display: flex;
+    gap: 14px;
+  }
+  .ss-app-meta .dot {
+    width: 4px;
+    height: 4px;
+    background: var(--sangam-muted);
+    border-radius: 50%;
+    margin: auto 0;
+  }
+  .ss-app-action {
+    color: var(--sangam-accent);
+    font-size: 13px;
+    font-weight: 600;
+    background: none;
+    border: 1px solid var(--sangam-border);
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .ss-app-action:hover { background: var(--sangam-cream); }
+
+  /* ===== Admin UI ===== */
+  .admin-page {
+    background: var(--sangam-paper);
+    min-height: 720px;
+  }
+  .admin-bar {
+    background: var(--sangam-ink-deep);
+    color: var(--sangam-cream);
+    padding: 12px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+  }
+  .admin-bar .left { display: flex; align-items: center; gap: 14px; }
+  .admin-bar .badge {
+    background: var(--sangam-accent);
+    color: white;
+    padding: 3px 9px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .admin-layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    min-height: 680px;
+  }
+  .admin-sidebar {
+    background: #1F2D3A;
+    color: rgba(245,241,232,0.7);
+    padding: 24px 16px;
+  }
+  .admin-nav-section {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: rgba(245,241,232,0.35);
+    padding: 12px 12px 6px;
+    margin-top: 12px;
+  }
+  .admin-nav-item {
+    display: block;
+    padding: 9px 12px;
+    border-radius: 6px;
+    color: rgba(245,241,232,0.75);
+    font-size: 13px;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .admin-nav-item:hover { background: rgba(245,241,232,0.05); }
+  .admin-nav-item.active {
+    background: rgba(245,241,232,0.08);
+    color: var(--sangam-cream);
+    font-weight: 600;
+  }
+  .admin-content {
+    padding: 32px 40px;
+    background: var(--sangam-paper);
+  }
+  .admin-page-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 500;
+    font-size: 28px;
+    color: var(--sangam-ink-deep);
+    margin-bottom: 4px;
+  }
+  .admin-page-sub {
+    font-size: 13px;
+    color: var(--sangam-muted);
+    margin-bottom: 28px;
+  }
+  .admin-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+  .admin-stat {
+    background: white;
+    border: 1px solid var(--sangam-border);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .admin-stat-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--sangam-muted);
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+  }
+  .admin-stat-value {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 500;
+    font-size: 30px;
+    color: var(--sangam-ink-deep);
+    line-height: 1;
+  }
+  .admin-stat-delta {
+    font-size: 11px;
+    color: var(--sangam-success);
+    margin-top: 6px;
+  }
+  .admin-table {
+    background: white;
+    border: 1px solid var(--sangam-border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .admin-table-header {
+    display: grid;
+    grid-template-columns: 2fr 1.4fr 1fr 1fr 80px;
+    padding: 12px 18px;
+    background: var(--sangam-cream-warm);
+    border-bottom: 1px solid var(--sangam-border);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--sangam-muted);
+    font-weight: 600;
+  }
+  .admin-table-row {
+    display: grid;
+    grid-template-columns: 2fr 1.4fr 1fr 1fr 80px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--sangam-cream-warm);
+    font-size: 13px;
+    color: var(--sangam-text);
+    align-items: center;
+  }
+  .admin-table-row:last-child { border-bottom: none; }
+  .admin-table-row:hover { background: var(--sangam-paper); }
+  .admin-table-row .name {
+    font-weight: 600;
+  }
+  .admin-table-row .email {
+    color: var(--sangam-muted);
+    font-size: 12px;
+  }
+  .admin-status {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .admin-status.active {
+    background: rgba(79,123,92,0.12);
+    color: var(--sangam-success);
+  }
+  .admin-status.pending {
+    background: rgba(201,123,110,0.12);
+    color: var(--sangam-accent);
+  }
+
+  /* ===== Variation row at end ===== */
+  .variation-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 24px;
+  }
+  .variation-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--sangam-muted);
+    padding: 14px 0 8px;
+  }
+  .variation-card {
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px -10px rgba(11,58,78,0.12);
+    border: 1px solid var(--sangam-border);
+  }
+
+  /* ===== Footer ===== */
+  .doc-foot {
+    text-align: center;
+    padding: 60px 24px 80px;
+    font-size: 13px;
+    color: var(--sangam-muted);
+    border-top: 1px solid rgba(11,58,78,0.1);
+    margin-top: 80px;
+  }
+  .doc-foot .devanagari-foot {
+    font-family: 'Mukta', sans-serif;
+    font-weight: 300;
+    font-size: 22px;
+    color: var(--sangam-accent);
+    margin-bottom: 12px;
+  }
+
+  @media (max-width: 900px) {
+    .lipi-hero { grid-template-columns: 1fr; padding: 60px 32px; }
+    .lipi-hero h1 { font-size: 44px; }
+    .lipi-nav { padding: 20px 28px; }
+    .sangam-shell { grid-template-columns: 1fr; }
+    .sangam-brand-panel { padding: 32px; }
+    .sangam-form-panel { padding: 32px 28px; }
+    .ss-layout, .admin-layout { grid-template-columns: 1fr; }
+    .ss-sidebar, .admin-sidebar { display: none; }
+    .admin-stats { grid-template-columns: 1fr 1fr; }
+    .variation-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== Document Header ===== -->
+<div class="doc-header">
+  <h1><span class="devanagari">सं</span>Sangam — Visual Mockups</h1>
+  <p>Working visual designs for the auth flow, self-service portal, and admin UI. Using <strong>LiPi</strong> as the example partner application. These are intentionally separate aesthetics — LiPi is editorial and script-literary, Sangam is quiet authority. The contrast itself teaches users where they are.</p>
+</div>
+
+<!-- ===== Section 1: LiPi Landing Page ===== -->
+<section class="section">
+  <div class="section-header">
+    <div class="section-eyebrow">01 · Partner App Landing</div>
+    <h2 class="section-title">LiPi — own domain, own brand</h2>
+    <p class="section-description">The partner app keeps its full identity. Marketing, hero copy, design language — all LiPi. The "Get Started" button is where the handoff to Sangam begins.</p>
+  </div>
+
+  <div class="browser-frame">
+    <div class="browser-chrome">
+      <div class="browser-dots"><span></span><span></span><span></span></div>
+      <div class="browser-url">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a5 5 0 0 0-5 5v1H2a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-1V6a5 5 0 0 0-5-5zm3 6H5V6a3 3 0 1 1 6 0v1z"/></svg>
+        lipi.app
+      </div>
+    </div>
+    <div class="browser-body">
+      <div class="lipi-page">
+        <nav class="lipi-nav">
+          <div class="lipi-wordmark">LiPi <span class="script">लिपि</span></div>
+          <div class="lipi-nav-links">
+            <a href="#">Scripts</a>
+            <a href="#">Manuscripts</a>
+            <a href="#">Studio</a>
+            <a href="#">Sign in</a>
+            <a href="#" class="lipi-btn">Get Started</a>
+          </div>
+        </nav>
+        <div class="lipi-hero">
+          <div class="lipi-hero-content">
+            <div class="lipi-eyebrow">A studio for Indian writing systems</div>
+            <h1>The scripts we forgot, <em>remembered</em>.</h1>
+            <p>LiPi is a working studio for the writing systems of the Indian subcontinent. Tools, type, and teaching for Devanagari, Tamil, Bangla, and the scripts still finding their digital home.</p>
+            <div class="lipi-hero-cta">
+              <a href="#" class="lipi-btn-primary">
+                Get Started
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1 8h13M9 3l5 5-5 5"/></svg>
+              </a>
+              <a href="#" class="lipi-btn-secondary">Explore the archive</a>
+            </div>
+          </div>
+          <div class="lipi-scripts-display">
+            <div class="lipi-scripts-row">
+              <span class="lipi-script-char">अ</span>
+              <span class="lipi-script-char">அ</span>
+              <span class="lipi-script-char">অ</span>
+              <span class="lipi-script-char">ਅ</span>
+            </div>
+            <div class="lipi-scripts-label">Devanagari · Tamil · Bangla · Gurmukhi</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="annotation">
+    <strong>What's happening:</strong> User clicks "Get Started." Browser is redirected from <code>lipi.app</code> to <code>id.sangam.in/register?client_id=lipi&...</code>. The URL bar changes. The visual context changes from LiPi to Sangam. The user understands they're now in a shared identity service.
+  </div>
+</section>
+
+<!-- ===== Section 2: Sangam Registration with LiPi context ===== -->
+<section class="section">
+  <div class="section-header">
+    <div class="section-eyebrow">02 · Sangam Registration</div>
+    <h2 class="section-title">Creating an account for LiPi</h2>
+    <p class="section-description">The user lands here from LiPi's "Get Started" button. The Sangam brand is visible (wordmark top-left, brand panel on the left). The partner context is acknowledged via a small chip — never overwhelming, always honest.</p>
+  </div>
+
+  <div class="browser-frame">
+    <div class="browser-chrome">
+      <div class="browser-dots"><span></span><span></span><span></span></div>
+      <div class="browser-url">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a5 5 0 0 0-5 5v1H2a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-1V6a5 5 0 0 0-5-5zm3 6H5V6a3 3 0 1 1 6 0v1z"/></svg>
+        id.sangam.in/register?client_id=lipi&redirect_uri=...
+      </div>
+    </div>
+    <div class="browser-body">
+      <div class="sangam-page">
+        <div class="sangam-shell">
+          <div class="sangam-brand-panel">
+            <div class="sangam-wordmark">Sangam <span class="mark">सं</span></div>
+            <div class="sangam-brand-content">
+              <div class="sangam-brand-quote">One identity. <em>Many homes.</em> Sign in once, work across the apps your work depends on.</div>
+              <div class="sangam-brand-attribution">SANGAM · सङ्गम · CONFLUENCE</div>
+            </div>
+            <div class="sangam-brand-foot">A shared, open-source identity platform by [Joint Entity LLP]</div>
+          </div>
+          <div class="sangam-form-panel">
+            <div class="sangam-partner-context">
+              <div class="partner-logo">L</div>
+              <div class="partner-text">Creating an account for <strong>LiPi</strong></div>
+            </div>
+            <h2 class="sangam-form-heading">Create your Sangam account</h2>
+            <p class="sangam-form-subheading">You'll be able to use the same login across all partner apps.</p>
+
+            <div class="sangam-field">
+              <label>Full name</label>
+              <input type="text" value="Anita Sharma" />
+            </div>
+            <div class="sangam-field">
+              <label>Email</label>
+              <input type="email" value="anita.sharma@gmail.com" />
+              <div class="sangam-field-hint">We'll send a verification link here.</div>
+            </div>
+            <div class="sangam-field">
+              <label>Password</label>
+              <input type="password" value="••••••••••••" />
+              <div class="sangam-field-hint">At least 12 characters with one number and one symbol.</div>
+            </div>
+
+            <div class="turnstile-indicator">
+              <div class="check"></div>
+              <span>Verified by Cloudflare</span>
+            </div>
+
+            <button class="sangam-btn-primary">Create account</button>
+
+            <div class="sangam-tiny-print">
+              By creating an account you agree to Sangam's <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.
+            </div>
+
+            <div class="sangam-form-footer">
+              Already have a Sangam account? <a href="#">Sign in</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="annotation">
+    <strong>Three trust signals at once:</strong> The URL bar shows <code>id.sangam.in</code>. The Sangam wordmark is in the brand panel. The partner context ("Creating an account for LiPi") is a small chip — present but not loud. If a phishing site spoofed this page, the user has multiple reliable cues to detect it.
+  </div>
+</section>
+
+<!-- ===== Section 3: Sangam Consent Screen ===== -->
+<section class="section">
+  <div class="section-header">
+    <div class="section-eyebrow">03 · Consent screen</div>
+    <h2 class="section-title">Explicit, informed, recorded</h2>
+    <p class="section-description">After registration (or on first-time sign-in to a new partner app), this screen asks for explicit consent. DPDPA requires informed consent — this screen earns that word "informed" by being specific.</p>
+  </div>
+
+  <div class="browser-frame">
+    <div class="browser-chrome">
+      <div class="browser-dots"><span></span><span></span><span></span></div>
+      <div class="browser-url">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a5 5 0 0 0-5 5v1H2a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-1V6a5 5 0 0 0-5-5zm3 6H5V6a3 3 0 1 1 6 0v1z"/></svg>
+        id.sangam.in/consent
+      </div>
+    </div>
+    <div class="browser-body">
+      <div class="consent-page">
+        <div class="consent-card">
+          <div class="consent-header">
+            <div class="consent-app-row">
+              <div class="consent-partner-logo">L</div>
+              <div class="consent-arrow">→</div>
+              <div class="consent-sangam-logo">सं</div>
+            </div>
+            <h3 class="consent-heading">LiPi would like to use your Sangam account</h3>
+            <p class="consent-sub">Review what LiPi will be able to see.</p>
+          </div>
+          <div class="consent-body">
+            <div class="consent-section-title">LiPi will receive</div>
+            <div class="consent-item">
+              <div class="consent-item-icon">i</div>
+              <div class="consent-item-content">
+                <div class="consent-item-name">Your name and email</div>
+                <div class="consent-item-desc">Anita Sharma · anita.sharma@gmail.com</div>
+              </div>
+            </div>
+            <div class="consent-item">
+              <div class="consent-item-icon">i</div>
+              <div class="consent-item-content">
+                <div class="consent-item-name">Your verification status</div>
+                <div class="consent-item-desc">So LiPi knows your email is confirmed.</div>
+              </div>
+            </div>
+            <div class="consent-item">
+              <div class="consent-item-icon">i</div>
+              <div class="consent-item-content">
+                <div class="consent-item-name">Organisations you belong to</div>
+                <div class="consent-item-desc">If you join an organisation later, LiPi will see your role within it.</div>
+              </div>
+            </div>
+
+            <div class="consent-notice">
+              <strong>LiPi will not see:</strong> your password, your activity on other partner apps, or any data from your other accounts. You can revoke this access anytime in your Sangam account.
+            </div>
+          </div>
+          <div class="consent-actions">
+            <button class="sangam-btn-secondary">Cancel</button>
+            <button class="sangam-btn-primary">Allow LiPi to access</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="annotation">
+    <strong>DPDPA defensibility:</strong> This screen names the specific app, lists specific data types, names the user's actual data values, explicitly states what won't be shared, and offers a revocation path. When a regulator asks "did the user know what they consented to?" this screen is the answer.
+  </div>
+</section>
+
+<!-- ===== Section 4: Sangam Login (themed for LiPi) ===== -->
+<section class="section">
+  <div class="section-header">
+    <div class="section-eyebrow">04 · Login screen (returning user)</div>
+    <h2 class="section-title">Same screen, partner-themed</h2>
+    <p class="section-description">For returning users coming from LiPi. The primary button colour adopts LiPi's indigo. Structure and Sangam wordmark remain unchanged. Per-app theming is decoration on top of fixed trust signals — never a replacement.</p>
+  </div>
+
+  <div class="browser-frame">
+    <div class="browser-chrome">
+      <div class="browser-dots"><span></span><span></span><span></span></div>
+      <div class="browser-url">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a5 5 0 0 0-5 5v1H2a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-1V6a5 5 0 0 0-5-5zm3 6H5V6a3 3 0 1 1 6 0v1z"/></svg>
+        id.sangam.in/login?client_id=lipi&...
+      </div>
+    </div>
+    <div class="browser-body">
+      <div class="sangam-page">
+        <div class="sangam-shell">
+          <div class="sangam-brand-panel">
+            <div class="sangam-wordmark">Sangam <span class="mark">सं</span></div>
+            <div class="sangam-brand-content">
+              <div class="sangam-brand-quote">One identity. <em>Many homes.</em> Sign in once, work across the apps your work depends on.</div>
+              <div class="sangam-brand-attribution">SANGAM · सङ्गम · CONFLUENCE</div>
+            </div>
+            <div class="sangam-brand-foot">A shared, open-source identity platform by [Joint Entity LLP]</div>
+          </div>
+          <div class="sangam-form-panel themed-lipi">
+            <div class="sangam-partner-context">
+              <div class="partner-logo">L</div>
+              <div class="partner-text">Signing in to <strong>LiPi</strong></div>
+            </div>
+            <h2 class="sangam-form-heading">Welcome back</h2>
+            <p class="sangam-form-subheading">Sign in to continue to LiPi.</p>
+
+            <div class="sangam-field">
+              <label>Email</label>
+              <input type="email" value="anita.sharma@gmail.com" />
+            </div>
+            <div class="sangam-field">
+              <label>Password</label>
+              <input type="password" value="••••••••••••" />
+              <div class="sangam-field-meta">
+                <span></span>
+                <a href="#">Forgot your password?</a>
+              </div>
+            </div>
+
+            <button class="sangam-btn-primary">Sign in</button>
+
+            <div class="sangam-form-footer">
+              New to Sangam? <a href="#">Create an account</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="annotation">
+    <strong>What changed and what didn't:</strong> The primary CTA button is now LiPi indigo (#1A1F4A) instead of Sangam ink-teal. Focus highlights match. Everything else — Sangam wordmark, layout, footer copy, the brand panel itself — is identical. Phishing detection still works because the constant elements remain constant.
+  </div>
+</section>
+
+<!-- ===== Section 5: Self-service portal ===== -->
+<section class="section">
+  <div class="section-header">
+    <div class="section-eyebrow">05 · Self-service portal</div>
+    <h2 class="section-title">account.sangam.in — Linked apps</h2>
+    <p class="section-description">Where users manage their identity: profile, security, linked apps, consents, sessions, data export, account deletion. This is the DPDPA compliance surface — every right (access, correction, erasure, withdraw consent) is reachable from here.</p>
+  </div>
+
+  <div class="browser-frame">
+    <div class="browser-chrome">
+      <div class="browser-dots"><span></span><span></span><span></span></div>
+      <div class="browser-url">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a5 5 0 0 0-5 5v1H2a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-1V6a5 5 0 0 0-5-5zm3 6H5V6a3 3 0 1 1 6 0v1z"/></svg>
+        account.sangam.in/apps
+      </div>
+    </div>
+    <div class="browser-body">
+      <div class="self-service-page">
+        <div class="ss-header">
+          <div class="sangam-wordmark" style="color: var(--sangam-ink-deep);">Sangam <span class="mark">सं</span></div>
+          <div class="ss-user-chip">
+            <div class="ss-avatar">AS</div>
+            <span>Anita Sharma</span>
+          </div>
+        </div>
+        <div class="ss-layout">
+          <div class="ss-sidebar">
+            <div class="ss-nav-item">Overview</div>
+            <div class="ss-nav-item">Profile</div>
+            <div class="ss-nav-item">Security</div>
+            <div class="ss-nav-item active">Linked apps</div>
+            <div class="ss-nav-item">Organisations</div>
+            <div class="ss-nav-item">Privacy &amp; data</div>
+            <div class="ss-nav-item">Settings</div>
+          </div>
+          <div class="ss-content">
+            <h2>Linked apps</h2>
+            <p class="intro">These apps can use your Sangam identity. You can revoke any of them anytime — they'll lose access on next sign-in.</p>
+
+            <div class="ss-app-card">
+              <div class="ss-app-logo lipi">L</div>
+              <div class="ss-app-info">
+                <div class="ss-app-name">LiPi</div>
+                <div class="ss-app-meta">
+                  <span>Linked 14 May 2026</span>
+                  <span class="dot"></span>
+                  <span>Last used 2 hours ago</span>
+                  <span class="dot"></span>
+                  <span>1 organisation</span>
+                </div>
+              </div>
+              <button class="ss-app-action">Manage</button>
+            </div>
+
+            <div class="ss-app-card">
+              <div class="ss-app-logo his">H</div>
+              <div class="ss-app-info">
+                <div class="ss-app-name">Apollo HIS</div>
+                <div class="ss-app-meta">
+                  <span>Linked 17 May 2026</span>
+                  <span class="dot"></span>
+                  <span>Last used yesterday</span>
+                  <span class="dot"></span>
+                  <span>2 organisations</span>
+                </div>
+              </div>
+              <button class="ss-app-action">Manage</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="annotation">
+    <strong>This is where DPDPA rights become real.</strong> "Revoke consent" isn't a clause in a policy — it's a button. "View what data is shared" isn't a request to email support — it's a "Manage" link. The compliance is in the interface, not the legal document.
+  </div>
+</section>
+
+<!-- ===== Section 6: Admin UI ===== -->
+<section class="section">
+  <div class="section-header">
+    <div class="section-eyebrow">06 · Admin UI</div>
+    <h2 class="section-title">admin.sangam.in — Operator dashboard</h2>
+    <p class="section-description">Used only by the three founders. Darker theme (different from end-user UIs to make context obvious). MFA mandatory. Every action audit-logged. This is where the platform operators see what's happening across all partner apps.</p>
+  </div>
+
+  <div class="browser-frame">
+    <div class="browser-chrome">
+      <div class="browser-dots"><span></span><span></span><span></span></div>
+      <div class="browser-url">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a5 5 0 0 0-5 5v1H2a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-1V6a5 5 0 0 0-5-5zm3 6H5V6a3 3 0 1 1 6 0v1z"/></svg>
+        admin.sangam.in/users
+      </div>
+    </div>
+    <div class="browser-body">
+      <div class="admin-page">
+        <div class="admin-bar">
+          <div class="left">
+            <span>Sangam Admin</span>
+            <span class="badge">Operator</span>
+          </div>
+          <div>Arun · MFA active · v0.1.0</div>
+        </div>
+        <div class="admin-layout">
+          <div class="admin-sidebar">
+            <div class="admin-nav-section">Overview</div>
+            <a class="admin-nav-item">Dashboard</a>
+            <div class="admin-nav-section">Identity</div>
+            <a class="admin-nav-item active">Users</a>
+            <a class="admin-nav-item">Organisations</a>
+            <a class="admin-nav-item">Sessions</a>
+            <div class="admin-nav-section">Apps</div>
+            <a class="admin-nav-item">Registered apps</a>
+            <a class="admin-nav-item">Roles</a>
+            <div class="admin-nav-section">Compliance</div>
+            <a class="admin-nav-item">Audit log</a>
+            <a class="admin-nav-item">Consent versions</a>
+            <a class="admin-nav-item">Data requests</a>
+          </div>
+          <div class="admin-content">
+            <h1 class="admin-page-title">Users</h1>
+            <p class="admin-page-sub">12 active · 2 pending verification · 0 suspended</p>
+
+            <div class="admin-stats">
+              <div class="admin-stat">
+                <div class="admin-stat-label">Total users</div>
+                <div class="admin-stat-value">14</div>
+                <div class="admin-stat-delta">+3 this week</div>
+              </div>
+              <div class="admin-stat">
+                <div class="admin-stat-label">Daily logins</div>
+                <div class="admin-stat-value">9</div>
+                <div class="admin-stat-delta">+12% vs last week</div>
+              </div>
+              <div class="admin-stat">
+                <div class="admin-stat-label">Apps linked</div>
+                <div class="admin-stat-value">2</div>
+                <div class="admin-stat-delta" style="color: var(--sangam-muted);">LiPi, Apollo HIS</div>
+              </div>
+              <div class="admin-stat">
+                <div class="admin-stat-label">Open data requests</div>
+                <div class="admin-stat-value">0</div>
+                <div class="admin-stat-delta" style="color: var(--sangam-muted);">All within SLA</div>
+              </div>
+            </div>
+
+            <div class="admin-table">
+              <div class="admin-table-header">
+                <div>Name &amp; email</div>
+                <div>Organisations</div>
+                <div>Apps</div>
+                <div>Status</div>
+                <div></div>
+              </div>
+              <div class="admin-table-row">
+                <div>
+                  <div class="name">Anita Sharma</div>
+                  <div class="email">anita.sharma@gmail.com</div>
+                </div>
+                <div>Mukta Type Studio</div>
+                <div>LiPi, Apollo HIS</div>
+                <div><span class="admin-status active">Active</span></div>
+                <div><a href="#" style="color: var(--sangam-ink); font-size: 12px; font-weight: 600;">View</a></div>
+              </div>
+              <div class="admin-table-row">
+                <div>
+                  <div class="name">Dr. Rajesh Iyer</div>
+                  <div class="email">rajesh@apolloclinic.in</div>
+                </div>
+                <div>Apollo Clinic Pune</div>
+                <div>Apollo HIS</div>
+                <div><span class="admin-status active">Active</span></div>
+                <div><a href="#" style="color: var(--sangam-ink); font-size: 12px; font-weight: 600;">View</a></div>
+              </div>
+              <div class="admin-table-row">
+                <div>
+                  <div class="name">Sneha Pillai</div>
+                  <div class="email">sneha.p@lipi.studio</div>
+                </div>
+                <div>LiPi Studio</div>
+                <div>LiPi</div>
+                <div><span class="admin-status pending">Pending verification</span></div>
+                <div><a href="#" style="color: var(--sangam-ink); font-size: 12px; font-weight: 600;">View</a></div>
+              </div>
+              <div class="admin-table-row">
+                <div>
+                  <div class="name">Vikram Joshi</div>
+                  <div class="email">vikram@bharatconstructions.in</div>
+                </div>
+                <div>Bharat Constructions</div>
+                <div>—</div>
+                <div><span class="admin-status active">Active</span></div>
+                <div><a href="#" style="color: var(--sangam-ink); font-size: 12px; font-weight: 600;">View</a></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="annotation">
+    <strong>The dark sidebar is deliberate.</strong> Admin UIs that look identical to user UIs lead to operators forgetting which mode they're in. The contrast makes "I am an admin right now" a constant subconscious signal. Operators do destructive things in admin UIs; the interface should reflect that gravity.
+  </div>
+</section>
+
+<!-- ===== Section 7: Per-app theming variations ===== -->
+<section class="section">
+  <div class="section-header">
+    <div class="section-eyebrow">07 · Per-app theming variations</div>
+    <h2 class="section-title">Default Sangam vs LiPi-themed</h2>
+    <p class="section-description">A side-by-side. The form structure, brand panel, and Sangam wordmark stay constant. Only the primary CTA colour and focus highlight change. Subtle enough that users feel the partner's presence; constant enough that trust signals remain intact.</p>
+  </div>
+
+  <div class="variation-grid">
+    <div>
+      <div class="variation-label">Default — no partner theme</div>
+      <div class="variation-card">
+        <div class="sangam-page">
+          <div class="sangam-shell" style="grid-template-columns: 1fr;">
+            <div class="sangam-form-panel" style="padding: 36px 32px;">
+              <h2 class="sangam-form-heading" style="font-size: 26px;">Welcome back</h2>
+              <p class="sangam-form-subheading">Sign in to continue.</p>
+              <div class="sangam-field">
+                <label>Email</label>
+                <input type="email" value="anita.sharma@gmail.com" />
+              </div>
+              <div class="sangam-field">
+                <label>Password</label>
+                <input type="password" value="••••••••" />
+              </div>
+              <button class="sangam-btn-primary">Sign in</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="variation-label">Themed — LiPi (indigo)</div>
+      <div class="variation-card">
+        <div class="sangam-page">
+          <div class="sangam-shell" style="grid-template-columns: 1fr;">
+            <div class="sangam-form-panel themed-lipi" style="padding: 36px 32px;">
+              <div class="sangam-partner-context" style="margin-bottom: 24px;">
+                <div class="partner-logo">L</div>
+                <div class="partner-text">Signing in to <strong>LiPi</strong></div>
+              </div>
+              <h2 class="sangam-form-heading" style="font-size: 26px;">Welcome back</h2>
+              <p class="sangam-form-subheading">Sign in to continue to LiPi.</p>
+              <div class="sangam-field">
+                <label>Email</label>
+                <input type="email" value="anita.sharma@gmail.com" />
+              </div>
+              <div class="sangam-field">
+                <label>Password</label>
+                <input type="password" value="••••••••" />
+              </div>
+              <button class="sangam-btn-primary">Sign in</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="annotation">
+    <strong>Theming scope (v0):</strong> Primary button colour, focus highlight, link colour, partner logo &amp; name chip. <strong>Out of scope:</strong> custom typography, custom illustrations, custom layouts. Keep theming a thin layer; the platform structure is the platform.
+  </div>
+</section>
+
+<!-- ===== Document footer ===== -->
+<div class="doc-foot">
+  <div class="devanagari-foot">सङ्गम</div>
+  <div>End of visual mockups. Read alongside <code>sangam-ux-design-documentation.md</code> and <code>sangam-project-structure.md</code>.</div>
+  <div style="margin-top: 8px;">Final colors, type, and brand mark to be confirmed by the three founders before development begins.</div>
+</div>
+
+</body>
+</html>

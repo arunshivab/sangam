@@ -1,0 +1,118 @@
+/* account.sangamid.in — portal shell: white top bar, tab nav with 2 px ochre
+   underline on the active tab, 34/28 px body padding, 1024 px minimum. */
+
+body { min-width: 1024px; }
+
+/* FocusOnNavigate moves focus to the page heading; a heading is not a control,
+   so it gets no ring (interactive elements keep the ochre focus ring). */
+.sg-greeting:focus { outline: none; }
+
+.sg-topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sg-space-8);
+  height: 64px;
+  padding: 0 28px;
+  background: var(--sg-surface);
+  border-bottom: 1px solid var(--sg-border);
+}
+.sg-topbar-brand { display: inline-flex; align-items: center; }
+
+.sg-tabs { display: flex; gap: var(--sg-space-6); align-self: stretch; }
+.sg-tab {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 2px;
+  font: 500 var(--sg-body-14) var(--sg-font-body);
+  color: var(--sg-slate);
+  border-bottom: 2px solid transparent;
+  transition: color 150ms, border-color 150ms;
+}
+.sg-tab:hover { color: var(--sg-teal); }
+.sg-tab-icon { margin-right: 6px; flex: none; }
+.sg-tab--active { color: var(--sg-teal); border-bottom-color: var(--sg-ochre); }
+
+.sg-topbar-user {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sg-space-3);
+  font: var(--sg-body-14) var(--sg-font-body);
+  color: var(--sg-ink);
+}
+.sg-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--sg-teal);
+}
+
+.sg-portal {
+  max-width: var(--sg-grid-max);
+  margin: 0 auto;
+  padding: 34px 28px;
+}
+.sg-greeting {
+  margin: 0;
+  font: 500 var(--sg-head-38) var(--sg-font-display);
+  letter-spacing: var(--sg-head-38-ls);
+  color: var(--sg-teal);
+}
+.sg-subtitle {
+  margin: var(--sg-space-2) 0 var(--sg-space-8);
+  font: var(--sg-body-16) var(--sg-font-body);
+  color: var(--sg-slate);
+}
+
+.sg-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sg-grid-gutter);
+  margin-bottom: var(--sg-space-8);
+}
+.sg-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sg-space-2);
+  padding: var(--sg-space-6);
+  background: var(--sg-surface);
+  border: 1px solid var(--sg-border);
+  border-radius: var(--sg-radius-card);
+  transition: border-color 150ms;
+}
+.sg-stat:hover { border-color: var(--sg-ochre); }
+.sg-stat-label {
+  font: 500 10px/1.5 var(--sg-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sg-slate);
+}
+.sg-stat-value {
+  font: 500 var(--sg-head-38) var(--sg-font-display);
+  letter-spacing: var(--sg-head-38-ls);
+  color: var(--sg-teal);
+}
+.sg-stat-note { font: 400 13px/1.5 var(--sg-font-body); color: var(--sg-slate); }
+
+.sg-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 48px 28px;
+  background: var(--sg-surface);
+  border: 1px solid var(--sg-border);
+  border-radius: var(--sg-radius-card);
+}
+.sg-empty-title {
+  margin: var(--sg-space-4) 0 var(--sg-space-2);
+  font: 500 var(--sg-title-24) var(--sg-font-display);
+  letter-spacing: var(--sg-title-24-ls);
+  color: var(--sg-teal);
+}
+.sg-empty-body {
+  max-width: 430px;
+  margin: 0 0 var(--sg-space-4);
+  font: var(--sg-body-14) var(--sg-font-body);
+  color: var(--sg-slate);
+}

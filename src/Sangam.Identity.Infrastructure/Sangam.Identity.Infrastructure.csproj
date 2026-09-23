@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Concrete implementations of the application abstractions: EF Core +
+       PostgreSQL persistence, OpenIddict stores, email, CAPTCHA, hashing.
+       Package references arrive in PR-02 (versions are already pinned in
+       Directory.Packages.props). -->
+
+  <PropertyGroup>
+    <RootNamespace>Sangam.Identity.Infrastructure</RootNamespace>
+    <Description>Sangam identity platform — infrastructure (persistence and external services).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sangam.Identity.Application\Sangam.Identity.Application.csproj" />
+    <ProjectReference Include="..\Sangam.Identity.Domain\Sangam.Identity.Domain.csproj" />
+    <ProjectReference Include="..\Sangam.Shared\Sangam.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

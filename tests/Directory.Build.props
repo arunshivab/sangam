@@ -1,0 +1,25 @@
+<Project>
+
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+    <!-- CS1591: tests need no XML docs. CA1707: underscores in test names are the convention.
+         CA2007: ConfigureAwait is irrelevant in test helpers (xUnit1030 still forbids it in [Fact] bodies).
+         CA1515: test classes must stay public for the runner. -->
+    <NoWarn>$(NoWarn);CS1591;CA1707;CA2007;CA1515</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="coverlet.collector" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

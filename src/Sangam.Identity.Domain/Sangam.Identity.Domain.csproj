@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Core business entities and rules. Zero dependencies beyond the BCL and
+       Sangam.Shared; never EF Core, never ASP.NET Core (enforced by a test). -->
+
+  <PropertyGroup>
+    <RootNamespace>Sangam.Identity.Domain</RootNamespace>
+    <Description>Sangam identity platform — domain entities, value objects and domain events.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sangam.Shared\Sangam.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

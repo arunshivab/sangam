@@ -1,0 +1,33 @@
+<Project>
+
+  <!-- Solution-wide MSBuild defaults for every project under src/ and tests/.
+       tests/Directory.Build.props imports this file and relaxes a few rules. -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <IsPackable>false</IsPackable>
+    <VersionPrefix>0.1.0</VersionPrefix>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Product>Sangam</Product>
+    <Authors>imagiQa Healthcare Services Pvt Ltd</Authors>
+    <Company>imagiQa Healthcare Services Pvt Ltd</Company>
+    <Copyright>Copyright (c) 2026 imagiQa Healthcare Services Pvt Ltd</Copyright>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://sangamid.in</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/arunshivab/sangam</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+</Project>

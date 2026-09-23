@@ -1,0 +1,30 @@
+# Sangam — local development reverse proxy.
+# Production Caddyfile (real hosts, ACME certificates, security headers) lands in PR-08.
+
+{
+  local_certs
+  auto_https disable_redirects
+}
+
+(sangam_proxy) {
+  encode zstd gzip
+  reverse_proxy {args[0]} {
+    header_up Host {host}
+    header_up X-Forwarded-Proto {scheme}
+  }
+}
+
+id.localhost {
+  tls internal
+  import sangam_proxy host.docker.internal:5100
+}
+
+account.localhost {
+  tls internal
+  import sangam_proxy host.docker.internal:5200
+}
+
+admin.localhost {
+  tls internal
+  import sangam_proxy host.docker.internal:5300
+}

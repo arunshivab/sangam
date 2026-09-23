@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Shared kernel: DTOs, constants and common types that cross the
+       server / portal / SDK boundary. Plain class library — no ASP.NET Core,
+       no static web assets (those live in Sangam.Web.Shared) — because
+       Sangam.Client re-exports this to partner applications. -->
+
+  <PropertyGroup>
+    <RootNamespace>Sangam.Shared</RootNamespace>
+    <Description>Sangam identity platform — shared contracts and constants.</Description>
+  </PropertyGroup>
+
+</Project>

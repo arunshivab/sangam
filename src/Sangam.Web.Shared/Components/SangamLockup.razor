@@ -1,0 +1,10 @@
+@namespace Sangam.Web.Shared.Components
+
+<span class="@CssClass" style="--sg-lockup-mark: @(MarkSize)px">
+  <SangamMark Size="MarkSize" Mode="Mode" Decorative="true" />
+  <span class="sg-wordmark">sangam</span>
+  @if (Functional)
+  {
+    <span class="sg-lockup-id" aria-label="ID">ID</span>
+  }
+</span>

@@ -1,0 +1,22 @@
+@inherits LayoutComponentBase
+
+<header class="sg-topbar">
+  <a class="sg-topbar-brand" href="/" aria-label="Sangam account home">
+    <SangamLockup MarkSize="24" />
+  </a>
+  <nav class="sg-tabs" aria-label="Account sections">
+    <a class="sg-tab sg-tab--active" href="/" aria-current="page">Overview</a>
+    <a class="sg-tab" href="/apps">Connected apps</a>
+    <a class="sg-tab" href="/devices">Devices</a>
+    <a class="sg-tab" href="/audit"><LipiIcon Name="@LipiconName.AuditLog" Size="16" Class="sg-tab-icon" /> Audit log</a>
+    <a class="sg-tab" href="/profile">Personal details</a>
+  </nav>
+  <div class="sg-topbar-user">
+    <span class="sg-topbar-name">Not signed in</span>
+    <span class="sg-avatar" aria-hidden="true"></span>
+  </div>
+</header>
+
+<main class="sg-portal">
+  @Body
+</main>
