@@ -6,6 +6,34 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added — PR-02 Domain + Infrastructure + first OIDC endpoint
+- Domain entities for the tenancy model (`SangamUser`, `OrgType`, `Organisation` tree with
+  materialised path, `App`, `Role` with optional org scope, `OrgMembership` with
+  `applies_to_descendants`, `AppGrant`, `Consent`, `PlatformOperator`, `AppAdmin`,
+  append-only `AuditEvent`) and the audit action taxonomy — see ADR-0001.
+- `SangamDbContext` (ASP.NET Core Identity user tables, Sangam tables, OpenIddict tables; all
+  snake_case) and the `InitialSchema` migration, with PostgreSQL rules that make
+  `audit_events` append-only and partial unique indexes that allow re-grants after revocation.
+- Argon2id password hashing (`Argon2idPasswordHasher`, PHC format, rehash-on-upgrade).
+- `IClock`, `IEmailSender` (logging implementation until Anjal), `ISmsSender` (reserved),
+  `IAuditWriter` (dedicated-context EF implementation).
+- OpenIddict server in `Sangam.Identity.Server`: discovery document, JWKS, and
+  `POST /connect/token` for the client-credentials grant; development certificates in
+  Development/Testing, refuses to start elsewhere until PR-08 configures real ones.
+- Development seeding of scopes and the `sangam-dev-sample` partner app (client credentials).
+- PostgreSQL-backed tests (`[PostgresFact]`) driven by `SANGAM_TEST_CONNECTION`: run against
+  a native PostgreSQL locally and a service container on the Ubuntu CI job; skipped elsewhere.
+- `dotnet-ef` tool manifest; `sangam_identity_test` and `sangam_identity_test_server`
+  databases in `init.sql` (the server tests use their own so parallel test projects never
+  truncate under the in-process host); bootstrap script enables the PostgreSQL-backed tests
+  when a server is reachable.
+
+### Changed — PR-02
+- `.editorconfig`: interface members need no accessibility modifier; EF migrations are exempt
+  from style analysis.
+- CI: explicit Ubuntu (with PostgreSQL service) and Windows jobs instead of a matrix; check
+  names unchanged.
+
 ### Added — PR-01 Foundation
 - Solution with nine `src/` projects (Identity Domain / Application / Infrastructure / Server,
   SelfService.Web, Admin.Web, Shared, Web.Shared, Client) and a mirrored test project for each.

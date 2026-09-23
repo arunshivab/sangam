@@ -92,6 +92,7 @@ if ($WithDocker) {
     } while ($state -ne 'healthy' -and (Get-Date) -lt $deadline)
     if ($state -ne 'healthy') { throw "PostgreSQL did not become healthy within 60 s (state: $state)." }
     Write-Host "  postgres (container): healthy; init.sql ran on first start"
+    $pgUp = $true
 }
 else {
     Write-Step "Looking for PostgreSQL at ${PgHost}:${PgPort}"
@@ -117,7 +118,7 @@ else {
         Write-Step "Creating sangam_identity role and database (deploy/postgres/init.sql)"
         & $psql.Source -h $PgHost -p $PgPort -U postgres -d postgres -v ON_ERROR_STOP=1 -f 'deploy/postgres/init.sql'
         if ($LASTEXITCODE -ne 0) { throw "psql reported an error running init.sql." }
-        Write-Host "  database: sangam_identity ready (role sangam_identity, dev password sangam_dev)"
+        Write-Host "  databases: sangam_identity, sangam_identity_test, sangam_identity_test_server ready (role sangam_identity, dev password sangam_dev)"
     }
 }
 
@@ -134,7 +135,13 @@ Write-Step "Building (Release, warnings are errors)"
 if ($LASTEXITCODE -ne 0) { throw "dotnet build failed." }
 
 # ---- 4. Tests ---------------------------------------------------------------
+# PostgreSQL-backed tests ([PostgresFact]) run when SANGAM_TEST_CONNECTION is set;
+# point it at the throwaway sangam_identity_test database when PostgreSQL is reachable.
 if (-not $SkipTests) {
+    if ($pgUp -and -not $env:SANGAM_TEST_CONNECTION) {
+        $env:SANGAM_TEST_CONNECTION = "Host=${PgHost};Port=${PgPort};Database=sangam_identity_test;Username=sangam_identity;Password=sangam_dev"
+        Write-Host "  SANGAM_TEST_CONNECTION set for this run (PostgreSQL-backed tests enabled)"
+    }
     Write-Step "Running tests"
     & dotnet test Sangam.sln --configuration Release --no-build
     if ($LASTEXITCODE -ne 0) { throw "dotnet test failed." }
@@ -151,4 +158,7 @@ Write-Host @"
     dotnet run --project src/Sangam.Admin.Web           ->  http://localhost:5300
 
 $dbHint  Connection string (dev):  Host=${PgHost};Port=${PgPort};Database=sangam_identity;Username=sangam_identity;Password=sangam_dev
+  Test database:            Host=${PgHost};Port=${PgPort};Database=sangam_identity_test;Username=sangam_identity;Password=sangam_dev
+  Migrations:               dotnet ef database update --project src/Sangam.Identity.Infrastructure --startup-project src/Sangam.Identity.Server
+                            (the Identity.Server also migrates and seeds on startup in Development)
 "@
