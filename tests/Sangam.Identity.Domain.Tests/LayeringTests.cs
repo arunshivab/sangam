@@ -3,8 +3,9 @@ using System.Reflection;
 namespace Sangam.Identity.Domain.Tests;
 
 /// <summary>
-/// Guards the load-bearing wall of the clean architecture: the domain assembly
-/// depends on nothing but the BCL and Sangam.Shared.
+/// Guards the load-bearing wall of the clean architecture: the domain assembly depends on the
+/// BCL, Sangam.Shared and Microsoft.Extensions.Identity.Stores (for IdentityUser) — never on
+/// EF Core, ASP.NET Core, a provider or an outer layer.
 /// </summary>
 public sealed class LayeringTests
 {

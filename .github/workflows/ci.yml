@@ -16,13 +16,28 @@ env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
 
 jobs:
-  build:
-    name: build (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
+  # Two explicit jobs rather than a matrix: service containers exist only on Linux
+  # runners. The job names are what the branch ruleset requires — keep them stable.
+  build-ubuntu:
+    name: build (ubuntu-latest)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sangam_identity
+          POSTGRES_PASSWORD: sangam_dev
+          POSTGRES_DB: sangam_identity_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sangam_identity -d sangam_identity_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    env:
+      # Enables the [PostgresFact] tests against the service container above.
+      SANGAM_TEST_CONNECTION: Host=localhost;Port=5432;Database=sangam_identity_test;Username=sangam_identity;Password=sangam_dev
     steps:
       - uses: actions/checkout@v7
 
@@ -37,14 +52,44 @@ jobs:
       - name: Build (Release, warnings are errors)
         run: dotnet build Sangam.sln --configuration Release --no-restore
 
-      - name: Test
+      - name: Create the Identity.Server test database
+        run: psql "postgresql://sangam_identity:sangam_dev@localhost:5432/sangam_identity_test" -v ON_ERROR_STOP=1 -c "CREATE DATABASE sangam_identity_test_server OWNER sangam_identity;"
+
+      - name: Test (including PostgreSQL-backed tests)
         run: dotnet test Sangam.sln --configuration Release --no-build --logger "trx;LogFileName=results.trx" --results-directory TestResults
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: test-results-${{ matrix.os }}
+          name: test-results-ubuntu-latest
+          path: TestResults
+
+  build-windows:
+    name: build (windows-latest)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up .NET (from global.json)
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore Sangam.sln
+
+      - name: Build (Release, warnings are errors)
+        run: dotnet build Sangam.sln --configuration Release --no-restore
+
+      - name: Test (PostgreSQL-backed tests are skipped on Windows)
+        run: dotnet test Sangam.sln --configuration Release --no-build --logger "trx;LogFileName=results.trx" --results-directory TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-windows-latest
           path: TestResults
 
   format:
