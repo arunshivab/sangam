@@ -1,13 +1,12 @@
-using Microsoft.AspNetCore.Mvc.Testing;
-
 namespace Sangam.Identity.Server.Tests;
 
 /// <summary>Boots the host in-process and checks the foundation page renders the brand.</summary>
-public sealed class HostSmokeTests : IClassFixture<WebApplicationFactory<Program>>
+[Collection("server")]
+public sealed class HostSmokeTests
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly SangamServerFactory _factory;
 
-    public HostSmokeTests(WebApplicationFactory<Program> factory)
+    public HostSmokeTests(SangamServerFactory factory)
     {
         _factory = factory;
     }

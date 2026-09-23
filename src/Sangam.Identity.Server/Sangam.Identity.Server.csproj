@@ -2,13 +2,18 @@
 
   <!-- id.sangamid.in — the OpenID Connect / OAuth 2 server and the eight
        authentication screens (Razor Pages; every state must work with
-       JavaScript disabled). OpenIddict and the OIDC endpoints arrive in PR-02. -->
+       JavaScript disabled). PR-02: OpenIddict server, discovery, JWKS and the
+       client-credentials token endpoint. Authorization code + screens: PR-03/04. -->
 
   <PropertyGroup>
     <RootNamespace>Sangam.Identity.Server</RootNamespace>
     <Description>Sangam identity platform — OpenID Connect server and authentication screens.</Description>
     <UserSecretsId>sangam-identity-server</UserSecretsId>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenIddict.AspNetCore" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Sangam.Identity.Application\Sangam.Identity.Application.csproj" />

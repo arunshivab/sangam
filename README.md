@@ -14,8 +14,9 @@ with Sangam, partner applications receive only the claims the user consented to.
 | `account.sangamid.in` | Self-service portal: linked apps, devices, audit log, personal data | Blazor Server |
 | `admin.sangamid.in` | Operator console (MFA mandatory) | Blazor Server |
 
-Status: **PR-01 — foundation**. The solution builds, the design system renders in all
-three hosts, and nothing authenticates yet. See [`docs/README.md`](docs/README.md) for the
+Status: **PR-02 — domain, persistence and the first OIDC endpoints**. The schema migrates,
+discovery / JWKS / client-credentials tokens are served by `Sangam.Identity.Server`, and no
+human can sign in yet (the auth screens arrive in PR-03). See [`docs/README.md`](docs/README.md) for the
 eight-PR delivery plan.
 
 ## Quick start
@@ -68,6 +69,22 @@ is specified in [`docs/design/README.md`](docs/design/README.md) and shipped fro
 nine Indic scripts) and **LiPicons** (`LiPicons.Blazor`, from `localpackages/`). No fonts,
 icons or scripts are loaded from external hosts — a test in every host enforces it. In the interface the wordmark is lowercase **sangam**;
 in prose write "Sangam"; `SangamID` is the domain and package namespace only.
+
+## Database and migrations
+
+Local development uses a native PostgreSQL 16+ with the `sangam_identity` database created by
+`scripts/bootstrap-dev.ps1 -InitDatabase`. `Sangam.Identity.Server` applies migrations and
+seeds the development sample app on startup in Development. To add a migration:
+
+```powershell
+dotnet ef migrations add <Name> --project src/Sangam.Identity.Infrastructure --startup-project src/Sangam.Identity.Infrastructure --output-dir Persistence/Migrations
+```
+
+PostgreSQL-backed tests run when `SANGAM_TEST_CONNECTION` points at the throwaway
+`sangam_identity_test` database (the bootstrap script sets it for its own run). The
+`Sangam.Identity.Server` tests derive `sangam_identity_test_server` from it — same server,
+`_server` suffix — so test projects running in parallel never share a database with the
+in-process host.
 
 ## Building
 

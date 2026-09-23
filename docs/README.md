@@ -3,6 +3,7 @@
 | Folder | What it holds | Status |
 |---|---|---|
 | `design/` | The approved design handoff: brand system, `sangam-tokens.css`, twelve product screens, screenshots. `design/README.md` is the **authoritative** visual/UX specification. | Current |
+| `decisions/` | Architecture decision records made during the build. Each supersedes the planning documents where they differ. | Current |
 | `planning/` | The strategic, technical, legal and UX planning documents written before the build started. | Historical reference — superseded where noted below |
 
 ## Precedence when documents disagree
@@ -48,6 +49,11 @@
   Nothing is fetched from an external host at runtime — a test in each host asserts it.
   `--sg-font-mono` falls back to the system monospace stack. The wordmark is LiPi Sans 600
   rather than Newsreader 500; everything else in the handoff still applies.
+- **Tenancy and identity model (PR-02).** Users on ASP.NET Core Identity with Argon2id; email
+  sign-in with email OTP, mobile stored unverified until 2027; three-level organisation tree
+  with explicit memberships and an inheritance flag; roles owned by the app with optional
+  org scoping; `platform_operators` and `app_admins` tables; `anonymous` audit actor. Full
+  reasoning in [`decisions/0001-tenancy-and-identity-model.md`](decisions/0001-tenancy-and-identity-model.md).
 - **Partner facts.** The handoff's placeholder copy says LiPi is operated by "Lipi Systems Pvt Ltd,
   Bengaluru". LiPi is an imagiQa product (Ahmedabad). This is runtime data in the app registry,
   not a design change.
@@ -57,7 +63,7 @@
 | PR | Title | Delivers |
 |---|---|---|
 | PR-01 | Foundation — repo skeleton + design tokens | Solution, project stubs, CI, licence, Docker Compose, tokens, logo, docs filed |
-| PR-02 | Domain + Infrastructure + first OIDC endpoint | Entities, EF Core migrations, OpenIddict wired, discovery / JWKS respond |
+| PR-02 | Domain + Infrastructure + first OIDC endpoint | Entities, EF Core migrations, OpenIddict wired, discovery / JWKS / client-credentials token respond |
 | PR-03 | Auth screens 1–6 (Razor Pages, no-JS) | Login, register, verify, forgot / reset; Argon2id; rate limiting; Turnstile; Brevo |
 | PR-04 | Consent + auth 7–8 + full OIDC flow | Consent screen, sign-out, Authorization Code + PKCE end to end |
 | PR-05 | Self-service portal (Blazor Server) — screens 9–10 | Dashboard, linked apps, DPDPA data export, account deletion |

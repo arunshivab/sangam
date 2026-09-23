@@ -60,6 +60,19 @@ Warnings are errors. The rules that most often bite:
 - CI (build + test on Ubuntu and Windows, plus the format check) must be green before review.
 - Visual changes are verified against the screenshots in `docs/design/screenshots/`.
 
+## Layering rules (enforced by tests)
+
+- `Sangam.Identity.Domain` references only the BCL, `Sangam.Shared` and
+  `Microsoft.Extensions.Identity.Stores`; never EF Core, ASP.NET Core or a provider.
+- `SangamUser` (and every entity) stays inside `Sangam.Identity.Infrastructure`. Hosts and
+  the application layer see DTOs only — no type with a `PasswordHash` or `SecurityStamp`
+  property crosses that boundary.
+- Audit rows are written through `IAuditWriter`, never by adding to `AuditEvents` directly,
+  so they survive the caller's rollback.
+- Migrations are generated with `dotnet ef` (tool manifest in `.config/`), reviewed by hand,
+  and exempt from style analysis. Hand-edit them only to add raw SQL the model cannot express
+  (rules, triggers), and say so in a comment.
+
 ## Conventions
 
 - Projects: `Sangam.<Component>.<Subcomponent>`; namespaces match project and folder.
