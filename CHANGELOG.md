@@ -6,6 +6,30 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added — PR-03 Auth screens 1–6
+- Screens on `id.sangamid.in`, all working with JavaScript disabled: `/login`, `/login/code`
+  (passwordless), `/login/verify` (code step), `/register`, `/verify` (code + server-rendered
+  resend countdown), `/verified`, `/forgot`, `/reset`, a minimal signed-in `/account` with the
+  sign-in preference, `/logout`, `/Error`, and Development-only `/dev/outbox`.
+- `IAccountService` (register, find, issue/verify codes, password check with lockout and
+  audit, passwordless start, reset with security-stamp rotation, sign-in preference) on
+  ASP.NET Core Identity; `OneTimeCodeService`; `PasswordStrength` (Anjal's policy: 8+,
+  all four classes, blocklist); `InMemoryEmailOutbox`.
+- Session cookie (`sangam.session`, 12 h sliding, security stamp re-validated every 5 min)
+  and pending-flow cookie (`sangam.pending`, 15 min); per-IP rate limiting on auth POSTs.
+- Migration `ProfileFieldsSignInModesAndOneTimeCodes`: `first_name`, `last_name`,
+  `date_of_birth`, `gender`, `sign_in_preference` on users (replacing `name`),
+  `sign_in_policy` on apps, and the `one_time_codes` table.
+- Tests: sign-in mode resolution, password strength, one-time codes (cooldown, attempts,
+  expiry, rate window), account flows through the real DI graph, and HTTP journeys with a
+  cookie-keeping no-JS browser session (register → verify → account → sign out → forgot →
+  reset → sign in; two-step and passwordless; lockout; rate limiter; enumeration safety).
+- ADR-0002.
+
+### Changed — PR-03
+- `.editorconfig`: CA2007 off for the three web hosts (no SynchronizationContext).
+- Development logging: EF command and migration noise reduced to Warning.
+
 ### Added — PR-02 Domain + Infrastructure + first OIDC endpoint
 - Domain entities for the tenancy model (`SangamUser`, `OrgType`, `Organisation` tree with
   materialised path, `App`, `Role` with optional org scope, `OrgMembership` with

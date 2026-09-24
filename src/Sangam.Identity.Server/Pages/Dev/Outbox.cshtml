@@ -1,0 +1,25 @@
+@page "/dev/outbox"
+@model OutboxModel
+@{
+    ViewData["Title"] = "Development outbox";
+}
+
+<section class="sg-card sg-card--wide">
+  <h1 class="sg-card-title">Development outbox</h1>
+  <p class="sg-card-body">The last @Sangam.Identity.Infrastructure.Services.InMemoryEmailOutbox.Capacity emails this server would have sent. Development only; nothing here leaves the machine.</p>
+  @if (Model.Messages.Count == 0)
+  {
+    <p class="sg-note">No messages yet. Register an account or request a password reset and come back.</p>
+  }
+  @foreach (var m in Model.Messages)
+  {
+    <article class="sg-mail">
+      <div class="sg-mail-head">
+        <span class="sg-mono">@m.SentAt.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) UTC</span>
+        <span>to <span class="sg-mono">@m.Message.ToEmail</span></span>
+      </div>
+      <h2 class="sg-mail-subject">@m.Message.Subject</h2>
+      <pre class="sg-mail-body">@m.Message.TextBody</pre>
+    </article>
+  }
+</section>

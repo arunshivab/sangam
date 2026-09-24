@@ -290,6 +290,19 @@ csharp_style_var_elsewhere = false:error
 dotnet_diagnostic.IDE0008.severity = error
 
 # ---------------------------------------------------------------------------
+# Web hosts — ASP.NET Core has no SynchronizationContext, so ConfigureAwait adds
+# nothing in page models, components and middleware. Libraries keep CA2007.
+# ---------------------------------------------------------------------------
+[src/Sangam.Identity.Server/**.cs]
+dotnet_diagnostic.CA2007.severity = none
+
+[src/Sangam.Admin.Web/**.cs]
+dotnet_diagnostic.CA2007.severity = none
+
+[src/Sangam.SelfService.Web/**.cs]
+dotnet_diagnostic.CA2007.severity = none
+
+# ---------------------------------------------------------------------------
 # tests/ — same style, looser on var and docs; xUnit analyzers stay strict.
 # ---------------------------------------------------------------------------
 [tests/**.cs]

@@ -1,0 +1,5 @@
+@model (string Kind, string Text)
+@if (!string.IsNullOrEmpty(Model.Text))
+{
+  <div class="sg-banner sg-banner--@Model.Kind" role="@(Model.Kind == "danger" ? "alert" : "status")">@Model.Text</div>
+}

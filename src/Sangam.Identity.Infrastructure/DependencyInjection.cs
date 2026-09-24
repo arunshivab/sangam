@@ -3,7 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Sangam.Identity.Application.Abstractions;
+using Sangam.Identity.Application.Accounts;
 using Sangam.Identity.Domain.Entities;
+using Sangam.Identity.Infrastructure.Accounts;
 using Sangam.Identity.Infrastructure.Persistence;
 using Sangam.Identity.Infrastructure.Security;
 using Sangam.Identity.Infrastructure.Seeding;
@@ -22,7 +24,7 @@ public static class DependencyInjection
     /// with Argon2id hashing, OpenIddict core backed by EF, and the clock / email / audit services.
     /// </summary>
     /// <param name="services">The service collection.</param>
-    /// <param name="configuration">Application configuration; reads <c>ConnectionStrings:Sangam</c> and <c>Sangam:PasswordHashing</c>.</param>
+    /// <param name="configuration">Application configuration; reads <c>ConnectionStrings:Sangam</c>, <c>Sangam:PasswordHashing</c>, <c>Sangam:Otp</c> and <c>Sangam:Email:UseOutbox</c>.</param>
     /// <returns>The same collection, for chaining.</returns>
     public static IServiceCollection AddSangamInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
@@ -43,11 +45,12 @@ public static class DependencyInjection
             {
                 o.User.RequireUniqueEmail = true;
                 o.SignIn.RequireConfirmedEmail = true;
-                o.Password.RequiredLength = 12;
-                o.Password.RequireNonAlphanumeric = false;
-                o.Password.RequireUppercase = false;
-                o.Password.RequireLowercase = false;
-                o.Password.RequireDigit = false;
+                // Same policy as Anjal; PasswordStrength enforces it first with the blocklist.
+                o.Password.RequiredLength = Sangam.Identity.Application.Security.PasswordStrength.MinimumLength;
+                o.Password.RequireNonAlphanumeric = true;
+                o.Password.RequireUppercase = true;
+                o.Password.RequireLowercase = true;
+                o.Password.RequireDigit = true;
                 o.Lockout.MaxFailedAccessAttempts = 5;
                 o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
                 o.Lockout.AllowedForNewUsers = true;
@@ -58,8 +61,24 @@ public static class DependencyInjection
         services.AddOpenIddict()
             .AddCore(o => o.UseEntityFrameworkCore().UseDbContext<SangamDbContext>());
 
+        OtpOptions otp = new();
+        configuration.GetSection(OtpOptions.SectionName).Bind(otp);
+        services.AddSingleton(otp);
+        services.AddScoped<OneTimeCodeService>();
+        services.AddScoped<IAccountService, AccountService>();
+
         services.AddSingleton<IClock, SystemClock>();
-        services.AddSingleton<IEmailSender, LoggingEmailSender>();
+        if (configuration.GetValue<bool>("Sangam:Email:UseOutbox"))
+        {
+            // Development/Testing: capture messages for /dev/outbox and the tests.
+            services.AddSingleton<InMemoryEmailOutbox>();
+            services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<InMemoryEmailOutbox>());
+        }
+        else
+        {
+            services.AddSingleton<IEmailSender, LoggingEmailSender>();
+        }
+
         services.AddSingleton<IAuditWriter, EfAuditWriter>();
         services.AddScoped<DevelopmentSeeder>();
 

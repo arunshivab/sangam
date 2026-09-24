@@ -3,16 +3,32 @@ using Sangam.Identity.Application;
 using Sangam.Identity.Infrastructure;
 using Sangam.Identity.Infrastructure.Persistence;
 using Sangam.Identity.Infrastructure.Seeding;
+using Sangam.Identity.Server.Authentication;
 using Sangam.Identity.Server.Endpoints;
 using Sangam.Shared.Constants;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddRazorPages();
+builder.Services.AddRazorPages(o =>
+{
+    o.Conventions.AddPageRoute("/Account/Login", "/login");
+    o.Conventions.AddPageRoute("/Account/LoginCode", "/login/code");
+    o.Conventions.AddPageRoute("/Account/LoginVerify", "/login/verify");
+    o.Conventions.AddPageRoute("/Account/Register", "/register");
+    o.Conventions.AddPageRoute("/Account/Verify", "/verify");
+    o.Conventions.AddPageRoute("/Account/Verified", "/verified");
+    o.Conventions.AddPageRoute("/Account/Forgot", "/forgot");
+    o.Conventions.AddPageRoute("/Account/Reset", "/reset");
+    o.Conventions.AddPageRoute("/Account/Home", "/account");
+    o.Conventions.AddPageRoute("/Account/Logout", "/logout");
+});
 builder.Services.AddRazorComponents();
 
 builder.Services.AddSangamApplication();
 builder.Services.AddSangamInfrastructure(builder.Configuration);
+builder.Services.AddSangamCookies();
+builder.Services.AddAuthRateLimiting(builder.Configuration);
+builder.Services.AddAuthorization();
 
 string? issuer = builder.Configuration["Sangam:Issuer"];
 bool developmentCertificates = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing");
@@ -52,9 +68,6 @@ builder.Services.AddOpenIddict()
         }
     });
 
-builder.Services.AddAuthentication();
-builder.Services.AddAuthorization();
-
 WebApplication app = builder.Build();
 
 if (app.Configuration.GetValue<bool>("Sangam:Database:MigrateOnStartup"))
@@ -77,10 +90,11 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapStaticAssets();
-app.MapRazorPages().WithStaticAssets();
+app.MapRazorPages().WithStaticAssets().RequireRateLimiting(AuthRateLimiting.PolicyName);
 app.MapConnectEndpoints();
 
 await app.RunAsync().ConfigureAwait(false);

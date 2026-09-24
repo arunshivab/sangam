@@ -42,6 +42,13 @@ public sealed class SangamServerFactory : WebApplicationFactory<Program>
         builder.UseSetting("Sangam:Issuer", string.Empty);
         builder.UseSetting("Sangam:Database:MigrateOnStartup", HasDatabase ? "true" : "false");
         builder.UseSetting("Sangam:Seed:DevelopmentSample", HasDatabase ? "true" : "false");
+        builder.UseSetting("Sangam:Email:UseOutbox", "true");
+        builder.UseSetting("Sangam:RateLimit:PostsPerMinute", "1000");
+        builder.UseSetting("Sangam:Otp:ResendCooldown", "00:00:00");
+        builder.UseSetting("Sangam:PasswordHashing:MemoryKiB", "8192");
+        builder.UseSetting("Sangam:PasswordHashing:Iterations", "2");
+        builder.UseSetting("Logging:LogLevel:Microsoft.EntityFrameworkCore", "Warning");
+        builder.UseSetting("Logging:LogLevel:OpenIddict", "Warning");
     }
 }
 

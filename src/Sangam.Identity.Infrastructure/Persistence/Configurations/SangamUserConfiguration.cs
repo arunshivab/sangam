@@ -16,7 +16,12 @@ internal sealed class SangamUserConfiguration :
     public void Configure(EntityTypeBuilder<SangamUser> b)
     {
         b.ToTable("users");
-        b.Property(u => u.Name).HasMaxLength(200).IsRequired();
+        b.Property(u => u.FirstName).HasMaxLength(100).IsRequired();
+        b.Property(u => u.LastName).HasMaxLength(100).IsRequired();
+        b.Property(u => u.DateOfBirth).HasColumnType("date").IsRequired();
+        b.Property(u => u.Gender).HasConversion(new SnakeCaseEnumConverter<Gender>()).HasMaxLength(20).IsRequired();
+        b.Property(u => u.SignInPreference).HasConversion(new SnakeCaseEnumConverter<SignInMode>()).HasMaxLength(20).IsRequired();
+        b.Ignore(u => u.DisplayName);
         b.Property(u => u.Locale).HasMaxLength(10).IsRequired();
         b.Property(u => u.TimeZone).HasMaxLength(50).IsRequired();
         b.Property(u => u.Status).HasConversion(new SnakeCaseEnumConverter<UserStatus>()).HasMaxLength(20).IsRequired();
@@ -36,9 +41,12 @@ internal sealed class SangamUserConfiguration :
             .HasDatabaseName("ux_users_mobile");
         b.HasIndex(u => u.Status).HasDatabaseName("idx_users_status");
 
-        b.ToTable(t => t.HasCheckConstraint(
-            "chk_users_status",
-            $"status IN ({SnakeCaseEnumConverter<UserStatus>.SqlList()})"));
+        b.ToTable(t =>
+        {
+            t.HasCheckConstraint("chk_users_status", $"status IN ({SnakeCaseEnumConverter<UserStatus>.SqlList()})");
+            t.HasCheckConstraint("chk_users_gender", $"gender IN ({SnakeCaseEnumConverter<Gender>.SqlList()})");
+            t.HasCheckConstraint("chk_users_sign_in_preference", $"sign_in_preference IN ({SnakeCaseEnumConverter<SignInMode>.SqlList()})");
+        });
     }
 
     public void Configure(EntityTypeBuilder<IdentityUserClaim<Guid>> b) => b.ToTable("user_claims");

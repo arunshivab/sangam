@@ -1,0 +1,36 @@
+@page
+@model HomeModel
+@{
+    ViewData["Title"] = "Your account";
+}
+
+<section class="sg-card">
+  <h1 class="sg-card-title">Namaste, @Model.User.FirstName</h1>
+  <p class="sg-card-body">You are signed in to Sangam. The full account portal at account.sangamid.in arrives in PR-05; this page proves the session.</p>
+  <partial name="_Banner" model="@(("success", Model.Notice ?? string.Empty))" />
+
+  <dl class="sg-facts">
+    <div><dt>Name</dt><dd>@Model.User.DisplayName</dd></div>
+    <div><dt>Email</dt><dd><span class="sg-mono">@Model.User.Email</span> @(Model.User.EmailVerified ? "· verified" : "· not verified")</dd></div>
+    <div><dt>Mobile</dt><dd><span class="sg-mono">@Model.User.Mobile</span> @(Model.User.MobileVerified ? "· verified" : "· not yet verified")</dd></div>
+    <div><dt>Date of birth</dt><dd>@Model.User.DateOfBirth.ToString("d MMMM yyyy", System.Globalization.CultureInfo.InvariantCulture)</dd></div>
+    <div><dt>Signed in with</dt><dd>@Model.SessionMode</dd></div>
+  </dl>
+
+  <form method="post" asp-page-handler="Preference">
+    <div class="sg-field-group">
+      <label class="sg-label" asp-for="SignInPreference">How you sign in (unless an app decides otherwise)</label>
+      <select class="sg-field" asp-for="SignInPreference">
+        <option value="password">Email and password</option>
+        <option value="password_and_otp">Password, then an emailed code</option>
+        <option value="otp_only">Emailed code only (no password)</option>
+      </select>
+    </div>
+    <button type="submit" class="sg-btn sg-btn--secondary sg-btn--block">Save preference</button>
+  </form>
+
+  <div class="sg-cord-rule" role="presentation"></div>
+  <form method="post" asp-page="/Account/Logout">
+    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">Sign out</button>
+  </form>
+</section>

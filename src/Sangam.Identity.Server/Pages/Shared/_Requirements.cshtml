@@ -1,0 +1,6 @@
+@model PasswordStrengthResult
+<ul class="sg-reqs" aria-label="Password requirements">
+  <li class="@(Model.HasMinimumLength ? "sg-req--met" : "")"><span class="sg-req-mark" aria-hidden="true">@(Model.HasMinimumLength ? "✓" : "—")</span> At least @PasswordStrength.MinimumLength characters</li>
+  <li class="@(Model.HasAllClasses ? "sg-req--met" : "")"><span class="sg-req-mark" aria-hidden="true">@(Model.HasAllClasses ? "✓" : "—")</span> Uppercase, lowercase, a number and a symbol</li>
+  <li class="@(Model.IsNotBlocklisted ? "sg-req--met" : "")"><span class="sg-req-mark" aria-hidden="true">@(Model.IsNotBlocklisted ? "✓" : "—")</span> Not a common or repeated password</li>
+</ul>

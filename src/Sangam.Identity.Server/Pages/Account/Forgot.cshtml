@@ -1,0 +1,24 @@
+@page
+@model ForgotModel
+@{
+    ViewData["Title"] = "Reset your password";
+}
+
+<section class="sg-card">
+  <h1 class="sg-card-title">Reset your password</h1>
+  <p class="sg-card-body">Enter the email you registered with. If an account exists, we will send a reset code.</p>
+
+  <form method="post" novalidate>
+    <div class="sg-field-group">
+      <label class="sg-label" asp-for="Email">Email</label>
+      <input class="sg-field" asp-for="Email" type="email" autocomplete="username" inputmode="email" autofocus required />
+      <span class="sg-field-error" asp-validation-for="Email"></span>
+    </div>
+    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">Send reset code</button>
+  </form>
+
+  <p class="sg-note">For your safety we show the same confirmation whether or not an account exists.</p>
+
+  <div class="sg-cord-rule" role="presentation"></div>
+  <p class="sg-alt"><a href="/login">Back to sign in</a></p>
+</section>

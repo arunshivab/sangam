@@ -1,0 +1,12 @@
+@page
+@model ErrorModel
+@{
+    ViewData["Title"] = "Something went wrong";
+}
+
+<section class="sg-card">
+  <h1 class="sg-card-title">Something went wrong</h1>
+  <p class="sg-card-body">Sangam could not complete that request. Nothing about your account has changed. Try again, or write to <a href="mailto:help@sangamid.in">help@sangamid.in</a> and quote the reference below.</p>
+  <p class="sg-meta">reference <code>@Model.RequestId</code></p>
+  <a class="sg-btn sg-btn--secondary sg-btn--block" href="/login">Back to sign in</a>
+</section>

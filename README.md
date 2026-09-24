@@ -14,9 +14,10 @@ with Sangam, partner applications receive only the claims the user consented to.
 | `account.sangamid.in` | Self-service portal: linked apps, devices, audit log, personal data | Blazor Server |
 | `admin.sangamid.in` | Operator console (MFA mandatory) | Blazor Server |
 
-Status: **PR-02 — domain, persistence and the first OIDC endpoints**. The schema migrates,
-discovery / JWKS / client-credentials tokens are served by `Sangam.Identity.Server`, and no
-human can sign in yet (the auth screens arrive in PR-03). See [`docs/README.md`](docs/README.md) for the
+Status: **PR-03 — accounts and sign-in**. People can register, verify their email by code,
+sign in (password, password + emailed code, or passwordless), recover a password and sign out —
+all without JavaScript. Apps cannot yet initiate a sign-in (authorization code flow and the
+consent screen arrive in PR-04). See [`docs/README.md`](docs/README.md) for the
 eight-PR delivery plan.
 
 ## Quick start
@@ -30,8 +31,11 @@ git clone https://github.com/arunshivab/sangam.git
 cd sangam
 .\scripts\bootstrap-dev.ps1                 # checks tools, finds Postgres, builds, tests
 .\scripts\bootstrap-dev.ps1 -InitDatabase   # once: creates the sangam_identity role + database
-dotnet run --project src/Sangam.Identity.Server   # http://localhost:5100
+dotnet run --project src/Sangam.Identity.Server   # http://localhost:5100/register
 ```
+
+In Development the server captures outgoing email instead of sending it; open
+`http://localhost:5100/dev/outbox` to read verification and reset codes.
 
 Docker is not required for local development. `deploy/docker-compose.dev.yml` (PostgreSQL 16 +
 Caddy) is the server stack and an opt-in alternative: `.\scripts\bootstrap-dev.ps1 -WithDocker`.

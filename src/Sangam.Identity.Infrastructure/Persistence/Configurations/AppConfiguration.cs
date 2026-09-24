@@ -21,12 +21,15 @@ internal sealed class AppConfiguration : IEntityTypeConfiguration<App>
         b.Property(a => a.PrivacyUrl).HasMaxLength(500);
         b.Property(a => a.TermsUrl).HasMaxLength(500);
         b.Property(a => a.Status).HasConversion(new SnakeCaseEnumConverter<AppStatus>()).HasMaxLength(20).IsRequired();
+        b.Property(a => a.SignInPolicy).HasConversion(new SnakeCaseEnumConverter<SignInPolicy>()).HasMaxLength(20).IsRequired();
 
         b.HasIndex(a => a.ClientId).IsUnique().HasDatabaseName("ux_apps_client_id");
         b.HasIndex(a => a.Slug).IsUnique().HasDatabaseName("ux_apps_slug");
 
-        b.ToTable(t => t.HasCheckConstraint(
-            "chk_apps_status",
-            $"status IN ({SnakeCaseEnumConverter<AppStatus>.SqlList()})"));
+        b.ToTable(t =>
+        {
+            t.HasCheckConstraint("chk_apps_status", $"status IN ({SnakeCaseEnumConverter<AppStatus>.SqlList()})");
+            t.HasCheckConstraint("chk_apps_sign_in_policy", $"sign_in_policy IN ({SnakeCaseEnumConverter<SignInPolicy>.SqlList()})");
+        });
     }
 }
