@@ -3,6 +3,7 @@ using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Sangam.Identity.Application.Abstractions;
 using Sangam.Identity.Application.Accounts;
+using Sangam.Identity.Application.Apps;
 using Sangam.Identity.Domain.Enums;
 using Sangam.Identity.Infrastructure.Accounts;
 using Sangam.Identity.Server.Authentication;
@@ -13,16 +14,19 @@ namespace Sangam.Identity.Server.Pages.Account;
 public sealed class LoginVerifyModel : AuthPageModel
 {
     private readonly IAccountService _accounts;
+    private readonly IAppDirectory _apps;
     private readonly OneTimeCodeService _codes;
     private readonly IClock _clock;
 
     /// <summary>Initialises the page.</summary>
     /// <param name="accounts">Account service.</param>
+    /// <param name="apps">App directory.</param>
     /// <param name="codes">Code service, for the resend countdown.</param>
     /// <param name="clock">Clock.</param>
-    public LoginVerifyModel(IAccountService accounts, OneTimeCodeService codes, IClock clock)
+    public LoginVerifyModel(IAccountService accounts, IAppDirectory apps, OneTimeCodeService codes, IClock clock)
     {
         _accounts = accounts ?? throw new ArgumentNullException(nameof(accounts));
+        _apps = apps ?? throw new ArgumentNullException(nameof(apps));
         _codes = codes ?? throw new ArgumentNullException(nameof(codes));
         _clock = clock ?? throw new ArgumentNullException(nameof(clock));
     }
@@ -122,6 +126,7 @@ public sealed class LoginVerifyModel : AuthPageModel
 
     private async Task ComputeResendAsync(PendingFlow pending, CancellationToken cancellationToken)
     {
+        await ResolvePartnerAsync(_apps, ReturnUrl, cancellationToken);
         if (pending.UserId is null || pending.UserId == Guid.Empty)
         {
             ResendIn = 60;

@@ -1,6 +1,9 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Sangam.Identity.Application.Accounts;
+using Sangam.Identity.Application.Apps;
 using Sangam.Identity.Domain.Enums;
 using Sangam.Identity.Server.Authentication;
 
@@ -10,12 +13,15 @@ namespace Sangam.Identity.Server.Pages.Account;
 public sealed class LoginModel : AuthPageModel
 {
     private readonly IAccountService _accounts;
+    private readonly IAppDirectory _apps;
 
     /// <summary>Initialises the page.</summary>
     /// <param name="accounts">Account service.</param>
-    public LoginModel(IAccountService accounts)
+    /// <param name="apps">App directory (partner chip and sign-in policy).</param>
+    public LoginModel(IAccountService accounts, IAppDirectory apps)
     {
         _accounts = accounts ?? throw new ArgumentNullException(nameof(accounts));
+        _apps = apps ?? throw new ArgumentNullException(nameof(apps));
     }
 
     /// <summary>Email address.</summary>
@@ -42,12 +48,20 @@ public sealed class LoginModel : AuthPageModel
     /// <summary>Renders the form.</summary>
     /// <param name="signedout">Set after sign-out.</param>
     /// <param name="reset">Set after a password reset.</param>
-    public IActionResult OnGet(bool signedout = false, bool reset = false)
+    /// <param name="switch">Set from the consent screen's "Switch account": ends the current session first.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task<IActionResult> OnGetAsync(bool signedout = false, bool reset = false, bool @switch = false, CancellationToken cancellationToken = default)
     {
-        if (User.Identity?.IsAuthenticated == true)
+        if (@switch)
+        {
+            await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+        }
+        else if (User.Identity?.IsAuthenticated == true)
         {
             return LocalRedirect(SafeReturnUrl(ReturnUrl));
         }
+
+        await ResolvePartnerAsync(_apps, ReturnUrl, cancellationToken);
 
         if (signedout)
         {
@@ -65,12 +79,13 @@ public sealed class LoginModel : AuthPageModel
     /// <param name="cancellationToken">Cancellation token.</param>
     public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)
     {
+        await ResolvePartnerAsync(_apps, ReturnUrl, cancellationToken);
         if (!ModelState.IsValid)
         {
             return Page();
         }
 
-        SignInCheck check = await _accounts.CheckPasswordAsync(Email, Password, appPolicy: null, ClientIp, ClientUserAgent, cancellationToken);
+        SignInCheck check = await _accounts.CheckPasswordAsync(Email, Password, Partner?.SignInPolicy, ClientIp, ClientUserAgent, cancellationToken);
 
         switch (check.Status)
         {
@@ -86,7 +101,7 @@ public sealed class LoginModel : AuthPageModel
             case SignInStatus.EmailNotVerified:
                 await _accounts.IssueCodeAsync(check.User!.Id, OneTimeCodePurpose.EmailVerification, cancellationToken);
                 await SangamAuthentication.StorePendingAsync(HttpContext, SangamAuthentication.Pending.EmailVerification, check.User.Id);
-                return RedirectToPage("/Account/Verify");
+                return RedirectToPage("/Account/Verify", new { returnUrl = ReturnUrl });
 
             case SignInStatus.LockedOut:
                 Error = "Too many failed attempts. Try again in 15 minutes, or reset your password.";

@@ -1,0 +1,54 @@
+@page "/dev/callback"
+@model CallbackModel
+@{
+    ViewData["Title"] = "Development callback";
+    ViewData["Wide"] = true;
+}
+
+<section class="sg-card sg-card--consent">
+  @if (Model.Error is not null)
+  {
+    <h1 class="sg-card-title">The app was told: @Model.Error</h1>
+    <p class="sg-card-body">@Model.ErrorDescription</p>
+    <p class="sg-note">This is exactly what a real partner application would receive at its redirect URI.</p>
+  }
+  else
+  {
+    <h1 class="sg-card-title">Sign-in complete</h1>
+    <p class="sg-card-body">Sangam sent an authorization code to this page, standing in for the partner application's redirect URI. A real app would now exchange it for tokens over the back channel. Press the button to do that here.</p>
+
+    <dl class="sg-facts">
+      <div><dt>code</dt><dd class="sg-mono sg-break">@Model.Code</dd></div>
+      <div><dt>state</dt><dd class="sg-mono">@Model.State</dd></div>
+    </dl>
+
+    @if (!Model.Exchanged)
+    {
+      <form method="post">
+        <input type="hidden" asp-for="Code" />
+        <input type="hidden" asp-for="State" />
+        <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">Exchange the code for tokens</button>
+      </form>
+    }
+  }
+
+  <partial name="_Banner" model="@(("danger", Model.ExchangeError ?? string.Empty))" />
+
+  @if (Model.Exchanged)
+  {
+    <div class="sg-cord-rule" role="presentation"></div>
+    <h2 class="sg-section-label">Token response</h2>
+    <dl class="sg-facts">
+      <div><dt>token_type</dt><dd class="sg-mono">@Model.TokenType</dd></div>
+      <div><dt>expires_in</dt><dd class="sg-mono">@Model.ExpiresIn s</dd></div>
+      <div><dt>scope</dt><dd class="sg-mono sg-break">@Model.Scope</dd></div>
+      <div><dt>refresh_token</dt><dd class="sg-mono">@(Model.HasRefreshToken ? "issued" : "not requested")</dd></div>
+    </dl>
+
+    <h2 class="sg-section-label">ID token claims</h2>
+    <pre class="sg-mail-body">@Model.IdTokenClaims</pre>
+
+    <h2 class="sg-section-label">/connect/userinfo</h2>
+    <pre class="sg-mail-body">@Model.UserInfo</pre>
+  }
+</section>

@@ -7,8 +7,28 @@
 <section class="sg-card">
   <h1 class="sg-card-title">Sign out of Sangam?</h1>
   <p class="sg-card-body">This ends your Sangam session on this device. Applications you signed in to may keep their own sessions until they expire.</p>
-  <div class="sg-btn-row">
-    <a class="sg-btn sg-btn--secondary sg-btn--block" href="/account">Stay signed in</a>
-    <form method="post"><button type="submit" class="sg-btn sg-btn--primary sg-btn--block">Sign out</button></form>
-  </div>
+
+  @if (Model.User is not null)
+  {
+    <div class="sg-signed-in-as">
+      <span class="sg-signed-in-label">SIGNED IN AS</span>
+      <span class="sg-avatar sg-avatar--initials sg-avatar--32" aria-hidden="true">@Model.Initials</span>
+      <span class="sg-account-text"><span class="sg-account-name">@Model.User.DisplayName</span><span class="sg-account-email sg-mono">@Model.User.Email</span></span>
+    </div>
+  }
+
+  <form method="post" class="sg-btn-row">
+    @foreach (var field in Model.EndSessionFields)
+    {
+      <input type="hidden" name="@field.Key" value="@field.Value" />
+    }
+    <a class="sg-btn sg-btn--secondary sg-btn--block" href="@(Model.StayUrl)">Stay signed in</a>
+    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">Sign out</button>
+  </form>
+
+  @if (Model.Partner is not null && Model.PartnerReturnUrl is not null)
+  {
+    <div class="sg-cord-rule" role="presentation"></div>
+    <p class="sg-alt"><span class="sg-glyph-inline" style="background:@Model.Partner.BrandColour" aria-hidden="true">@Model.Partner.Glyph</span> <a href="@Model.PartnerReturnUrl">Return to @Model.Partner.DisplayName without signing out</a></p>
+  }
 </section>

@@ -17,6 +17,30 @@ internal sealed partial class BrowserSession : IDisposable
         _client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false, HandleCookies = true });
     }
 
+    /// <summary>Follows local redirects (up to ten) and returns where the browser lands.</summary>
+    public async Task<(HttpStatusCode Status, string Location, string Html)> FollowAsync(string path)
+    {
+        string current = path;
+        for (int hop = 0; hop < 10; hop++)
+        {
+            using HttpResponseMessage response = await _client.GetAsync(new Uri(current, UriKind.Relative));
+            if (response.StatusCode is not (HttpStatusCode.Found or HttpStatusCode.Redirect or HttpStatusCode.SeeOther))
+            {
+                return (response.StatusCode, current, await response.Content.ReadAsStringAsync());
+            }
+
+            string next = response.Headers.Location!.ToString();
+            if (!next.StartsWith('/'))
+            {
+                return (response.StatusCode, next, string.Empty);
+            }
+
+            current = next;
+        }
+
+        throw new InvalidOperationException("Too many redirects from " + path);
+    }
+
     public async Task<(HttpStatusCode Status, string Html)> GetAsync(string path)
     {
         using HttpResponseMessage response = await _client.GetAsync(new Uri(path, UriKind.Relative));
