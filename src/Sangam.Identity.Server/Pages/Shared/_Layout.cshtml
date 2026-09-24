@@ -4,6 +4,11 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light" />
+  <meta name="robots" content="noindex" />
+  @if (ViewData["Refresh"] is int refresh && refresh > 0)
+  {
+    <meta http-equiv="refresh" content="@refresh" />
+  }
   <title>@ViewData["Title"] · sangam</title>
   <link rel="icon" href="/_content/Sangam.Web.Shared/icons/favicon.ico" sizes="16x16 32x32" />
   <link rel="icon" type="image/svg+xml" href="/_content/Sangam.Web.Shared/icons/favicon.svg" />
@@ -15,6 +20,9 @@
 </head>
 <body>
   <main class="sg-auth">
+    <div class="sg-auth-lockup">
+      <a href="/" aria-label="Sangam home"><component type="typeof(SangamLockup)" render-mode="Static" param-MarkSize="26" /></a>
+    </div>
     @RenderBody()
   </main>
   <footer class="sg-auth-footer">

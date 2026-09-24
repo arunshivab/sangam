@@ -1,0 +1,34 @@
+@page
+@model LoginModel
+@{
+    ViewData["Title"] = "Sign in";
+}
+
+<section class="sg-card">
+  <h1 class="sg-card-title">Sign in</h1>
+  <partial name="_Banner" model="@(("danger", Model.Error ?? string.Empty))" />
+  <partial name="_Banner" model="@(("success", Model.Notice ?? string.Empty))" />
+
+  <form method="post" novalidate>
+    <input type="hidden" asp-for="ReturnUrl" />
+    <div class="sg-field-group">
+      <label class="sg-label" asp-for="Email">Email</label>
+      <input class="sg-field" asp-for="Email" type="email" autocomplete="username" inputmode="email" autofocus required />
+      <span class="sg-field-error" asp-validation-for="Email"></span>
+    </div>
+    <div class="sg-field-group">
+      <div class="sg-label-row">
+        <label class="sg-label" asp-for="Password">Password</label>
+        <a class="sg-label-link" href="/forgot">Forgot password?</a>
+      </div>
+      <input class="sg-field" asp-for="Password" type="password" autocomplete="current-password" required />
+      <span class="sg-field-error" asp-validation-for="Password"></span>
+    </div>
+    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">Sign in</button>
+  </form>
+
+  <a class="sg-tertiary" href="/login/code@(string.IsNullOrEmpty(Model.ReturnUrl) ? "" : "?returnUrl=" + Uri.EscapeDataString(Model.ReturnUrl))">Email me a sign-in code instead</a>
+
+  <div class="sg-cord-rule" role="presentation"></div>
+  <p class="sg-alt">New to Sangam? <a href="/register">Create an account</a></p>
+</section>

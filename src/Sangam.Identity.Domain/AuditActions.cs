@@ -30,6 +30,15 @@ public static class AuditActions
     /// <summary>Password reset completed.</summary>
     public const string UserPasswordResetComplete = "user.password.reset.complete";
 
+    /// <summary>A one-time code was issued (purpose in metadata).</summary>
+    public const string UserOtpIssue = "user.otp.issue";
+
+    /// <summary>A one-time code was refused (wrong, expired or exhausted; reason in metadata).</summary>
+    public const string UserOtpFail = "user.otp.fail";
+
+    /// <summary>The user changed their sign-in preference.</summary>
+    public const string UserSignInPreferenceChange = "user.signin.preference.change";
+
     /// <summary>Account deletion requested (soft delete starts).</summary>
     public const string UserAccountDeletionRequest = "user.account.deletion.request";
 
