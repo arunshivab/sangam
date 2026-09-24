@@ -3,6 +3,7 @@ using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Sangam.Identity.Application.Abstractions;
 using Sangam.Identity.Application.Accounts;
+using Sangam.Identity.Application.Apps;
 using Sangam.Identity.Domain.Enums;
 using Sangam.Identity.Infrastructure.Accounts;
 using Sangam.Identity.Server.Authentication;
@@ -13,19 +14,26 @@ namespace Sangam.Identity.Server.Pages.Account;
 public sealed class VerifyModel : AuthPageModel
 {
     private readonly IAccountService _accounts;
+    private readonly IAppDirectory _apps;
     private readonly OneTimeCodeService _codes;
     private readonly IClock _clock;
 
     /// <summary>Initialises the page.</summary>
     /// <param name="accounts">Account service.</param>
+    /// <param name="apps">App directory.</param>
     /// <param name="codes">Code service, for the resend countdown.</param>
     /// <param name="clock">Clock.</param>
-    public VerifyModel(IAccountService accounts, OneTimeCodeService codes, IClock clock)
+    public VerifyModel(IAccountService accounts, IAppDirectory apps, OneTimeCodeService codes, IClock clock)
     {
         _accounts = accounts ?? throw new ArgumentNullException(nameof(accounts));
+        _apps = apps ?? throw new ArgumentNullException(nameof(apps));
         _codes = codes ?? throw new ArgumentNullException(nameof(codes));
         _clock = clock ?? throw new ArgumentNullException(nameof(clock));
     }
+
+    /// <summary>Where to continue after verification.</summary>
+    [BindProperty(SupportsGet = true)]
+    public string? ReturnUrl { get; set; }
 
     /// <summary>The typed code.</summary>
     [BindProperty]
@@ -58,7 +66,7 @@ public sealed class VerifyModel : AuthPageModel
 
         if (user.EmailVerified)
         {
-            return RedirectToPage("/Account/Verified");
+            return RedirectToPage("/Account/Verified", new { returnUrl = ReturnUrl });
         }
 
         await PrepareAsync(user, cancellationToken);
@@ -92,7 +100,7 @@ public sealed class VerifyModel : AuthPageModel
         UserSummary verified = (await _accounts.FindByIdAsync(user.Id, cancellationToken))!;
         await SangamAuthentication.SignInSessionAsync(HttpContext, verified, SignInMode.Password);
         await _accounts.RecordSignInAsync(verified.Id, SignInMode.Password, ClientIp, ClientUserAgent, cancellationToken);
-        return RedirectToPage("/Account/Verified");
+        return RedirectToPage("/Account/Verified", new { returnUrl = ReturnUrl });
     }
 
     /// <summary>Sends a fresh code (subject to the cooldown).</summary>
@@ -105,7 +113,7 @@ public sealed class VerifyModel : AuthPageModel
         }
 
         await _accounts.IssueCodeAsync(user.Id, OneTimeCodePurpose.EmailVerification, cancellationToken);
-        return RedirectToPage("/Account/Verify");
+        return RedirectToPage("/Account/Verify", new { returnUrl = ReturnUrl });
     }
 
     private async Task<UserSummary?> LoadPendingUserAsync(CancellationToken cancellationToken)
@@ -116,6 +124,7 @@ public sealed class VerifyModel : AuthPageModel
 
     private async Task PrepareAsync(UserSummary user, CancellationToken cancellationToken)
     {
+        await ResolvePartnerAsync(_apps, ReturnUrl, cancellationToken);
         Email = user.Email;
         DateTimeOffset? next = await _codes.NextIssueAllowedAtAsync(user.Id, OneTimeCodePurpose.EmailVerification, cancellationToken);
         ResendIn = next is null ? 0 : (int)Math.Ceiling((next.Value - _clock.UtcNow).TotalSeconds);

@@ -12,6 +12,7 @@
   <partial name="_Banner" model="@(("danger", Model.Error ?? string.Empty))" />
 
   <form method="post" novalidate>
+    <input type="hidden" asp-for="ReturnUrl" />
     <div class="sg-field-group">
       <label class="sg-label" asp-for="Code">Verification code</label>
       <input class="sg-field sg-field--code" asp-for="Code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]*" maxlength="7" autofocus required />
@@ -21,6 +22,7 @@
   </form>
 
   <form method="post" asp-page-handler="Resend" class="sg-resend">
+    <input type="hidden" asp-for="ReturnUrl" />
     @if (Model.ResendIn > 0)
     {
       <button type="submit" class="sg-btn sg-btn--secondary sg-btn--block" disabled>Resend in @Model.ResendLabel</button>

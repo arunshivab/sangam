@@ -14,10 +14,10 @@ with Sangam, partner applications receive only the claims the user consented to.
 | `account.sangamid.in` | Self-service portal: linked apps, devices, audit log, personal data | Blazor Server |
 | `admin.sangamid.in` | Operator console (MFA mandatory) | Blazor Server |
 
-Status: **PR-03 — accounts and sign-in**. People can register, verify their email by code,
-sign in (password, password + emailed code, or passwordless), recover a password and sign out —
-all without JavaScript. Apps cannot yet initiate a sign-in (authorization code flow and the
-consent screen arrive in PR-04). See [`docs/README.md`](docs/README.md) for the
+Status: **PR-04 — Sangam is an identity provider**. Partner apps sign users in with
+Authorization Code + PKCE, users consent to exactly what is shared, tokens and `userinfo`
+carry the user's organisations and roles, apps administer their own tenancy through
+`/api/v1`, and app-initiated sign-out works. The self-service portal is PR-05. See [`docs/README.md`](docs/README.md) for the
 eight-PR delivery plan.
 
 ## Quick start

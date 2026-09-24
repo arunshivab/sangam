@@ -4,12 +4,18 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Sangam.Identity.Application.Abstractions;
 using Sangam.Identity.Application.Accounts;
+using Sangam.Identity.Application.Apps;
+using Sangam.Identity.Application.Consents;
+using Sangam.Identity.Application.Tenancy;
 using Sangam.Identity.Domain.Entities;
 using Sangam.Identity.Infrastructure.Accounts;
+using Sangam.Identity.Infrastructure.Apps;
+using Sangam.Identity.Infrastructure.Consents;
 using Sangam.Identity.Infrastructure.Persistence;
 using Sangam.Identity.Infrastructure.Security;
 using Sangam.Identity.Infrastructure.Seeding;
 using Sangam.Identity.Infrastructure.Services;
+using Sangam.Identity.Infrastructure.Tenancy;
 
 namespace Sangam.Identity.Infrastructure;
 
@@ -66,6 +72,10 @@ public static class DependencyInjection
         services.AddSingleton(otp);
         services.AddScoped<OneTimeCodeService>();
         services.AddScoped<IAccountService, AccountService>();
+        services.AddScoped<IAppDirectory, EfAppDirectory>();
+        services.AddScoped<IConsentService, EfConsentService>();
+        services.AddScoped<ITenancyQuery, EfTenancyQuery>();
+        services.AddScoped<IManagementService, EfManagementService>();
 
         services.AddSingleton<IClock, SystemClock>();
         if (configuration.GetValue<bool>("Sangam:Email:UseOutbox"))

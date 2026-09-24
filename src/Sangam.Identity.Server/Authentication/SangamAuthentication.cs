@@ -59,6 +59,9 @@ public static class SangamAuthentication
 
         /// <summary>Password reset requested.</summary>
         public const string PasswordReset = "password-reset";
+
+        /// <summary>The user declined consent for an app (the app's client id travels in the email slot).</summary>
+        public const string ConsentDenied = "consent-denied";
     }
 
     /// <summary>Registers the session and pending cookie schemes.</summary>
@@ -198,6 +201,18 @@ public static class SangamAuthentication
         ClaimsIdentity identity = new(PendingScheme);
         identity.AddClaim(new Claim(PendingPurposeClaim, Pending.PasswordReset));
         identity.AddClaim(new Claim(PendingEmailClaim, email));
+        return httpContext.SignInAsync(PendingScheme, new ClaimsPrincipal(identity));
+    }
+
+    /// <summary>Parks a consent denial for <paramref name="clientId"/> so the authorization endpoint can answer the app.</summary>
+    /// <param name="httpContext">Current request.</param>
+    /// <param name="clientId">The app that was declined.</param>
+    public static Task StorePendingConsentDeniedAsync(HttpContext httpContext, string clientId)
+    {
+        ArgumentNullException.ThrowIfNull(httpContext);
+        ClaimsIdentity identity = new(PendingScheme);
+        identity.AddClaim(new Claim(PendingPurposeClaim, Pending.ConsentDenied));
+        identity.AddClaim(new Claim(PendingEmailClaim, clientId));
         return httpContext.SignInAsync(PendingScheme, new ClaimsPrincipal(identity));
     }
 

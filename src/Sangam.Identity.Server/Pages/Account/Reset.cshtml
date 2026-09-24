@@ -18,8 +18,9 @@
     </div>
     <div class="sg-field-group">
       <label class="sg-label" asp-for="NewPassword">New password</label>
-      <input class="sg-field" asp-for="NewPassword" type="password" autocomplete="new-password" required />
+      <input class="sg-field" asp-for="NewPassword" type="password" autocomplete="new-password" required data-sg-password />
       <partial name="_StrengthMeter" model="Model.Strength" />
+      <partial name="_Requirements" model="Model.Strength" />
       <span class="sg-field-error" asp-validation-for="NewPassword"></span>
     </div>
     <div class="sg-field-group">
@@ -27,9 +28,10 @@
       <input class="sg-field" asp-for="ConfirmPassword" type="password" autocomplete="new-password" required />
       <span class="sg-field-error" asp-validation-for="ConfirmPassword"></span>
     </div>
-    <partial name="_Requirements" model="Model.Strength" />
     <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">Set new password</button>
   </form>
+
+  <script src="/js/password-meter.js" defer></script>
 
   <p class="sg-note">Setting a new password signs you out of Sangam on all devices.</p>
 

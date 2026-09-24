@@ -6,6 +6,43 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added — PR-04 Consent, sign-out and the full OIDC flow
+- `/connect/authorize` (Authorization Code + PKCE, `prompt=login|none`), `/connect/token`
+  (authorization code, refresh token, client credentials), `/connect/userinfo`,
+  `/connect/endsession`; refresh chains capped at 90 days.
+- Screen 7 (consent) showing the real values that will be shared and an explicit
+  "will not be shared" column; screen 8 (sign-out) serving both the user's own `/logout` and
+  app-initiated end-session with "Return to … without signing out".
+- Partner chip on sign-in, registration, verification and the code screens; "Continue to …"
+  on screen 4; the app's `sign_in_policy` now applies to app-initiated sign-ins.
+- `sangam_orgs` claim built from live memberships, and the `phone`, `offline_access` and
+  `sangam.manage` scopes.
+- Management API at `/api/v1` (roles, organisations, memberships), scoped to the calling app
+  by its client-credentials token; every write audited as `api`.
+- `IAppDirectory`, `IConsentService`, `ITenancyQuery`, `IManagementService` and their EF
+  implementations; app branding columns (`brand_colour`, `glyph`, `consent_version`) with
+  migration `AppBranding`.
+- Tests: management rules and consent versioning against PostgreSQL; the whole browser
+  journey in-process (authorize → sign-in → consent → code → token → userinfo → refresh →
+  sign-out), consent denial, unknown client, `prompt=none`, and the management API's
+  authorisation.
+- ADR-0003.
+
+### Added — PR-04 (refinements)
+- Registration takes a country from a dropdown (India first and default, 45 countries) with the
+  dialling code shown as a prefix, and validates the national number length per country.
+- Password requirements are shown live while typing (`wwwroot/js/password-meter.js`, progressive
+  enhancement over the server-rendered meter) on both registration and password reset.
+- Development-only `/dev/callback`: a stand-in partner redirect URI that shows the code, exchanges
+  it for tokens and prints the ID token claims and userinfo, plus a one-click "start a sign-in"
+  link on the foundation page.
+
+### Fixed — PR-04
+- Org-scoped roles were losing to app-wide roles of the same code (PostgreSQL sorts
+  `NULLS FIRST` on `ORDER BY … DESC`).
+- The development seeder now refreshes the sample app's branding on existing databases
+  instead of only at creation.
+
 ### Added — PR-03 Auth screens 1–6
 - Screens on `id.sangamid.in`, all working with JavaScript disabled: `/login`, `/login/code`
   (passwordless), `/login/verify` (code step), `/register`, `/verify` (code + server-rendered

@@ -4,10 +4,6 @@
     ViewData["Title"] = "Foundation";
 }
 
-<div class="sg-auth-lockup">
-  <component type="typeof(SangamLockup)" render-mode="Static" param-MarkSize="26" />
-</div>
-
 <section class="sg-card">
   <h1 class="sg-card-title">Foundation check</h1>
   <p class="sg-card-body">
@@ -37,6 +33,13 @@
     <span class="sg-mono-ink"><component type="typeof(SangamMark)" render-mode="Static" param-Size="32" param-Mode="SangamMarkMode.Mono" /></span>
     <component type="typeof(SangamMark)" render-mode="Static" param-Size="52" param-Mode="SangamMarkMode.LeafMist" />
   </div>
+
+  @if (Model.ShowDevFlowLink)
+  {
+    <h2 class="sg-section-label">Try the partner sign-in flow</h2>
+    <a class="sg-btn sg-btn--primary sg-btn--block" href="@Model.DevFlowUrl">Start a sign-in as the sample partner app</a>
+    <p class="sg-note">Development only. Runs the real Authorization Code + PKCE flow and lands on <code>/dev/callback</code>.</p>
+  }
 
   <h2 class="sg-section-label">Icons (LiPicons)</h2>
   <div class="sg-row sg-row--icons">

@@ -75,6 +75,15 @@ public static class AuditActions
     /// <summary>Consent granted.</summary>
     public const string ConsentGrant = "consent.grant";
 
+    /// <summary>The user declined consent on the consent screen.</summary>
+    public const string ConsentDeny = "consent.deny";
+
+    /// <summary>Tokens issued to an app for a user (grant type in metadata).</summary>
+    public const string TokenIssue = "token.issue";
+
+    /// <summary>An app-initiated sign-out ended the session.</summary>
+    public const string UserLogoutApp = "user.logout.app";
+
     /// <summary>Consent revoked.</summary>
     public const string ConsentRevoke = "consent.revoke";
 
