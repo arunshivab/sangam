@@ -39,6 +39,9 @@ public sealed class App
     /// <summary>Whether users must see the consent screen on first sign-in to this app.</summary>
     public bool RequireConsent { get; set; } = true;
 
+    /// <summary>The app's sign-in rule. <see cref="SignInPolicy.Default"/> lets each user's own preference apply.</summary>
+    public SignInPolicy SignInPolicy { get; set; } = SignInPolicy.Default;
+
     /// <summary>Lifecycle state.</summary>
     public AppStatus Status { get; set; } = AppStatus.Active;
 

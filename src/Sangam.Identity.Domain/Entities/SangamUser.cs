@@ -18,8 +18,23 @@ namespace Sangam.Identity.Domain.Entities;
 /// </summary>
 public sealed class SangamUser : IdentityUser<Guid>
 {
-    /// <summary>Display name as the user wants to be addressed ("Dr. Rajesh Kumar").</summary>
-    public string Name { get; set; } = string.Empty;
+    /// <summary>Given name.</summary>
+    public string FirstName { get; set; } = string.Empty;
+
+    /// <summary>Family name.</summary>
+    public string LastName { get; set; } = string.Empty;
+
+    /// <summary>Date of birth (calendar date, no time). Carried to apps as the OIDC <c>birthdate</c> claim.</summary>
+    public DateOnly DateOfBirth { get; set; }
+
+    /// <summary>Self-declared gender. Carried to apps as the OIDC <c>gender</c> claim.</summary>
+    public Gender Gender { get; set; } = Gender.PreferNotToSay;
+
+    /// <summary>The user's chosen sign-in mode; ignored when the app being signed in to imposes a policy.</summary>
+    public SignInMode SignInPreference { get; set; } = SignInMode.Password;
+
+    /// <summary>Gets "First Last" for display.</summary>
+    public string DisplayName => string.IsNullOrWhiteSpace(LastName) ? FirstName : FirstName + " " + LastName;
 
     /// <summary>BCP 47 locale for UI and email language. Defaults to <c>en-IN</c>.</summary>
     public string Locale { get; set; } = "en-IN";

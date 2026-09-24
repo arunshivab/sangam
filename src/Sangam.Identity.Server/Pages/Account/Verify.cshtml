@@ -1,0 +1,36 @@
+@page
+@model VerifyModel
+@{
+    ViewData["Title"] = "Check your email";
+    if (Model.RefreshSeconds > 0) { ViewData["Refresh"] = Model.RefreshSeconds; }
+}
+
+<section class="sg-card">
+  <div class="sg-circle sg-circle--pending" aria-hidden="true"><span class="sg-cord-dot sg-cord-dot--solo"></span></div>
+  <h1 class="sg-card-title sg-card-title--centre">Check your email</h1>
+  <p class="sg-card-body sg-card-body--centre">We sent a 6-digit code to <span class="sg-mono">@Model.Email</span>.<br />It is valid for 10 minutes and can be used once.</p>
+  <partial name="_Banner" model="@(("danger", Model.Error ?? string.Empty))" />
+
+  <form method="post" novalidate>
+    <div class="sg-field-group">
+      <label class="sg-label" asp-for="Code">Verification code</label>
+      <input class="sg-field sg-field--code" asp-for="Code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]*" maxlength="7" autofocus required />
+      <span class="sg-field-error" asp-validation-for="Code"></span>
+    </div>
+    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">Verify email</button>
+  </form>
+
+  <form method="post" asp-page-handler="Resend" class="sg-resend">
+    @if (Model.ResendIn > 0)
+    {
+      <button type="submit" class="sg-btn sg-btn--secondary sg-btn--block" disabled>Resend in @Model.ResendLabel</button>
+    }
+    else
+    {
+      <button type="submit" class="sg-btn sg-btn--secondary sg-btn--block">Resend verification email</button>
+    }
+  </form>
+
+  <div class="sg-cord-rule" role="presentation"></div>
+  <p class="sg-alt">Wrong address? <a href="/register">Start again</a> · Stuck? <a href="mailto:help@sangamid.in">help@sangamid.in</a></p>
+</section>

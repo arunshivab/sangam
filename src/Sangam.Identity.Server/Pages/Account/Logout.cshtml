@@ -1,0 +1,14 @@
+@page
+@model LogoutModel
+@{
+    ViewData["Title"] = "Sign out";
+}
+
+<section class="sg-card">
+  <h1 class="sg-card-title">Sign out of Sangam?</h1>
+  <p class="sg-card-body">This ends your Sangam session on this device. Applications you signed in to may keep their own sessions until they expire.</p>
+  <div class="sg-btn-row">
+    <a class="sg-btn sg-btn--secondary sg-btn--block" href="/account">Stay signed in</a>
+    <form method="post"><button type="submit" class="sg-btn sg-btn--primary sg-btn--block">Sign out</button></form>
+  </div>
+</section>

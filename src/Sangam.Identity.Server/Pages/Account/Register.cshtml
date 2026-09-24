@@ -1,0 +1,73 @@
+@page
+@model RegisterModel
+@{
+    ViewData["Title"] = "Create your account";
+}
+
+<section class="sg-card">
+  <h1 class="sg-card-title">Create your Sangam account</h1>
+  <p class="sg-card-body">One account for every application that uses Sangam. You control what each one can see.</p>
+  <partial name="_Banner" model="@(("danger", Model.Error ?? string.Empty))" />
+
+  <form method="post" novalidate>
+    <div class="sg-two">
+      <div class="sg-field-group">
+        <label class="sg-label" asp-for="FirstName">First name</label>
+        <input class="sg-field" asp-for="FirstName" autocomplete="given-name" autofocus required />
+        <span class="sg-field-error" asp-validation-for="FirstName"></span>
+      </div>
+      <div class="sg-field-group">
+        <label class="sg-label" asp-for="LastName">Last name</label>
+        <input class="sg-field" asp-for="LastName" autocomplete="family-name" required />
+        <span class="sg-field-error" asp-validation-for="LastName"></span>
+      </div>
+    </div>
+    <div class="sg-field-group">
+      <label class="sg-label" asp-for="Email">Email</label>
+      <input class="sg-field" asp-for="Email" type="email" autocomplete="email" inputmode="email" required />
+      <span class="sg-field-error" asp-validation-for="Email"></span>
+    </div>
+    <div class="sg-field-group">
+      <label class="sg-label" asp-for="MobileNumber">Mobile</label>
+      <div class="sg-phone">
+        <input class="sg-field sg-field--code-prefix" asp-for="CountryCode" type="tel" autocomplete="tel-country-code" inputmode="tel" aria-label="Country code" maxlength="5" required />
+        <input class="sg-field" asp-for="MobileNumber" type="tel" autocomplete="tel-national" inputmode="tel" placeholder="98765 43210" required />
+      </div>
+      <span class="sg-field-error" asp-validation-for="MobileNumber"></span>
+      <span class="sg-field-error sg-field-error--hidden" asp-validation-for="CountryCode"></span>
+    </div>
+    <div class="sg-two">
+      <div class="sg-field-group">
+        <label class="sg-label" asp-for="DateOfBirth">Date of birth</label>
+        <input class="sg-field" asp-for="DateOfBirth" type="date" autocomplete="bday" required />
+        <span class="sg-field-error" asp-validation-for="DateOfBirth"></span>
+      </div>
+      <div class="sg-field-group">
+        <label class="sg-label" asp-for="Gender">Gender</label>
+        <select class="sg-field" asp-for="Gender" required>
+          <option value="">Select…</option>
+          <option value="female">Female</option>
+          <option value="male">Male</option>
+          <option value="other">Other</option>
+          <option value="prefer_not_to_say">Prefer not to say</option>
+        </select>
+        <span class="sg-field-error" asp-validation-for="Gender"></span>
+      </div>
+    </div>
+    <div class="sg-field-group">
+      <label class="sg-label" asp-for="Password">Password</label>
+      <input class="sg-field" asp-for="Password" type="password" autocomplete="new-password" required />
+      <partial name="_StrengthMeter" model="Model.Strength" />
+      <span class="sg-field-error" asp-validation-for="Password"></span>
+    </div>
+    <div class="sg-check">
+      <input type="checkbox" asp-for="AcceptTerms" />
+      <label asp-for="AcceptTerms">I agree to the <a href="/terms">Terms</a> and the <a href="/privacy">Privacy Policy</a> (@Model.TermsVersion)</label>
+      <span class="sg-field-error" asp-validation-for="AcceptTerms"></span>
+    </div>
+    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">Create account</button>
+  </form>
+
+  <div class="sg-cord-rule" role="presentation"></div>
+  <p class="sg-alt">Already registered? <a href="/login">Sign in</a></p>
+</section>

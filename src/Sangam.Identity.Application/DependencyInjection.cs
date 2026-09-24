@@ -6,8 +6,8 @@ namespace Sangam.Identity.Application;
 public static class DependencyInjection
 {
     /// <summary>
-    /// Adds application services. Use cases arrive from PR-03; in PR-02 this is the anchor
-    /// that hosts call so the wiring does not change when they do.
+    /// Adds application services. The account use cases are interfaces implemented in
+    /// Infrastructure; this is the anchor hosts call so the wiring does not change as use cases grow.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The same collection, for chaining.</returns>
