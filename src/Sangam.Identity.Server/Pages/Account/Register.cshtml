@@ -10,6 +10,7 @@
   <partial name="_Banner" model="@(("danger", Model.Error ?? string.Empty))" />
 
   <form method="post" novalidate>
+    <input type="hidden" asp-for="ReturnUrl" />
     <div class="sg-two">
       <div class="sg-field-group">
         <label class="sg-label" asp-for="FirstName">First name</label>
@@ -28,13 +29,22 @@
       <span class="sg-field-error" asp-validation-for="Email"></span>
     </div>
     <div class="sg-field-group">
+      <label class="sg-label" asp-for="Country">Country</label>
+      <select class="sg-field" asp-for="Country" autocomplete="country" required>
+        @foreach (var country in Sangam.Shared.Constants.CountryCodes.All)
+        {
+          <option value="@country.Iso">@country.Name (@country.DialCode)</option>
+        }
+      </select>
+      <span class="sg-field-error" asp-validation-for="Country"></span>
+    </div>
+    <div class="sg-field-group">
       <label class="sg-label" asp-for="MobileNumber">Mobile</label>
       <div class="sg-phone">
-        <input class="sg-field sg-field--code-prefix" asp-for="CountryCode" type="tel" autocomplete="tel-country-code" inputmode="tel" aria-label="Country code" maxlength="5" required />
-        <input class="sg-field" asp-for="MobileNumber" type="tel" autocomplete="tel-national" inputmode="tel" placeholder="98765 43210" required />
+        <span class="sg-dial" aria-hidden="true">@Model.DialCode</span>
+        <input class="sg-field" asp-for="MobileNumber" type="tel" autocomplete="tel-national" inputmode="numeric" placeholder="@Model.MobilePlaceholder" required />
       </div>
       <span class="sg-field-error" asp-validation-for="MobileNumber"></span>
-      <span class="sg-field-error sg-field-error--hidden" asp-validation-for="CountryCode"></span>
     </div>
     <div class="sg-two">
       <div class="sg-field-group">
@@ -56,8 +66,9 @@
     </div>
     <div class="sg-field-group">
       <label class="sg-label" asp-for="Password">Password</label>
-      <input class="sg-field" asp-for="Password" type="password" autocomplete="new-password" required />
+      <input class="sg-field" asp-for="Password" type="password" autocomplete="new-password" required data-sg-password />
       <partial name="_StrengthMeter" model="Model.Strength" />
+      <partial name="_Requirements" model="Model.Strength" />
       <span class="sg-field-error" asp-validation-for="Password"></span>
     </div>
     <div class="sg-check">
@@ -69,5 +80,7 @@
   </form>
 
   <div class="sg-cord-rule" role="presentation"></div>
-  <p class="sg-alt">Already registered? <a href="/login">Sign in</a></p>
+  <script src="/js/password-meter.js" defer></script>
+
+  <p class="sg-alt">Already registered? <a href="@(string.IsNullOrEmpty(Model.ReturnUrl) ? "/login" : "/login?returnUrl=" + Uri.EscapeDataString(Model.ReturnUrl))">Sign in</a></p>
 </section>

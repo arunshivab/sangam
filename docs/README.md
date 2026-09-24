@@ -58,6 +58,10 @@
   CAPTCHA in v0 (rate limiting + lockout + code limits instead of Turnstile); three sign-in modes
   with a per-app policy and a per-user preference; profile fields all required at registration.
   See [`decisions/0002-account-flows-and-sign-in-modes.md`](decisions/0002-account-flows-and-sign-in-modes.md).
+- **OIDC flow, consent and the management API (PR-04).** Authorization Code + PKCE for every
+  client; consent shown for every app with no first-party exemption; small ID tokens with the
+  detail at `/connect/userinfo`; RP-initiated sign-out; an app-scoped management API at
+  `/api/v1`. See [`decisions/0003-oidc-flow-consent-and-management-api.md`](decisions/0003-oidc-flow-consent-and-management-api.md).
 - **Partner facts.** The handoff's placeholder copy says LiPi is operated by "Lipi Systems Pvt Ltd,
   Bengaluru". LiPi is an imagiQa product (Ahmedabad). This is runtime data in the app registry,
   not a design change.
@@ -69,7 +73,7 @@
 | PR-01 | Foundation — repo skeleton + design tokens | Solution, project stubs, CI, licence, Docker Compose, tokens, logo, docs filed |
 | PR-02 | Domain + Infrastructure + first OIDC endpoint | Entities, EF Core migrations, OpenIddict wired, discovery / JWKS / client-credentials token respond |
 | PR-03 | Auth screens 1–6 (Razor Pages, no-JS) | Login (three modes), register, verify by code, forgot / reset by code; rate limiting; lockout; sessions; dev outbox |
-| PR-04 | Consent + auth 7–8 + full OIDC flow | Consent screen, sign-out, Authorization Code + PKCE end to end |
+| PR-04 | Consent + auth 7–8 + full OIDC flow | Consent screen, sign-out, Authorization Code + PKCE end to end, userinfo, management API |
 | PR-05 | Self-service portal (Blazor Server) — screens 9–10 | Dashboard, linked apps, DPDPA data export, account deletion |
 | PR-06 | Admin console (Blazor Server, dark scope) — screens 11–12 | Dashboard, users table with bulk actions, app registry, audit log, MFA mandatory |
 | PR-07 | `Sangam.Client` NuGet SDK + integration sample | ~10-line partner integration, working sample |

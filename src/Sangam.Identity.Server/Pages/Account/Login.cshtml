@@ -27,8 +27,11 @@
     <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">Sign in</button>
   </form>
 
-  <a class="sg-tertiary" href="/login/code@(string.IsNullOrEmpty(Model.ReturnUrl) ? "" : "?returnUrl=" + Uri.EscapeDataString(Model.ReturnUrl))">Email me a sign-in code instead</a>
+  @if (Model.Partner?.SignInPolicy != Sangam.Identity.Domain.Enums.SignInPolicy.Password)
+  {
+    <a class="sg-tertiary" href="/login/code@(string.IsNullOrEmpty(Model.ReturnUrl) ? "" : "?returnUrl=" + Uri.EscapeDataString(Model.ReturnUrl))">Email me a sign-in code instead</a>
+  }
 
   <div class="sg-cord-rule" role="presentation"></div>
-  <p class="sg-alt">New to Sangam? <a href="/register">Create an account</a></p>
+  <p class="sg-alt">New to Sangam? <a href="@(string.IsNullOrEmpty(Model.ReturnUrl) ? "/register" : "/register?returnUrl=" + Uri.EscapeDataString(Model.ReturnUrl))">Create an account</a></p>
 </section>

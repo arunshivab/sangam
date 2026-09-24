@@ -21,6 +21,9 @@ internal sealed class AppConfiguration : IEntityTypeConfiguration<App>
         b.Property(a => a.PrivacyUrl).HasMaxLength(500);
         b.Property(a => a.TermsUrl).HasMaxLength(500);
         b.Property(a => a.Status).HasConversion(new SnakeCaseEnumConverter<AppStatus>()).HasMaxLength(20).IsRequired();
+        b.Property(a => a.BrandColour).HasMaxLength(9).IsRequired();
+        b.Property(a => a.Glyph).HasMaxLength(4).IsRequired();
+        b.Property(a => a.ConsentVersion).HasMaxLength(20).IsRequired();
         b.Property(a => a.SignInPolicy).HasConversion(new SnakeCaseEnumConverter<SignInPolicy>()).HasMaxLength(20).IsRequired();
 
         b.HasIndex(a => a.ClientId).IsUnique().HasDatabaseName("ux_apps_client_id");

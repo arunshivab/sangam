@@ -1,9 +1,12 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Sangam.Identity.Application.Accounts;
+using Sangam.Identity.Application.Apps;
 using Sangam.Identity.Application.Security;
+using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Enums;
 using Sangam.Identity.Server.Authentication;
+using Sangam.Shared.Constants;
 
 namespace Sangam.Identity.Server.Pages.Account;
 
@@ -11,16 +14,23 @@ namespace Sangam.Identity.Server.Pages.Account;
 public sealed class RegisterModel : AuthPageModel
 {
     private readonly IAccountService _accounts;
+    private readonly IAppDirectory _apps;
     private readonly IConfiguration _configuration;
 
     /// <summary>Initialises the page.</summary>
     /// <param name="accounts">Account service.</param>
+    /// <param name="apps">App directory.</param>
     /// <param name="configuration">Configuration (<c>Sangam:TermsVersion</c>).</param>
-    public RegisterModel(IAccountService accounts, IConfiguration configuration)
+    public RegisterModel(IAccountService accounts, IAppDirectory apps, IConfiguration configuration)
     {
         _accounts = accounts ?? throw new ArgumentNullException(nameof(accounts));
+        _apps = apps ?? throw new ArgumentNullException(nameof(apps));
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
     }
+
+    /// <summary>Where to continue after verification (the app's authorization request).</summary>
+    [BindProperty(SupportsGet = true)]
+    public string? ReturnUrl { get; set; }
 
     /// <summary>First name.</summary>
     [BindProperty]
@@ -40,11 +50,10 @@ public sealed class RegisterModel : AuthPageModel
     [EmailAddress(ErrorMessage = "Enter a valid email address.")]
     public string Email { get; set; } = string.Empty;
 
-    /// <summary>Country calling code, with or without the leading "+". Defaults to India.</summary>
+    /// <summary>ISO code of the selected country; supplies the dialling code. Defaults to India.</summary>
     [BindProperty]
-    [Required(ErrorMessage = "Enter the country code.")]
-    [StringLength(5)]
-    public string CountryCode { get; set; } = "+91";
+    [Required(ErrorMessage = "Select your country.")]
+    public string Country { get; set; } = CountryCodes.DefaultIso;
 
     /// <summary>National mobile number (digits, spaces or dashes).</summary>
     [BindProperty]
@@ -71,6 +80,19 @@ public sealed class RegisterModel : AuthPageModel
     [BindProperty]
     public bool AcceptTerms { get; set; }
 
+    /// <summary>Dialling code of the selected country, shown beside the number field.</summary>
+    public string DialCode => (CountryCodes.FindByIso(Country) ?? CountryCodes.Default).DialCode;
+
+    /// <summary>Placeholder matching the selected country's national number length.</summary>
+    public string MobilePlaceholder
+    {
+        get
+        {
+            CountryCode country = CountryCodes.FindByIso(Country) ?? CountryCodes.Default;
+            return country.NationalDigits == 10 ? "98765 43210" : country.NationalDigits > 0 ? new string('0', country.NationalDigits) : "Mobile number";
+        }
+    }
+
     /// <summary>Version of the terms shown.</summary>
     public string TermsVersion => _configuration["Sangam:TermsVersion"] ?? "v1";
 
@@ -81,11 +103,23 @@ public sealed class RegisterModel : AuthPageModel
     public string? Error { get; private set; }
 
     /// <summary>Renders the form.</summary>
-    public IActionResult OnGet() => User.Identity?.IsAuthenticated == true ? LocalRedirect("/account") : Page();
+    public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken)
+    {
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            return LocalRedirect(SafeReturnUrl(ReturnUrl));
+        }
+
+        await ResolvePartnerAsync(_apps, ReturnUrl, cancellationToken);
+        ViewData["PartnerText"] = Partner is null ? null : $"Creating your account for {Partner.DisplayName}";
+        return Page();
+    }
 
     /// <summary>Creates the account and moves to email verification.</summary>
     public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)
     {
+        await ResolvePartnerAsync(_apps, ReturnUrl, cancellationToken);
+        ViewData["PartnerText"] = Partner is null ? null : $"Creating your account for {Partner.DisplayName}";
         Strength = PasswordStrength.Evaluate(Password);
 
         if (!AcceptTerms)
@@ -93,20 +127,27 @@ public sealed class RegisterModel : AuthPageModel
             ModelState.AddModelError(nameof(AcceptTerms), "You need to accept the terms to create an account.");
         }
 
-        Gender? gender = ParseGender(Gender);
-        if (gender is null)
+        if (!Genders.TryParse(Gender, out Gender gender))
         {
             ModelState.AddModelError(nameof(Gender), "Select an option.");
         }
 
-        if (!ModelState.IsValid || gender is null || DateOfBirth is null)
+        if (!ModelState.IsValid || DateOfBirth is null)
         {
             return Page();
         }
 
-        string mobile = "+" + new string([.. CountryCode.Where(char.IsDigit)]) + new string([.. MobileNumber.Where(char.IsDigit)]);
+        CountryCode country = CountryCodes.FindByIso(Country) ?? CountryCodes.Default;
+        string national = new([.. MobileNumber.Where(char.IsDigit)]);
+        if (country.NationalDigits > 0 && national.Length != country.NationalDigits)
+        {
+            ModelState.AddModelError(nameof(MobileNumber), $"Enter your {country.NationalDigits}-digit {country.Name} mobile number.");
+            return Page();
+        }
+
+        string mobile = country.DialCode + national;
         RegistrationOutcome outcome = await _accounts.RegisterAsync(
-            new RegisterUserCommand(FirstName, LastName, Email, mobile, DateOfBirth.Value, gender.Value, Password, TermsVersion, ClientIp, ClientUserAgent),
+            new RegisterUserCommand(FirstName, LastName, Email, mobile, DateOfBirth.Value, gender, Password, TermsVersion, ClientIp, ClientUserAgent),
             cancellationToken);
 
         if (!outcome.Result.Succeeded || outcome.UserId is null)
@@ -127,15 +168,6 @@ public sealed class RegisterModel : AuthPageModel
         }
 
         await SangamAuthentication.StorePendingAsync(HttpContext, SangamAuthentication.Pending.EmailVerification, outcome.UserId.Value);
-        return RedirectToPage("/Account/Verify");
+        return RedirectToPage("/Account/Verify", new { returnUrl = ReturnUrl });
     }
-
-    private static Gender? ParseGender(string value) => value switch
-    {
-        "female" => Domain.Enums.Gender.Female,
-        "male" => Domain.Enums.Gender.Male,
-        "other" => Domain.Enums.Gender.Other,
-        "prefer_not_to_say" => Domain.Enums.Gender.PreferNotToSay,
-        _ => null,
-    };
 }

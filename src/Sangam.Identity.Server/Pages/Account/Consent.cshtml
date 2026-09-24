@@ -1,0 +1,59 @@
+@page
+@model ConsentModel
+@{
+    ViewData["Title"] = Model.App.DisplayName + " would like to use your Sangam account";
+    ViewData["Wide"] = true;
+}
+
+<section class="sg-card sg-card--consent">
+  <div class="sg-relation" aria-hidden="true">
+    <span class="sg-tile" style="background:@Model.App.BrandColour">@Model.App.Glyph</span>
+    <span class="sg-relation-arrow"><span class="sg-relation-glyph">→</span><span class="sg-relation-caption">REQUESTS</span></span>
+    <span class="sg-tile sg-tile--sangam"><component type="typeof(SangamMark)" render-mode="Static" param-Size="30" param-Mode="SangamMarkMode.Reversed" param-Decorative="true" /></span>
+  </div>
+
+  <h1 class="sg-card-title sg-card-title--consent">@Model.App.DisplayName would like to use your Sangam account</h1>
+  <p class="sg-card-body">@Model.App.DisplayName is operated by @Model.App.OwnerCompanyName. It is asking for the items below; you can withdraw this at any time.</p>
+
+  <div class="sg-account-row">
+    <span class="sg-avatar sg-avatar--initials" aria-hidden="true">@Model.Initials</span>
+    <span class="sg-account-text"><span class="sg-account-name">@Model.User.DisplayName</span><span class="sg-account-email sg-mono">@Model.User.Email</span></span>
+    <a class="sg-account-switch" href="/login?returnUrl=@Uri.EscapeDataString(Model.ReturnUrl)&switch=1">Switch account</a>
+  </div>
+
+  <div class="sg-consent-columns">
+    <div class="sg-consent-col">
+      <h2 class="sg-consent-head sg-consent-head--share">WILL BE SHARED</h2>
+      <ul class="sg-share-list">
+        @foreach (var item in Model.Shared)
+        {
+          <li><span class="sg-share-tick" aria-hidden="true">✓</span><span><span class="sg-share-claim">@item.Label</span><span class="sg-share-value">@item.Value</span></span></li>
+        }
+      </ul>
+      <div class="sg-chips">
+        @foreach (string scope in Model.Scopes)
+        {
+          <span class="sg-chip">@scope</span>
+        }
+      </div>
+    </div>
+    <div class="sg-consent-col sg-consent-col--not">
+      <h2 class="sg-consent-head sg-consent-head--not">WILL NOT BE SHARED</h2>
+      <ul class="sg-not-list">
+        <li>Your password</li>
+        <li>Data held by other apps</li>
+        <li>Clinical records or prescriptions</li>
+        <li>Your sign-in history</li>
+        <li>Payment details</li>
+      </ul>
+    </div>
+  </div>
+
+  <form method="post" class="sg-consent-actions">
+    <input type="hidden" asp-for="ReturnUrl" />
+    <button type="submit" class="sg-btn sg-btn--secondary sg-btn--consent" asp-page-handler="Deny">Cancel</button>
+    <button type="submit" class="sg-btn sg-btn--primary sg-btn--consent sg-btn--consent-allow" asp-page-handler="Allow">Allow access</button>
+  </form>
+
+  <p class="sg-note sg-note--centre">You can withdraw this at account.sangamid.in. After approval, @Model.App.DisplayName's <a href="@(Model.App.PrivacyUrl ?? "#")">privacy policy</a> governs what it does with the data.</p>
+</section>

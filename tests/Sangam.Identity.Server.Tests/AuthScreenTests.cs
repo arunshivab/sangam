@@ -26,8 +26,14 @@ public sealed partial class AuthScreenTests
             Assert.Equal(HttpStatusCode.OK, status);
             Assert.Contains("<span class=\"sg-wordmark\">sangam</span>", html, StringComparison.Ordinal);
             Assert.Contains("__RequestVerificationToken", html, StringComparison.Ordinal);
-            Assert.DoesNotContain("<script", html, StringComparison.OrdinalIgnoreCase);
+            // Progressive enhancement only, and only from this origin: every screen works without it.
+            foreach (Match script in ScriptSrcRegex().Matches(html))
+            {
+                Assert.StartsWith("/", script.Groups[1].Value, StringComparison.Ordinal);
+            }
+
             Assert.DoesNotContain("href=\"http", html, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("src=\"http", html, StringComparison.OrdinalIgnoreCase);
         }
     }
 
@@ -40,12 +46,57 @@ public sealed partial class AuthScreenTests
     }
 
     [Fact]
-    public async Task DevOutbox_IsNotServedOutsideDevelopment()
+    public async Task DeveloperPages_AreNotServedOutsideDevelopment()
     {
         using BrowserSession s = new(_factory);
-        (HttpStatusCode status, _) = await s.GetAsync("/dev/outbox");
-        Assert.Equal(HttpStatusCode.NotFound, status);
+        foreach (string path in new[] { "/dev/outbox", "/dev/callback" })
+        {
+            (HttpStatusCode status, _) = await s.GetAsync(path);
+            Assert.Equal(HttpStatusCode.NotFound, status);
+        }
     }
+
+    [Fact]
+    public async Task Register_OffersTheCountryDropdown_WithIndiaSelected()
+    {
+        using BrowserSession s = new(_factory);
+        (HttpStatusCode status, string html) = await s.GetAsync("/register");
+
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.Contains("<option value=\"IN\" selected=\"selected\">India (&#x2B;91)</option>", html, StringComparison.Ordinal);
+        Assert.Contains("United Arab Emirates (&#x2B;971)", html, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"sg-dial\" aria-hidden=\"true\">&#x2B;91</span>", html, StringComparison.Ordinal);
+        Assert.Contains("sg-reqs", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Register_ValidatesTheNationalNumberLengthForTheChosenCountry()
+    {
+        using BrowserSession s = new(_factory);
+        (_, _, string shortIndian) = await s.PostFormAsync("/register", Form("IN", "98765"));
+        Assert.Contains("Enter your 10-digit India mobile number.", shortIndian, StringComparison.Ordinal);
+
+        (_, _, string shortEmirati) = await s.PostFormAsync("/register", Form("AE", "5012345"));
+        Assert.Contains("Enter your 9-digit United Arab Emirates mobile number.", shortEmirati, StringComparison.Ordinal);
+        Assert.Contains("<option value=\"AE\" selected=\"selected\">", shortEmirati, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"sg-dial\" aria-hidden=\"true\">&#x2B;971</span>", shortEmirati, StringComparison.Ordinal);
+    }
+
+    [GeneratedRegex("<script[^>]*src=\"([^\"]+)\"")]
+    private static partial Regex ScriptSrcRegex();
+
+    private static Dictionary<string, string> Form(string country, string mobile) => new(StringComparer.Ordinal)
+    {
+        ["FirstName"] = "Arun",
+        ["LastName"] = "Shiva",
+        ["Email"] = $"country-{Guid.NewGuid():N}@example.in",
+        ["Country"] = country,
+        ["MobileNumber"] = mobile,
+        ["DateOfBirth"] = "1980-01-01",
+        ["Gender"] = "male",
+        ["Password"] = "Kaveri-River-2026!",
+        ["AcceptTerms"] = "true",
+    };
 
     [Fact]
     public async Task Register_ShowsFieldErrors_AndServerRenderedStrengthMeter()
@@ -56,7 +107,7 @@ public sealed partial class AuthScreenTests
             ["FirstName"] = "",
             ["LastName"] = "Kumar",
             ["Email"] = "not-an-email",
-            ["CountryCode"] = "+91",
+            ["Country"] = "IN",
             ["MobileNumber"] = "",
             ["DateOfBirth"] = "",
             ["Gender"] = "",
@@ -86,7 +137,7 @@ public sealed partial class AuthScreenTests
             ["FirstName"] = "Rajesh",
             ["LastName"] = "Kumar",
             ["Email"] = email,
-            ["CountryCode"] = "+91",
+            ["Country"] = "IN",
             ["MobileNumber"] = mobile,
             ["DateOfBirth"] = "1984-03-14",
             ["Gender"] = "male",
@@ -236,7 +287,7 @@ public sealed partial class AuthScreenTests
             ["FirstName"] = "Priya",
             ["LastName"] = "Nair",
             ["Email"] = email,
-            ["CountryCode"] = "+91",
+            ["Country"] = "IN",
             ["MobileNumber"] = mobile,
             ["DateOfBirth"] = "1990-07-02",
             ["Gender"] = "female",

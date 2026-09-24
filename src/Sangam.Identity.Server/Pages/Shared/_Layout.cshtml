@@ -19,10 +19,17 @@
   <link rel="stylesheet" href="/css/site.css" />
 </head>
 <body>
-  <main class="sg-auth">
+  <main class="sg-auth@(ViewData["Wide"] is true ? " sg-auth--wide" : "")">
     <div class="sg-auth-lockup">
       <a href="/" aria-label="Sangam home"><component type="typeof(SangamLockup)" render-mode="Static" param-MarkSize="26" /></a>
     </div>
+    @if (ViewData["Partner"] is Sangam.Identity.Application.Apps.AppSummary partner)
+    {
+      <div class="sg-partner-chip" style="border-left-color:@partner.BrandColour">
+        <span class="sg-partner-glyph" style="background:@partner.BrandColour" aria-hidden="true">@partner.Glyph</span>
+        <span class="sg-partner-text">@(ViewData["PartnerText"] as string ?? $"Signing in to {partner.DisplayName}")</span>
+      </div>
+    }
     @RenderBody()
   </main>
   <footer class="sg-auth-footer">

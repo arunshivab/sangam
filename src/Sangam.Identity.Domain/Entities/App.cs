@@ -42,6 +42,15 @@ public sealed class App
     /// <summary>The app's sign-in rule. <see cref="SignInPolicy.Default"/> lets each user's own preference apply.</summary>
     public SignInPolicy SignInPolicy { get; set; } = SignInPolicy.Default;
 
+    /// <summary>Brand colour (hex, "#1D4E89") used on the partner chip and consent tile. Never touches layout.</summary>
+    public string BrandColour { get; set; } = "#0F3B38";
+
+    /// <summary>One or two characters shown in the partner glyph ("लि", "A").</summary>
+    public string Glyph { get; set; } = "?";
+
+    /// <summary>Version of the consent wording currently in force for this app ("v1"). A change forces re-consent.</summary>
+    public string ConsentVersion { get; set; } = "v1";
+
     /// <summary>Lifecycle state.</summary>
     public AppStatus Status { get; set; } = AppStatus.Active;
 

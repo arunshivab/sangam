@@ -10,5 +10,13 @@
   </div>
   <h1 class="sg-card-title sg-card-title--centre">Email verified</h1>
   <p class="sg-card-body sg-card-body--centre">Your Sangam account is ready. You are signed in on this device.</p>
-  <a class="sg-btn sg-btn--primary sg-btn--block" href="/account">Go to your Sangam account</a>
+  @if (Model.Partner is not null)
+  {
+    <a class="sg-btn sg-btn--primary sg-btn--block" href="@Model.ContinueUrl"><span class="sg-glyph-inline sg-glyph-inline--20" style="background:@Model.Partner.BrandColour" aria-hidden="true">@Model.Partner.Glyph</span>Continue to @Model.Partner.DisplayName</a>
+    <a class="sg-tertiary" href="/account">Go to your Sangam account instead</a>
+  }
+  else
+  {
+    <a class="sg-btn sg-btn--primary sg-btn--block" href="/account">Go to your Sangam account</a>
+  }
 </section>
