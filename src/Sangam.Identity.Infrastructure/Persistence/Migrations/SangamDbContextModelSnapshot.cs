@@ -1164,6 +1164,15 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("gender");
 
+                    b.Property<DateTimeOffset?>("HoldPlacedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("hold_placed_at");
+
+                    b.Property<string>("HoldReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("hold_reason");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -1212,6 +1221,10 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("boolean")
                         .HasColumnName("mobile_verified");
+
+                    b.Property<DateTimeOffset?>("PurgeAfter")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("purge_after");
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text")
@@ -1264,6 +1277,10 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ux_users_mobile")
                         .HasFilter("mobile IS NOT NULL AND status <> 'deleted_hard'");
 
+                    b.HasIndex("PurgeAfter")
+                        .HasDatabaseName("idx_users_purge_after")
+                        .HasFilter("purge_after IS NOT NULL");
+
                     b.HasIndex("Status")
                         .HasDatabaseName("idx_users_status");
 
@@ -1275,6 +1292,76 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("chk_users_status", "status IN ('active','suspended','deleted_soft','deleted_hard')");
                         });
+                });
+
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.UserSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AppId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("app_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DeviceLabel")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("device_label");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)")
+                        .HasColumnName("ip_address");
+
+                    b.Property<DateTimeOffset>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_seen_at");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<string>("RevokedReason")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("revoked_reason");
+
+                    b.Property<string>("SignInMode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("sign_in_mode");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("user_agent");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_sessions");
+
+                    b.HasIndex("AppId")
+                        .HasDatabaseName("ix_user_sessions_app_id");
+
+                    b.HasIndex("RevokedAt")
+                        .HasDatabaseName("idx_user_sessions_revoked_at");
+
+                    b.HasIndex("UserId", "LastSeenAt")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("idx_user_sessions_live")
+                        .HasFilter("revoked_at IS NULL");
+
+                    b.ToTable("user_sessions", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
@@ -1507,6 +1594,26 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                     b.Navigation("App");
 
                     b.Navigation("Org");
+                });
+
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.UserSession", b =>
+                {
+                    b.HasOne("Sangam.Identity.Domain.Entities.App", "App")
+                        .WithMany()
+                        .HasForeignKey("AppId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_user_sessions_apps_app_id");
+
+                    b.HasOne("Sangam.Identity.Domain.Entities.SangamUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_sessions_users_user_id");
+
+                    b.Navigation("App");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreApplication", b =>

@@ -155,20 +155,11 @@
 .sg-field { display: block; width: 100%; font-family: var(--sg-font-body); }
 select.sg-field { appearance: auto; padding-right: 36px; }
 input[type="date"].sg-field { min-height: var(--sg-control-height); }
-.sg-phone { display: flex; align-items: stretch; }
-.sg-phone .sg-field { margin: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: none; }
-.sg-dial {
-  display: inline-flex;
-  align-items: center;
-  padding: 0 var(--sg-space-3);
-  font: var(--sg-body-16) var(--sg-font-mono);
-  color: var(--sg-slate);
-  background: var(--sg-cream);
-  border: 1px solid var(--sg-border-strong);
-  border-radius: var(--sg-radius-control) 0 0 var(--sg-radius-control);
-  white-space: nowrap;
-}
-.sg-field-group .sg-reqs { margin-top: var(--sg-space-2); }
+/* Mobile: the dialling-code select IS the prefix, so the code shown can never
+   disagree with the country chosen — no JavaScript needed to keep them in step. */
+.sg-phone { display: grid; grid-template-columns: 132px 1fr; column-gap: var(--sg-space-2); }
+.sg-phone .sg-field { margin: 0; }
+.sg-field--dial { padding-left: var(--sg-space-2); padding-right: var(--sg-space-1); font-family: var(--sg-font-mono); font-size: 14px; }
 .sg-field-error--hidden:empty { display: none; }
 .sg-field--code { font-family: var(--sg-font-mono); font-size: 22px; letter-spacing: 0.32em; text-align: center; }
 
@@ -227,19 +218,16 @@ input[type="date"].sg-field { min-height: var(--sg-control-height); }
 .sg-meter--strong .sg-meter-seg--on { background: #276B4E; }
 .sg-meter--fair .sg-meter-seg--on { background: #7E5A14; }
 .sg-meter--weak .sg-meter-seg--on { background: var(--sg-danger); }
-.sg-meter-caption { display: flex; justify-content: space-between; gap: var(--sg-space-3); min-height: 18px; margin-top: 4px; font: 400 12px/18px var(--sg-font-body); color: var(--sg-slate); }
+.sg-meter-caption { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 9px; min-height: 18px; margin: 4px 0 0; font: 400 12.5px/18px var(--sg-font-body); }
+.sg-token { color: #9A9890; white-space: nowrap; }
+.sg-token--met { color: #276B4E; font-weight: 500; }
+.sg-token-mark { margin-right: 2px; }
 .sg-meter-verdict { font-weight: 600; white-space: nowrap; }
 .sg-meter-hint { text-align: right; }
 .sg-meter-verdict--strong { color: #276B4E; }
 .sg-meter-verdict--fair { color: #7E5A14; }
 .sg-meter-verdict--weak { color: var(--sg-danger); }
 
-/* Fixed three-row requirement list */
-.sg-reqs { list-style: none; margin-bottom: 0; padding: var(--sg-space-3) var(--sg-space-4); background: var(--sg-cream); border-radius: var(--sg-radius-control); font: 400 13px/1.8 var(--sg-font-body); color: var(--sg-slate); }
-.sg-reqs li { display: flex; gap: var(--sg-space-2); }
-.sg-req-mark { display: inline-block; width: 15px; text-align: center; color: #9A9890; }
-.sg-req--met { color: var(--sg-ink); }
-.sg-req--met .sg-req-mark { color: #276B4E; font-weight: 700; }
 
 /* 46 px status circles (screens 3 and 4) */
 .sg-circle { display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; margin: 0 auto; border-radius: 50%; border: 1px solid var(--sg-sandalwood); background: #F6F1E4; }

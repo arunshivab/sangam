@@ -1,0 +1,28 @@
+<div class="sg-page-head">
+  <div>
+    <h1 class="sg-page-title">@Title</h1>
+    @if (!string.IsNullOrEmpty(Subtitle))
+    {
+      <p class="sg-page-subtitle">@Subtitle</p>
+    }
+  </div>
+  @if (Actions is not null)
+  {
+    <div class="sg-page-actions">@Actions</div>
+  }
+</div>
+
+@code {
+    /// <summary>Page title.</summary>
+    [Parameter]
+    [EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>One-line subtitle.</summary>
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    /// <summary>Optional buttons shown on the right.</summary>
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+}

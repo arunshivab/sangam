@@ -14,7 +14,12 @@ with Sangam, partner applications receive only the claims the user consented to.
 | `account.sangamid.in` | Self-service portal: linked apps, devices, audit log, personal data | Blazor Server |
 | `admin.sangamid.in` | Operator console (MFA mandatory) | Blazor Server |
 
-Status: **PR-04 — Sangam is an identity provider**. Partner apps sign users in with
+Status: **PR-05 — accounts are self-serviceable**. Alongside the identity provider, people can
+now see every application they have allowed and revoke it, see where they are signed in and end a
+single session or all of them, read their own audit trail, download their data and delete their
+account. Next: the admin console (PR-06).
+
+Previously: **PR-04 — Sangam is an identity provider**. Partner apps sign users in with
 Authorization Code + PKCE, users consent to exactly what is shared, tokens and `userinfo`
 carry the user's organisations and roles, apps administer their own tenancy through
 `/api/v1`, and app-initiated sign-out works. The self-service portal is PR-05. See [`docs/README.md`](docs/README.md) for the
@@ -31,7 +36,8 @@ git clone https://github.com/arunshivab/sangam.git
 cd sangam
 .\scripts\bootstrap-dev.ps1                 # checks tools, finds Postgres, builds, tests
 .\scripts\bootstrap-dev.ps1 -InitDatabase   # once: creates the sangam_identity role + database
-dotnet run --project src/Sangam.Identity.Server   # http://localhost:5100/register
+dotnet run --project src/Sangam.Identity.Server      # http://localhost:5100/register
+dotnet run --project src/Sangam.SelfService.Web     # http://localhost:5200  (needs the server above)
 ```
 
 In Development the server captures outgoing email instead of sending it; open

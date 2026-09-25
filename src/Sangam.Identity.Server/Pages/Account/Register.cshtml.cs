@@ -80,18 +80,9 @@ public sealed class RegisterModel : AuthPageModel
     [BindProperty]
     public bool AcceptTerms { get; set; }
 
-    /// <summary>Dialling code of the selected country, shown beside the number field.</summary>
-    public string DialCode => (CountryCodes.FindByIso(Country) ?? CountryCodes.Default).DialCode;
-
-    /// <summary>Placeholder matching the selected country's national number length.</summary>
-    public string MobilePlaceholder
-    {
-        get
-        {
-            CountryCode country = CountryCodes.FindByIso(Country) ?? CountryCodes.Default;
-            return country.NationalDigits == 10 ? "98765 43210" : country.NationalDigits > 0 ? new string('0', country.NationalDigits) : "Mobile number";
-        }
-    }
+    /// <summary>The latest date of birth that may register, so the picker stops at it.</summary>
+    public string LatestEligibleBirthDate
+        => AgePolicy.LatestEligibleBirthDate(DateOnly.FromDateTime(DateTime.UtcNow)).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
 
     /// <summary>Version of the terms shown.</summary>
     public string TermsVersion => _configuration["Sangam:TermsVersion"] ?? "v1";

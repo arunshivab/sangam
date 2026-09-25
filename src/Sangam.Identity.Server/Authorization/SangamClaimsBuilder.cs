@@ -24,7 +24,8 @@ public static class SangamClaimsBuilder
     /// <param name="scopes">Granted scopes.</param>
     /// <param name="orgs">The user's memberships in the requesting app (may be empty).</param>
     /// <param name="authenticationScheme">Identity authentication type.</param>
-    public static ClaimsIdentity Build(UserSummary user, IReadOnlyCollection<string> scopes, IReadOnlyList<OrgClaim> orgs, string authenticationScheme)
+    /// <param name="sessionId">The Sangam browser session the token is issued from (the OIDC <c>sid</c>), when known.</param>
+    public static ClaimsIdentity Build(UserSummary user, IReadOnlyCollection<string> scopes, IReadOnlyList<OrgClaim> orgs, string authenticationScheme, string? sessionId = null)
     {
         ArgumentNullException.ThrowIfNull(user);
         ArgumentNullException.ThrowIfNull(scopes);
@@ -42,6 +43,10 @@ public static class SangamClaimsBuilder
             identity.SetClaim(Claims.Gender, Genders.ToCode(user.Gender));
             identity.SetClaim(Claims.Locale, user.Locale);
             identity.SetClaim(Claims.Zoneinfo, "Asia/Kolkata");
+
+            // Standard OIDC signal: an app compares this with the copy it cached and re-reads
+            // /connect/userinfo when it has moved. Sangam never pushes profile changes.
+            identity.SetClaim(Claims.UpdatedAt, user.UpdatedAt.ToUnixTimeSeconds());
         }
 
         if (scopes.Contains(SangamScopes.Email))
@@ -61,7 +66,14 @@ public static class SangamClaimsBuilder
             identity.AddClaim(new Claim(SangamClaims.Orgs, JsonSerializer.Serialize(orgs.Select(ToJson), JsonOptions), "JSON_ARRAY"));
         }
 
+        if (!string.IsNullOrEmpty(sessionId))
+        {
+            identity.SetClaim(SangamClaims.SessionId, sessionId);
+        }
+
         identity.SetScopes(scopes);
+
+        // Destinations are assigned to the claims present now: every claim must be set above this line.
         identity.SetDestinations(GetDestinations);
         return identity;
     }
@@ -73,7 +85,7 @@ public static class SangamClaimsBuilder
         ArgumentNullException.ThrowIfNull(claim);
         return claim.Type switch
         {
-            Claims.Subject or Claims.Name or Claims.Email or Claims.EmailVerified or SangamClaims.Orgs
+            Claims.Subject or Claims.Name or Claims.Email or Claims.EmailVerified or SangamClaims.SessionId or SangamClaims.Orgs
                 => [Destinations.AccessToken, Destinations.IdentityToken],
             "AspNet.Identity.SecurityStamp" => [],
             _ => [Destinations.AccessToken],

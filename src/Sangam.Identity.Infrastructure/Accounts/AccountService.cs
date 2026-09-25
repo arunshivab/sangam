@@ -82,9 +82,13 @@ public sealed class AccountService : IAccountService
         }
 
         DateOnly today = DateOnly.FromDateTime(_clock.UtcNow.UtcDateTime);
-        if (command.DateOfBirth > today || command.DateOfBirth < today.AddYears(-120))
+        if (!AgePolicy.IsPlausible(command.DateOfBirth, today))
         {
             errors.Add(new AccountError("DateOfBirth", "Enter a valid date of birth."));
+        }
+        else if (!AgePolicy.MayRegister(command.DateOfBirth, today))
+        {
+            errors.Add(new AccountError("DateOfBirth", $"You need to be {AgePolicy.MinimumRegistrationAge} or older to open a Sangam account. If an adult manages an account for you, write to help@sangamid.in."));
         }
 
         PasswordStrengthResult strength = PasswordStrength.Evaluate(command.Password);
@@ -390,7 +394,7 @@ public sealed class AccountService : IAccountService
 
     private static UserSummary ToSummary(SangamUser u) => new(
         u.Id, u.FirstName, u.LastName, u.Email ?? string.Empty, u.EmailConfirmed, u.PhoneNumber, u.PhoneNumberConfirmed,
-        u.DateOfBirth, u.Gender, u.Locale, u.SignInPreference, u.SecurityStamp ?? string.Empty);
+        u.DateOfBirth, u.Gender, u.Locale, u.SignInPreference, u.CreatedAt, u.UpdatedAt, u.SecurityStamp ?? string.Empty);
 
     private static string PurposeJson(OneTimeCodePurpose purpose, string? reason = null)
         => reason is null

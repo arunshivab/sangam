@@ -1,0 +1,130 @@
+@page "/devices"
+@inject IPortalService Portal
+@inject AuthenticationStateProvider AuthProvider
+
+<PageTitle>Devices · sangam</PageTitle>
+
+<PageHeader Title="Where you're signed in" Subtitle="Every browser session on your account. End one, or sign out everywhere.">
+  <Actions>
+    <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _confirmingAll = true" disabled="@(_sessions is null || _sessions.Count == 0)">Sign out of all devices</button>
+  </Actions>
+</PageHeader>
+
+<p class="sg-note sg-note--wide">
+  Sangam shows only what your browser tells it: the browser, the address you connected from, and the time.
+  It never guesses a location. A name like "First Floor Radiology" appears only when the application you
+  signed in to supplied it.
+</p>
+
+@if (_sessions is null)
+{
+  <p class="sg-note">Loading…</p>
+}
+else
+{
+  <div class="sg-table sg-table--devices" role="table">
+    <div class="sg-tr sg-tr--head" role="row">
+      <span role="columnheader">DEVICE</span>
+      <span role="columnheader">SIGNED IN</span>
+      <span role="columnheader">LAST SEEN</span>
+      <span role="columnheader"></span>
+    </div>
+    @foreach (PortalSession session in _sessions)
+    {
+      <div class="sg-tr @(session.IsCurrent ? "sg-tr--current" : "")" role="row">
+        <span class="sg-device-cell" role="cell">
+          <span class="sg-device-name">
+            @(session.DeviceLabel ?? session.Browser)
+            @if (session.IsCurrent)
+            {
+              <span class="sg-badge">This device</span>
+            }
+          </span>
+          <span class="sg-device-meta">
+            @if (session.DeviceLabel is not null)
+            {
+              <span>@session.Browser · </span>
+            }
+            <span class="sg-mono">@(session.IpAddress ?? "address unknown")</span>
+            @if (session.AppName is not null)
+            {
+              <span> · via @session.AppName</span>
+            }
+          </span>
+        </span>
+        <span role="cell" title="@Relative.Full(session.CreatedAt)">@Relative.Describe(session.CreatedAt, _now)</span>
+        <span role="cell" title="@Relative.Full(session.LastSeenAt)">@Relative.Describe(session.LastSeenAt, _now)</span>
+        <span role="cell">
+          <button type="button" class="sg-btn sg-btn--secondary sg-btn--row" @onclick="() => EndAsync(session)" disabled="@_working">
+            @(session.IsCurrent ? "Sign out here" : "End session")
+          </button>
+        </span>
+      </div>
+    }
+  </div>
+}
+
+@if (_confirmingAll)
+{
+  <div class="sg-confirm" role="alertdialog" aria-labelledby="all-title">
+    <h2 class="sg-confirm-title" id="all-title">Sign out of all devices?</h2>
+    <p class="sg-confirm-body">
+      Every session ends, including this one, and applications holding access on your behalf are asked to sign you in again.
+      Your password does not change. Use this if you have lost a device.
+    </p>
+    <div class="sg-confirm-actions">
+      <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _confirmingAll = false">Cancel</button>
+      <button type="button" class="sg-btn sg-btn--danger" @onclick="EndAllAsync" disabled="@_working">Sign out everywhere</button>
+    </div>
+  </div>
+}
+
+@if (_message is not null)
+{
+  <p class="sg-banner sg-banner--success" role="status">@_message</p>
+}
+
+@code {
+    private IReadOnlyList<PortalSession>? _sessions;
+    private bool _confirmingAll;
+    private bool _working;
+    private string? _message;
+    private Guid _userId;
+    private Guid? _currentSessionId;
+    private DateTimeOffset _now = DateTimeOffset.UtcNow;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthProvider.GetAuthenticationStateAsync();
+        _userId = PortalUser.Id(state.User) ?? Guid.Empty;
+        _currentSessionId = PortalUser.SessionId(state.User);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _now = DateTimeOffset.UtcNow;
+        _sessions = _userId == Guid.Empty ? [] : await Portal.GetSessionsAsync(_userId, _currentSessionId);
+    }
+
+    private async Task EndAsync(PortalSession session)
+    {
+        _working = true;
+        await Portal.RevokeSessionAsync(_userId, session.Id, null);
+        _working = false;
+        _message = session.IsCurrent
+            ? "That session has ended. You will be signed out here shortly."
+            : $"The session on {session.DeviceLabel ?? session.Browser} has ended.";
+        await LoadAsync();
+    }
+
+    private async Task EndAllAsync()
+    {
+        _working = true;
+        await Portal.RevokeAllSessionsAsync(_userId, null);
+        _working = false;
+        _confirmingAll = false;
+        _message = "All sessions have ended. You will be signed out of this one shortly.";
+        await LoadAsync();
+    }
+}

@@ -7,6 +7,7 @@ using OpenIddict.Server.AspNetCore;
 using Sangam.Identity.Application.Abstractions;
 using Sangam.Identity.Application.Accounts;
 using Sangam.Identity.Application.Apps;
+using Sangam.Identity.Application.Portal;
 using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Enums;
 using Sangam.Identity.Server.Authentication;
@@ -24,13 +25,15 @@ public sealed class LogoutModel : AuthPageModel
     private readonly IAccountService _accounts;
     private readonly IAppDirectory _apps;
     private readonly IAuditWriter _audit;
+    private readonly ISessionService _sessions;
 
     /// <summary>Initialises the page.</summary>
-    public LogoutModel(IAccountService accounts, IAppDirectory apps, IAuditWriter audit)
+    public LogoutModel(IAccountService accounts, IAppDirectory apps, IAuditWriter audit, ISessionService sessions)
     {
         _accounts = accounts ?? throw new ArgumentNullException(nameof(accounts));
         _apps = apps ?? throw new ArgumentNullException(nameof(apps));
         _audit = audit ?? throw new ArgumentNullException(nameof(audit));
+        _sessions = sessions ?? throw new ArgumentNullException(nameof(sessions));
     }
 
     /// <summary>For app-initiated sign-out: the end-session parameters, re-posted so OpenIddict can validate the POST too.</summary>
@@ -68,6 +71,11 @@ public sealed class LogoutModel : AuthPageModel
     {
         await LoadAsync(cancellationToken);
         Guid? id = SangamAuthentication.UserId(base.User);
+        Guid? sessionId = SangamAuthentication.SessionId(base.User);
+        if (sessionId is not null)
+        {
+            await _sessions.EndAsync(sessionId.Value, "user", cancellationToken);
+        }
 
         await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
         await SangamAuthentication.ClearPendingAsync(HttpContext);
