@@ -52,6 +52,9 @@ public sealed class SangamDbContext : IdentityUserContext<SangamUser, Guid>
     /// <summary>One-time codes (email verification, password reset, sign-in).</summary>
     public DbSet<OneTimeCode> OneTimeCodes => Set<OneTimeCode>();
 
+    /// <summary>Browser sessions.</summary>
+    public DbSet<UserSession> UserSessions => Set<UserSession>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder builder)
     {

@@ -52,8 +52,10 @@ jobs:
       - name: Build (Release, warnings are errors)
         run: dotnet build Sangam.sln --configuration Release --no-restore
 
-      - name: Create the Identity.Server test database
-        run: psql "postgresql://sangam_identity:sangam_dev@localhost:5432/sangam_identity_test" -v ON_ERROR_STOP=1 -c "CREATE DATABASE sangam_identity_test_server OWNER sangam_identity;"
+      - name: Create the in-process host test databases
+        run: |
+          psql "postgresql://sangam_identity:sangam_dev@localhost:5432/sangam_identity_test" -v ON_ERROR_STOP=1 -c "CREATE DATABASE sangam_identity_test_server OWNER sangam_identity;"
+          psql "postgresql://sangam_identity:sangam_dev@localhost:5432/sangam_identity_test" -v ON_ERROR_STOP=1 -c "CREATE DATABASE sangam_identity_test_portal OWNER sangam_identity;"
 
       - name: Test (including PostgreSQL-backed tests)
         run: dotnet test Sangam.sln --configuration Release --no-build --logger "trx;LogFileName=results.trx" --results-directory TestResults

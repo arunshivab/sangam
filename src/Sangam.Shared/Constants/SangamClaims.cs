@@ -6,6 +6,12 @@ namespace Sangam.Shared.Constants;
 /// </summary>
 public static class SangamClaims
 {
+    /// <summary>
+    /// Standard OpenID Connect session identifier (<c>sid</c>): the Sangam browser session the
+    /// token was issued from. A client uses it to tell which of the user's sessions is its own.
+    /// </summary>
+    public const string SessionId = "sid";
+
     /// <summary>JSON array of organisation memberships scoped to the requesting app; see <see cref="SangamOrgClaim"/> for members.</summary>
     public const string Orgs = "sangam_orgs";
 

@@ -13,6 +13,13 @@ namespace Sangam.Identity.Server.Authorization;
 /// </summary>
 public static class PartnerContext
 {
+    /// <summary>
+    /// Optional authorization-request parameter by which an app names the machine it runs on
+    /// ("First Floor Radiology"), shown verbatim in the portal's session list. Sangam never
+    /// invents this: with no parameter, the session shows only the browser and the IP address.
+    /// </summary>
+    public const string DeviceParameter = "sangam_device";
+
     /// <summary>Extracts <c>client_id</c> from a local return URL that points at the authorization endpoint.</summary>
     /// <param name="returnUrl">Local return URL.</param>
     /// <returns>The client id, or <see langword="null"/>.</returns>
@@ -31,6 +38,31 @@ public static class PartnerContext
 
         Dictionary<string, Microsoft.Extensions.Primitives.StringValues> query = QueryHelpers.ParseQuery(returnUrl[q..]);
         return query.TryGetValue(Parameters.ClientId, out Microsoft.Extensions.Primitives.StringValues value) ? value.ToString() : null;
+    }
+
+    /// <summary>The device label the app supplied on the authorization request (<c>sangam_device</c>), trimmed to 100 characters.</summary>
+    /// <param name="returnUrl">Local return URL.</param>
+    public static string? DeviceLabelFromReturnUrl(string? returnUrl)
+    {
+        if (string.IsNullOrEmpty(returnUrl))
+        {
+            return null;
+        }
+
+        int q = returnUrl.IndexOf('?', StringComparison.Ordinal);
+        if (q < 0)
+        {
+            return null;
+        }
+
+        Dictionary<string, Microsoft.Extensions.Primitives.StringValues> query = QueryHelpers.ParseQuery(returnUrl[q..]);
+        if (!query.TryGetValue(DeviceParameter, out Microsoft.Extensions.Primitives.StringValues value))
+        {
+            return null;
+        }
+
+        string label = value.ToString().Trim();
+        return label.Length == 0 ? null : label.Length > 100 ? label[..100] : label;
     }
 
     /// <summary>Resolves the partner app for a return URL, or <see langword="null"/> when none is in the flow.</summary>

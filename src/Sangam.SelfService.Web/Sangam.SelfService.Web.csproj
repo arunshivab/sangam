@@ -1,12 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <!-- account.sangamid.in — self-service account portal (Blazor Server, authenticated, 1024 px minimum). -->
+  <!-- account.sangamid.in - the self-service portal (Blazor Server, authenticated,
+       1024 px minimum). It is an ordinary OpenID Connect client of id.sangamid.in:
+       the same Authorization Code + PKCE flow partner apps use, so Sangam runs on
+       its own rails. Reads and writes through IPortalService. -->
 
   <PropertyGroup>
     <RootNamespace>Sangam.SelfService.Web</RootNamespace>
     <Description>Sangam identity platform — self-service account portal.</Description>
     <UserSecretsId>sangam-selfservice-web</UserSecretsId>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Sangam.Identity.Application\Sangam.Identity.Application.csproj" />

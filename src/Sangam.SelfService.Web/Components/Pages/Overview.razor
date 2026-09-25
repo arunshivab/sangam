@@ -1,0 +1,79 @@
+@page "/"
+@inject IPortalService Portal
+@inject AuthenticationStateProvider AuthProvider
+
+<PageTitle>Overview · sangam</PageTitle>
+
+<h1 class="sg-greeting">Namaste, @FirstName</h1>
+<p class="sg-subtitle">This is your Sangam account. Everything an application can see about you, and everything you can take back, is here.</p>
+
+@if (_overview is null)
+{
+  <p class="sg-note">Loading…</p>
+}
+else
+{
+  <div class="sg-stats">
+    <div class="sg-stat">
+      <span class="sg-stat-label">Connected apps</span>
+      <span class="sg-stat-value">@_overview.LinkedApps</span>
+      <span class="sg-stat-note">@(_overview.LinkedApps == 0 ? "none yet" : "you can revoke any of them")</span>
+    </div>
+    <div class="sg-stat">
+      <span class="sg-stat-label">Organisations</span>
+      <span class="sg-stat-value">@_overview.Organisations</span>
+      <span class="sg-stat-note">@(_overview.Organisations == 0 ? "none yet" : "roles given to you by apps")</span>
+    </div>
+    <div class="sg-stat">
+      <span class="sg-stat-label">Last sign-in</span>
+      <span class="sg-stat-value sg-stat-value--small">@(_overview.LastSignInAt is null ? "—" : Relative.Describe(_overview.LastSignInAt.Value, _now))</span>
+      <span class="sg-stat-note">@(_overview.ActiveSessions) active session@(_overview.ActiveSessions == 1 ? "" : "s")</span>
+    </div>
+  </div>
+
+  @if (_overview.TwoFactorSuggested)
+  {
+    <p class="sg-nudge"><span class="sg-cord-dot" aria-hidden="true"></span>You sign in with a password only. <a href="/profile">Add an emailed code</a> for a second step.</p>
+  }
+
+  <div class="sg-cards">
+    <a class="sg-tile-card" href="/apps">
+      <h2 class="sg-tile-title">Connected apps</h2>
+      <p class="sg-tile-body">See every application you have allowed, exactly what it can read, and withdraw that access.</p>
+      <span class="sg-tile-link">Manage →</span>
+    </a>
+    <a class="sg-tile-card" href="/devices">
+      <h2 class="sg-tile-title">Devices and sessions</h2>
+      <p class="sg-tile-body">Where you are signed in right now. End a single session, or sign out everywhere at once.</p>
+      <span class="sg-tile-link">Manage →</span>
+    </a>
+    <a class="sg-tile-card" href="/audit">
+      <h2 class="sg-tile-title">Audit log</h2>
+      <p class="sg-tile-body">Every sign-in, consent and change to your account, and who made it.</p>
+      <span class="sg-tile-link">Manage →</span>
+    </a>
+    <a class="sg-tile-card" href="/profile">
+      <h2 class="sg-tile-title">Personal details</h2>
+      <p class="sg-tile-body">Your name and language, how you sign in, a copy of your data, and account deletion.</p>
+      <span class="sg-tile-link">Manage →</span>
+    </a>
+  </div>
+}
+
+@code {
+    private PortalOverview? _overview;
+    private DateTimeOffset _now = DateTimeOffset.UtcNow;
+    private string FirstName { get; set; } = "there";
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthProvider.GetAuthenticationStateAsync();
+        Guid? userId = PortalUser.Id(state.User);
+        FirstName = PortalUser.Name(state.User).Split(' ')[0];
+        if (userId is not null)
+        {
+            _now = DateTimeOffset.UtcNow;
+            _overview = await Portal.GetOverviewAsync(userId.Value);
+        }
+    }
+}

@@ -24,8 +24,9 @@ WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'sangam_identity')
 
 -- Throwaway databases for the PostgreSQL-backed tests ([PostgresFact]). Point
 -- SANGAM_TEST_CONNECTION at sangam_identity_test; the Identity.Server tests derive
--- sangam_identity_test_server from it (same server, "_server" suffix) so the in-process
--- host is never truncated under by the Infrastructure tests running in parallel.
+-- sangam_identity_test_server and sangam_identity_test_portal from it (same server, with a
+-- "_server" / "_portal" suffix) so neither in-process host is truncated under by the
+-- Infrastructure tests running in parallel.
 SELECT 'CREATE DATABASE sangam_identity_test WITH OWNER = sangam_identity ENCODING = ''UTF8'''
 WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'sangam_identity_test')
 \gexec
@@ -34,9 +35,15 @@ SELECT 'CREATE DATABASE sangam_identity_test_server WITH OWNER = sangam_identity
 WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'sangam_identity_test_server')
 \gexec
 
+SELECT 'CREATE DATABASE sangam_identity_test_portal WITH OWNER = sangam_identity ENCODING = ''UTF8'''
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'sangam_identity_test_portal')
+\gexec
+
 REVOKE CONNECT ON DATABASE sangam_identity FROM PUBLIC;
 GRANT CONNECT ON DATABASE sangam_identity TO sangam_identity;
 REVOKE CONNECT ON DATABASE sangam_identity_test FROM PUBLIC;
 GRANT CONNECT ON DATABASE sangam_identity_test TO sangam_identity;
 REVOKE CONNECT ON DATABASE sangam_identity_test_server FROM PUBLIC;
 GRANT CONNECT ON DATABASE sangam_identity_test_server TO sangam_identity;
+REVOKE CONNECT ON DATABASE sangam_identity_test_portal FROM PUBLIC;
+GRANT CONNECT ON DATABASE sangam_identity_test_portal TO sangam_identity;

@@ -1,0 +1,280 @@
+@page "/profile"
+@inject IPortalService Portal
+@inject IAccountService Accounts
+@inject AuthenticationStateProvider AuthProvider
+@inject IJSRuntime Js
+
+<PageTitle>Personal details · sangam</PageTitle>
+
+<PageHeader Title="Personal details" Subtitle="What Sangam knows about you, and what you can do with it." />
+
+@if (_user is null)
+{
+  <p class="sg-note">Loading…</p>
+}
+else
+{
+  <section class="sg-panel">
+    <h2 class="sg-panel-title">Your details</h2>
+    <EditForm Model="_form" OnValidSubmit="SaveAsync" FormName="profile">
+      <DataAnnotationsValidator />
+      <div class="sg-two">
+        <label class="sg-field-group"><span class="sg-label">First name</span><InputText class="sg-field" @bind-Value="_form.FirstName" /></label>
+        <label class="sg-field-group"><span class="sg-label">Last name</span><InputText class="sg-field" @bind-Value="_form.LastName" /></label>
+      </div>
+      <div class="sg-two">
+        <label class="sg-field-group">
+          <span class="sg-label">Gender</span>
+          <InputSelect class="sg-field" @bind-Value="_form.Gender">
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+            <option value="other">Other</option>
+            <option value="prefer_not_to_say">Prefer not to say</option>
+          </InputSelect>
+        </label>
+        <label class="sg-field-group">
+          <span class="sg-label">Language</span>
+          <InputSelect class="sg-field" @bind-Value="_form.Locale">
+            <option value="en-IN">English (India)</option>
+            <option value="ta-IN">தமிழ் (India)</option>
+            <option value="hi-IN">हिन्दी (India)</option>
+          </InputSelect>
+        </label>
+      </div>
+      <div class="sg-field-group">
+        <span class="sg-label">Mobile</span>
+        <div class="sg-phone">
+          <InputSelect class="sg-field sg-field--dial" @bind-Value="_form.CountryIso" aria-label="Country dialling code">
+            @foreach (var country in CountryCodes.All)
+            {
+              <option value="@country.Iso">@CountryCodes.OptionLabel(country)</option>
+            }
+          </InputSelect>
+          <InputText class="sg-field" @bind-Value="_form.MobileNumber" type="tel" inputmode="numeric" />
+        </div>
+        <p class="sg-note">Changing this marks the number unverified until we can send it a code.</p>
+      </div>
+      @if (_error is not null)
+      {
+        <p class="sg-field-error">@_error</p>
+      }
+      <button type="submit" class="sg-btn sg-btn--primary" disabled="@_working">Save changes</button>
+      <ValidationSummary class="sg-field-error" />
+    </EditForm>
+
+    <dl class="sg-facts">
+      <div><dt>Email</dt><dd>@_user.Email @(_user.EmailVerified ? "· verified" : "· not verified")</dd></div>
+      <div><dt>Date of birth</dt><dd>@_user.DateOfBirth.ToString("d MMMM yyyy", CultureInfo.InvariantCulture)</dd></div>
+      <div><dt>Member since</dt><dd>@_user.CreatedAt.ToString("d MMMM yyyy", CultureInfo.InvariantCulture)</dd></div>
+    </dl>
+    <p class="sg-note">
+      Your email address is how you sign in, so changing it needs its own verified step — that is coming.
+      Your date of birth is fixed here because applications rely on it to identify you; it will become changeable
+      once you can prove your identity with DigiLocker. For either, write to <a href="mailto:help@@sangamid.in">help@@sangamid.in</a>.
+    </p>
+  </section>
+
+  <section class="sg-panel">
+    <h2 class="sg-panel-title">How you sign in</h2>
+    <div class="sg-field-group">
+      <InputSelect class="sg-field" Value="_mode" ValueChanged="@((string v) => _mode = v)" ValueExpression="() => _mode">
+        <option value="password">Email and password</option>
+        <option value="password_and_otp">Password, then an emailed code</option>
+        <option value="otp_only">An emailed code only (no password)</option>
+      </InputSelect>
+      <p class="sg-note">An application can require a stronger method than the one you choose here.</p>
+    </div>
+    <button type="button" class="sg-btn sg-btn--secondary" @onclick="SaveModeAsync">Save preference</button>
+  </section>
+
+  <section class="sg-panel">
+    <h2 class="sg-panel-title">A copy of your data</h2>
+    <p class="sg-panel-body">Download everything Sangam holds about you as a JSON file: your profile, the applications you have allowed, your organisations and roles, your sessions and your full activity log. Your password is not included — it is stored only as a one-way hash.</p>
+    <button type="button" class="sg-btn sg-btn--secondary" @onclick="DownloadAsync" disabled="@_working">Download my data</button>
+  </section>
+
+  <section class="sg-panel sg-panel--danger">
+    <h2 class="sg-panel-title">Delete your account</h2>
+    @if (_deletion?.Requested == true)
+    {
+      <p class="sg-panel-body">
+        Your account is scheduled for deletion on <strong>@(_deletion.PurgeAfter?.ToString("d MMMM yyyy", CultureInfo.InvariantCulture))</strong>.
+        Until then you can change your mind and everything comes back. After that date your name, email, mobile and password are destroyed permanently.
+        @if (_deletion.OnHold)
+        {
+          <span> A Sangam operator has placed a hold on this account, so the deletion will not run until the hold is cleared.</span>
+        }
+      </p>
+      <button type="button" class="sg-btn sg-btn--primary" @onclick="CancelDeletionAsync" disabled="@_working">Keep my account</button>
+    }
+    else
+    {
+      <p class="sg-panel-body">
+        Deleting your account signs you out everywhere, revokes every application's access immediately, and blocks sign-in.
+        Your data is kept for 30 days in case you change your mind, then permanently destroyed. Records that the law requires
+        us to retain — an anonymous audit trail of what happened and when — survive deletion.
+      </p>
+      @if (_confirmingDelete)
+      {
+        <p class="sg-confirm-body">Type <strong>DELETE</strong> to confirm.</p>
+        <input class="sg-field sg-field--confirm" @bind="_confirmText" @bind:event="oninput" aria-label="Type DELETE to confirm" />
+        <div class="sg-confirm-actions">
+          <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _confirmingDelete = false">Cancel</button>
+          <button type="button" class="sg-btn sg-btn--danger" @onclick="DeleteAsync" disabled="@(_working || _confirmText != "DELETE")">Delete my account</button>
+        </div>
+      }
+      else
+      {
+        <button type="button" class="sg-btn sg-btn--danger" @onclick="() => _confirmingDelete = true">Delete my account</button>
+      }
+    }
+  </section>
+}
+
+@if (_message is not null)
+{
+  <p class="sg-banner sg-banner--success" role="status">@_message</p>
+}
+
+@code {
+    private UserSummary? _user;
+    private DeletionState? _deletion;
+    private readonly ProfileForm _form = new();
+    private string _mode = "password";
+    private bool _confirmingDelete;
+    private string _confirmText = string.Empty;
+    private bool _working;
+    private string? _message;
+    private string? _error;
+    private Guid _userId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthProvider.GetAuthenticationStateAsync();
+        _userId = PortalUser.Id(state.User) ?? Guid.Empty;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        if (_userId == Guid.Empty)
+        {
+            return;
+        }
+
+        _user = await Accounts.FindByIdAsync(_userId);
+        _deletion = await Portal.GetDeletionStateAsync(_userId);
+        if (_user is not null)
+        {
+            _form.FirstName = _user.FirstName;
+            _form.LastName = _user.LastName;
+            _form.Locale = _user.Locale;
+            _form.Gender = Genders.ToCode(_user.Gender);
+            (_form.CountryIso, _form.MobileNumber) = SplitMobile(_user.Mobile);
+            _mode = SignInModes.ToCode(_user.SignInPreference);
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _working = true;
+        _error = null;
+        Genders.TryParse(_form.Gender, out Gender gender);
+        ProfileUpdateResult result = await Portal.UpdateProfileAsync(
+            _userId,
+            new ProfileUpdate(_form.FirstName, _form.LastName, _form.Locale, gender, _form.CountryIso, _form.MobileNumber),
+            null);
+        _working = false;
+
+        if (!result.Succeeded)
+        {
+            _error = result.Message;
+            return;
+        }
+
+        _message = result.MobileChanged
+            ? "Your details have been saved. Your new mobile number is not verified yet."
+            : "Your details have been saved.";
+        await LoadAsync();
+    }
+
+    private async Task SaveModeAsync()
+    {
+        if (SignInModes.TryParse(_mode, out SignInMode mode))
+        {
+            await Accounts.SetSignInPreferenceAsync(_userId, mode);
+            _message = "Your sign-in preference has been saved.";
+            await LoadAsync();
+        }
+    }
+
+    private async Task DownloadAsync()
+    {
+        _working = true;
+        string json = await Portal.ExportAsync(_userId, null);
+        _working = false;
+        await Js.InvokeVoidAsync("sangamDownload", $"sangam-data-{DateTimeOffset.UtcNow:yyyy-MM-dd}.json", json);
+        _message = "Your data has been downloaded.";
+    }
+
+    private async Task DeleteAsync()
+    {
+        _working = true;
+        await Portal.RequestDeletionAsync(_userId, null);
+        _working = false;
+        _confirmingDelete = false;
+        _message = "Your account is scheduled for deletion. You have been signed out everywhere.";
+        await LoadAsync();
+    }
+
+    private async Task CancelDeletionAsync()
+    {
+        _working = true;
+        await Portal.CancelDeletionAsync(_userId, null);
+        _working = false;
+        _message = "Your account is no longer scheduled for deletion.";
+        await LoadAsync();
+    }
+
+    /// <summary>Splits a stored E.164 number back into the country and the national part.</summary>
+    private static (string Iso, string National) SplitMobile(string? mobile)
+    {
+        if (string.IsNullOrEmpty(mobile) || mobile[0] != '+')
+        {
+            return (CountryCodes.DefaultIso, mobile ?? string.Empty);
+        }
+
+        CountryCode? match = CountryCodes.All
+            .Where(c => mobile.StartsWith(c.DialCode, StringComparison.Ordinal))
+            .Where(c => c.NationalDigits == 0 || mobile.Length - c.DialCode.Length == c.NationalDigits)
+            .OrderByDescending(c => c.DialCode.Length)
+            .FirstOrDefault();
+
+        return match is null
+            ? (CountryCodes.DefaultIso, mobile[1..])
+            : (match.Iso, mobile[match.DialCode.Length..]);
+    }
+
+    private sealed class ProfileForm
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Enter your first name.")]
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string FirstName { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Enter your last name.")]
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string LastName { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Locale { get; set; } = "en-IN";
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Gender { get; set; } = "prefer_not_to_say";
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public string CountryIso { get; set; } = CountryCodes.DefaultIso;
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Enter your mobile number.")]
+        public string MobileNumber { get; set; } = string.Empty;
+    }
+}

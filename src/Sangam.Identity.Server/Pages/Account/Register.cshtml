@@ -29,27 +29,24 @@
       <span class="sg-field-error" asp-validation-for="Email"></span>
     </div>
     <div class="sg-field-group">
-      <label class="sg-label" asp-for="Country">Country</label>
-      <select class="sg-field" asp-for="Country" autocomplete="country" required>
-        @foreach (var country in Sangam.Shared.Constants.CountryCodes.All)
-        {
-          <option value="@country.Iso">@country.Name (@country.DialCode)</option>
-        }
-      </select>
-      <span class="sg-field-error" asp-validation-for="Country"></span>
-    </div>
-    <div class="sg-field-group">
       <label class="sg-label" asp-for="MobileNumber">Mobile</label>
       <div class="sg-phone">
-        <span class="sg-dial" aria-hidden="true">@Model.DialCode</span>
-        <input class="sg-field" asp-for="MobileNumber" type="tel" autocomplete="tel-national" inputmode="numeric" placeholder="@Model.MobilePlaceholder" required />
+        <select class="sg-field sg-field--dial" asp-for="Country" autocomplete="country" aria-label="Country dialling code" required>
+          @foreach (var country in Sangam.Shared.Constants.CountryCodes.All)
+          {
+            <option value="@country.Iso">@Sangam.Shared.Constants.CountryCodes.OptionLabel(country)</option>
+          }
+        </select>
+        <input class="sg-field" asp-for="MobileNumber" type="tel" autocomplete="tel-national" inputmode="numeric" placeholder="Mobile number" required />
       </div>
       <span class="sg-field-error" asp-validation-for="MobileNumber"></span>
+      <span class="sg-field-error sg-field-error--hidden" asp-validation-for="Country"></span>
     </div>
+
     <div class="sg-two">
       <div class="sg-field-group">
         <label class="sg-label" asp-for="DateOfBirth">Date of birth</label>
-        <input class="sg-field" asp-for="DateOfBirth" type="date" autocomplete="bday" required />
+        <input class="sg-field" asp-for="DateOfBirth" type="date" autocomplete="bday" max="@Model.LatestEligibleBirthDate" required />
         <span class="sg-field-error" asp-validation-for="DateOfBirth"></span>
       </div>
       <div class="sg-field-group">
@@ -68,7 +65,6 @@
       <label class="sg-label" asp-for="Password">Password</label>
       <input class="sg-field" asp-for="Password" type="password" autocomplete="new-password" required data-sg-password />
       <partial name="_StrengthMeter" model="Model.Strength" />
-      <partial name="_Requirements" model="Model.Strength" />
       <span class="sg-field-error" asp-validation-for="Password"></span>
     </div>
     <div class="sg-check">

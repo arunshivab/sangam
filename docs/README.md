@@ -62,6 +62,11 @@
   client; consent shown for every app with no first-party exemption; small ID tokens with the
   detail at `/connect/userinfo`; RP-initiated sign-out; an app-scoped management API at
   `/api/v1`. See [`decisions/0003-oidc-flow-consent-and-management-api.md`](decisions/0003-oidc-flow-consent-and-management-api.md).
+- **Portal, sessions and deletion (PR-05).** The portal is a real OIDC client of the identity
+  server; sessions are recorded rows so a single device can be signed out; device names come from
+  the app (`sangam_device`) and never from geo-IP; deletion has a 30-day grace, an automatic purge
+  and an operator hold. See
+  [`decisions/0004-self-service-portal-sessions-and-deletion.md`](decisions/0004-self-service-portal-sessions-and-deletion.md).
 - **Partner facts.** The handoff's placeholder copy says LiPi is operated by "Lipi Systems Pvt Ltd,
   Bengaluru". LiPi is an imagiQa product (Ahmedabad). This is runtime data in the app registry,
   not a design change.

@@ -6,6 +6,52 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added — PR-05 Self-service portal
+- `account.sangamid.in` (Blazor Server) as a real OpenID Connect client of the identity server:
+  Overview, Connected apps, Devices, Audit log and Personal details, behind its own cookie.
+- `user_sessions`: one row per browser sign-in carrying the client IP, user agent, sign-in mode
+  and an optional app-supplied `sangam_device` label. The session cookie carries the row id and
+  the five-minute validation tick confirms the row is live, so a single device can be signed out.
+- Standard OIDC `sid` claim on tokens, so a client can tell which session is its own.
+- Revoking an app ends its grant, its consent and its OpenIddict authorizations and tokens —
+  that app's only.
+- `AuditNarrator`: audit rows phrased as sentences, with a 30 days / 90 days / 1 year /
+  everything range selector.
+- DPDPA: a direct-download JSON export of everything Sangam holds, and account deletion with a
+  30-day grace period, immediate suspension and app revocation, and cancellation.
+- `AccountPurgeService`: hourly sweep that pseudonymises accounts past their grace period
+  (keeping the audit trail), skips accounts under an operator hold, and deletes session rows
+  revoked more than 90 days ago.
+- Migration `SessionsAndAccountDeletion`: the `user_sessions` table, and `purge_after`,
+  `hold_placed_at`, `hold_reason` on users.
+- Tests: portal reads and writes against PostgreSQL (apps, sessions, audit, export, deletion,
+  purge, holds), the user-agent summariser, and the five screens rendered by the real host
+  including cross-user isolation.
+- ADR-0004.
+
+### Added — PR-05 (after review)
+- `AgePolicy`: self-registration requires an age of at least 18, matching the DPDP Act's
+  definition of a child rather than any employment threshold. The date picker stops at the latest
+  eligible date and the server rejects the rest. Previously the date of birth was only
+  sanity-checked, so a child could register.
+
+### Changed — PR-05 (after review)
+- Mobile entry is one row: the dialling-code select **is** the prefix, so the code shown can
+  never disagree with the country chosen — the previous two-control layout displayed a stale
+  prefix until the next post. Codes are right-aligned in the list so the ISO codes form a column.
+- The password requirement box is gone; the five tokens beside the verdict (`8+`, `upper`,
+  `lower`, `number`, `symbol`) turn green with a tick as each is met.
+- The portal shows a loopback address as "· this computer" rather than a bare `::1`.
+- Personal details now accepts gender and mobile as well as name and language; a changed mobile
+  is marked unverified. Email and date of birth stay fixed (email needs its own verified change
+  flow; date of birth waits for DigiLocker identity verification).
+- `updated_at` is emitted in tokens and userinfo, as ADR-0003 always said it should be: it is
+  how a partner application notices that the profile copy it cached has moved.
+
+### Changed — PR-05
+- `UserSummary` gained `CreatedAt`.
+- `init.sql` and CI create `sangam_identity_test_portal` for the portal's in-process host.
+
 ### Added — PR-04 Consent, sign-out and the full OIDC flow
 - `/connect/authorize` (Authorization Code + PKCE, `prompt=login|none`), `/connect/token`
   (authorization code, refresh token, client credentials), `/connect/userinfo`,
