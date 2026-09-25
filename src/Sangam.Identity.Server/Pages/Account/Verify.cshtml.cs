@@ -7,6 +7,7 @@ using Sangam.Identity.Application.Apps;
 using Sangam.Identity.Domain.Enums;
 using Sangam.Identity.Infrastructure.Accounts;
 using Sangam.Identity.Server.Authentication;
+using Sangam.Identity.Server.Authorization;
 
 namespace Sangam.Identity.Server.Pages.Account;
 
@@ -98,7 +99,7 @@ public sealed class VerifyModel : AuthPageModel
         }
 
         UserSummary verified = (await _accounts.FindByIdAsync(user.Id, cancellationToken))!;
-        await SangamAuthentication.SignInSessionAsync(HttpContext, verified, SignInMode.Password);
+        await SangamAuthentication.SignInSessionAsync(HttpContext, verified, SignInMode.Password, Partner?.Id, PartnerContext.DeviceLabelFromReturnUrl(ReturnUrl));
         await _accounts.RecordSignInAsync(verified.Id, SignInMode.Password, ClientIp, ClientUserAgent, cancellationToken);
         return RedirectToPage("/Account/Verified", new { returnUrl = ReturnUrl });
     }

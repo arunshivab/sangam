@@ -6,6 +6,7 @@ using Sangam.Identity.Application.Accounts;
 using Sangam.Identity.Application.Apps;
 using Sangam.Identity.Domain.Enums;
 using Sangam.Identity.Server.Authentication;
+using Sangam.Identity.Server.Authorization;
 
 namespace Sangam.Identity.Server.Pages.Account;
 
@@ -90,7 +91,7 @@ public sealed class LoginModel : AuthPageModel
         switch (check.Status)
         {
             case SignInStatus.Succeeded:
-                await SangamAuthentication.SignInSessionAsync(HttpContext, check.User!, check.Mode);
+                await SangamAuthentication.SignInSessionAsync(HttpContext, check.User!, check.Mode, Partner?.Id, PartnerContext.DeviceLabelFromReturnUrl(ReturnUrl));
                 await _accounts.RecordSignInAsync(check.User!.Id, check.Mode, ClientIp, ClientUserAgent, cancellationToken);
                 return LocalRedirect(SafeReturnUrl(ReturnUrl));
 

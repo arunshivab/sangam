@@ -121,7 +121,9 @@ public static class ConnectEndpoints
         string applicationId = (await applications.GetIdAsync(application, cancellationToken).ConfigureAwait(false))!;
 
         IReadOnlyList<OrgClaim> orgs = await tenancy.GetOrgClaimsAsync(user.Id, app.Id, cancellationToken).ConfigureAwait(false);
-        ClaimsIdentity identity = SangamClaimsBuilder.Build(user, requested, orgs, TokenValidationParameters.DefaultAuthenticationType);
+        // Standard OIDC `sid`: lets a client (the portal, for one) tell which session is its own.
+        string? browserSession = SangamAuthentication.SessionId(session.Principal!)?.ToString("D");
+        ClaimsIdentity identity = SangamClaimsBuilder.Build(user, requested, orgs, TokenValidationParameters.DefaultAuthenticationType, browserSession);
 
         List<string> resources = [];
         await foreach (string resource in scopes.ListResourcesAsync(identity.GetScopes(), cancellationToken).ConfigureAwait(false))
@@ -202,7 +204,8 @@ public static class ConnectEndpoints
 
             // Re-read the user so profile and membership changes reach the new tokens.
             IReadOnlyList<OrgClaim> orgs = await tenancy.GetOrgClaimsAsync(user.Id, app.Id, cancellationToken).ConfigureAwait(false);
-            ClaimsIdentity identity = SangamClaimsBuilder.Build(user, [.. stored!.GetScopes()], orgs, TokenValidationParameters.DefaultAuthenticationType);
+            ClaimsPrincipal principal = stored!;
+            ClaimsIdentity identity = SangamClaimsBuilder.Build(user, [.. principal.GetScopes()], orgs, TokenValidationParameters.DefaultAuthenticationType, principal.GetClaim(SangamClaims.SessionId));
             identity.SetAuthorizationId(authorizationId);
 
             List<string> resources = [];
@@ -281,6 +284,7 @@ public static class ConnectEndpoints
             claims[Claims.Gender] = Genders.ToCode(user.Gender);
             claims[Claims.Locale] = user.Locale;
             claims[Claims.Zoneinfo] = "Asia/Kolkata";
+            claims[Claims.UpdatedAt] = user.UpdatedAt.ToUnixTimeSeconds();
         }
 
         if (granted.Contains(SangamScopes.Email))

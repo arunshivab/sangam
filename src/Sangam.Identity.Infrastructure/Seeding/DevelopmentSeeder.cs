@@ -42,6 +42,26 @@ public sealed partial class DevelopmentSeeder
     /// <summary>PKCE verifier the /dev/callback page uses, so a browser walkthrough needs no tooling.</summary>
     public const string DevCallbackVerifier = "sangam-dev-callback-verifier-0123456789abcdef";
 
+    /// <summary>Client id of the self-service portal, which is itself an OIDC client.</summary>
+    public const string PortalClientId = "sangam-portal";
+
+    /// <summary>Development client secret of the portal.</summary>
+    public const string PortalClientSecret = "sangam-dev-portal-secret-change-me";
+
+    /// <summary>Development redirect URIs of the portal.</summary>
+    public static IReadOnlyList<string> PortalRedirectUris { get; } =
+    [
+        "http://localhost:5200/signin-sangam",
+        "https://localhost:5201/signin-sangam",
+    ];
+
+    /// <summary>Development post-logout redirect URIs of the portal.</summary>
+    public static IReadOnlyList<string> PortalPostLogoutRedirectUris { get; } =
+    [
+        "http://localhost:5200/signout-sangam",
+        "https://localhost:5201/signout-sangam",
+    ];
+
     /// <summary>S256 challenge for <see cref="DevCallbackVerifier"/>.</summary>
     public static string DevCallbackChallenge { get; } = Convert.ToBase64String(
         System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.ASCII.GetBytes(DevCallbackVerifier)))
@@ -197,6 +217,8 @@ public sealed partial class DevelopmentSeeder
         app.Status = AppStatus.Active;
         app.UpdatedAt = now;
 
+        await EnsurePortalAppAsync(now, cancellationToken).ConfigureAwait(false);
+
         bool hasSystemRole = await _db.Roles.AnyAsync(r => r.AppId == app.Id && r.Code == "org_admin" && r.OrgId == null, cancellationToken).ConfigureAwait(false);
         if (!hasSystemRole)
         {
@@ -216,6 +238,84 @@ public sealed partial class DevelopmentSeeder
         bool changed = created || !hasSystemRole || _db.ChangeTracker.HasChanges();
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return changed;
+    }
+
+    /// <summary>
+    /// The self-service portal is an ordinary confidential client: it goes through the same
+    /// authorization code + PKCE flow as any partner app, so the portal proves the flow works.
+    /// </summary>
+    private async Task EnsurePortalAppAsync(DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        App? portal = await _db.Apps.FirstOrDefaultAsync(a => a.ClientId == PortalClientId, cancellationToken).ConfigureAwait(false);
+        if (portal is null)
+        {
+            portal = new App { Id = Guid.NewGuid(), ClientId = PortalClientId, Slug = "portal", CreatedAt = now };
+            _db.Apps.Add(portal);
+        }
+
+        portal.DisplayName = "Sangam account portal";
+        portal.OwnerCompanyName = "imagiQa Healthcare Services Pvt Ltd";
+        portal.Description = "The account portal where you manage your Sangam account.";
+        portal.HomepageUrl = "http://localhost:5200/";
+        portal.BrandColour = "#0F3B38";
+        portal.Glyph = "\u0BB8";
+        portal.ConsentVersion = "v1";
+        portal.RequireConsent = true;
+        portal.Status = AppStatus.Active;
+        portal.UpdatedAt = now;
+        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        object? existing = await _applications.FindByClientIdAsync(PortalClientId, cancellationToken).ConfigureAwait(false);
+        OpenIddictApplicationDescriptor descriptor = new();
+        if (existing is not null)
+        {
+            await _applications.PopulateAsync(descriptor, existing, cancellationToken).ConfigureAwait(false);
+        }
+
+        descriptor.ClientId = PortalClientId;
+        descriptor.ClientType = ClientTypes.Confidential;
+        descriptor.ConsentType = ConsentTypes.Explicit;
+        descriptor.DisplayName = "Sangam account portal";
+        if (existing is null)
+        {
+            descriptor.ClientSecret = PortalClientSecret;
+        }
+
+        foreach (string permission in new[]
+        {
+            Permissions.Endpoints.Authorization,
+            Permissions.Endpoints.Token,
+            Permissions.Endpoints.EndSession,
+            Permissions.GrantTypes.AuthorizationCode,
+            Permissions.GrantTypes.RefreshToken,
+            Permissions.ResponseTypes.Code,
+            Permissions.Prefixes.Scope + SangamScopes.Profile,
+            Permissions.Prefixes.Scope + SangamScopes.Email,
+            Permissions.Prefixes.Scope + SangamScopes.Phone,
+        })
+        {
+            descriptor.Permissions.Add(permission);
+        }
+
+        descriptor.Requirements.Add(Requirements.Features.ProofKeyForCodeExchange);
+        foreach (string uri in PortalRedirectUris)
+        {
+            descriptor.RedirectUris.Add(new Uri(uri));
+        }
+
+        foreach (string uri in PortalPostLogoutRedirectUris)
+        {
+            descriptor.PostLogoutRedirectUris.Add(new Uri(uri));
+        }
+
+        if (existing is null)
+        {
+            await _applications.CreateAsync(descriptor, cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            await _applications.UpdateAsync(existing, descriptor, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     [LoggerMessage(EventId = 1100, Level = LogLevel.Information, Message = "Seeded development sample app '{ClientId}'.")]

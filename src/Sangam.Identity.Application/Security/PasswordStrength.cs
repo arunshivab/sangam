@@ -17,12 +17,36 @@ public enum PasswordVerdict
 /// <param name="Verdict">Overall verdict.</param>
 /// <param name="Segments">Filled meter segments, 0–4.</param>
 /// <param name="HasMinimumLength">At least <see cref="PasswordStrength.MinimumLength"/> characters.</param>
-/// <param name="HasAllClasses">Contains a lowercase letter, an uppercase letter, a digit and a symbol.</param>
+/// <param name="HasUppercase">Contains an uppercase letter.</param>
+/// <param name="HasLowercase">Contains a lowercase letter.</param>
+/// <param name="HasDigit">Contains a digit.</param>
+/// <param name="HasSymbol">Contains a non-alphanumeric character.</param>
 /// <param name="IsNotBlocklisted">Not on the local blocklist and not a single repeated character.</param>
-public sealed record PasswordStrengthResult(PasswordVerdict Verdict, int Segments, bool HasMinimumLength, bool HasAllClasses, bool IsNotBlocklisted)
+public sealed record PasswordStrengthResult(
+    PasswordVerdict Verdict,
+    int Segments,
+    bool HasMinimumLength,
+    bool HasUppercase,
+    bool HasLowercase,
+    bool HasDigit,
+    bool HasSymbol,
+    bool IsNotBlocklisted)
 {
+    /// <summary>Contains all four character classes.</summary>
+    public bool HasAllClasses => HasUppercase && HasLowercase && HasDigit && HasSymbol;
+
     /// <summary>Whether the password may be accepted at all.</summary>
     public bool MeetsPolicy => HasMinimumLength && HasAllClasses && IsNotBlocklisted;
+
+    /// <summary>The five requirement tokens shown beside the verdict, in display order.</summary>
+    public IReadOnlyList<(string Label, bool Met)> Tokens
+    => [
+        ($"{PasswordStrength.MinimumLength}+", HasMinimumLength),
+        ("upper", HasUppercase),
+        ("lower", HasLowercase),
+        ("number", HasDigit),
+        ("symbol", HasSymbol),
+    ];
 }
 
 /// <summary>
@@ -53,13 +77,17 @@ public static class PasswordStrength
     {
         string p = password ?? string.Empty;
         bool minimum = p.Length >= MinimumLength;
-        bool allClasses = p.Any(char.IsLower) && p.Any(char.IsUpper) && p.Any(char.IsDigit) && p.Any(c => !char.IsLetterOrDigit(c));
+        bool upper = p.Any(char.IsUpper);
+        bool lower = p.Any(char.IsLower);
+        bool digit = p.Any(char.IsDigit);
+        bool symbol = p.Any(c => !char.IsLetterOrDigit(c));
         bool notBlocked = p.Length > 0 && !Blocklist.Contains(p) && !IsRepetitive(p);
+        bool allClasses = upper && lower && digit && symbol;
 
         if (!minimum || !allClasses || !notBlocked)
         {
             int weakSegments = p.Length == 0 ? 0 : 1;
-            return new PasswordStrengthResult(PasswordVerdict.Weak, weakSegments, minimum, allClasses, notBlocked);
+            return new PasswordStrengthResult(PasswordVerdict.Weak, weakSegments, minimum, upper, lower, digit, symbol, notBlocked);
         }
 
         int score = 2;
@@ -74,7 +102,7 @@ public static class PasswordStrength
         }
 
         PasswordVerdict verdict = score >= 4 ? PasswordVerdict.Strong : PasswordVerdict.Fair;
-        return new PasswordStrengthResult(verdict, score, minimum, allClasses, notBlocked);
+        return new PasswordStrengthResult(verdict, score, minimum, upper, lower, digit, symbol, notBlocked);
     }
 
     private static bool IsRepetitive(string p)

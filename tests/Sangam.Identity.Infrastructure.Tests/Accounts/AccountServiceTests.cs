@@ -102,6 +102,40 @@ public sealed class AccountServiceTests : IAsyncLifetime
     }
 
     [PostgresFact]
+    public async Task Register_RefusesAnyoneUnderEighteen()
+    {
+        using IServiceScope scope = _provider.CreateScope();
+        IAccountService accounts = scope.ServiceProvider.GetRequiredService<IAccountService>();
+        DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        RegistrationOutcome child = await accounts.RegisterAsync(Rajesh with { DateOfBirth = today.AddYears(-17) });
+        Assert.False(child.Result.Succeeded);
+        AccountError error = Assert.Single(child.Result.Errors, e => e.Field == "DateOfBirth");
+        Assert.Contains("18 or older", error.Message, StringComparison.Ordinal);
+
+        // A healthcare trainee of 16 is still a child under the DPDP Act, so the answer is the same.
+        Assert.False((await accounts.RegisterAsync(Rajesh with { DateOfBirth = today.AddYears(-16) })).Result.Succeeded);
+
+        // Exactly eighteen today is allowed.
+        Assert.True((await accounts.RegisterAsync(Rajesh with { DateOfBirth = today.AddYears(-18) })).Result.Succeeded);
+    }
+
+    [PostgresFact]
+    public async Task Register_StillRejectsImplausibleDatesOfBirth()
+    {
+        using IServiceScope scope = _provider.CreateScope();
+        IAccountService accounts = scope.ServiceProvider.GetRequiredService<IAccountService>();
+        DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        foreach (DateOnly nonsense in new[] { today.AddDays(1), today.AddYears(-130) })
+        {
+            RegistrationOutcome outcome = await accounts.RegisterAsync(Rajesh with { DateOfBirth = nonsense });
+            Assert.False(outcome.Result.Succeeded);
+            Assert.Contains(outcome.Result.Errors, e => e.Field == "DateOfBirth" && e.Message == "Enter a valid date of birth.");
+        }
+    }
+
+    [PostgresFact]
     public async Task VerifyCode_MarksEmailVerified_ThenPasswordSignInSucceeds()
     {
         using IServiceScope scope = _provider.CreateScope();

@@ -5,15 +5,20 @@
     <SangamLockup MarkSize="24" />
   </a>
   <nav class="sg-tabs" aria-label="Account sections">
-    <a class="sg-tab sg-tab--active" href="/" aria-current="page">Overview</a>
-    <a class="sg-tab" href="/apps">Connected apps</a>
-    <a class="sg-tab" href="/devices">Devices</a>
-    <a class="sg-tab" href="/audit"><LipiIcon Name="@LipiconName.AuditLog" Size="16" Class="sg-tab-icon" /> Audit log</a>
-    <a class="sg-tab" href="/profile">Personal details</a>
+    <NavLink class="sg-tab" ActiveClass="sg-tab--active" href="/" Match="NavLinkMatch.All">Overview</NavLink>
+    <NavLink class="sg-tab" ActiveClass="sg-tab--active" href="/apps">Connected apps</NavLink>
+    <NavLink class="sg-tab" ActiveClass="sg-tab--active" href="/devices">Devices</NavLink>
+    <NavLink class="sg-tab" ActiveClass="sg-tab--active" href="/audit">Audit log</NavLink>
+    <NavLink class="sg-tab" ActiveClass="sg-tab--active" href="/profile">Personal details</NavLink>
   </nav>
   <div class="sg-topbar-user">
-    <span class="sg-topbar-name">Not signed in</span>
-    <span class="sg-avatar" aria-hidden="true"></span>
+    <AuthorizeView>
+      <Authorized>
+        <span class="sg-topbar-name">@PortalUser.Name(context.User)</span>
+        <span class="sg-avatar sg-avatar--initials" aria-hidden="true">@PortalUser.Initials(context.User)</span>
+        <a class="sg-topbar-signout" href="/signout">Sign out</a>
+      </Authorized>
+    </AuthorizeView>
   </div>
 </header>
 

@@ -7,6 +7,7 @@ using Sangam.Identity.Application.Apps;
 using Sangam.Identity.Domain.Enums;
 using Sangam.Identity.Infrastructure.Accounts;
 using Sangam.Identity.Server.Authentication;
+using Sangam.Identity.Server.Authorization;
 
 namespace Sangam.Identity.Server.Pages.Account;
 
@@ -102,7 +103,7 @@ public sealed class LoginVerifyModel : AuthPageModel
         }
 
         SignInMode mode = pending.Mode ?? SignInMode.PasswordAndOtp;
-        await SangamAuthentication.SignInSessionAsync(HttpContext, user, mode);
+        await SangamAuthentication.SignInSessionAsync(HttpContext, user, mode, Partner?.Id, PartnerContext.DeviceLabelFromReturnUrl(ReturnUrl));
         await _accounts.RecordSignInAsync(user.Id, mode, ClientIp, ClientUserAgent, cancellationToken);
         return LocalRedirect(SafeReturnUrl(ReturnUrl));
     }

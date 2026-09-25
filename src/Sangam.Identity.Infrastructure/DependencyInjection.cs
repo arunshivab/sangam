@@ -6,12 +6,15 @@ using Sangam.Identity.Application.Abstractions;
 using Sangam.Identity.Application.Accounts;
 using Sangam.Identity.Application.Apps;
 using Sangam.Identity.Application.Consents;
+using Sangam.Identity.Application.Portal;
 using Sangam.Identity.Application.Tenancy;
 using Sangam.Identity.Domain.Entities;
 using Sangam.Identity.Infrastructure.Accounts;
 using Sangam.Identity.Infrastructure.Apps;
 using Sangam.Identity.Infrastructure.Consents;
+using Sangam.Identity.Infrastructure.Maintenance;
 using Sangam.Identity.Infrastructure.Persistence;
+using Sangam.Identity.Infrastructure.Portal;
 using Sangam.Identity.Infrastructure.Security;
 using Sangam.Identity.Infrastructure.Seeding;
 using Sangam.Identity.Infrastructure.Services;
@@ -76,6 +79,8 @@ public static class DependencyInjection
         services.AddScoped<IConsentService, EfConsentService>();
         services.AddScoped<ITenancyQuery, EfTenancyQuery>();
         services.AddScoped<IManagementService, EfManagementService>();
+        services.AddScoped<IPortalService, EfPortalService>();
+        services.AddSingleton<ISessionService, EfSessionService>();
 
         services.AddSingleton<IClock, SystemClock>();
         if (configuration.GetValue<bool>("Sangam:Email:UseOutbox"))
@@ -91,6 +96,7 @@ public static class DependencyInjection
 
         services.AddSingleton<IAuditWriter, EfAuditWriter>();
         services.AddScoped<DevelopmentSeeder>();
+        services.AddHostedService<AccountPurgeService>();
 
         return services;
     }

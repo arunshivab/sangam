@@ -56,4 +56,19 @@ public sealed class SangamUser : IdentityUser<Guid>
 
     /// <summary>When the password was last set (UTC). Used for password-age policies.</summary>
     public DateTimeOffset LastPasswordChangeAt { get; set; }
+
+    /// <summary>
+    /// When the account may be purged (UTC): set 30 days ahead when the user asks for deletion,
+    /// cleared if they sign in during the grace period.
+    /// </summary>
+    public DateTimeOffset? PurgeAfter { get; set; }
+
+    /// <summary>
+    /// When set, the account is under a legal or investigative hold: the scheduled purge skips it
+    /// until a platform operator clears the hold. Only an operator can set or clear this.
+    /// </summary>
+    public DateTimeOffset? HoldPlacedAt { get; set; }
+
+    /// <summary>Why the hold was placed, for the audit trail and the operator console.</summary>
+    public string? HoldReason { get; set; }
 }

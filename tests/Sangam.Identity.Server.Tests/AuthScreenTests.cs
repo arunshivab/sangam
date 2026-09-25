@@ -57,16 +57,42 @@ public sealed partial class AuthScreenTests
     }
 
     [Fact]
-    public async Task Register_OffersTheCountryDropdown_WithIndiaSelected()
+    public async Task Register_OffersTheDiallingCodeAsTheMobilePrefix_WithIndiaSelected()
     {
         using BrowserSession s = new(_factory);
         (HttpStatusCode status, string html) = await s.GetAsync("/register");
 
         Assert.Equal(HttpStatusCode.OK, status);
-        Assert.Contains("<option value=\"IN\" selected=\"selected\">India (&#x2B;91)</option>", html, StringComparison.Ordinal);
-        Assert.Contains("United Arab Emirates (&#x2B;971)", html, StringComparison.Ordinal);
-        Assert.Contains("<span class=\"sg-dial\" aria-hidden=\"true\">&#x2B;91</span>", html, StringComparison.Ordinal);
-        Assert.Contains("sg-reqs", html, StringComparison.Ordinal);
+
+        // The select IS the prefix, so a chosen country and the code shown cannot disagree.
+        // Codes are right-aligned with non-breaking spaces (&#xA0;) so the ISO codes form a column.
+        Assert.Contains("<option value=\"IN\" selected=\"selected\">&#xA0;&#x2B;91&#xA0;IN</option>", html, StringComparison.Ordinal);
+        Assert.Contains("<option value=\"CA\">&#xA0;&#xA0;&#x2B;1&#xA0;CA</option>", html, StringComparison.Ordinal);
+        Assert.Contains("&#x2B;971&#xA0;AE", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("sg-dial\" aria-hidden", html, StringComparison.Ordinal);
+
+        // The five requirement tokens sit beside the verdict; the grey box is gone.
+        Assert.DoesNotContain("sg-reqs", html, StringComparison.Ordinal);
+        // Razor encodes the "+" in the 8+ token, as it does in the dialling codes.
+        foreach (string token in new[] { "8&#x2B;", "upper", "lower", "number", "symbol" })
+        {
+            Assert.Contains($"data-sg-token=\"{token}\"", html, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public async Task Register_MarksEachPasswordTokenMetOrUnmet()
+    {
+        using BrowserSession s = new(_factory);
+        // "kaveri7" has lower and number, but is short and lacks upper and a symbol.
+        (_, _, string html) = await s.PostFormAsync("/register", Form("IN", "9876543210", "kaveri7"));
+
+        Assert.Contains("<span class=\"sg-token sg-token--met\" data-sg-token=\"lower\"", html, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"sg-token sg-token--met\" data-sg-token=\"number\"", html, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"sg-token \" data-sg-token=\"8&#x2B;\"", html, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"sg-token \" data-sg-token=\"upper\"", html, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"sg-token \" data-sg-token=\"symbol\"", html, StringComparison.Ordinal);
+        Assert.Contains("Too weak", html, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -79,13 +105,12 @@ public sealed partial class AuthScreenTests
         (_, _, string shortEmirati) = await s.PostFormAsync("/register", Form("AE", "5012345"));
         Assert.Contains("Enter your 9-digit United Arab Emirates mobile number.", shortEmirati, StringComparison.Ordinal);
         Assert.Contains("<option value=\"AE\" selected=\"selected\">", shortEmirati, StringComparison.Ordinal);
-        Assert.Contains("<span class=\"sg-dial\" aria-hidden=\"true\">&#x2B;971</span>", shortEmirati, StringComparison.Ordinal);
     }
 
     [GeneratedRegex("<script[^>]*src=\"([^\"]+)\"")]
     private static partial Regex ScriptSrcRegex();
 
-    private static Dictionary<string, string> Form(string country, string mobile) => new(StringComparer.Ordinal)
+    private static Dictionary<string, string> Form(string country, string mobile, string password = "Kaveri-River-2026!") => new(StringComparer.Ordinal)
     {
         ["FirstName"] = "Arun",
         ["LastName"] = "Shiva",
@@ -94,7 +119,7 @@ public sealed partial class AuthScreenTests
         ["MobileNumber"] = mobile,
         ["DateOfBirth"] = "1980-01-01",
         ["Gender"] = "male",
-        ["Password"] = "Kaveri-River-2026!",
+        ["Password"] = password,
         ["AcceptTerms"] = "true",
     };
 
@@ -181,7 +206,7 @@ public sealed partial class AuthScreenTests
         (HttpStatusCode rGet, string resetHtml) = await s.GetAsync("/reset");
         Assert.Equal(HttpStatusCode.OK, rGet);
         Assert.Contains(email, resetHtml, StringComparison.Ordinal);
-        Assert.Contains("sg-reqs", resetHtml, StringComparison.Ordinal);
+        Assert.Contains("data-sg-token=\"symbol\"", resetHtml, StringComparison.Ordinal);
 
         // 6. Reset with the emailed code
         string resetCode = Code(outbox.LatestFor(email)!.Message.TextBody);

@@ -74,6 +74,22 @@ public static class CountryCodes
     public static CountryCode? FindByIso(string? iso)
         => iso is null ? null : All.FirstOrDefault(c => string.Equals(c.Iso, iso, StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>
+    /// The label shown in the dialling-code select: the code right-aligned in a fixed width so
+    /// the ISO codes line up in a column. Padded with non-breaking spaces, because ordinary
+    /// spaces collapse when a browser renders an option, and read in the monospace face the
+    /// control uses.
+    /// </summary>
+    /// <param name="country">The country.</param>
+    public static string OptionLabel(CountryCode country)
+    {
+        ArgumentNullException.ThrowIfNull(country);
+        return country.DialCode.PadLeft(LongestDialCode, '\u00A0') + '\u00A0' + country.Iso;
+    }
+
+    /// <summary>Characters in the longest dialling code offered, used to line the list up.</summary>
+    public static int LongestDialCode { get; } = All.Max(c => c.DialCode.Length);
+
     /// <summary>The default country (India).</summary>
     public static CountryCode Default { get; } = All[0];
 }

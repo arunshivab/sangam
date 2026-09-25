@@ -45,6 +45,33 @@ public static class AuditActions
     /// <summary>Account hard-deleted after the grace period.</summary>
     public const string UserAccountDeletionComplete = "user.account.deletion.complete";
 
+    /// <summary>A pending deletion was cancelled (the user signed in, or asked to keep the account).</summary>
+    public const string UserAccountDeletionCancel = "user.account.deletion.cancel";
+
+    /// <summary>The user changed their own profile from the portal.</summary>
+    public const string UserProfileUpdate = "user.profile.update";
+
+    /// <summary>The user downloaded their personal data (DPDPA portability).</summary>
+    public const string UserDataExport = "user.data.export";
+
+    /// <summary>A single session was ended from the portal.</summary>
+    public const string UserSessionRevoke = "user.session.revoke";
+
+    /// <summary>Every session was ended from the portal.</summary>
+    public const string UserSessionRevokeAll = "user.session.revoke_all";
+
+    /// <summary>The user revoked an application's access from the portal.</summary>
+    public const string AppAccessRevoke = "app.access.revoke";
+
+    /// <summary>A platform operator placed a hold that blocks the scheduled purge.</summary>
+    public const string AdminUserHoldPlace = "admin.user.hold.place";
+
+    /// <summary>A platform operator cleared a hold.</summary>
+    public const string AdminUserHoldClear = "admin.user.hold.clear";
+
+    /// <summary>A platform operator deleted an account immediately, without waiting for the grace period.</summary>
+    public const string AdminUserDeleteNow = "admin.user.delete_now";
+
     /// <summary>Organisation created.</summary>
     public const string OrgCreate = "org.create";
 

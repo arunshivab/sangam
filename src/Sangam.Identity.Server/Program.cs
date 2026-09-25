@@ -57,8 +57,8 @@ builder.Services.AddOpenIddict()
          .RequireProofKeyForCodeExchange();
 
         o.RegisterScopes([.. SangamScopes.All]);
-        o.RegisterClaims(Claims.Name, Claims.GivenName, Claims.FamilyName, Claims.Birthdate, Claims.Gender, Claims.Locale, Claims.Zoneinfo,
-            Claims.Email, Claims.EmailVerified, Claims.PhoneNumber, Claims.PhoneNumberVerified, SangamClaims.Orgs);
+        o.RegisterClaims(Claims.Name, Claims.GivenName, Claims.FamilyName, Claims.Birthdate, Claims.Gender, Claims.Locale, Claims.Zoneinfo, Claims.UpdatedAt,
+            Claims.Email, Claims.EmailVerified, Claims.PhoneNumber, Claims.PhoneNumberVerified, SangamClaims.SessionId, SangamClaims.Orgs);
 
         o.SetAuthorizationCodeLifetime(TimeSpan.FromMinutes(5))
          .SetAccessTokenLifetime(TimeSpan.FromHours(1))

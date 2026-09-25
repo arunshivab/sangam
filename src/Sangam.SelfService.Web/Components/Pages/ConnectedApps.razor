@@ -1,0 +1,147 @@
+@page "/apps"
+@inject IPortalService Portal
+@inject AuthenticationStateProvider AuthProvider
+@inject IConfiguration Configuration
+
+<PageTitle>Connected apps · sangam</PageTitle>
+
+<PageHeader Title="Connected apps" Subtitle="Applications you have allowed to use your Sangam account." />
+
+@if (_apps is null)
+{
+  <p class="sg-note">Loading…</p>
+}
+else if (_apps.Count == 0)
+{
+  <div class="sg-empty">
+    <SangamMark Size="52" Mode="SangamMarkMode.LeafMist" Decorative="true" />
+    <h2 class="sg-empty-title">No apps linked yet</h2>
+    <p class="sg-empty-body">When you sign in to an application with your Sangam account, it appears here with the exact data it can see and a way to revoke that access.</p>
+    <a href="/help/consent">How consent works →</a>
+  </div>
+}
+else
+{
+  <div class="sg-table sg-table--apps" role="table">
+    <div class="sg-tr sg-tr--head" role="row">
+      <span role="columnheader">APPLICATION</span>
+      <span role="columnheader">LINKED</span>
+      <span role="columnheader">LAST USED</span>
+      <span role="columnheader">CAN SEE</span>
+      <span role="columnheader"></span>
+    </div>
+    @foreach (LinkedApp app in _apps)
+    {
+      var status = app.StatusAt(_now);
+      <div class="sg-tr" role="row">
+        <span class="sg-app-cell" role="cell">
+          <span class="sg-app-tile" style="background:@app.BrandColour" aria-hidden="true">@app.Glyph</span>
+          <span class="sg-app-text">
+            <span class="sg-app-name">@app.DisplayName</span>
+            <span class="sg-app-desc">@(app.Description ?? app.OwnerCompanyName)</span>
+          </span>
+        </span>
+        <span role="cell">@app.LinkedAt.ToString("d MMM yyyy", CultureInfo.InvariantCulture)</span>
+        <span role="cell">
+          <span class="sg-cord-dot @StatusClass(status)" aria-hidden="true"></span>@(app.LastUsedAt is null ? "not yet" : Relative.Describe(app.LastUsedAt.Value, _now))
+        </span>
+        <span role="cell">
+          <span class="sg-chips">
+            @foreach (string scope in app.Scopes)
+            {
+              <span class="sg-chip">@scope</span>
+            }
+          </span>
+          @if (app.Organisations.Count > 0)
+          {
+            <span class="sg-app-orgs">@string.Join(" · ", app.Organisations)</span>
+          }
+        </span>
+        <span role="cell">
+          @if (app.ClientId == _portalClientId)
+          {
+            <span class="sg-self-note" title="This is the page you are looking at. It cannot be revoked from here.">Your account portal</span>
+          }
+          else
+          {
+            <button type="button" class="sg-btn @(status == LinkedAppStatus.Dormant ? "sg-btn--danger" : "sg-btn--secondary") sg-btn--row" @onclick="() => Ask(app)">Revoke</button>
+          }
+        </span>
+      </div>
+    }
+  </div>
+}
+
+@if (_confirming is not null)
+{
+  <div class="sg-confirm" role="alertdialog" aria-labelledby="revoke-title">
+    <h2 class="sg-confirm-title" id="revoke-title">Revoke @_confirming.DisplayName?</h2>
+    <p class="sg-confirm-body">
+      @_confirming.DisplayName will immediately lose access to your Sangam account, and any session it holds ends.
+      You keep your account and anything you created inside the app; the app decides what happens to that data
+      (see its <a href="@(_confirming.PrivacyUrl ?? "#")">privacy policy</a>). You can allow it again at any time by signing in to it.
+    </p>
+    <div class="sg-confirm-actions">
+      <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _confirming = null">Keep access</button>
+      <button type="button" class="sg-btn sg-btn--danger" @onclick="ConfirmAsync" disabled="@_working">Revoke access</button>
+    </div>
+  </div>
+}
+
+@if (_message is not null)
+{
+  <p class="sg-banner sg-banner--success" role="status">@_message</p>
+}
+
+@code {
+    private IReadOnlyList<LinkedApp>? _apps;
+    private LinkedApp? _confirming;
+    private string? _message;
+    private bool _working;
+    private Guid _userId;
+    private string _portalClientId = "sangam-portal";
+    private DateTimeOffset _now = DateTimeOffset.UtcNow;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthProvider.GetAuthenticationStateAsync();
+        _userId = PortalUser.Id(state.User) ?? Guid.Empty;
+        _portalClientId = Configuration["Sangam:Portal:ClientId"] ?? "sangam-portal";
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _now = DateTimeOffset.UtcNow;
+        _apps = _userId == Guid.Empty ? [] : await Portal.GetLinkedAppsAsync(_userId);
+    }
+
+    private void Ask(LinkedApp app)
+    {
+        _confirming = app;
+        _message = null;
+    }
+
+    private async Task ConfirmAsync()
+    {
+        if (_confirming is null)
+        {
+            return;
+        }
+
+        _working = true;
+        string name = _confirming.DisplayName;
+        await Portal.RevokeAppAsync(_userId, _confirming.AppId, null);
+        _confirming = null;
+        _working = false;
+        _message = $"{name} no longer has access to your Sangam account.";
+        await LoadAsync();
+    }
+
+    private static string StatusClass(LinkedAppStatus status) => status switch
+    {
+        LinkedAppStatus.Active => "sg-cord-dot--active",
+        LinkedAppStatus.Expiring => "sg-cord-dot--expiring",
+        _ => "sg-cord-dot--dormant",
+    };
+}

@@ -1,25 +1,28 @@
 @model PasswordStrengthResult
 @{
-    string colour = Model.Verdict switch
+    string level = Model.Verdict switch
     {
         PasswordVerdict.Strong => "strong",
         PasswordVerdict.Fair => "fair",
         _ => "weak",
     };
-    string verdict = Model.Segments == 0 ? "" : Model.Verdict switch
+    string verdict = Model.Verdict switch
     {
         PasswordVerdict.Strong => "Strong",
         PasswordVerdict.Fair => "Fair",
-        _ => "Too weak",
+        _ => Model.Segments == 0 ? "" : "Too weak",
     };
 }
-<div class="sg-meter sg-meter--@colour" aria-hidden="true">
-  @for (int i = 1; i <= 4; i++)
+<div class="sg-meter sg-meter--@level" data-sg-meter aria-hidden="true">
+  @for (int i = 0; i < 4; i++)
   {
-    <span class="sg-meter-seg @(i <= Model.Segments ? "sg-meter-seg--on" : "")"></span>
+    <span class="sg-meter-seg @(i < Model.Segments ? "sg-meter-seg--on" : "")"></span>
   }
 </div>
-<div class="sg-meter-caption">
-  <span class="sg-meter-verdict sg-meter-verdict--@colour">@verdict</span>
-  <span class="sg-meter-hint">@PasswordStrength.MinimumLength+ characters, upper, lower, number, symbol</span>
-</div>
+<p class="sg-meter-caption" data-sg-caption>
+  <span class="sg-meter-verdict sg-meter-verdict--@level" data-sg-verdict>@verdict</span>
+  @foreach ((string label, bool met) in Model.Tokens)
+  {
+    <span class="sg-token @(met ? "sg-token--met" : "")" data-sg-token="@label"><span class="sg-token-mark" aria-hidden="true">@(met ? "✓" : "·")</span>@label</span>
+  }
+</p>

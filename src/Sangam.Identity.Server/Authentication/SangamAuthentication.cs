@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Sangam.Identity.Application.Accounts;
+using Sangam.Identity.Application.Portal;
 using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Enums;
 using static OpenIddict.Abstractions.OpenIddictConstants;
@@ -44,6 +45,9 @@ public static class SangamAuthentication
 
     /// <summary>Claim on the session cookie: Unix seconds when the stamp was last checked against the database.</summary>
     public const string SessionValidatedClaim = "sangam:validated";
+
+    /// <summary>Claim on the session cookie: the <c>user_sessions</c> row this cookie belongs to.</summary>
+    public const string SessionIdClaim = "sangam:sid";
 
     /// <summary>How often a session's stamp is re-checked against the database.</summary>
     public static readonly TimeSpan ValidationInterval = TimeSpan.FromMinutes(5);
@@ -104,14 +108,27 @@ public static class SangamAuthentication
         return services;
     }
 
-    /// <summary>Issues the session cookie for <paramref name="user"/>.</summary>
+    /// <summary>Issues the session cookie for <paramref name="user"/> and records the session row.</summary>
     /// <param name="httpContext">Current request.</param>
     /// <param name="user">The signed-in user.</param>
     /// <param name="mode">Mode the sign-in used.</param>
-    public static async Task SignInSessionAsync(HttpContext httpContext, UserSummary user, SignInMode mode)
+    /// <param name="appId">The app that started the flow, if any.</param>
+    /// <param name="deviceLabel">Label the app supplied on the authorization request, if any.</param>
+    public static async Task SignInSessionAsync(HttpContext httpContext, UserSummary user, SignInMode mode, Guid? appId = null, string? deviceLabel = null)
     {
         ArgumentNullException.ThrowIfNull(httpContext);
         ArgumentNullException.ThrowIfNull(user);
+
+        ISessionService sessions = httpContext.RequestServices.GetRequiredService<ISessionService>();
+        string? userAgent = httpContext.Request.Headers.UserAgent.ToString();
+        Guid sessionId = await sessions.StartAsync(
+            user.Id,
+            mode,
+            appId,
+            deviceLabel,
+            httpContext.Connection.RemoteIpAddress?.ToString(),
+            string.IsNullOrEmpty(userAgent) ? null : userAgent,
+            httpContext.RequestAborted).ConfigureAwait(false);
 
         ClaimsIdentity identity = new(IdentityConstants.ApplicationScheme, Claims.Name, Claims.Role);
         identity.AddClaim(new Claim(Claims.Subject, user.Id.ToString("D")));
@@ -122,6 +139,7 @@ public static class SangamAuthentication
         identity.AddClaim(new Claim(Claims.EmailVerified, user.EmailVerified ? "true" : "false"));
         identity.AddClaim(new Claim(SessionModeClaim, SignInModes.ToCode(mode)));
         identity.AddClaim(new Claim(SessionStampClaim, user.SecurityStamp));
+        identity.AddClaim(new Claim(SessionIdClaim, sessionId.ToString("D")));
         identity.AddClaim(new Claim(SessionValidatedClaim, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture)));
         identity.AddClaim(new Claim(Claims.AuthenticationTime, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture)));
 
@@ -160,6 +178,19 @@ public static class SangamAuthentication
             context.RejectPrincipal();
             await context.HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme).ConfigureAwait(false);
             return;
+        }
+
+        // The session row is the per-device switch: revoking it here ends only this cookie.
+        Guid? sessionId = SessionId(principal);
+        if (sessionId is not null)
+        {
+            ISessionService sessions = context.HttpContext.RequestServices.GetRequiredService<ISessionService>();
+            if (!await sessions.TouchAsync(sessionId.Value, userId.Value).ConfigureAwait(false))
+            {
+                context.RejectPrincipal();
+                await context.HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme).ConfigureAwait(false);
+                return;
+            }
         }
 
         ClaimsIdentity identity = (ClaimsIdentity)principal.Identity!;
@@ -245,6 +276,14 @@ public static class SangamAuthentication
     {
         ArgumentNullException.ThrowIfNull(httpContext);
         return httpContext.SignOutAsync(PendingScheme);
+    }
+
+    /// <summary>The session row id from the cookie, or <see langword="null"/>.</summary>
+    /// <param name="principal">The request principal.</param>
+    public static Guid? SessionId(ClaimsPrincipal principal)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        return Guid.TryParse(principal.FindFirstValue(SessionIdClaim), out Guid id) ? id : null;
     }
 
     /// <summary>Signed-in user id from the session cookie, or <see langword="null"/>.</summary>

@@ -37,6 +37,23 @@ public sealed class CountryCodesTests
     }
 
     [Fact]
+    public void OptionLabel_RightAlignsTheCodeSoTheIsoCodesLineUp()
+    {
+        string india = CountryCodes.OptionLabel(CountryCodes.Default);
+        string canada = CountryCodes.OptionLabel(CountryCodes.FindByIso("CA")!);
+        string bangladesh = CountryCodes.OptionLabel(CountryCodes.FindByIso("BD")!);
+
+        Assert.Equal(4, CountryCodes.LongestDialCode);
+        Assert.Equal("\u00A0+91\u00A0IN", india);
+        Assert.Equal("\u00A0\u00A0+1\u00A0CA", canada);
+        Assert.Equal("+880\u00A0BD", bangladesh);
+
+        // Every label is the same length, so the ISO codes sit in one column.
+        Assert.Single(CountryCodes.All.Select(CountryCodes.OptionLabel).Select(l => l.Length).Distinct());
+        Assert.All(CountryCodes.All.Select(CountryCodes.OptionLabel), l => Assert.DoesNotContain(' ', l));
+    }
+
+    [Fact]
     public void FindByIso_IsCaseInsensitive_AndNullForUnknown()
     {
         Assert.Equal("+971", CountryCodes.FindByIso("ae")!.DialCode);

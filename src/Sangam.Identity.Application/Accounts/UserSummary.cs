@@ -14,6 +14,8 @@ namespace Sangam.Identity.Application.Accounts;
 /// <param name="Gender">Self-declared gender.</param>
 /// <param name="Locale">BCP 47 locale.</param>
 /// <param name="SignInPreference">The user's own sign-in mode.</param>
+/// <param name="CreatedAt">When the account was created.</param>
+/// <param name="UpdatedAt">When the profile last changed; emitted as the OIDC <c>updated_at</c> claim.</param>
 /// <param name="SecurityStamp">Rotates on password reset or forced sign-out; a session whose stamp no longer matches is ended.</param>
 public sealed record UserSummary(
     Guid Id,
@@ -27,6 +29,8 @@ public sealed record UserSummary(
     Gender Gender,
     string Locale,
     SignInMode SignInPreference,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
     string SecurityStamp)
 {
     /// <summary>Gets "First Last".</summary>

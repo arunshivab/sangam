@@ -39,7 +39,9 @@ internal sealed class SangamUserConfiguration :
             .IsUnique()
             .HasFilter("mobile IS NOT NULL AND status <> 'deleted_hard'")
             .HasDatabaseName("ux_users_mobile");
+        b.Property(u => u.HoldReason).HasMaxLength(500);
         b.HasIndex(u => u.Status).HasDatabaseName("idx_users_status");
+        b.HasIndex(u => u.PurgeAfter).HasFilter("purge_after IS NOT NULL").HasDatabaseName("idx_users_purge_after");
 
         b.ToTable(t =>
         {

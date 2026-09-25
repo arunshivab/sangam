@@ -20,7 +20,6 @@
       <label class="sg-label" asp-for="NewPassword">New password</label>
       <input class="sg-field" asp-for="NewPassword" type="password" autocomplete="new-password" required data-sg-password />
       <partial name="_StrengthMeter" model="Model.Strength" />
-      <partial name="_Requirements" model="Model.Strength" />
       <span class="sg-field-error" asp-validation-for="NewPassword"></span>
     </div>
     <div class="sg-field-group">
