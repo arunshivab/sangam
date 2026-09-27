@@ -1,0 +1,23 @@
+@inherits LayoutComponentBase
+
+<OperatorGate PortalUrl="@PortalUrl">
+    <div class="sg-console">
+      <header class="sg-bar">
+        <span class="sg-bar-brand">sangam <span class="sg-bar-scope">console</span></span>
+        <nav class="sg-bar-nav">
+          <NavLink class="sg-bar-link" ActiveClass="sg-bar-link--on" href="/" Match="NavLinkMatch.All">Users</NavLink>
+          <NavLink class="sg-bar-link" ActiveClass="sg-bar-link--on" href="/apps">Applications</NavLink>
+          <NavLink class="sg-bar-link" ActiveClass="sg-bar-link--on" href="/operators">Operators</NavLink>
+        </nav>
+        <ConsoleWho />
+      </header>
+      <main class="sg-main">@Body</main>
+    </div>
+</OperatorGate>
+
+@code {
+    [Inject]
+    private IConfiguration Configuration { get; set; } = null!;
+
+    private string PortalUrl => (Configuration["Sangam:PortalUrl"] ?? "https://account.sangamid.in") + "/profile";
+}

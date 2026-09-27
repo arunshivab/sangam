@@ -62,6 +62,26 @@ public sealed partial class DevelopmentSeeder
         "https://localhost:5201/signout-sangam",
     ];
 
+    /// <summary>Client id of the admin console.</summary>
+    public const string AdminClientId = "sangam-admin";
+
+    /// <summary>Development client secret of the admin console.</summary>
+    public const string AdminClientSecret = "sangam-dev-admin-secret-change-me";
+
+    /// <summary>Development redirect URIs of the admin console.</summary>
+    public static IReadOnlyList<string> AdminRedirectUris { get; } =
+    [
+        "http://localhost:5300/signin-sangam",
+        "https://localhost:5301/signin-sangam",
+    ];
+
+    /// <summary>Development post-logout redirect URIs of the admin console.</summary>
+    public static IReadOnlyList<string> AdminPostLogoutRedirectUris { get; } =
+    [
+        "http://localhost:5300/signout-sangam",
+        "https://localhost:5301/signout-sangam",
+    ];
+
     /// <summary>S256 challenge for <see cref="DevCallbackVerifier"/>.</summary>
     public static string DevCallbackChallenge { get; } = Convert.ToBase64String(
         System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.ASCII.GetBytes(DevCallbackVerifier)))
@@ -218,6 +238,7 @@ public sealed partial class DevelopmentSeeder
         app.UpdatedAt = now;
 
         await EnsurePortalAppAsync(now, cancellationToken).ConfigureAwait(false);
+        await EnsureConsoleAppAsync(now, cancellationToken).ConfigureAwait(false);
 
         bool hasSystemRole = await _db.Roles.AnyAsync(r => r.AppId == app.Id && r.Code == "org_admin" && r.OrgId == null, cancellationToken).ConfigureAwait(false);
         if (!hasSystemRole)
@@ -304,6 +325,80 @@ public sealed partial class DevelopmentSeeder
         }
 
         foreach (string uri in PortalPostLogoutRedirectUris)
+        {
+            descriptor.PostLogoutRedirectUris.Add(new Uri(uri));
+        }
+
+        if (existing is null)
+        {
+            await _applications.CreateAsync(descriptor, cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            await _applications.UpdateAsync(existing, descriptor, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>The admin console is a confidential client like any other; its extra bars are enforced inside it.</summary>
+    private async Task EnsureConsoleAppAsync(DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        App? console = await _db.Apps.FirstOrDefaultAsync(a => a.ClientId == AdminClientId, cancellationToken).ConfigureAwait(false);
+        if (console is null)
+        {
+            console = new App { Id = Guid.NewGuid(), ClientId = AdminClientId, Slug = "console", CreatedAt = now };
+            _db.Apps.Add(console);
+        }
+
+        console.DisplayName = "Sangam console";
+        console.OwnerCompanyName = "imagiQa Healthcare Services Pvt Ltd";
+        console.Description = "The platform operator console.";
+        console.HomepageUrl = "http://localhost:5300/";
+        console.BrandColour = "#15302E";
+        console.Glyph = "\u0B95";
+        console.ConsentVersion = "v1";
+        console.RequireConsent = true;
+        console.Status = AppStatus.Active;
+        console.UpdatedAt = now;
+        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        object? existing = await _applications.FindByClientIdAsync(AdminClientId, cancellationToken).ConfigureAwait(false);
+        OpenIddictApplicationDescriptor descriptor = new();
+        if (existing is not null)
+        {
+            await _applications.PopulateAsync(descriptor, existing, cancellationToken).ConfigureAwait(false);
+        }
+
+        descriptor.ClientId = AdminClientId;
+        descriptor.ClientType = ClientTypes.Confidential;
+        descriptor.ConsentType = ConsentTypes.Explicit;
+        descriptor.DisplayName = "Sangam console";
+        if (existing is null)
+        {
+            descriptor.ClientSecret = AdminClientSecret;
+        }
+
+        foreach (string permission in new[]
+        {
+            Permissions.Endpoints.Authorization,
+            Permissions.Endpoints.Token,
+            Permissions.Endpoints.EndSession,
+            Permissions.GrantTypes.AuthorizationCode,
+            Permissions.GrantTypes.RefreshToken,
+            Permissions.ResponseTypes.Code,
+            Permissions.Prefixes.Scope + SangamScopes.Profile,
+            Permissions.Prefixes.Scope + SangamScopes.Email,
+        })
+        {
+            descriptor.Permissions.Add(permission);
+        }
+
+        descriptor.Requirements.Add(Requirements.Features.ProofKeyForCodeExchange);
+        foreach (string uri in AdminRedirectUris)
+        {
+            descriptor.RedirectUris.Add(new Uri(uri));
+        }
+
+        foreach (string uri in AdminPostLogoutRedirectUris)
         {
             descriptor.PostLogoutRedirectUris.Add(new Uri(uri));
         }

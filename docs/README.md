@@ -67,6 +67,11 @@
   the app (`sangam_device`) and never from geo-IP; deletion has a 30-day grace, an automatic purge
   and an operator hold. See
   [`decisions/0004-self-service-portal-sessions-and-deletion.md`](decisions/0004-self-service-portal-sessions-and-deletion.md).
+- **Operator console (PR-06).** Four ordered ranks — Viewer, AppManager, Support, Owner —
+  enforced in the service; mandatory authenticator for every operator; opening a record is
+  audited and visible to the user; impersonation refused by design. See
+  [`decisions/0005-operator-console-ranks-and-mfa.md`](decisions/0005-operator-console-ranks-and-mfa.md)
+  and the plain-language [`authority-model.md`](authority-model.md).
 - **Partner facts.** The handoff's placeholder copy says LiPi is operated by "Lipi Systems Pvt Ltd,
   Bengaluru". LiPi is an imagiQa product (Ahmedabad). This is runtime data in the app registry,
   not a design change.

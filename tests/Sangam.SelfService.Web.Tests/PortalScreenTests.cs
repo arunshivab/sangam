@@ -125,6 +125,24 @@ public sealed class PortalScreenTests : IClassFixture<PortalFactory>, IAsyncLife
         Assert.Equal(2, (await portal.GetSessionsAsync(PortalFactory.UserId, _currentSession)).Count);
     }
 
+    /// <summary>
+    /// Guards the PR-06 fix: the portal shipped in PR-05 with no interactive render mode, so every
+    /// page was static HTML and no button's click handler ran. A live page carries Blazor's server
+    /// marker; a static one does not.
+    /// </summary>
+    [PostgresFact]
+    public async Task PagesAreInteractive_SoButtonsActuallyWork()
+    {
+        foreach (string path in new[] { "/", "/apps", "/devices", "/audit", "/profile" })
+        {
+            string html = await GetAsync(path);
+            // Look only in the body: the <head> outlet is interactive too and carries the same
+            // marker, which would let this pass even with the pages themselves static.
+            string body = html[html.IndexOf("<body", StringComparison.Ordinal)..];
+            Assert.Contains("<!--Blazor:{\"type\":\"server\"", body, StringComparison.Ordinal);
+        }
+    }
+
     private async Task<string> GetAsync(string path)
     {
         using HttpClient client = _factory.CreateClient();

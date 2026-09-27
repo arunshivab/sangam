@@ -13,10 +13,11 @@
   <link rel="stylesheet" href="_content/Sangam.Web.Shared/css/sangam-tokens.css" />
   <link rel="stylesheet" href="_content/Sangam.Web.Shared/css/sangam-brand.css" />
   <link rel="stylesheet" href="css/site.css" />
-  <HeadOutlet />
+  <HeadOutlet @rendermode="InteractiveServer" />
 </head>
 <body>
-  <Routes />
+  @* Interactive: without this every page is static HTML and no @onclick ever runs. *@
+  <Routes @rendermode="InteractiveServer" />
   <script src="_framework/blazor.web.js"></script>
   <script src="js/portal.js"></script>
 </body>
