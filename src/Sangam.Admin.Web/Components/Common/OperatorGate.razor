@@ -1,0 +1,87 @@
+@inject IAdminService Admin
+@inject IMfaService Mfa
+@inject AuthenticationStateProvider AuthProvider
+
+@if (_state == GateState.Checking)
+{
+    <p class="sg-note">Checking your access…</p>
+}
+else if (_state == GateState.NotAnOperator)
+{
+    <section class="sg-shut">
+        <h1 class="sg-shut-title">This console is not for you</h1>
+        <p class="sg-shut-body">
+            Your Sangam account is fine — it simply does not hold platform operator access.
+            If that is wrong, ask an owner to grant it. Nothing about this page is logged against you
+            beyond the sign-in itself.
+        </p>
+        <a class="sg-btn sg-btn--secondary" href="/signout">Sign out</a>
+    </section>
+}
+else if (_state == GateState.MfaRequired)
+{
+    <section class="sg-shut">
+        <h1 class="sg-shut-title">Set up two-step sign-in first</h1>
+        <p class="sg-shut-body">
+            Operators must have an authenticator app. Open your Sangam account portal, turn on
+            two-step sign-in under Personal details, then sign in here again.
+        </p>
+        <a class="sg-btn sg-btn--primary" href="@PortalUrl">Go to your account portal</a>
+        <a class="sg-btn sg-btn--secondary" href="/signout">Sign out</a>
+    </section>
+}
+else
+{
+    <CascadingValue Value="_context">@ChildContent</CascadingValue>
+}
+
+@code {
+    /// <summary>The console, shown only once both bars are cleared.</summary>
+    [Parameter]
+    [EditorRequired]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Where to send an operator who still needs an authenticator.</summary>
+    [Parameter]
+    public string PortalUrl { get; set; } = "https://account.sangamid.in/profile";
+
+    private GateState _state = GateState.Checking;
+    private ConsoleContext _context = new(Guid.Empty, PlatformRole.Viewer, "Operator");
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthProvider.GetAuthenticationStateAsync();
+        Guid? userId = OperatorContext.Id(state.User);
+        if (userId is null)
+        {
+            _state = GateState.NotAnOperator;
+            return;
+        }
+
+        PlatformRole? role = await Admin.GetRoleAsync(userId.Value);
+        if (role is null)
+        {
+            _state = GateState.NotAnOperator;
+            return;
+        }
+
+        // Mandatory, and checked here rather than trusted from the sign-in: an operator granted
+        // access while signed in must still enrol before the console opens.
+        if (!await Mfa.IsEnrolledAsync(userId.Value))
+        {
+            _state = GateState.MfaRequired;
+            return;
+        }
+
+        _context = new ConsoleContext(userId.Value, role.Value, OperatorContext.Name(state.User));
+        _state = GateState.Open;
+    }
+
+    private enum GateState
+    {
+        Checking,
+        NotAnOperator,
+        MfaRequired,
+        Open,
+    }
+}

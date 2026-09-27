@@ -1,0 +1,211 @@
+@page "/users/{UserId:guid}"
+@inject IAdminService Admin
+@inject NavigationManager Nav
+@inject PersistentComponentState ApplicationState
+@implements IDisposable
+
+<PageTitle>@(_detail?.Row.DisplayName ?? "User") · Sangam console</PageTitle>
+
+@if (_detail is null)
+{
+  <p class="sg-muted">@(_loaded ? "That account does not exist." : "Loading…")</p>
+}
+else
+{
+  <a class="sg-back" href="/">← Users</a>
+  <h1 class="sg-h1">@_detail.Row.DisplayName</h1>
+  <p class="sg-lede sg-mono">@_detail.Row.Email@(_detail.Row.Mobile is null ? "" : " · " + _detail.Row.Mobile)</p>
+
+  <p class="sg-read-note">You opened this record. It appears in this person's own audit log, with your name.</p>
+
+  <div class="sg-grid">
+    <div class="sg-panel">
+      <h2 class="sg-h2">Account</h2>
+      <dl class="sg-facts">
+        <div><dt>Status</dt><dd>@_detail.Row.Status.ToString().ToLowerInvariant()</dd></div>
+        <div><dt>Email</dt><dd>@(_detail.Row.EmailVerified ? "verified" : "not verified")</dd></div>
+        <div><dt>Two-step</dt><dd>@(_detail.Row.MfaEnrolled ? "authenticator enrolled" : "none")</dd></div>
+        <div><dt>Date of birth</dt><dd>@_detail.DateOfBirth.ToString("d MMM yyyy", CultureInfo.InvariantCulture)</dd></div>
+        <div><dt>Signs in with</dt><dd>@_detail.SignInPreference.ToString().ToLowerInvariant()</dd></div>
+        <div><dt>Last sign-in</dt><dd>@(_detail.LastSignInAt?.ToString("d MMM yyyy, HH:mm 'UTC'", CultureInfo.InvariantCulture) ?? "never")</dd></div>
+        <div><dt>Live sessions</dt><dd>@_detail.ActiveSessions</dd></div>
+        <div><dt>Joined</dt><dd>@_detail.Row.CreatedAt.ToString("d MMM yyyy", CultureInfo.InvariantCulture)</dd></div>
+      </dl>
+      @if (_detail.Row.PurgeAfter is not null)
+      {
+        <p class="sg-warn">
+          Deletion requested — purge on @_detail.Row.PurgeAfter.Value.ToString("d MMM yyyy", CultureInfo.InvariantCulture).
+          @if (_detail.Row.OnHold)
+          {
+            <span>Held: @_detail.HoldReason</span>
+          }
+        </p>
+      }
+    </div>
+
+    <div class="sg-panel">
+      <h2 class="sg-h2">Applications and organisations</h2>
+      @if (_detail.LinkedApps.Count == 0)
+      {
+        <p class="sg-muted">No application has access.</p>
+      }
+      else
+      {
+        <ul class="sg-list">@foreach (string app in _detail.LinkedApps) { <li>@app</li> }</ul>
+      }
+      @if (_detail.Organisations.Count > 0)
+      {
+        <h3 class="sg-h3">Organisations</h3>
+        <ul class="sg-list">@foreach (string org in _detail.Organisations) { <li>@org</li> }</ul>
+      }
+      <p class="sg-muted">To change a role or a membership, the application does it through its own API. The console cannot reach inside an application's tenancy.</p>
+    </div>
+  </div>
+
+  <div class="sg-panel">
+    <h2 class="sg-h2">Actions</h2>
+    @if (Context?.CanAct != true)
+    {
+      <p class="sg-muted">Your rank (@Context?.RoleLabel) can look, but not act on an account.</p>
+    }
+    else
+    {
+      <div class="sg-form-row">
+        <label class="sg-label" for="reason">Reason — recorded in the audit log</label>
+        <input id="reason" class="sg-input" @bind="_reason" @bind:event="oninput" placeholder="Why are you doing this?" />
+      </div>
+      <div class="sg-actions">
+        @if (_detail.Row.Status == UserStatus.Suspended)
+        {
+          <button type="button" class="sg-btn sg-btn--primary" @onclick="ReinstateAsync" disabled="@_busy">Reinstate</button>
+        }
+        else
+        {
+          <button type="button" class="sg-btn sg-btn--warn" @onclick="SuspendAsync" disabled="@(_busy || !HasReason)">Suspend</button>
+        }
+        <button type="button" class="sg-btn sg-btn--ghost" @onclick="SignOutAsync" disabled="@_busy">Sign out everywhere</button>
+        @if (_detail.Row.OnHold)
+        {
+          <button type="button" class="sg-btn sg-btn--ghost" @onclick="ClearHoldAsync" disabled="@_busy">Clear hold</button>
+        }
+        else
+        {
+          <button type="button" class="sg-btn sg-btn--ghost" @onclick="PlaceHoldAsync" disabled="@(_busy || !HasReason)">Hold deletion</button>
+        }
+        @if (Context.IsOwner)
+        {
+          <button type="button" class="sg-btn sg-btn--danger" @onclick="() => _confirmDelete = true" disabled="@(_busy || !HasReason)">Delete now</button>
+        }
+      </div>
+      @if (!HasReason)
+      {
+        <p class="sg-muted">Suspending, holding and deleting need a reason.</p>
+      }
+      @if (_confirmDelete)
+      {
+        <div class="sg-confirm">
+          <p><strong>Destroy this person's data now?</strong> Name, email, mobile, password and date of birth are overwritten permanently. The audit trail survives. The 30-day grace period is skipped.</p>
+          <div class="sg-actions">
+            <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => _confirmDelete = false">Cancel</button>
+            <button type="button" class="sg-btn sg-btn--danger" @onclick="DeleteAsync" disabled="@_busy">Yes, delete permanently</button>
+          </div>
+        </div>
+      }
+    }
+    @if (_message is not null)
+    {
+      <p class="@(_ok ? "sg-ok" : "sg-warn")">@_message</p>
+    }
+  </div>
+}
+
+@code {
+    /// <summary>The account being looked at.</summary>
+    [Parameter]
+    public Guid UserId { get; set; }
+
+    [CascadingParameter]
+    public ConsoleContext? Context { get; set; }
+
+    private AdminUserDetail? _detail;
+    private bool _loaded;
+    private bool _busy;
+    private bool _ok;
+    private bool _confirmDelete;
+    private string _reason = string.Empty;
+    private string? _message;
+    private PersistingComponentStateSubscription _persisting;
+
+    private bool HasReason => !string.IsNullOrWhiteSpace(_reason);
+
+    /// <summary>
+    /// The page renders twice — once as HTML, once when the live connection starts — and opening
+    /// a record writes an audit row. So the record is read once, in the first render, and handed
+    /// to the second rather than read (and audited) again.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        _persisting = ApplicationState.RegisterOnPersisting(PersistAsync);
+        if (ApplicationState.TryTakeFromJson(StateKey, out AdminUserDetail? carried) && carried is not null)
+        {
+            _detail = carried;
+            _loaded = true;
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private string StateKey => $"sangam.admin.user.{UserId:D}";
+
+    private Task PersistAsync()
+    {
+        if (_detail is not null)
+        {
+            ApplicationState.PersistAsJson(StateKey, _detail);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public void Dispose() => _persisting.Dispose();
+
+    private async Task LoadAsync()
+    {
+        if (Context is null)
+        {
+            return;
+        }
+
+        _detail = await Admin.OpenUserAsync(Context.UserId, UserId, null);
+        _loaded = true;
+    }
+
+    private async Task RunAsync(Func<Task<AdminResult>> action)
+    {
+        _busy = true;
+        AdminResult result = await action();
+        _busy = false;
+        _confirmDelete = false;
+        _ok = result.Succeeded;
+        _message = result.Message;
+        if (result.Succeeded)
+        {
+            _reason = string.Empty;
+            await LoadAsync();
+        }
+    }
+
+    private Task SuspendAsync() => RunAsync(() => Admin.SuspendUserAsync(Context!.UserId, UserId, _reason, null));
+
+    private Task ReinstateAsync() => RunAsync(() => Admin.ReinstateUserAsync(Context!.UserId, UserId, null));
+
+    private Task SignOutAsync() => RunAsync(() => Admin.ForceSignOutAsync(Context!.UserId, UserId, null));
+
+    private Task PlaceHoldAsync() => RunAsync(() => Admin.PlaceHoldAsync(Context!.UserId, UserId, _reason, null));
+
+    private Task ClearHoldAsync() => RunAsync(() => Admin.ClearHoldAsync(Context!.UserId, UserId, null));
+
+    private Task DeleteAsync() => RunAsync(() => Admin.DeleteNowAsync(Context!.UserId, UserId, _reason, null));
+}

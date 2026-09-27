@@ -6,6 +6,49 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added — PR-06 Operator console
+- `admin.sangamid.in` (Blazor Server, dark scope): Users, user detail with actions, Applications,
+  Operators. An ordinary OIDC client with a 2-hour cookie.
+- Four ordered platform ranks — **Viewer**, **AppManager**, **Support**, **Owner** — enforced in
+  `IAdminService`, never in the pages. Migration `RenamePlatformRoles` renames the PR-02 values
+  (`support` → `viewer`, `operator` → `support`); a no-op on every existing database.
+- `OperatorGate`: an unrevoked operator row **and** an enrolled authenticator, re-checked on every
+  visit. People without a rank are told plainly and shown no data.
+- Authenticator-app (TOTP) second factor for every user, on ASP.NET Core Identity's own provider:
+  QR code rendered on this server as inline SVG, ten recovery codes, lockout shared with passwords.
+  Operators cannot remove theirs. New sign-in step at `/login/authenticator`.
+- Opening a user's record writes `admin.user.read` before returning anything; the user sees it in
+  their own audit log, flagged.
+- Suspend, reinstate, sign out everywhere, place and clear a hold, delete now (Owner, with reason),
+  enable and disable an application, grant and revoke operators. The last owner cannot be revoked;
+  an account holding console access cannot be deleted.
+- `create-operator` bootstrap: makes the first Owner, then refuses forever.
+- `docs/authority-model.md`, ADR-0005, and `docs/go-live-checklist.md` — bootstrapping the first
+  owner on production and the two-owner rule, written now so they are not forgotten by PR-09.
+- Roadmap renumbered: application administrators are PR-07, the SDK PR-08, production PR-09.
+- Tests: every rank boundary in the authority chart against PostgreSQL; TOTP enrolment,
+  verification, recovery codes and lockout; the operator lock; the bootstrap; the console's gate
+  and what each rank is shown, rendered by the real host; the password-then-authenticator sign-in.
+
+### Fixed — PR-06
+- **No button in the portal or the console did anything.** Neither Blazor app ever set an
+  interactive render mode, so every page was static HTML and no click handler ran. The portal
+  shipped this way in PR-05 (v0.5.0): revoking an app, ending a session, signing out everywhere,
+  the audit range and paging, saving the sign-in preference, downloading data and deleting the
+  account were all inert. Only "Save changes" worked, being a real form post. Tests had asserted
+  on rendered HTML, which proves a page renders, not that a button works. Both apps now render
+  interactively; a guard test in each fails if a page is ever static again, and has been shown to
+  fail with the bug reinstated. Each app was also exercised by clicking in a real browser.
+- With interactivity on, a page renders twice. The console's user-detail page carries the loaded
+  record from the first render to the second, so opening a record writes exactly one
+  `admin.user.read` row rather than two.
+- The authenticator key shown for typing by hand was in capitals, where a monospace letter O reads
+  as a zero; base32 has no zero, so the authenticator app rejected it. It is now shown in lowercase
+  groups of four, with a note that it contains only letters and the digits 2 to 7, and that the
+  app must be set to Time based.
+- Recovery codes could never be redeemed: code normalisation stripped the dash that Identity
+  stores in them. A lost phone would have locked the person out for good.
+
 ### Added — PR-05 Self-service portal
 - `account.sangamid.in` (Blazor Server) as a real OpenID Connect client of the identity server:
   Overview, Connected apps, Devices, Audit log and Personal details, behind its own cookie.

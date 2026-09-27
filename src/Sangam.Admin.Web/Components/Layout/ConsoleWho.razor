@@ -1,0 +1,14 @@
+<span class="sg-bar-who">
+  @if (Context is not null)
+  {
+    <span class="sg-bar-name">@Context.Name</span>
+    <span class="sg-rank sg-rank--@Context.Role.ToString().ToLowerInvariant()">@Context.RoleLabel</span>
+  }
+  <a class="sg-bar-out" href="/signout">Sign out</a>
+</span>
+
+@code {
+    /// <summary>The signed-in operator, cascaded by the gate.</summary>
+    [CascadingParameter]
+    public ConsoleContext? Context { get; set; }
+}

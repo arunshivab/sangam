@@ -15,6 +15,7 @@ namespace Sangam.Identity.Application.Accounts;
 /// <param name="Locale">BCP 47 locale.</param>
 /// <param name="SignInPreference">The user's own sign-in mode.</param>
 /// <param name="CreatedAt">When the account was created.</param>
+/// <param name="MfaEnrolled">Whether an authenticator app is enrolled.</param>
 /// <param name="UpdatedAt">When the profile last changed; emitted as the OIDC <c>updated_at</c> claim.</param>
 /// <param name="SecurityStamp">Rotates on password reset or forced sign-out; a session whose stamp no longer matches is ended.</param>
 public sealed record UserSummary(
@@ -30,6 +31,7 @@ public sealed record UserSummary(
     string Locale,
     SignInMode SignInPreference,
     DateTimeOffset CreatedAt,
+    bool MfaEnrolled,
     DateTimeOffset UpdatedAt,
     string SecurityStamp)
 {

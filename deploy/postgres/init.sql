@@ -39,6 +39,10 @@ SELECT 'CREATE DATABASE sangam_identity_test_portal WITH OWNER = sangam_identity
 WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'sangam_identity_test_portal')
 \gexec
 
+SELECT 'CREATE DATABASE sangam_identity_test_admin WITH OWNER = sangam_identity ENCODING = ''UTF8'''
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'sangam_identity_test_admin')
+\gexec
+
 REVOKE CONNECT ON DATABASE sangam_identity FROM PUBLIC;
 GRANT CONNECT ON DATABASE sangam_identity TO sangam_identity;
 REVOKE CONNECT ON DATABASE sangam_identity_test FROM PUBLIC;
@@ -47,3 +51,5 @@ REVOKE CONNECT ON DATABASE sangam_identity_test_server FROM PUBLIC;
 GRANT CONNECT ON DATABASE sangam_identity_test_server TO sangam_identity;
 REVOKE CONNECT ON DATABASE sangam_identity_test_portal FROM PUBLIC;
 GRANT CONNECT ON DATABASE sangam_identity_test_portal TO sangam_identity;
+REVOKE CONNECT ON DATABASE sangam_identity_test_admin FROM PUBLIC;
+GRANT CONNECT ON DATABASE sangam_identity_test_admin TO sangam_identity;

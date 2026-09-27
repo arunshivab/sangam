@@ -1,12 +1,20 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <!-- admin.sangamid.in — operator admin console (Blazor Server, authenticated, 1024 px minimum). -->
+  <!-- admin.sangamid.in - the platform operator console (Blazor Server, dark scope).
+       An OpenID Connect client of id.sangamid.in like any other, with two extra bars:
+       the signed-in user must hold an unrevoked platform_operators row, and must have an
+       authenticator app enrolled. Every action is authorised in IAdminService by rank,
+       and opening a user's record is audited like a change. -->
 
   <PropertyGroup>
     <RootNamespace>Sangam.Admin.Web</RootNamespace>
-    <Description>Sangam identity platform — operator admin console.</Description>
+    <Description>Sangam identity platform — platform operator console.</Description>
     <UserSecretsId>sangam-admin-web</UserSecretsId>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Sangam.Identity.Application\Sangam.Identity.Application.csproj" />

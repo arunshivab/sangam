@@ -1,0 +1,85 @@
+@page "/"
+@inject IAdminService Admin
+@inject NavigationManager Nav
+
+<PageTitle>Users · Sangam console</PageTitle>
+
+<h1 class="sg-h1">Users</h1>
+<p class="sg-lede">Search by name, email or mobile. Opening a record is recorded in that person's own audit log.</p>
+
+<div class="sg-search">
+  <input class="sg-input" placeholder="Name, email or mobile" @bind="_query" @bind:event="oninput" @onkeyup="OnKeyAsync" aria-label="Search users" />
+  <button type="button" class="sg-btn sg-btn--primary" @onclick="SearchAsync" disabled="@_busy">Search</button>
+</div>
+
+@if (_rows is null)
+{
+  <p class="sg-muted">Loading…</p>
+}
+else if (_rows.Count == 0)
+{
+  <p class="sg-muted">No account matches that.</p>
+}
+else
+{
+  <table class="sg-table">
+    <thead><tr><th>Person</th><th>Status</th><th>Two-step</th><th>Joined</th><th></th></tr></thead>
+    <tbody>
+      @foreach (AdminUserRow row in _rows)
+      {
+        <tr>
+          <td>
+            <span class="sg-name">@row.DisplayName</span>
+            <span class="sg-sub sg-mono">@row.Email@(row.Mobile is null ? "" : " · " + row.Mobile)</span>
+          </td>
+          <td>
+            <span class="sg-pill sg-pill--@row.Status.ToString().ToLowerInvariant()">@Status(row)</span>
+            @if (row.IsOperator)
+            {
+              <span class="sg-pill sg-pill--op">console</span>
+            }
+          </td>
+          <td>@(row.MfaEnrolled ? "on" : "—")</td>
+          <td class="sg-mono">@row.CreatedAt.ToString("d MMM yyyy", CultureInfo.InvariantCulture)</td>
+          <td><a class="sg-btn sg-btn--ghost" href="@($"/users/{row.Id:D}")">Open</a></td>
+        </tr>
+      }
+    </tbody>
+  </table>
+  <p class="sg-muted">@_rows.Count shown@(_rows.Count >= 50 ? ", narrow the search to see more" : "").</p>
+}
+
+@code {
+    [CascadingParameter]
+    public ConsoleContext? Context { get; set; }
+
+    private IReadOnlyList<AdminUserRow>? _rows;
+    private string _query = string.Empty;
+    private bool _busy;
+
+    protected override Task OnInitializedAsync() => SearchAsync();
+
+    private async Task OnKeyAsync(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await SearchAsync();
+        }
+    }
+
+    private async Task SearchAsync()
+    {
+        if (Context is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        _rows = await Admin.SearchUsersAsync(Context.UserId, _query, 50);
+        _busy = false;
+    }
+
+    private static string Status(AdminUserRow row) => row.PurgeAfter is not null
+        ? (row.OnHold ? "deletion held" : "deleting")
+        : row.Status.ToString().ToLowerInvariant().Replace("deletedsoft", "deleting", StringComparison.Ordinal);
+}
