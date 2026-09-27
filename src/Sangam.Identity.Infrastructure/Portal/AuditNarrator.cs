@@ -25,6 +25,9 @@ internal static class AuditNarrator
         AuditActions.AdminUserSuspend,
         AuditActions.AdminUserForceLogout,
         AuditActions.UserAccountDeletionRequest,
+        AuditActions.AdminUserRead,
+        AuditActions.UserMfaFail,
+        AuditActions.UserMfaDisable,
     };
 
     public static AuditLine Describe(AuditEvent e, IReadOnlyDictionary<Guid, string> appNames)
@@ -66,6 +69,14 @@ internal static class AuditNarrator
             AuditActions.TokenIssue => $"{app} received access to your account.",
             AuditActions.OrgMembershipGrant => $"{app} gave you a role in an organisation{RoleSuffix(e.Metadata)}.",
             AuditActions.OrgMembershipRevoke => $"{app} removed one of your organisation roles.",
+            AuditActions.AdminUserRead => "A Sangam operator opened your account record.",
+            AuditActions.AdminUserReinstate => "A Sangam operator lifted the suspension on your account.",
+            AuditActions.AdminUserDeleteNow => "A Sangam operator deleted your account.",
+            AuditActions.AdminOperatorGrant => "You were given Sangam console access.",
+            AuditActions.AdminOperatorRevoke => "Your Sangam console access was removed.",
+            AuditActions.UserMfaEnable => "You set up an authenticator app for two-step sign-in.",
+            AuditActions.UserMfaDisable => "You removed your authenticator app.",
+            AuditActions.UserMfaFail => "An authenticator code was refused.",
             AuditActions.AdminUserSuspend => "A Sangam operator suspended your account.",
             AuditActions.AdminUserForceLogout => "A Sangam operator signed you out everywhere.",
             AuditActions.AdminUserHoldPlace => "A Sangam operator placed a hold on your account.",

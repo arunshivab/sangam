@@ -1,6 +1,10 @@
 using System.Net;
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
+using Sangam.Identity.Application.Accounts;
+using Sangam.Identity.Application.Admin;
+using Sangam.Identity.Domain.Entities;
 using Sangam.Identity.Infrastructure.Services;
 
 namespace Sangam.Identity.Server.Tests;
@@ -303,6 +307,63 @@ public sealed partial class AuthScreenTests
 
         Assert.Contains(HttpStatusCode.TooManyRequests, statuses);
         Assert.Equal(HttpStatusCode.TooManyRequests, statuses[^1]);
+    }
+
+    [PostgresFact]
+    public async Task WithAnAuthenticator_ThePasswordAloneIsNotEnough()
+    {
+        using BrowserSession s = new(_factory);
+        string email = $"mfa-{Guid.NewGuid():N}@example.in";
+        string mobile = Random.Shared.NextInt64(7000000000, 9999999999).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        await RegisterAndVerifyAsync(s, _factory.Services.GetRequiredService<InMemoryEmailOutbox>(), email, mobile);
+
+        // Enrol through the real service, as the portal would.
+        using (IServiceScope scope = _factory.Services.CreateScope())
+        {
+            IAccountService accounts = scope.ServiceProvider.GetRequiredService<IAccountService>();
+            IMfaService mfa = scope.ServiceProvider.GetRequiredService<IMfaService>();
+            UserManager<SangamUser> users = scope.ServiceProvider.GetRequiredService<UserManager<SangamUser>>();
+            Guid id = (await accounts.FindByEmailAsync(email))!.Id;
+            await mfa.BeginEnrolmentAsync(id);
+            SangamUser user = (await users.FindByIdAsync(id.ToString("D")))!;
+            string code = await AuthenticatorApp.CurrentCodeAsync(users, user);
+            Assert.True((await mfa.ConfirmEnrolmentAsync(id, code, null)).Succeeded);
+        }
+
+        await s.PostFormAsync("/logout", []);
+
+        // Right password: no session yet, just the authenticator step.
+        // RegisterAndVerifyAsync registers with this password.
+        (_, string? afterPassword, _) = await s.PostFormAsync("/login", new Dictionary<string, string> { ["Email"] = email, ["Password"] = "Correct-Horse-2026!" });
+        Assert.StartsWith("/login/authenticator", afterPassword, StringComparison.Ordinal);
+        (HttpStatusCode stillOut, _) = await s.GetAsync("/account");
+        Assert.Equal(HttpStatusCode.Found, stillOut);
+
+        // A wrong code keeps them out and says so.
+        (HttpStatusCode wrongStatus, _, string wrongHtml) = await s.PostFormAsync("/login/authenticator", new Dictionary<string, string> { ["Code"] = "000000" });
+        Assert.Equal(HttpStatusCode.OK, wrongStatus);
+        Assert.Contains("not correct", wrongHtml, StringComparison.Ordinal);
+
+        // The right code completes the sign-in.
+        string current;
+        using (IServiceScope scope = _factory.Services.CreateScope())
+        {
+            UserManager<SangamUser> users = scope.ServiceProvider.GetRequiredService<UserManager<SangamUser>>();
+            SangamUser user = (await users.FindByEmailAsync(email))!;
+            current = await AuthenticatorApp.CurrentCodeAsync(users, user);
+        }
+
+        (_, string? afterCode, _) = await s.PostFormAsync("/login/authenticator", new Dictionary<string, string> { ["Code"] = current });
+        Assert.Equal("/account", afterCode);
+    }
+
+    [Fact]
+    public async Task TheAuthenticatorStep_WithoutAPendingPassword_SendsYouBackToSignIn()
+    {
+        using BrowserSession s = new(_factory);
+        (HttpStatusCode status, string html) = await s.GetAsync("/login/authenticator");
+        Assert.Equal(HttpStatusCode.Found, status);
+        Assert.DoesNotContain("authenticator code", html, StringComparison.OrdinalIgnoreCase);
     }
 
     private static async Task RegisterAndVerifyAsync(BrowserSession s, InMemoryEmailOutbox outbox, string email, string mobile)

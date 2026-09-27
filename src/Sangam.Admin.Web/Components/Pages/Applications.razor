@@ -1,0 +1,97 @@
+@page "/apps"
+@inject IAdminService Admin
+
+<PageTitle>Applications · Sangam console</PageTitle>
+
+<h1 class="sg-h1">Applications</h1>
+<p class="sg-lede">Every application registered with Sangam. Disabling one stops all of its sign-ins at once; it does not reach inside the application's own data.</p>
+
+@if (_rows is null)
+{
+  <p class="sg-muted">Loading…</p>
+}
+else
+{
+  <table class="sg-table">
+    <thead><tr><th>Application</th><th>Client id</th><th>Sign-in rule</th><th>Users</th><th>Orgs</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      @foreach (AdminAppRow row in _rows)
+      {
+        <tr>
+          <td><span class="sg-name">@row.DisplayName</span><span class="sg-sub">@row.OwnerCompanyName</span></td>
+          <td class="sg-mono">@row.ClientId</td>
+          <td class="sg-mono">@row.SignInPolicy.ToString().ToLowerInvariant()</td>
+          <td>@row.Users</td>
+          <td>@row.Organisations</td>
+          <td><span class="sg-pill sg-pill--@row.Status.ToString().ToLowerInvariant()">@row.Status.ToString().ToLowerInvariant()</span></td>
+          <td>
+            @if (Context?.CanManageApps == true)
+            {
+              @if (row.Status == AppStatus.Active)
+              {
+                <button type="button" class="sg-btn sg-btn--warn" @onclick="() => _confirming = row" disabled="@_busy">Disable</button>
+              }
+              else
+              {
+                <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => SetAsync(row, AppStatus.Active)" disabled="@_busy">Enable</button>
+              }
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+
+  @if (Context?.CanManageApps != true)
+  {
+    <p class="sg-muted">Your rank (@Context?.RoleLabel) can see the registry but not change it.</p>
+  }
+}
+
+@if (_confirming is not null)
+{
+  <div class="sg-confirm">
+    <p><strong>Disable @_confirming.DisplayName?</strong> Every sign-in to it stops immediately, for all @_confirming.Users users who have granted it access. Tokens it already holds stay valid until they expire.</p>
+    <div class="sg-actions">
+      <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => _confirming = null">Cancel</button>
+      <button type="button" class="sg-btn sg-btn--danger" @onclick="() => SetAsync(_confirming, AppStatus.Disabled)" disabled="@_busy">Disable it</button>
+    </div>
+  </div>
+}
+
+@if (_message is not null)
+{
+  <p class="@(_ok ? "sg-ok" : "sg-warn")">@_message</p>
+}
+
+@code {
+    [CascadingParameter]
+    public ConsoleContext? Context { get; set; }
+
+    private IReadOnlyList<AdminAppRow>? _rows;
+    private AdminAppRow? _confirming;
+    private bool _busy;
+    private bool _ok;
+    private string? _message;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        if (Context is not null)
+        {
+            _rows = await Admin.ListAppsAsync(Context.UserId);
+        }
+    }
+
+    private async Task SetAsync(AdminAppRow row, AppStatus status)
+    {
+        _busy = true;
+        AdminResult result = await Admin.SetAppStatusAsync(Context!.UserId, row.Id, status, null);
+        _busy = false;
+        _confirming = null;
+        _ok = result.Succeeded;
+        _message = result.Message;
+        await LoadAsync();
+    }
+}

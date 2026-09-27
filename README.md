@@ -14,7 +14,12 @@ with Sangam, partner applications receive only the claims the user consented to.
 | `account.sangamid.in` | Self-service portal: linked apps, devices, audit log, personal data | Blazor Server |
 | `admin.sangamid.in` | Operator console (MFA mandatory) | Blazor Server |
 
-Status: **PR-05 — accounts are self-serviceable**. Alongside the identity provider, people can
+Status: **PR-06 — Sangam can be operated**. imagiQa staff run the platform from an operator console
+with four ranks, a mandatory authenticator app, and every look at a user's record recorded in that
+user's own log. Anyone can now add an authenticator app to their account. Next: application
+administrators (PR-07).
+
+Previously: **PR-05 — accounts are self-serviceable**. Alongside the identity provider, people can
 now see every application they have allowed and revoke it, see where they are signed in and end a
 single session or all of them, read their own audit trail, download their data and delete their
 account. Next: the admin console (PR-06).
@@ -38,7 +43,17 @@ cd sangam
 .\scripts\bootstrap-dev.ps1 -InitDatabase   # once: creates the sangam_identity role + database
 dotnet run --project src/Sangam.Identity.Server      # http://localhost:5100/register
 dotnet run --project src/Sangam.SelfService.Web     # http://localhost:5200  (needs the server above)
+dotnet run --project src/Sangam.Admin.Web           # http://localhost:5300  (operators only)
 ```
+
+The console opens only for someone holding an operator rank **and** an authenticator app. To make
+yourself the first owner, register and verify an account, then:
+
+```powershell
+dotnet run --project src/Sangam.Admin.Web -- create-operator you@example.in
+```
+
+It refuses once any operator exists. Then add an authenticator under Personal details in the portal.
 
 In Development the server captures outgoing email instead of sending it; open
 `http://localhost:5100/dev/outbox` to read verification and reset codes.

@@ -1,14 +1,25 @@
 namespace Sangam.Identity.Domain.Enums;
 
-/// <summary>Roles a platform operator (imagiQa staff) can hold on the admin console.</summary>
+/// <summary>
+/// The rank a platform operator (imagiQa staff) holds on the admin console.
+/// <para>
+/// Everyone in <c>platform_operators</c> is an operator; this is how much they may do. The ranks
+/// are ordered and cumulative, so every check is a comparison: <c>role &gt;= PlatformRole.Support</c>.
+/// A rank that had to be forbidden something a lower rank may do would break that model and would
+/// need capability flags instead.
+/// </para>
+/// </summary>
 public enum PlatformRole
 {
-    /// <summary>Read-only access to users, organisations, apps and the audit log.</summary>
-    Support = 0,
+    /// <summary>May look and nothing else: search users, open a record, list applications.</summary>
+    Viewer = 0,
 
-    /// <summary>Full operational access: suspend users, register apps, manage organisations.</summary>
-    Operator = 1,
+    /// <summary>Everything a viewer may do, plus registering and configuring applications. Never acts on a user account.</summary>
+    AppManager = 1,
 
-    /// <summary>Everything an operator can do plus managing other platform operators.</summary>
-    Owner = 2,
+    /// <summary>Everything an app manager may do, plus acting on a user: suspend, reinstate, sign out everywhere, hold a deletion.</summary>
+    Support = 2,
+
+    /// <summary>Everything support may do, plus granting and revoking console access and deleting an account outright.</summary>
+    Owner = 3,
 }

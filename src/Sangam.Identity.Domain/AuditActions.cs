@@ -51,6 +51,30 @@ public static class AuditActions
     /// <summary>The user changed their own profile from the portal.</summary>
     public const string UserProfileUpdate = "user.profile.update";
 
+    /// <summary>The user enrolled an authenticator app.</summary>
+    public const string UserMfaEnable = "user.mfa.enable";
+
+    /// <summary>The user removed their authenticator app.</summary>
+    public const string UserMfaDisable = "user.mfa.disable";
+
+    /// <summary>A second-factor code was refused.</summary>
+    public const string UserMfaFail = "user.mfa.fail";
+
+    /// <summary>An operator opened a user's record. Reads are audited, not only writes.</summary>
+    public const string AdminUserRead = "admin.user.read";
+
+    /// <summary>An operator changed an application registry entry.</summary>
+    public const string AdminAppUpdate = "admin.app.update";
+
+    /// <summary>An operator lifted a suspension.</summary>
+    public const string AdminUserReinstate = "admin.user.reinstate";
+
+    /// <summary>An operator was granted console access.</summary>
+    public const string AdminOperatorGrant = "admin.operator.grant";
+
+    /// <summary>An operator's console access was revoked.</summary>
+    public const string AdminOperatorRevoke = "admin.operator.revoke";
+
     /// <summary>The user downloaded their personal data (DPDPA portability).</summary>
     public const string UserDataExport = "user.data.export";
 

@@ -90,6 +90,11 @@ public sealed class LoginModel : AuthPageModel
 
         switch (check.Status)
         {
+            case SignInStatus.Succeeded when check.User!.MfaEnrolled:
+                // The password was right, but an authenticator is enrolled: park it and ask.
+                await SangamAuthentication.StorePendingAsync(HttpContext, SangamAuthentication.Pending.Authenticator, check.User.Id, check.Mode);
+                return RedirectToPage("/Account/LoginMfa", new { returnUrl = ReturnUrl });
+
             case SignInStatus.Succeeded:
                 await SangamAuthentication.SignInSessionAsync(HttpContext, check.User!, check.Mode, Partner?.Id, PartnerContext.DeviceLabelFromReturnUrl(ReturnUrl));
                 await _accounts.RecordSignInAsync(check.User!.Id, check.Mode, ClientIp, ClientUserAgent, cancellationToken);

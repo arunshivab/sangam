@@ -64,6 +64,9 @@ public static class SangamAuthentication
         /// <summary>Password reset requested.</summary>
         public const string PasswordReset = "password-reset";
 
+        /// <summary>First factor accepted; an authenticator code is still needed.</summary>
+        public const string Authenticator = "authenticator";
+
         /// <summary>The user declined consent for an app (the app's client id travels in the email slot).</summary>
         public const string ConsentDenied = "consent-denied";
     }

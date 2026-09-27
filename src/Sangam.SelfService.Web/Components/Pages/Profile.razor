@@ -3,6 +3,8 @@
 @inject IAccountService Accounts
 @inject AuthenticationStateProvider AuthProvider
 @inject IJSRuntime Js
+@inject IMfaService Mfa
+@inject IAdminService Admin
 
 <PageTitle>Personal details · sangam</PageTitle>
 
@@ -88,6 +90,62 @@ else
   </section>
 
   <section class="sg-panel">
+    <h2 class="sg-panel-title">Two-step sign-in</h2>
+    @if (_mfaEnrolled)
+    {
+      <p class="sg-panel-body">An authenticator app is set up on your account. You are asked for a code from it every time you sign in.</p>
+      @if (_isOperator)
+      {
+        <p class="sg-note">You hold Sangam console access, so two-step sign-in cannot be switched off.</p>
+      }
+      else
+      {
+        <button type="button" class="sg-btn sg-btn--danger" @onclick="DisableMfaAsync" disabled="@_working">Remove the authenticator</button>
+      }
+    }
+    else if (_enrolment is null)
+    {
+      <p class="sg-panel-body">Add a second step with an authenticator app such as Google Authenticator, Aegis or 1Password. It is stronger than an emailed code, because it does not depend on your mailbox.</p>
+      <button type="button" class="sg-btn sg-btn--secondary" @onclick="BeginMfaAsync" disabled="@_working">Set up an authenticator app</button>
+    }
+    else
+    {
+      <p class="sg-panel-body">Scan this with your authenticator app, then type the six-digit code it shows.</p>
+      <div class="sg-qr">@((MarkupString)_enrolment.QrCodeSvg)</div>
+      <p class="sg-note">Cannot scan? Type this key into the app instead, and choose <strong>Time based</strong>:</p>
+      <p class="sg-key-box"><span class="sg-mono sg-key">@_enrolment.SharedKey</span></p>
+      <p class="sg-note">It contains only letters and the digits 2 to 7 — never 0, 1, 8 or 9. Spaces don't matter.</p>
+      <div class="sg-field-group">
+        <label class="sg-label" for="mfa-code">Code from the app</label>
+        <input id="mfa-code" class="sg-field sg-field--confirm" @bind="_mfaCode" @bind:event="oninput" inputmode="numeric" maxlength="7" />
+      </div>
+      @if (_mfaError is not null)
+      {
+        <p class="sg-field-error">@_mfaError</p>
+      }
+      <div class="sg-confirm-actions">
+        <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _enrolment = null">Cancel</button>
+        <button type="button" class="sg-btn sg-btn--primary" @onclick="ConfirmMfaAsync" disabled="@_working">Turn on two-step sign-in</button>
+      </div>
+    }
+
+    @if (_recoveryCodes.Count > 0)
+    {
+      <div class="sg-recovery">
+        <h3 class="sg-recovery-title">Save these recovery codes now</h3>
+        <p class="sg-note">Each one signs you in once if you lose your phone. They are shown only this time.</p>
+        <ul class="sg-recovery-list">
+          @foreach (string recoveryCode in _recoveryCodes)
+          {
+            <li class="sg-mono">@recoveryCode</li>
+          }
+        </ul>
+        <button type="button" class="sg-btn sg-btn--secondary" @onclick="DownloadRecoveryAsync">Download them</button>
+      </div>
+    }
+  </section>
+
+  <section class="sg-panel">
     <h2 class="sg-panel-title">A copy of your data</h2>
     <p class="sg-panel-body">Download everything Sangam holds about you as a JSON file: your profile, the applications you have allowed, your organisations and roles, your sessions and your full activity log. Your password is not included — it is stored only as a one-way hash.</p>
     <button type="button" class="sg-btn sg-btn--secondary" @onclick="DownloadAsync" disabled="@_working">Download my data</button>
@@ -146,6 +204,12 @@ else
     private bool _working;
     private string? _message;
     private string? _error;
+    private bool _mfaEnrolled;
+    private bool _isOperator;
+    private MfaEnrolment? _enrolment;
+    private string _mfaCode = string.Empty;
+    private string? _mfaError;
+    private IReadOnlyList<string> _recoveryCodes = [];
     private Guid _userId;
 
     protected override async Task OnInitializedAsync()
@@ -163,6 +227,8 @@ else
         }
 
         _user = await Accounts.FindByIdAsync(_userId);
+        _mfaEnrolled = await Mfa.IsEnrolledAsync(_userId);
+        _isOperator = await Admin.GetRoleAsync(_userId) is not null;
         _deletion = await Portal.GetDeletionStateAsync(_userId);
         if (_user is not null)
         {
@@ -235,6 +301,49 @@ else
         _message = "Your account is no longer scheduled for deletion.";
         await LoadAsync();
     }
+
+    private async Task BeginMfaAsync()
+    {
+        _working = true;
+        _mfaError = null;
+        _recoveryCodes = [];
+        _enrolment = await Mfa.BeginEnrolmentAsync(_userId);
+        _working = false;
+    }
+
+    private async Task ConfirmMfaAsync()
+    {
+        _working = true;
+        _mfaError = null;
+        MfaConfirmation confirmation = await Mfa.ConfirmEnrolmentAsync(_userId, _mfaCode, null);
+        _working = false;
+
+        if (!confirmation.Succeeded)
+        {
+            _mfaError = "That code is not correct. Authenticator codes change every 30 seconds — try the current one.";
+            return;
+        }
+
+        _enrolment = null;
+        _mfaCode = string.Empty;
+        _recoveryCodes = confirmation.RecoveryCodes;
+        _message = "Two-step sign-in is on. You will be asked for a code next time you sign in.";
+        await LoadAsync();
+    }
+
+    private async Task DisableMfaAsync()
+    {
+        _working = true;
+        bool removed = await Mfa.DisableAsync(_userId, null);
+        _working = false;
+        _message = removed
+            ? "Your authenticator app has been removed."
+            : "Two-step sign-in cannot be removed from an account with console access.";
+        await LoadAsync();
+    }
+
+    private Task DownloadRecoveryAsync() =>
+        Js.InvokeVoidAsync("sangamDownloadText", "sangam-recovery-codes.txt", string.Join(Environment.NewLine, _recoveryCodes)).AsTask();
 
     /// <summary>Splits a stored E.164 number back into the country and the national part.</summary>
     private static (string Iso, string National) SplitMobile(string? mobile)

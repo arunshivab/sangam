@@ -16,6 +16,7 @@ builder.Services.AddRazorPages(o =>
     o.Conventions.AddPageRoute("/Account/Login", "/login");
     o.Conventions.AddPageRoute("/Account/LoginCode", "/login/code");
     o.Conventions.AddPageRoute("/Account/LoginVerify", "/login/verify");
+    o.Conventions.AddPageRoute("/Account/LoginMfa", "/login/authenticator");
     o.Conventions.AddPageRoute("/Account/Register", "/register");
     o.Conventions.AddPageRoute("/Account/Verify", "/verify");
     o.Conventions.AddPageRoute("/Account/Verified", "/verified");

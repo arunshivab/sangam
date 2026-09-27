@@ -4,12 +4,14 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Sangam.Identity.Application.Abstractions;
 using Sangam.Identity.Application.Accounts;
+using Sangam.Identity.Application.Admin;
 using Sangam.Identity.Application.Apps;
 using Sangam.Identity.Application.Consents;
 using Sangam.Identity.Application.Portal;
 using Sangam.Identity.Application.Tenancy;
 using Sangam.Identity.Domain.Entities;
 using Sangam.Identity.Infrastructure.Accounts;
+using Sangam.Identity.Infrastructure.Admin;
 using Sangam.Identity.Infrastructure.Apps;
 using Sangam.Identity.Infrastructure.Consents;
 using Sangam.Identity.Infrastructure.Maintenance;
@@ -80,6 +82,8 @@ public static class DependencyInjection
         services.AddScoped<ITenancyQuery, EfTenancyQuery>();
         services.AddScoped<IManagementService, EfManagementService>();
         services.AddScoped<IPortalService, EfPortalService>();
+        services.AddScoped<IAdminService, EfAdminService>();
+        services.AddScoped<IMfaService, TotpMfaService>();
         services.AddSingleton<ISessionService, EfSessionService>();
 
         services.AddSingleton<IClock, SystemClock>();

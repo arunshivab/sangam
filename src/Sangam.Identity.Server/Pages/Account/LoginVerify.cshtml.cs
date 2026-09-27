@@ -103,6 +103,12 @@ public sealed class LoginVerifyModel : AuthPageModel
         }
 
         SignInMode mode = pending.Mode ?? SignInMode.PasswordAndOtp;
+        if (user.MfaEnrolled)
+        {
+            await SangamAuthentication.StorePendingAsync(HttpContext, SangamAuthentication.Pending.Authenticator, user.Id, mode);
+            return RedirectToPage("/Account/LoginMfa", new { returnUrl = ReturnUrl });
+        }
+
         await SangamAuthentication.SignInSessionAsync(HttpContext, user, mode, Partner?.Id, PartnerContext.DeviceLabelFromReturnUrl(ReturnUrl));
         await _accounts.RecordSignInAsync(user.Id, mode, ClientIp, ClientUserAgent, cancellationToken);
         return LocalRedirect(SafeReturnUrl(ReturnUrl));

@@ -15,7 +15,7 @@ public sealed class PlatformOperator
     public SangamUser? User { get; set; }
 
     /// <summary>Level of access on the console.</summary>
-    public PlatformRole Role { get; set; } = PlatformRole.Support;
+    public PlatformRole Role { get; set; } = PlatformRole.Viewer;
 
     /// <summary>Who granted it; <see langword="null"/> for the bootstrap owner.</summary>
     public Guid? GrantedByUserId { get; set; }
