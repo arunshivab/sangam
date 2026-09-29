@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Sangam.Identity.Domain.Entities;
+using Sangam.Identity.Domain.Enums;
 
 namespace Sangam.Identity.Infrastructure.Persistence.Configurations;
 
@@ -13,6 +14,7 @@ internal sealed class AppAdminConfiguration : IEntityTypeConfiguration<AppAdmin>
         b.HasKey(a => a.Id);
         b.HasOne(a => a.App).WithMany().HasForeignKey(a => a.AppId).OnDelete(DeleteBehavior.Cascade);
         b.HasOne(a => a.User).WithMany().HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.Cascade);
+        b.Property(a => a.Role).HasConversion(new SnakeCaseEnumConverter<AppAdminRole>()).HasMaxLength(20).IsRequired();
         b.HasIndex(a => new { a.AppId, a.UserId }).IsUnique().HasFilter("revoked_at IS NULL").HasDatabaseName("ux_app_admins_active");
     }
 }

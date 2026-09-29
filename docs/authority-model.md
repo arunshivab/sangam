@@ -8,7 +8,7 @@ decides permission: every check below lives in a service and is proved by a test
 | Plane | Who | Stored in | Enforced in |
 |---|---|---|---|
 | **Platform** | imagiQa staff running Sangam | `platform_operators.role` | `IAdminService` |
-| **Application** — human | A partner's own administrators | `app_admins` | *not built yet (PR-07)* |
+| **Application** — human | A partner's own administrators | `app_admins.role` | `IPartnerService` |
 | **Application** — machine | A partner's own code | OAuth client + `sangam.manage` | `/api/v1`, app id taken from the token |
 | **Organisation** | Clinical and admin staff inside one application | `org_memberships` → `roles` | The application, from the `sangam_orgs` claim |
 | **The person** | Every user, over their own account | — | `IPortalService` |
@@ -23,7 +23,9 @@ to it. They cannot reach inside that application's tenancy to change a role or a
 | Search users | ✓ | ✓ | ✓ | ✓ |
 | Open a user's record — audited, the user sees it | ✓ | ✓ | ✓ | ✓ |
 | List applications | ✓ | ✓ | ✓ | ✓ |
-| Enable or disable an application | — | ✓ | ✓ | ✓ |
+| Enable or disable a partner's application | — | ✓ | ✓ | ✓ |
+| Make someone a partner application's owner | — | ✓ | ✓ | ✓ |
+| Disable, or give owners to, one of Sangam's own applications | refused | refused | refused | refused |
 | Suspend or reinstate an account | — | — | ✓ | ✓ |
 | Sign a user out everywhere | — | — | ✓ | ✓ |
 | Place or clear a deletion hold | — | — | ✓ | ✓ |
@@ -38,13 +40,23 @@ Every operator must have an authenticator app, whatever their rank. See ADR-0005
 
 ## Application plane
 
-| Capability | App admin (human) | Application (machine) |
-|---|:--:|:--:|
-| Create or retire the application's roles | *PR-07* | ✓ `PUT /api/v1/roles/{code}` |
-| Register organisations and build the tree | *PR-07* | ✓ `PUT /api/v1/orgs/{id}` |
-| Grant and revoke memberships | *PR-07* | ✓ `PUT` / `DELETE /api/v1/orgs/{id}/members/{user}` |
-| Edit branding, redirect URIs, sign-in policy | *PR-07* | — |
-| See a user's other applications, sessions or audit trail | **never** | **never** |
+On the partner console (`partners.sangamid.in`) for people, the management API for code.
+See ADR-0006.
+
+| Capability | Admin | Owner | Application (machine) |
+|---|:--:|:--:|:--:|
+| Create or retire the application's roles | ✓ | ✓ | ✓ `PUT /api/v1/roles/{code}` |
+| Register organisations and build the tree | ✓ | ✓ | ✓ `PUT /api/v1/orgs/{id}` |
+| Grant and revoke memberships — linked people only | ✓ | ✓ | ✓ `PUT` / `DELETE /api/v1/orgs/{id}/members/{user}` |
+| Find people — only those who linked this application | ✓ | ✓ | — |
+| Edit description, brand colour, tile letter | ✓ | ✓ | — |
+| Sign-in policy: each person's choice, or always two-step | ✓ | ✓ | — |
+| Add, promote, demote, remove administrators | — | ✓ | — |
+| Remove or demote the last owner | refused | refused | — |
+| Password-only or email-code-only sign-in, redirect URIs, secrets, name | — | — | — *(imagiQa)* |
+| See a user's other applications, sessions or audit trail | **never** | **never** | **never** |
+
+Every application administrator must have an authenticator app, like every operator.
 
 ## Organisation plane
 
@@ -63,7 +75,7 @@ these in the token; the application enforces them.
 | Person | Plane | How |
 |---|---|---|
 | imagiQa's own support engineer | Platform | `Support` rank |
-| LiPi's Super Admin and Admin | Application — human | `app_admins`, PR-07 |
+| LiPi's Super Admin and Admin | Application — human | `app_admins`: Owner and Admin |
 | The hospital administrator who creates users | Organisation | `org_admin` at the hospital |
 | A department head | Organisation | App role on the department, `applies_to_descendants` |
 | Doctors and nurses | Organisation | App roles with LiPi-defined permissions |

@@ -1,5 +1,8 @@
 using System.Net;
+using Microsoft.Extensions.DependencyInjection;
+using Sangam.Identity.Domain.Entities;
 using Sangam.Identity.Domain.Enums;
+using Sangam.Identity.Infrastructure.Persistence;
 
 namespace Sangam.Admin.Web.Tests;
 
@@ -99,6 +102,40 @@ public sealed class ConsoleGateTests : IClassFixture<ConsoleFactory>
 
         string detail = await GetAsync(owner, $"/users/{someone:D}");
         Assert.Contains(">Delete now<", detail, StringComparison.Ordinal);
+    }
+
+    [PostgresFact]
+    public async Task SangamsOwnApplications_OfferNeitherDisableNorAssignOwner()
+    {
+        Guid owner = await _factory.SeedAsync(PlatformRole.Owner, mfa: true, "Owner");
+        string suffix = Guid.NewGuid().ToString("N")[..8];
+        using (IServiceScope scope = _factory.Services.CreateScope())
+        {
+            SangamDbContext db = scope.ServiceProvider.GetRequiredService<SangamDbContext>();
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            db.Apps.Add(new App { Id = Guid.NewGuid(), ClientId = $"platform-{suffix}", Slug = $"platform-{suffix}", DisplayName = $"Platform {suffix}", OwnerCompanyName = "imagiQa", IsPlatform = true, CreatedAt = now, UpdatedAt = now });
+            db.Apps.Add(new App { Id = Guid.NewGuid(), ClientId = $"partner-{suffix}", Slug = $"partner-{suffix}", DisplayName = $"Partner {suffix}", OwnerCompanyName = "Partner", CreatedAt = now, UpdatedAt = now });
+            await db.SaveChangesAsync();
+        }
+
+        string html = await GetAsync(owner, "/apps");
+        string platformRow = Row(html, $"platform-{suffix}");
+        string partnerRow = Row(html, $"partner-{suffix}");
+
+        Assert.Contains(">platform<", platformRow, StringComparison.Ordinal);
+        Assert.DoesNotContain("Assign owner", platformRow, StringComparison.Ordinal);
+        Assert.DoesNotContain(">Disable<", platformRow, StringComparison.Ordinal);
+        Assert.Contains("Assign owner", partnerRow, StringComparison.Ordinal);
+        Assert.Contains(">Disable<", partnerRow, StringComparison.Ordinal);
+    }
+
+    private static string Row(string html, string clientId)
+    {
+        int at = html.IndexOf(clientId, StringComparison.Ordinal);
+        Assert.True(at >= 0, $"{clientId} not on the page");
+        int start = html.LastIndexOf("<tr", at, StringComparison.Ordinal);
+        int end = html.IndexOf("</tr>", at, StringComparison.Ordinal);
+        return html[start..end];
     }
 
     [PostgresFact]

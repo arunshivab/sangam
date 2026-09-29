@@ -333,10 +333,12 @@ public sealed class EfAdminService : IAdminService
                 a.SignInPolicy,
                 Users = _db.AppGrants.Count(g => g.AppId == a.Id && g.RevokedAt == null),
                 Organisations = _db.Organisations.Count(o => o.RegisteredViaAppId == a.Id),
+                PartnerOwners = _db.AppAdmins.Count(x => x.AppId == a.Id && x.Role == AppAdminRole.Owner && x.RevokedAt == null),
+                a.IsPlatform,
             })
             .ToListAsync(cancellationToken).ConfigureAwait(false);
 
-        return [.. rows.Select(r => new AdminAppRow(r.Id, r.ClientId, r.DisplayName, r.OwnerCompanyName, r.Status, r.SignInPolicy, r.Users, r.Organisations))];
+        return [.. rows.Select(r => new AdminAppRow(r.Id, r.ClientId, r.DisplayName, r.OwnerCompanyName, r.Status, r.SignInPolicy, r.Users, r.Organisations, r.PartnerOwners, r.IsPlatform))];
     }
 
     /// <inheritdoc />
@@ -354,6 +356,11 @@ public sealed class EfAdminService : IAdminService
             return AdminResult.Refused("That application does not exist.");
         }
 
+        if (app.IsPlatform && status != AppStatus.Active)
+        {
+            return AdminResult.Refused($"{app.DisplayName} is part of Sangam itself. Disabling it here could lock every operator out of the tool needed to turn it back on.");
+        }
+
         app.Status = status;
         app.UpdatedAt = _clock.UtcNow;
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -365,6 +372,57 @@ public sealed class EfAdminService : IAdminService
         return AdminResult.Ok(status == AppStatus.Active
             ? $"{app.DisplayName} can sign users in again."
             : $"{app.DisplayName} can no longer sign anyone in.");
+    }
+
+    /// <inheritdoc />
+    public async Task<AdminResult> AssignAppOwnerAsync(Guid operatorUserId, Guid appId, string email, string? ipAddress, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(email);
+        AdminResult? refusal = await RequireAsync(operatorUserId, PlatformRole.AppManager, cancellationToken).ConfigureAwait(false);
+        if (refusal is not null)
+        {
+            return refusal;
+        }
+
+        App? app = await _db.Apps.FirstOrDefaultAsync(a => a.Id == appId, cancellationToken).ConfigureAwait(false);
+        if (app is null)
+        {
+            return AdminResult.Refused("That application does not exist.");
+        }
+
+        if (app.IsPlatform)
+        {
+            return AdminResult.Refused($"{app.DisplayName} is part of Sangam itself, not a partner's application. It cannot have partner owners.");
+        }
+
+        string normalised = email.Trim().ToUpperInvariant();
+        SangamUser? user = await _db.Users.FirstOrDefaultAsync(u => u.NormalizedEmail == normalised, cancellationToken).ConfigureAwait(false);
+        if (user is null || user.Status != UserStatus.Active || !user.EmailConfirmed)
+        {
+            return AdminResult.Refused("No active, verified Sangam account has that email address. They must register first.");
+        }
+
+        AppAdmin? existing = await _db.AppAdmins.FirstOrDefaultAsync(a => a.AppId == appId && a.UserId == user.Id && a.RevokedAt == null, cancellationToken).ConfigureAwait(false);
+        if (existing is not null)
+        {
+            existing.Role = AppAdminRole.Owner;
+        }
+        else
+        {
+            _db.AppAdmins.Add(new AppAdmin { Id = Guid.NewGuid(), AppId = appId, UserId = user.Id, Role = AppAdminRole.Owner, GrantedByUserId = operatorUserId, GrantedAt = _clock.UtcNow });
+        }
+
+        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await _audit.WriteAsync(
+            // Platform capacity: no actor app, or the person's log would call a Sangam operator
+            // "an administrator of" the application. The application is named in the metadata.
+            new AuditEntry(AuditActions.AppAdminGrant, AuditActorType.Admin, operatorUserId, null, "user", user.Id,
+                Metadata: OwnerGrantMetadata(app.DisplayName), IpAddress: ipAddress),
+            cancellationToken).ConfigureAwait(false);
+
+        return AdminResult.Ok(user.TwoFactorEnabled
+            ? $"{user.FirstName} now owns {app.DisplayName} on the partner console."
+            : $"{user.FirstName} now owns {app.DisplayName}, and must set up an authenticator app before the partner console will let them in.");
     }
 
     /// <inheritdoc />
@@ -502,4 +560,7 @@ public sealed class EfAdminService : IAdminService
 
     private static string Reason(string reason)
         => System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string> { ["reason"] = reason.Trim() });
+
+    private static string OwnerGrantMetadata(string appName)
+        => System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string> { ["role"] = "owner", ["app"] = appName });
 }

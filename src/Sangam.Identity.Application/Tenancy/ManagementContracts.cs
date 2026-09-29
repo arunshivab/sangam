@@ -82,3 +82,20 @@ public static class ManagementResult
     /// <summary>An invalid-input result.</summary>
     public static ManagementResult<T> Invalid<T>(string message) => new(ManagementStatus.Invalid, default, message);
 }
+
+/// <summary>
+/// Who is making a management change, so the audit trail names them. Required on every change:
+/// the same service serves an application's own code (<see cref="Api"/>) and a partner's staff on
+/// the partner console (<see cref="AppAdmin"/>), and a human must never be recorded as a machine.
+/// </summary>
+/// <param name="Type">How the actor is recorded.</param>
+/// <param name="UserId">The person, when a person is acting.</param>
+public sealed record ManagementActor(AuditActorType Type, Guid? UserId)
+{
+    /// <summary>An application's own backend, using its client credentials.</summary>
+    public static ManagementActor Api { get; } = new(AuditActorType.Api, null);
+
+    /// <summary>A partner's staff member acting on the partner console.</summary>
+    /// <param name="userId">Their Sangam user id.</param>
+    public static ManagementActor AppAdmin(Guid userId) => new(AuditActorType.Admin, userId);
+}

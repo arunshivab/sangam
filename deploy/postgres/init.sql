@@ -23,10 +23,11 @@ WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'sangam_identity')
 \gexec
 
 -- Throwaway databases for the PostgreSQL-backed tests ([PostgresFact]). Point
--- SANGAM_TEST_CONNECTION at sangam_identity_test; the Identity.Server tests derive
--- sangam_identity_test_server and sangam_identity_test_portal from it (same server, with a
--- "_server" / "_portal" suffix) so neither in-process host is truncated under by the
--- Infrastructure tests running in parallel.
+-- SANGAM_TEST_CONNECTION at sangam_identity_test; each test suite with its own host derives
+-- its own database from it by suffix: "_server" and "_portal" (Identity.Server tests),
+-- "_admin" (operator console) and "_partner" (partner console), so no in-process host is
+-- truncated under by the Infrastructure tests running in parallel. This file runs only when
+-- the data volume is first created; on an existing volume, create a new one by hand.
 SELECT 'CREATE DATABASE sangam_identity_test WITH OWNER = sangam_identity ENCODING = ''UTF8'''
 WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'sangam_identity_test')
 \gexec
@@ -43,6 +44,10 @@ SELECT 'CREATE DATABASE sangam_identity_test_admin WITH OWNER = sangam_identity 
 WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'sangam_identity_test_admin')
 \gexec
 
+SELECT 'CREATE DATABASE sangam_identity_test_partner WITH OWNER = sangam_identity ENCODING = ''UTF8'''
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'sangam_identity_test_partner')
+\gexec
+
 REVOKE CONNECT ON DATABASE sangam_identity FROM PUBLIC;
 GRANT CONNECT ON DATABASE sangam_identity TO sangam_identity;
 REVOKE CONNECT ON DATABASE sangam_identity_test FROM PUBLIC;
@@ -53,3 +58,5 @@ REVOKE CONNECT ON DATABASE sangam_identity_test_portal FROM PUBLIC;
 GRANT CONNECT ON DATABASE sangam_identity_test_portal TO sangam_identity;
 REVOKE CONNECT ON DATABASE sangam_identity_test_admin FROM PUBLIC;
 GRANT CONNECT ON DATABASE sangam_identity_test_admin TO sangam_identity;
+REVOKE CONNECT ON DATABASE sangam_identity_test_partner FROM PUBLIC;
+GRANT CONNECT ON DATABASE sangam_identity_test_partner TO sangam_identity;

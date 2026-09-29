@@ -1,0 +1,242 @@
+@inject IPartnerService Partners
+
+<p class="sg-lede">The organisations using @Info.AppName, and who holds which role in each. You can only give roles to people who have already signed in to @Info.AppName and allowed it access — Sangam never lets an application look up anyone else.</p>
+
+@if (_orgs is null || _types is null)
+{
+  <p class="sg-muted">Loading…</p>
+}
+else
+{
+  <div class="sg-split">
+    <section class="sg-panel">
+      <h2 class="sg-h3">Organisations</h2>
+      @if (_orgs.Count == 0)
+      {
+        <p class="sg-muted">None yet. Add the first one below.</p>
+      }
+      <ul class="sg-tree">
+        @foreach (OrganisationDto org in _orgs)
+        {
+          <li style="padding-left:@(org.Depth * 1.25)rem">
+            <button type="button" class="sg-tree-item @(org.Id == _selected?.Id ? "sg-tree-item--on" : string.Empty)" @onclick="() => SelectAsync(org)">
+              <span class="sg-name">@org.Name</span>
+              <span class="sg-sub">@TypeName(org.Type)</span>
+            </button>
+          </li>
+        }
+      </ul>
+
+      @if (!CanAddUnderSelected)
+      {
+        <p class="sg-muted">@TypeName(_selected!.Type) organisations cannot have others under them.</p>
+        <div class="sg-actions">
+          <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => _selected = null">Add at top level instead</button>
+        </div>
+      }
+      else
+      {
+      <h3 class="sg-h3">@(_selected is null ? "Add a top-level organisation" : $"Add an organisation under {_selected.Name}")</h3>
+      <div class="sg-form-row">
+        <label class="sg-label" for="org-name">Name</label>
+        <input id="org-name" class="sg-input" @bind="_newName" @bind:event="oninput" />
+      </div>
+      <div class="sg-form-row">
+        <label class="sg-label" for="org-type">Kind</label>
+        <select id="org-type" class="sg-input" @bind="_newType">
+          <option value="">Choose…</option>
+          @foreach (OrgTypeRow type in _types.Where(t => _selected is not null || t.CanBeRoot))
+          {
+            <option value="@type.Code">@type.DisplayName</option>
+          }
+        </select>
+      </div>
+      <div class="sg-actions">
+        @if (_selected is not null)
+        {
+          <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => _selected = null">Add at top level instead</button>
+        }
+        <button type="button" class="sg-btn sg-btn--primary" @onclick="CreateOrgAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_newName) || string.IsNullOrEmpty(_newType))">Add organisation</button>
+      </div>
+      }
+    </section>
+
+    <section class="sg-panel">
+      @if (_selected is null)
+      {
+        <p class="sg-muted">Choose an organisation to see and change who holds roles in it.</p>
+      }
+      else
+      {
+        <h2 class="sg-h3">People in @_selected.Name</h2>
+        @if (_members is null || _members.Count == 0)
+        {
+          <p class="sg-muted">Nobody holds a role here yet.</p>
+        }
+        else
+        {
+          <table class="sg-table">
+            <thead><tr><th>Person</th><th>Role</th><th>Reaches</th><th></th></tr></thead>
+            <tbody>
+              @foreach (PartnerMemberRow member in _members)
+              {
+                <tr>
+                  <td><span class="sg-name">@member.DisplayName</span><span class="sg-sub">@member.Email</span></td>
+                  <td class="sg-mono">@member.Role</td>
+                  <td>@(member.AppliesToDescendants ? "this and everything under it" : "only this")</td>
+                  <td><button type="button" class="sg-btn sg-btn--ghost" @onclick="() => RevokeAsync(member)" disabled="@_busy">Remove</button></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+
+        <h3 class="sg-h3">Give someone a role here</h3>
+        <div class="sg-search">
+          <input class="sg-input" aria-label="Name or email" placeholder="Name or email of someone who uses @Info.AppName" @bind="_query" @bind:event="oninput" @onkeydown="SearchOnEnterAsync" />
+          <button type="button" class="sg-btn sg-btn--secondary" @onclick="SearchAsync" disabled="@_busy">Search</button>
+        </div>
+        @if (_found is not null)
+        {
+          @if (_found.Count == 0)
+          {
+            <p class="sg-muted">Nobody who uses @Info.AppName matches. If they have never signed in to it, ask them to sign in once first.</p>
+          }
+          <ul class="sg-list">
+            @foreach (LinkedUserRow person in _found)
+            {
+              <li>
+                <button type="button" class="sg-tree-item @(person.UserId == _pick?.UserId ? "sg-tree-item--on" : string.Empty)" @onclick="() => _pick = person">
+                  <span class="sg-name">@person.DisplayName</span><span class="sg-sub">@person.Email</span>
+                </button>
+              </li>
+            }
+          </ul>
+        }
+        @if (_pick is not null)
+        {
+          <div class="sg-form-row">
+            <label class="sg-label" for="grant-role">Role for @_pick.DisplayName</label>
+            <select id="grant-role" class="sg-input" @bind="_grantRole">
+              <option value="">Choose…</option>
+              @foreach (RoleDto role in _roles ?? [])
+              {
+                <option value="@role.Code">@role.DisplayName</option>
+              }
+            </select>
+          </div>
+          <label class="sg-check"><input type="checkbox" @bind="_descendants" /> Also everything under @_selected.Name</label>
+          <div class="sg-actions">
+            <button type="button" class="sg-btn sg-btn--primary" @onclick="GrantAsync" disabled="@(_busy || string.IsNullOrEmpty(_grantRole))">Give role</button>
+          </div>
+        }
+      }
+    </section>
+  </div>
+}
+
+<StatusLine Ok="_ok" Message="@_message" />
+
+@code {
+    /// <summary>The application being worked on.</summary>
+    [Parameter]
+    [EditorRequired]
+    public WorkspaceInfo Info { get; set; } = null!;
+
+    private IReadOnlyList<OrganisationDto>? _orgs;
+    private IReadOnlyList<OrgTypeRow>? _types;
+    private IReadOnlyList<RoleDto>? _roles;
+    private IReadOnlyList<PartnerMemberRow>? _members;
+    private IReadOnlyList<LinkedUserRow>? _found;
+    private OrganisationDto? _selected;
+    private LinkedUserRow? _pick;
+    private string _newName = string.Empty;
+    private string _newType = string.Empty;
+    private string _query = string.Empty;
+    private string _grantRole = string.Empty;
+    private bool _descendants;
+    private bool _busy;
+    private bool _ok;
+    private string? _message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _types = await Partners.ListOrgTypesAsync();
+        _roles = (await Partners.ListRolesAsync(Info.UserId, Info.AppId)).Where(r => r.RetiredAt is null).ToList();
+        _orgs = await Partners.ListOrganisationsAsync(Info.UserId, Info.AppId);
+    }
+
+    // Mirrors the rule the management service enforces, so the page never offers a form that can only be refused.
+    private bool CanAddUnderSelected => _selected is null || (_types?.FirstOrDefault(t => t.Code == _selected.Type)?.CanHaveChildren ?? true);
+
+    private string TypeName(string code) => _types?.FirstOrDefault(t => t.Code == code)?.DisplayName ?? code;
+
+    private async Task SelectAsync(OrganisationDto org)
+    {
+        _selected = org;
+        _pick = null;
+        _found = null;
+        _query = string.Empty;
+        _message = null;
+        _members = await Partners.ListMembersAsync(Info.UserId, Info.AppId, org.Id);
+    }
+
+    private async Task CreateOrgAsync()
+    {
+        _busy = true;
+        PartnerResult result = await Partners.UpsertOrganisationAsync(
+            Info.UserId, Info.AppId, Guid.NewGuid(), new OrganisationUpsert(_newName.Trim(), _newType, _selected?.Id, null));
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = result.Message;
+        if (result.Succeeded)
+        {
+            _newName = string.Empty;
+            _newType = string.Empty;
+            _orgs = await Partners.ListOrganisationsAsync(Info.UserId, Info.AppId);
+        }
+    }
+
+    private async Task SearchOnEnterAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SearchAsync();
+        }
+    }
+
+    private async Task SearchAsync()
+    {
+        _pick = null;
+        _found = await Partners.SearchLinkedUsersAsync(Info.UserId, Info.AppId, _query, 20);
+    }
+
+    private async Task GrantAsync()
+    {
+        _busy = true;
+        PartnerResult result = await Partners.GrantMembershipAsync(
+            Info.UserId, Info.AppId, _selected!.Id, _pick!.UserId, new MembershipUpsert(_grantRole, _descendants));
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = result.Message;
+        if (result.Succeeded)
+        {
+            _pick = null;
+            _found = null;
+            _query = string.Empty;
+            _grantRole = string.Empty;
+            _descendants = false;
+            _members = await Partners.ListMembersAsync(Info.UserId, Info.AppId, _selected.Id);
+        }
+    }
+
+    private async Task RevokeAsync(PartnerMemberRow member)
+    {
+        _busy = true;
+        PartnerResult result = await Partners.RevokeMembershipAsync(Info.UserId, Info.AppId, _selected!.Id, member.UserId);
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = result.Message;
+        _members = await Partners.ListMembersAsync(Info.UserId, Info.AppId, _selected.Id);
+    }
+}

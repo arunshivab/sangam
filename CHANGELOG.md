@@ -6,6 +6,53 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added — PR-07 Partner console and application administrators
+- `partners.sangamid.in` (`Sangam.Partner.Web`, Blazor Server, ports 5400/5401): where an
+  application's own staff manage it. An ordinary OIDC client, `sangam-partner`, with a 2-hour
+  cookie; seeded in Development alongside the operator console's client.
+- Two ranks per application — **Admin** and **Owner** — in `app_admins.role` (migration
+  `AppAdminRoles`; existing rows become `admin`). Admins manage roles, organisations, memberships,
+  branding and sign-in policy; owners also manage administrators. The last owner cannot be removed
+  or demoted.
+- `PartnerGate`: at least one live `app_admins` row **and** an enrolled authenticator, re-checked
+  on every visit.
+- `IPartnerService` / `EfPartnerService`: every rule enforced per application and per rank. People
+  search sees only users who have linked the application; roles can be given only to them, and a
+  refused grant never creates the link. Adding an administrator gives one identical refusal for an
+  unknown, unverified or unlinked address.
+- Sign-in policy "stricter only": partners may choose each person's own choice or always two-step;
+  password-only and email-code-only stay imagiQa's, and a platform-set value of either can only be
+  tightened (`EfPartnerService.MayMoveTo`).
+- Operator console: **Assign owner** on Applications (AppManager and above) and a *Partner owners*
+  column that shows *none* for an application no partner can manage yet.
+- `ManagementActor` on the five mutating `IManagementService` methods: audit rows name the person
+  on the partner console and the application on the API; memberships now record
+  `granted_by_user_id` and `revoked_by_user_id`.
+- A person's own log tells partner staff ("An administrator of LiPi HIS…"), imagiQa ("A Sangam
+  operator…") and the application's code ("LiPi HIS…") apart. Being made or removed as an
+  administrator is flagged security-sensitive. New audit actions `app.admin.grant`,
+  `app.admin.revoke`, `app.settings.update`.
+- ADR-0006; `docs/authority-model.md` application plane filled in; `docs/go-live-checklist.md` and
+  the PR-07 → PR-10 roadmap in `docs/README.md` (both intended for v0.6.0 and missing from it).
+- Tests: 24 partner service tests against PostgreSQL; 9 partner console tests on the real host,
+  including the interactivity guard; an operator console test that Sangam's own applications offer
+  no buttons. Test database `sangam_identity_test_partner` in CI and
+  `deploy/postgres/init.sql`.
+- `apps.is_platform` (migration `PlatformApps`): Sangam's own portal, operator console and
+  partner console are marked, by client id and by the seeder. They can never be given partner
+  owners or be disabled from the console, and the partner console ignores them even if an
+  administrator row exists. The operator console shows them as *platform*, without buttons.
+
+### Fixed — PR-07 (after review)
+- Disabling `sangam-admin` from the operator console was possible since PR-06 and would have
+  locked every operator out; now refused for all of Sangam's own applications.
+- A heading straight after a table sat flush against it on both consoles.
+
+### Changed — PR-07
+- Roadmap renumbered again: the SDK is PR-08, Anjal email delivery PR-09, production PR-10.
+- Redirect URIs, secrets and an application's name are platform-only; the authority model no
+  longer lists them as something application administrators edit.
+
 ### Added — PR-06 Operator console
 - `admin.sangamid.in` (Blazor Server, dark scope): Users, user detail with actions, Applications,
   Operators. An ordinary OIDC client with a 2-hour cookie.

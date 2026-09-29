@@ -1,6 +1,6 @@
 ## What this PR delivers
 
-<!-- One paragraph. Link the PR number from the delivery plan (PR-01 … PR-08) if it applies. -->
+<!-- One paragraph. Link the PR number from the delivery plan (PR-01 … PR-10) if it applies. -->
 
 ## Checklist
 

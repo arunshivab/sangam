@@ -60,28 +60,28 @@ public sealed class ManagementServiceTests : IAsyncLifetime
     {
         EfManagementService mgmt = Create(out _);
 
-        ManagementResult<RoleDto> created = await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor);
+        ManagementResult<RoleDto> created = await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor, ManagementActor.Api);
         Assert.Equal(ManagementStatus.Ok, created.Status);
         Assert.Equal(["patient:read", "rx:write"], created.Value!.Permissions);
 
-        ManagementResult<RoleDto> updated = await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor with { DisplayName = "Consultant", Permissions = ["patient:read"] });
+        ManagementResult<RoleDto> updated = await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor with { DisplayName = "Consultant", Permissions = ["patient:read"] }, ManagementActor.Api);
         Assert.Equal("Consultant", updated.Value!.DisplayName);
         Assert.Single(updated.Value.Permissions);
         Assert.Single(await mgmt.ListRolesAsync(_appId));
 
-        Assert.Equal(ManagementStatus.Invalid, (await mgmt.UpsertRoleAsync(_appId, "Bad Code", Doctor)).Status);
-        Assert.Equal(ManagementStatus.Invalid, (await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor with { DisplayName = " " })).Status);
-        Assert.Equal(ManagementStatus.NotFound, (await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor with { OrgId = Guid.NewGuid() })).Status);
+        Assert.Equal(ManagementStatus.Invalid, (await mgmt.UpsertRoleAsync(_appId, "Bad Code", Doctor, ManagementActor.Api)).Status);
+        Assert.Equal(ManagementStatus.Invalid, (await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor with { DisplayName = " " }, ManagementActor.Api)).Status);
+        Assert.Equal(ManagementStatus.NotFound, (await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor with { OrgId = Guid.NewGuid() }, ManagementActor.Api)).Status);
     }
 
     [PostgresFact]
     public async Task Roles_AreInvisibleToOtherApps()
     {
         EfManagementService mgmt = Create(out _);
-        await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor);
+        await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor, ManagementActor.Api);
 
         Assert.Empty(await mgmt.ListRolesAsync(_otherAppId));
-        Assert.Equal(ManagementStatus.NotFound, (await mgmt.RetireRoleAsync(_otherAppId, "doctor")).Status);
+        Assert.Equal(ManagementStatus.NotFound, (await mgmt.RetireRoleAsync(_otherAppId, "doctor", ManagementActor.Api)).Status);
     }
 
     [PostgresFact]
@@ -92,26 +92,26 @@ public sealed class ManagementServiceTests : IAsyncLifetime
         Guid hospitalId = Guid.NewGuid();
         Guid deptId = Guid.NewGuid();
 
-        ManagementResult<OrganisationDto> corp = await mgmt.UpsertOrganisationAsync(_appId, corpId, new OrganisationUpsert("Apulki Group", "corporate", null, "{\"pan\":\"X\"}"));
-        ManagementResult<OrganisationDto> hospital = await mgmt.UpsertOrganisationAsync(_appId, hospitalId, new OrganisationUpsert("Apulki Medical Center", "hospital", corpId, null));
-        ManagementResult<OrganisationDto> dept = await mgmt.UpsertOrganisationAsync(_appId, deptId, new OrganisationUpsert("Oncology", "department", hospitalId, null));
+        ManagementResult<OrganisationDto> corp = await mgmt.UpsertOrganisationAsync(_appId, corpId, new OrganisationUpsert("Apulki Group", "corporate", null, "{\"pan\":\"X\"}"), ManagementActor.Api);
+        ManagementResult<OrganisationDto> hospital = await mgmt.UpsertOrganisationAsync(_appId, hospitalId, new OrganisationUpsert("Apulki Medical Center", "hospital", corpId, null), ManagementActor.Api);
+        ManagementResult<OrganisationDto> dept = await mgmt.UpsertOrganisationAsync(_appId, deptId, new OrganisationUpsert("Oncology", "department", hospitalId, null), ManagementActor.Api);
 
         Assert.Equal(0, corp.Value!.Depth);
         Assert.Equal(2, dept.Value!.Depth);
         Assert.StartsWith(hospital.Value!.Path, dept.Value.Path, StringComparison.Ordinal);
 
         // A department cannot be a root, and cannot have children.
-        Assert.Equal(ManagementStatus.Invalid, (await mgmt.UpsertOrganisationAsync(_appId, Guid.NewGuid(), new OrganisationUpsert("Loose", "department", null, null))).Status);
-        Assert.Equal(ManagementStatus.Invalid, (await mgmt.UpsertOrganisationAsync(_appId, Guid.NewGuid(), new OrganisationUpsert("Ward", "department", deptId, null))).Status);
-        Assert.Equal(ManagementStatus.NotFound, (await mgmt.UpsertOrganisationAsync(_appId, Guid.NewGuid(), new OrganisationUpsert("Odd", "not-a-type", null, null))).Status);
-        Assert.Equal(ManagementStatus.Invalid, (await mgmt.UpsertOrganisationAsync(_appId, Guid.NewGuid(), new OrganisationUpsert("Bad meta", "clinic", null, "[]"))).Status);
+        Assert.Equal(ManagementStatus.Invalid, (await mgmt.UpsertOrganisationAsync(_appId, Guid.NewGuid(), new OrganisationUpsert("Loose", "department", null, null), ManagementActor.Api)).Status);
+        Assert.Equal(ManagementStatus.Invalid, (await mgmt.UpsertOrganisationAsync(_appId, Guid.NewGuid(), new OrganisationUpsert("Ward", "department", deptId, null), ManagementActor.Api)).Status);
+        Assert.Equal(ManagementStatus.NotFound, (await mgmt.UpsertOrganisationAsync(_appId, Guid.NewGuid(), new OrganisationUpsert("Odd", "not-a-type", null, null), ManagementActor.Api)).Status);
+        Assert.Equal(ManagementStatus.Invalid, (await mgmt.UpsertOrganisationAsync(_appId, Guid.NewGuid(), new OrganisationUpsert("Bad meta", "clinic", null, "[]"), ManagementActor.Api)).Status);
 
         // Another app can neither see it nor edit it.
         Assert.Null(await mgmt.GetOrganisationAsync(_otherAppId, corpId));
-        Assert.Equal(ManagementStatus.NotFound, (await mgmt.UpsertOrganisationAsync(_otherAppId, corpId, new OrganisationUpsert("Hijack", "corporate", null, null))).Status);
+        Assert.Equal(ManagementStatus.NotFound, (await mgmt.UpsertOrganisationAsync(_otherAppId, corpId, new OrganisationUpsert("Hijack", "corporate", null, null), ManagementActor.Api)).Status);
 
         // Update keeps the type, parent and path.
-        ManagementResult<OrganisationDto> renamed = await mgmt.UpsertOrganisationAsync(_appId, hospitalId, new OrganisationUpsert("Apulki MC", "hospital", null, null));
+        ManagementResult<OrganisationDto> renamed = await mgmt.UpsertOrganisationAsync(_appId, hospitalId, new OrganisationUpsert("Apulki MC", "hospital", null, null), ManagementActor.Api);
         Assert.Equal("Apulki MC", renamed.Value!.Name);
         Assert.Equal(corpId, renamed.Value.ParentId);
         Assert.Equal(hospital.Value.Path, renamed.Value.Path);
@@ -122,26 +122,26 @@ public sealed class ManagementServiceTests : IAsyncLifetime
     {
         EfManagementService mgmt = Create(out SangamDbContext db);
         Guid orgId = Guid.NewGuid();
-        await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor);
-        await mgmt.UpsertRoleAsync(_appId, "nurse", Doctor with { DisplayName = "Nurse", Permissions = ["patient:read"] });
-        await mgmt.UpsertOrganisationAsync(_appId, orgId, new OrganisationUpsert("Apulki", "hospital", null, null));
+        await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor, ManagementActor.Api);
+        await mgmt.UpsertRoleAsync(_appId, "nurse", Doctor with { DisplayName = "Nurse", Permissions = ["patient:read"] }, ManagementActor.Api);
+        await mgmt.UpsertOrganisationAsync(_appId, orgId, new OrganisationUpsert("Apulki", "hospital", null, null), ManagementActor.Api);
 
-        ManagementResult<MembershipDto> granted = await mgmt.UpsertMembershipAsync(_appId, orgId, _userId, new MembershipUpsert("doctor", true));
+        ManagementResult<MembershipDto> granted = await mgmt.UpsertMembershipAsync(_appId, orgId, _userId, new MembershipUpsert("doctor", true), ManagementActor.Api);
         Assert.Equal(ManagementStatus.Ok, granted.Status);
         Assert.True(granted.Value!.AppliesToDescendants);
         Assert.True(await db.AppGrants.AnyAsync(g => g.UserId == _userId && g.AppId == _appId && g.RevokedAt == null));
 
-        ManagementResult<MembershipDto> changed = await mgmt.UpsertMembershipAsync(_appId, orgId, _userId, new MembershipUpsert("nurse", false));
+        ManagementResult<MembershipDto> changed = await mgmt.UpsertMembershipAsync(_appId, orgId, _userId, new MembershipUpsert("nurse", false), ManagementActor.Api);
         Assert.Equal("nurse", changed.Value!.Role);
         Assert.Single(await mgmt.ListMembersAsync(_appId, orgId));
 
-        Assert.Equal(ManagementStatus.NotFound, (await mgmt.UpsertMembershipAsync(_appId, orgId, _userId, new MembershipUpsert("ghost", false))).Status);
-        Assert.Equal(ManagementStatus.NotFound, (await mgmt.UpsertMembershipAsync(_appId, orgId, Guid.NewGuid(), new MembershipUpsert("nurse", false))).Status);
-        Assert.Equal(ManagementStatus.NotFound, (await mgmt.UpsertMembershipAsync(_otherAppId, orgId, _userId, new MembershipUpsert("nurse", false))).Status);
+        Assert.Equal(ManagementStatus.NotFound, (await mgmt.UpsertMembershipAsync(_appId, orgId, _userId, new MembershipUpsert("ghost", false), ManagementActor.Api)).Status);
+        Assert.Equal(ManagementStatus.NotFound, (await mgmt.UpsertMembershipAsync(_appId, orgId, Guid.NewGuid(), new MembershipUpsert("nurse", false), ManagementActor.Api)).Status);
+        Assert.Equal(ManagementStatus.NotFound, (await mgmt.UpsertMembershipAsync(_otherAppId, orgId, _userId, new MembershipUpsert("nurse", false), ManagementActor.Api)).Status);
 
-        Assert.Equal(ManagementStatus.Ok, (await mgmt.RevokeMembershipAsync(_appId, orgId, _userId)).Status);
+        Assert.Equal(ManagementStatus.Ok, (await mgmt.RevokeMembershipAsync(_appId, orgId, _userId, ManagementActor.Api)).Status);
         Assert.Empty(await mgmt.ListMembersAsync(_appId, orgId));
-        Assert.Equal(ManagementStatus.NotFound, (await mgmt.RevokeMembershipAsync(_appId, orgId, _userId)).Status);
+        Assert.Equal(ManagementStatus.NotFound, (await mgmt.RevokeMembershipAsync(_appId, orgId, _userId, ManagementActor.Api)).Status);
     }
 
     [PostgresFact]
@@ -149,11 +149,11 @@ public sealed class ManagementServiceTests : IAsyncLifetime
     {
         EfManagementService mgmt = Create(out SangamDbContext db);
         Guid orgId = Guid.NewGuid();
-        await mgmt.UpsertOrganisationAsync(_appId, orgId, new OrganisationUpsert("Apulki", "hospital", null, null));
-        await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor);
-        await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor with { DisplayName = "Senior consultant", Permissions = ["patient:read", "rx:write", "discharge:approve"], OrgId = orgId });
+        await mgmt.UpsertOrganisationAsync(_appId, orgId, new OrganisationUpsert("Apulki", "hospital", null, null), ManagementActor.Api);
+        await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor, ManagementActor.Api);
+        await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor with { DisplayName = "Senior consultant", Permissions = ["patient:read", "rx:write", "discharge:approve"], OrgId = orgId }, ManagementActor.Api);
 
-        await mgmt.UpsertMembershipAsync(_appId, orgId, _userId, new MembershipUpsert("doctor", false));
+        await mgmt.UpsertMembershipAsync(_appId, orgId, _userId, new MembershipUpsert("doctor", false), ManagementActor.Api);
 
         EfTenancyQuery tenancy = new(db);
         IReadOnlyList<OrgClaim> claims = await tenancy.GetOrgClaimsAsync(_userId, _appId);
@@ -165,7 +165,7 @@ public sealed class ManagementServiceTests : IAsyncLifetime
     public async Task ManagementWrites_AreAuditedAsApiActor()
     {
         EfManagementService mgmt = Create(out SangamDbContext db);
-        await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor);
+        await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor, ManagementActor.Api);
 
         List<AuditEvent> events = await db.AuditEvents.Where(e => e.Action == "role.upsert").ToListAsync();
         Assert.Single(events);

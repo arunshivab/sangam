@@ -10,7 +10,7 @@ public abstract class AuthPageModel : PageModel
     /// <summary>The partner app in the flow, when the screen was reached from the authorization endpoint.</summary>
     public AppSummary? Partner { get; private set; }
 
-    /// <summary>Client IP as seen by Kestrel (forwarded headers are configured in PR-08).</summary>
+    /// <summary>Client IP as seen by Kestrel (forwarded headers are configured for production in PR-10).</summary>
     protected string? ClientIp => HttpContext.Connection.RemoteIpAddress?.ToString();
 
     /// <summary>Client user agent, truncated to a sane length for the audit log.</summary>

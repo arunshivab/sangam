@@ -49,13 +49,13 @@ public static class ManagementEndpoints
         api.MapPut("/roles/{code}", async (string code, RoleUpsert input, ClaimsPrincipal caller, IAppDirectory apps, IManagementService mgmt, CancellationToken ct) =>
         {
             AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
-            return app is null ? Results.Forbid() : ToResult(await mgmt.UpsertRoleAsync(app.Id, code, input, ct).ConfigureAwait(false));
+            return app is null ? Results.Forbid() : ToResult(await mgmt.UpsertRoleAsync(app.Id, code, input, ManagementActor.Api, ct).ConfigureAwait(false));
         }).WithName("UpsertRole");
 
         api.MapDelete("/roles/{code}", async (string code, ClaimsPrincipal caller, IAppDirectory apps, IManagementService mgmt, CancellationToken ct) =>
         {
             AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
-            return app is null ? Results.Forbid() : ToResult(await mgmt.RetireRoleAsync(app.Id, code, ct).ConfigureAwait(false));
+            return app is null ? Results.Forbid() : ToResult(await mgmt.RetireRoleAsync(app.Id, code, ManagementActor.Api, ct).ConfigureAwait(false));
         }).WithName("RetireRole");
 
         api.MapGet("/orgs/{orgId:guid}", async (Guid orgId, ClaimsPrincipal caller, IAppDirectory apps, IManagementService mgmt, CancellationToken ct) =>
@@ -73,7 +73,7 @@ public static class ManagementEndpoints
         api.MapPut("/orgs/{orgId:guid}", async (Guid orgId, OrganisationUpsert input, ClaimsPrincipal caller, IAppDirectory apps, IManagementService mgmt, CancellationToken ct) =>
         {
             AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
-            return app is null ? Results.Forbid() : ToResult(await mgmt.UpsertOrganisationAsync(app.Id, orgId, input, ct).ConfigureAwait(false));
+            return app is null ? Results.Forbid() : ToResult(await mgmt.UpsertOrganisationAsync(app.Id, orgId, input, ManagementActor.Api, ct).ConfigureAwait(false));
         }).WithName("UpsertOrganisation");
 
         api.MapGet("/orgs/{orgId:guid}/members", async (Guid orgId, ClaimsPrincipal caller, IAppDirectory apps, IManagementService mgmt, CancellationToken ct) =>
@@ -85,13 +85,13 @@ public static class ManagementEndpoints
         api.MapPut("/orgs/{orgId:guid}/members/{userId:guid}", async (Guid orgId, Guid userId, MembershipUpsert input, ClaimsPrincipal caller, IAppDirectory apps, IManagementService mgmt, CancellationToken ct) =>
         {
             AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
-            return app is null ? Results.Forbid() : ToResult(await mgmt.UpsertMembershipAsync(app.Id, orgId, userId, input, ct).ConfigureAwait(false));
+            return app is null ? Results.Forbid() : ToResult(await mgmt.UpsertMembershipAsync(app.Id, orgId, userId, input, ManagementActor.Api, ct).ConfigureAwait(false));
         }).WithName("UpsertMembership");
 
         api.MapDelete("/orgs/{orgId:guid}/members/{userId:guid}", async (Guid orgId, Guid userId, ClaimsPrincipal caller, IAppDirectory apps, IManagementService mgmt, CancellationToken ct) =>
         {
             AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
-            return app is null ? Results.Forbid() : ToResult(await mgmt.RevokeMembershipAsync(app.Id, orgId, userId, ct).ConfigureAwait(false));
+            return app is null ? Results.Forbid() : ToResult(await mgmt.RevokeMembershipAsync(app.Id, orgId, userId, ManagementActor.Api, ct).ConfigureAwait(false));
         }).WithName("RevokeMembership");
 
         return endpoints;

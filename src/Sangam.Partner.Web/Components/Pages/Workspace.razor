@@ -1,0 +1,69 @@
+@page "/apps/{AppId:guid}"
+@page "/apps/{AppId:guid}/{Tab}"
+
+@if (_info is null)
+{
+  <PageTitle>Not available · Sangam partners</PageTitle>
+  <h1 class="sg-h1">Not available</h1>
+  <p class="sg-lede">You do not administer that application. <a href="/">Back to your applications</a>.</p>
+}
+else
+{
+  <PageTitle>@_info.AppName · Sangam partners</PageTitle>
+  <a class="sg-back" href="/">← Your applications</a>
+  <h1 class="sg-h1">@_info.AppName</h1>
+
+  <nav class="sg-tabs" aria-label="Sections">
+    <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("people")" Match="NavLinkMatch.All">Organisations &amp; people</NavLink>
+    <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("roles")">Roles</NavLink>
+    @if (_info.IsOwner)
+    {
+      <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("admins")">Administrators</NavLink>
+    }
+    <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("settings")">Settings</NavLink>
+  </nav>
+
+  @switch (CurrentTab)
+  {
+    case "roles":
+      <RolesTab Info="_info" />
+      break;
+    case "admins" when _info.IsOwner:
+      <AdminsTab Info="_info" />
+      break;
+    case "settings":
+      <SettingsTab Info="_info" />
+      break;
+    default:
+      <OrganisationsTab Info="_info" />
+      break;
+  }
+}
+
+@code {
+    /// <summary>The application.</summary>
+    [Parameter]
+    public Guid AppId { get; set; }
+
+    /// <summary>The section; organisations and people when absent.</summary>
+    [Parameter]
+    public string? Tab { get; set; }
+
+    /// <summary>The signed-in administrator.</summary>
+    [CascadingParameter]
+    public PartnerContext? Context { get; set; }
+
+    private WorkspaceInfo? _info;
+
+    private string CurrentTab => Tab ?? "people";
+
+    protected override void OnParametersSet()
+    {
+        // Only what the gate read on this visit. The service re-checks the rank on every call too,
+        // so a stale page cannot act on an application its user no longer administers.
+        PartnerAppRow? app = Context?.Apps.FirstOrDefault(a => a.AppId == AppId);
+        _info = app is null ? null : new WorkspaceInfo(Context!.UserId, app.AppId, app.DisplayName, app.Role);
+    }
+
+    private string Link(string tab) => tab == "people" ? $"/apps/{AppId:D}" : $"/apps/{AppId:D}/{tab}";
+}

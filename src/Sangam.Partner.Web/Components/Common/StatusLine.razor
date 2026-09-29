@@ -1,0 +1,14 @@
+@if (!string.IsNullOrEmpty(Message))
+{
+  <p class="@(Ok ? "sg-ok" : "sg-warn")" role="status">@Message</p>
+}
+
+@code {
+    /// <summary>Whether the last action succeeded.</summary>
+    [Parameter]
+    public bool Ok { get; set; }
+
+    /// <summary>What to tell the person, if anything.</summary>
+    [Parameter]
+    public string? Message { get; set; }
+}

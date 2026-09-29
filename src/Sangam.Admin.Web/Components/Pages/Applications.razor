@@ -4,7 +4,7 @@
 <PageTitle>Applications · Sangam console</PageTitle>
 
 <h1 class="sg-h1">Applications</h1>
-<p class="sg-lede">Every application registered with Sangam. Disabling one stops all of its sign-ins at once; it does not reach inside the application's own data.</p>
+<p class="sg-lede">Every application registered with Sangam. Disabling one stops all of its sign-ins at once; it does not reach inside the application's own data. <em>Partner owners</em> are the application's own staff who manage it on the partner console; an application with none cannot be managed by its partner yet. Those marked <em>platform</em> are Sangam's own and can neither be disabled nor handed to a partner here.</p>
 
 @if (_rows is null)
 {
@@ -13,7 +13,7 @@
 else
 {
   <table class="sg-table">
-    <thead><tr><th>Application</th><th>Client id</th><th>Sign-in rule</th><th>Users</th><th>Orgs</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>Application</th><th>Client id</th><th>Sign-in rule</th><th>Users</th><th>Orgs</th><th>Partner owners</th><th>Status</th><th></th></tr></thead>
     <tbody>
       @foreach (AdminAppRow row in _rows)
       {
@@ -23,10 +23,16 @@ else
           <td class="sg-mono">@row.SignInPolicy.ToString().ToLowerInvariant()</td>
           <td>@row.Users</td>
           <td>@row.Organisations</td>
+          <td>@if (row.IsPlatform) { <span class="sg-muted">—</span> } else if (row.PartnerOwners == 0) { <span class="sg-warn-text">none</span> } else { @row.PartnerOwners }</td>
           <td><span class="sg-pill sg-pill--@row.Status.ToString().ToLowerInvariant()">@row.Status.ToString().ToLowerInvariant()</span></td>
           <td>
-            @if (Context?.CanManageApps == true)
+            @if (row.IsPlatform)
             {
+              <span class="sg-pill sg-pill--platform" title="Part of Sangam itself: never disabled here, never given partner owners">platform</span>
+            }
+            else if (Context?.CanManageApps == true)
+            {
+              <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => StartAssign(row)" disabled="@_busy">Assign owner</button>
               @if (row.Status == AppStatus.Active)
               {
                 <button type="button" class="sg-btn sg-btn--warn" @onclick="() => _confirming = row" disabled="@_busy">Disable</button>
@@ -59,6 +65,21 @@ else
   </div>
 }
 
+@if (_assigning is not null)
+{
+  <div class="sg-confirm">
+    <p><strong>Make someone an owner of @_assigning.DisplayName.</strong> They will be able to manage its roles, organisations, people, administrators and branding on the partner console — not its redirect addresses or secrets. They need an active, verified Sangam account, and must set up an authenticator app before the partner console opens.</p>
+    <div class="sg-form-row">
+      <label class="sg-label" for="owner-email">Their Sangam email address</label>
+      <input id="owner-email" class="sg-input" type="email" autocomplete="off" @bind="_ownerEmail" @bind:event="oninput" />
+    </div>
+    <div class="sg-actions">
+      <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => _assigning = null">Cancel</button>
+      <button type="button" class="sg-btn sg-btn--primary" @onclick="AssignAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_ownerEmail))">Make owner</button>
+    </div>
+  </div>
+}
+
 @if (_message is not null)
 {
   <p class="@(_ok ? "sg-ok" : "sg-warn")">@_message</p>
@@ -70,6 +91,8 @@ else
 
     private IReadOnlyList<AdminAppRow>? _rows;
     private AdminAppRow? _confirming;
+    private AdminAppRow? _assigning;
+    private string _ownerEmail = string.Empty;
     private bool _busy;
     private bool _ok;
     private string? _message;
@@ -82,6 +105,29 @@ else
         {
             _rows = await Admin.ListAppsAsync(Context.UserId);
         }
+    }
+
+    private void StartAssign(AdminAppRow row)
+    {
+        _confirming = null;
+        _assigning = row;
+        _ownerEmail = string.Empty;
+        _message = null;
+    }
+
+    private async Task AssignAsync()
+    {
+        _busy = true;
+        AdminResult result = await Admin.AssignAppOwnerAsync(Context!.UserId, _assigning!.Id, _ownerEmail, null);
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = result.Message;
+        if (result.Succeeded)
+        {
+            _assigning = null;
+        }
+
+        await LoadAsync();
     }
 
     private async Task SetAsync(AdminAppRow row, AppStatus status)

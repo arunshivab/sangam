@@ -89,7 +89,7 @@ will make that the easy path. Webhooks are deferred until a partner needs push.
 The reverse direction is refused by design: an application must not write a user's identity into
 Sangam. A correction made at one clinic's front desk would otherwise rename that person at every
 other clinic. Where an application's record and Sangam disagree, the application reports the
-variance and the **user** decides in the portal (designed in ADR-0005, after PR-08).
+variance and the **user** decides in the portal (designed in its own ADR, after PR-10).
 
 ## Minimum age: 18
 
