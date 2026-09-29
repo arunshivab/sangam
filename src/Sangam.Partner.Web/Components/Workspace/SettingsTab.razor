@@ -1,0 +1,116 @@
+@inject IPartnerService Partners
+
+@if (_settings is null)
+{
+  <p class="sg-muted">Loading…</p>
+}
+else
+{
+  <p class="sg-lede">How @Info.AppName appears to people on Sangam, and how they must sign in to it. Its name, web addresses and secrets are set by imagiQa; ask them to change those.</p>
+
+  <div class="sg-panel">
+    <h2 class="sg-h3">Appearance</h2>
+    <dl class="sg-facts">
+      <div><dt>Name</dt><dd>@_settings.DisplayName <span class="sg-muted">(set by imagiQa)</span></dd></div>
+    </dl>
+    <div class="sg-form-row">
+      <label class="sg-label" for="app-desc">Description people see when they allow access</label>
+      <input id="app-desc" class="sg-input" @bind="_description" @bind:event="oninput" maxlength="280" />
+    </div>
+    <div class="sg-form-row">
+      <label class="sg-label" for="app-colour">Brand colour</label>
+      <span class="sg-colour">
+        <input type="color" aria-label="Pick a colour" value="@_colour" @onchange="e => _colour = (e.Value?.ToString() ?? _colour).ToUpperInvariant()" />
+        <input id="app-colour" class="sg-input sg-mono" @bind="_colour" @bind:event="oninput" maxlength="7" />
+      </span>
+    </div>
+    <div class="sg-form-row">
+      <label class="sg-label" for="app-glyph">Tile letter (one or two characters)</label>
+      <input id="app-glyph" class="sg-input" @bind="_glyph" @bind:event="oninput" maxlength="4" />
+    </div>
+    <p class="sg-muted">Preview: <span class="sg-tile-glyph" style="background:@_colour">@_glyph</span></p>
+  </div>
+
+  <div class="sg-panel">
+    <h2 class="sg-h3">How people sign in to @Info.AppName</h2>
+    <fieldset class="sg-choices">
+      <legend class="sg-label">Sign-in rule</legend>
+      @if (_settings.SignInPolicy is SignInPolicy.Password or SignInPolicy.OtpOnly)
+      {
+        <label class="sg-check">
+          <input type="radio" name="policy" checked="@(_policy == _settings.SignInPolicy)" @onchange="() => _policy = _settings.SignInPolicy" />
+          @PolicyName(_settings.SignInPolicy) <span class="sg-muted">(set by imagiQa — you can only make it stricter)</span>
+        </label>
+      }
+      else
+      {
+        <label class="sg-check">
+          <input type="radio" name="policy" checked="@(_policy == SignInPolicy.Default)" @onchange="() => _policy = SignInPolicy.Default" />
+          Each person's own choice <span class="sg-muted">— password, or password and a code, as they set in Sangam</span>
+        </label>
+      }
+      <label class="sg-check">
+        <input type="radio" name="policy" checked="@(_policy == SignInPolicy.PasswordAndOtp)" @onchange="() => _policy = SignInPolicy.PasswordAndOtp" />
+        Always two-step <span class="sg-muted">— password, then a code by email, for everyone</span>
+      </label>
+    </fieldset>
+    <p class="sg-muted">Partners can require two-step sign-in or leave it to each person. Rules that would weaken sign-in for people who chose two-step are set only by imagiQa.</p>
+  </div>
+
+  <div class="sg-actions">
+    <button type="button" class="sg-btn sg-btn--primary" @onclick="SaveAsync" disabled="@_busy">Save settings</button>
+  </div>
+}
+
+<StatusLine Ok="_ok" Message="@_message" />
+
+@code {
+    /// <summary>The application being worked on.</summary>
+    [Parameter]
+    [EditorRequired]
+    public WorkspaceInfo Info { get; set; } = null!;
+
+    private PartnerAppSettings? _settings;
+    private string? _description;
+    private string _colour = "#000000";
+    private string _glyph = string.Empty;
+    private SignInPolicy _policy;
+    private bool _busy;
+    private bool _ok;
+    private string? _message;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _settings = await Partners.GetSettingsAsync(Info.UserId, Info.AppId);
+        if (_settings is not null)
+        {
+            _description = _settings.Description;
+            _colour = _settings.BrandColour;
+            _glyph = _settings.Glyph;
+            _policy = _settings.SignInPolicy;
+        }
+    }
+
+    private static string PolicyName(SignInPolicy policy) => policy switch
+    {
+        SignInPolicy.Password => "Password only",
+        SignInPolicy.OtpOnly => "Email code only, no password",
+        SignInPolicy.PasswordAndOtp => "Always two-step",
+        _ => "Each person's own choice",
+    };
+
+    private async Task SaveAsync()
+    {
+        _busy = true;
+        PartnerResult result = await Partners.UpdateSettingsAsync(Info.UserId, Info.AppId, _description, _colour, _glyph, _policy);
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = result.Message;
+        if (result.Succeeded)
+        {
+            await LoadAsync();
+        }
+    }
+}

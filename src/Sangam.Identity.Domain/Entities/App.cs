@@ -54,6 +54,14 @@ public sealed class App
     /// <summary>Lifecycle state.</summary>
     public AppStatus Status { get; set; } = AppStatus.Active;
 
+    /// <summary>
+    /// Whether this is one of Sangam's own clients (the portal, the operator console, the partner
+    /// console) rather than a partner's application. A platform application can never have partner
+    /// administrators and can never be disabled from the console, which would lock operators out of
+    /// the very tool needed to undo it.
+    /// </summary>
+    public bool IsPlatform { get; set; }
+
     /// <summary>When the app was registered (UTC).</summary>
     public DateTimeOffset CreatedAt { get; set; }
 

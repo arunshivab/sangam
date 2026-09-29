@@ -28,13 +28,18 @@ internal static class AuditNarrator
         AuditActions.AdminUserRead,
         AuditActions.UserMfaFail,
         AuditActions.UserMfaDisable,
+        AuditActions.AppAdminGrant,
+        AuditActions.AppAdminRevoke,
     };
 
     public static AuditLine Describe(AuditEvent e, IReadOnlyDictionary<Guid, string> appNames)
     {
+        // An administrator acting through an application is the partner's own staff; one acting
+        // with no application is a Sangam operator. The two must never be confused in a person's log.
         string actor = e.ActorType switch
         {
             AuditActorType.User => "You",
+            AuditActorType.Admin when e.ActorAppId is not null => "An administrator of " + AppName(e.ActorAppId, appNames),
             AuditActorType.Admin => "A Sangam operator",
             AuditActorType.Api => AppName(e.ActorAppId, appNames),
             AuditActorType.System => "Sangam",
@@ -67,8 +72,10 @@ internal static class AuditNarrator
             AuditActions.ConsentRevoke => $"Your consent for {app} was withdrawn.",
             AuditActions.AppAccessRevoke => $"You revoked {app}'s access to your account.",
             AuditActions.TokenIssue => $"{app} received access to your account.",
-            AuditActions.OrgMembershipGrant => $"{app} gave you a role in an organisation{RoleSuffix(e.Metadata)}.",
-            AuditActions.OrgMembershipRevoke => $"{app} removed one of your organisation roles.",
+            AuditActions.OrgMembershipGrant => $"{ByWhom(e, actor, app)} gave you a role in an organisation{RoleSuffix(e.Metadata)}.",
+            AuditActions.OrgMembershipRevoke => $"{ByWhom(e, actor, app)} removed one of your organisation roles.",
+            AuditActions.AppAdminGrant => $"{actor} made you {AdminNoun(e.Metadata)} of {Read(e.Metadata, "app") ?? app}.",
+            AuditActions.AppAdminRevoke => $"{actor} removed you as an administrator of {app}.",
             AuditActions.AdminUserRead => "A Sangam operator opened your account record.",
             AuditActions.AdminUserReinstate => "A Sangam operator lifted the suspension on your account.",
             AuditActions.AdminUserDeleteNow => "A Sangam operator deleted your account.",
@@ -118,6 +125,11 @@ internal static class AuditNarrator
     };
 
     private static string MobileSuffix(string metadata) => Read(metadata, "mobile_changed") is "true" ? ", including your mobile number (it is unverified again)" : string.Empty;
+
+    /// <summary>A person when a person acted; otherwise the application itself (its backend, via the API).</summary>
+    private static string ByWhom(AuditEvent e, string actor, string app) => e.ActorType == AuditActorType.Admin ? actor : app;
+
+    private static string AdminNoun(string metadata) => Read(metadata, "role") is "owner" ? "an owner" : "an administrator";
 
     private static string RoleSuffix(string metadata) => Read(metadata, "role") is string role ? $" ({role})" : string.Empty;
 

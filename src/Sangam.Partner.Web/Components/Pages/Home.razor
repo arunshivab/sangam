@@ -1,0 +1,30 @@
+@page "/"
+
+<PageTitle>Your applications · Sangam partners</PageTitle>
+
+<h1 class="sg-h1">Your applications</h1>
+<p class="sg-lede">The applications on Sangam you help run. Everything you change here is recorded in your name, and people see in their own Sangam activity log when their roles change.</p>
+
+@if (Context is not null)
+{
+  <ul class="sg-tiles">
+    @foreach (PartnerAppRow app in Context.Apps)
+    {
+      <li>
+        <a class="sg-tile" href="@($"/apps/{app.AppId:D}")">
+          <span class="sg-tile-glyph" style="background:@app.BrandColour">@app.Glyph</span>
+          <span class="sg-tile-text">
+            <span class="sg-name">@app.DisplayName</span>
+            <span class="sg-sub">@(app.Role == AppAdminRole.Owner ? "Owner" : "Administrator")@(app.Status == AppStatus.Active ? string.Empty : " · disabled by imagiQa")</span>
+          </span>
+        </a>
+      </li>
+    }
+  </ul>
+}
+
+@code {
+    /// <summary>The signed-in administrator.</summary>
+    [CascadingParameter]
+    public PartnerContext? Context { get; set; }
+}

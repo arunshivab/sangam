@@ -1,8 +1,11 @@
+using Sangam.Identity.Domain.Enums;
+
 namespace Sangam.Identity.Domain.Entities;
 
 /// <summary>
-/// A user who administers one partner app on the admin console: its roles, redirect URIs and
-/// the users and organisations that use it. Scoped strictly to <see cref="AppId"/>.
+/// A partner's own staff member who administers one application on the partner console: its roles,
+/// organisations, memberships, branding and sign-in policy. Scoped strictly to <see cref="AppId"/>.
+/// Redirect URIs and client secrets are deliberately not theirs to change — see ADR-0006.
 /// </summary>
 public sealed class AppAdmin
 {
@@ -20,6 +23,9 @@ public sealed class AppAdmin
 
     /// <summary>Navigation to the user.</summary>
     public SangamUser? User { get; set; }
+
+    /// <summary>How much they may do over the application.</summary>
+    public AppAdminRole Role { get; set; } = AppAdminRole.Admin;
 
     /// <summary>Who granted it.</summary>
     public Guid? GrantedByUserId { get; set; }

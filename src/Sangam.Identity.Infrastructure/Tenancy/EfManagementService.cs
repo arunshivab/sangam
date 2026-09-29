@@ -36,8 +36,9 @@ public sealed partial class EfManagementService : IManagementService
     }
 
     /// <inheritdoc />
-    public async Task<ManagementResult<RoleDto>> UpsertRoleAsync(Guid appId, string code, RoleUpsert input, CancellationToken cancellationToken = default)
+    public async Task<ManagementResult<RoleDto>> UpsertRoleAsync(Guid appId, string code, RoleUpsert input, ManagementActor actor, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(actor);
         ArgumentNullException.ThrowIfNull(code);
         ArgumentNullException.ThrowIfNull(input);
 
@@ -77,14 +78,15 @@ public sealed partial class EfManagementService : IManagementService
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         await _audit.WriteAsync(
-            new AuditEntry(AuditActions.RoleUpsert, AuditActorType.Api, ActorAppId: appId, TargetType: "role", TargetId: role.Id, Metadata: $"{{\"code\":\"{code}\"}}"),
+            new AuditEntry(AuditActions.RoleUpsert, actor.Type, actor.UserId, ActorAppId: appId, TargetType: "role", TargetId: role.Id, Metadata: $"{{\"code\":\"{code}\"}}"),
             cancellationToken).ConfigureAwait(false);
         return ManagementResult.Ok<RoleDto>(ToDto(role));
     }
 
     /// <inheritdoc />
-    public async Task<ManagementResult<RoleDto>> RetireRoleAsync(Guid appId, string code, CancellationToken cancellationToken = default)
+    public async Task<ManagementResult<RoleDto>> RetireRoleAsync(Guid appId, string code, ManagementActor actor, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(actor);
         ArgumentNullException.ThrowIfNull(code);
         Role? role = await _db.Roles.FirstOrDefaultAsync(r => r.AppId == appId && r.Code == code && r.OrgId == null && r.RetiredAt == null, cancellationToken).ConfigureAwait(false);
         if (role is null)
@@ -100,7 +102,7 @@ public sealed partial class EfManagementService : IManagementService
         role.RetiredAt = _clock.UtcNow;
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await _audit.WriteAsync(
-            new AuditEntry(AuditActions.RoleRetire, AuditActorType.Api, ActorAppId: appId, TargetType: "role", TargetId: role.Id, Metadata: $"{{\"code\":\"{code}\"}}"),
+            new AuditEntry(AuditActions.RoleRetire, actor.Type, actor.UserId, ActorAppId: appId, TargetType: "role", TargetId: role.Id, Metadata: $"{{\"code\":\"{code}\"}}"),
             cancellationToken).ConfigureAwait(false);
         return ManagementResult.Ok<RoleDto>(ToDto(role));
     }
@@ -118,8 +120,9 @@ public sealed partial class EfManagementService : IManagementService
     }
 
     /// <inheritdoc />
-    public async Task<ManagementResult<OrganisationDto>> UpsertOrganisationAsync(Guid appId, Guid orgId, OrganisationUpsert input, CancellationToken cancellationToken = default)
+    public async Task<ManagementResult<OrganisationDto>> UpsertOrganisationAsync(Guid appId, Guid orgId, OrganisationUpsert input, ManagementActor actor, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(actor);
         ArgumentNullException.ThrowIfNull(input);
         if (string.IsNullOrWhiteSpace(input.Name))
         {
@@ -145,7 +148,7 @@ public sealed partial class EfManagementService : IManagementService
             org.Metadata = input.Metadata ?? org.Metadata;
             org.UpdatedAt = now;
             await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            await _audit.WriteAsync(new AuditEntry(AuditActions.OrgUpdate, AuditActorType.Api, ActorAppId: appId, TargetType: "organisation", TargetId: org.Id), cancellationToken).ConfigureAwait(false);
+            await _audit.WriteAsync(new AuditEntry(AuditActions.OrgUpdate, actor.Type, actor.UserId, ActorAppId: appId, TargetType: "organisation", TargetId: org.Id), cancellationToken).ConfigureAwait(false);
             return ManagementResult.Ok<OrganisationDto>(ToDto(org));
         }
 
@@ -190,7 +193,7 @@ public sealed partial class EfManagementService : IManagementService
         org.Path = parent is null ? OrganisationPath.ForRoot(org.Id) : OrganisationPath.ForChild(parent.Path, org.Id);
         _db.Organisations.Add(org);
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        await _audit.WriteAsync(new AuditEntry(AuditActions.OrgCreate, AuditActorType.Api, ActorAppId: appId, TargetType: "organisation", TargetId: org.Id), cancellationToken).ConfigureAwait(false);
+        await _audit.WriteAsync(new AuditEntry(AuditActions.OrgCreate, actor.Type, actor.UserId, ActorAppId: appId, TargetType: "organisation", TargetId: org.Id), cancellationToken).ConfigureAwait(false);
         return ManagementResult.Ok<OrganisationDto>(ToDto(org));
     }
 
@@ -206,8 +209,9 @@ public sealed partial class EfManagementService : IManagementService
     }
 
     /// <inheritdoc />
-    public async Task<ManagementResult<MembershipDto>> UpsertMembershipAsync(Guid appId, Guid orgId, Guid userId, MembershipUpsert input, CancellationToken cancellationToken = default)
+    public async Task<ManagementResult<MembershipDto>> UpsertMembershipAsync(Guid appId, Guid orgId, Guid userId, MembershipUpsert input, ManagementActor actor, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(actor);
         ArgumentNullException.ThrowIfNull(input);
 
         Organisation? org = await _db.Organisations.AsNoTracking().FirstOrDefaultAsync(o => o.Id == orgId, cancellationToken).ConfigureAwait(false);
@@ -242,7 +246,7 @@ public sealed partial class EfManagementService : IManagementService
         OrgMembership? membership = await _db.OrgMemberships.FirstOrDefaultAsync(m => m.AppId == appId && m.OrgId == orgId && m.UserId == userId && m.RevokedAt == null, cancellationToken).ConfigureAwait(false);
         if (membership is null)
         {
-            membership = new OrgMembership { Id = Guid.NewGuid(), AppId = appId, OrgId = orgId, UserId = userId, GrantedAt = now };
+            membership = new OrgMembership { Id = Guid.NewGuid(), AppId = appId, OrgId = orgId, UserId = userId, GrantedAt = now, GrantedByUserId = actor.UserId };
             _db.OrgMemberships.Add(membership);
         }
 
@@ -257,15 +261,16 @@ public sealed partial class EfManagementService : IManagementService
 
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await _audit.WriteAsync(
-            new AuditEntry(AuditActions.OrgMembershipGrant, AuditActorType.Api, ActorAppId: appId, TargetType: "user", TargetId: userId,
+            new AuditEntry(AuditActions.OrgMembershipGrant, actor.Type, actor.UserId, ActorAppId: appId, TargetType: "user", TargetId: userId,
                 Metadata: $"{{\"org\":\"{orgId:D}\",\"role\":\"{role.Code}\",\"inherits\":{(input.AppliesToDescendants ? "true" : "false")}}}"),
             cancellationToken).ConfigureAwait(false);
         return ManagementResult.Ok<MembershipDto>(new MembershipDto(userId, orgId, role.Code, membership.AppliesToDescendants, membership.GrantedAt));
     }
 
     /// <inheritdoc />
-    public async Task<ManagementResult<MembershipDto>> RevokeMembershipAsync(Guid appId, Guid orgId, Guid userId, CancellationToken cancellationToken = default)
+    public async Task<ManagementResult<MembershipDto>> RevokeMembershipAsync(Guid appId, Guid orgId, Guid userId, ManagementActor actor, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(actor);
         OrgMembership? membership = await _db.OrgMemberships.Include(m => m.Role)
             .FirstOrDefaultAsync(m => m.AppId == appId && m.OrgId == orgId && m.UserId == userId && m.RevokedAt == null, cancellationToken).ConfigureAwait(false);
         if (membership is null)
@@ -274,9 +279,10 @@ public sealed partial class EfManagementService : IManagementService
         }
 
         membership.RevokedAt = _clock.UtcNow;
+        membership.RevokedByUserId = actor.UserId;
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await _audit.WriteAsync(
-            new AuditEntry(AuditActions.OrgMembershipRevoke, AuditActorType.Api, ActorAppId: appId, TargetType: "user", TargetId: userId, Metadata: $"{{\"org\":\"{orgId:D}\"}}"),
+            new AuditEntry(AuditActions.OrgMembershipRevoke, actor.Type, actor.UserId, ActorAppId: appId, TargetType: "user", TargetId: userId, Metadata: $"{{\"org\":\"{orgId:D}\"}}"),
             cancellationToken).ConfigureAwait(false);
         return ManagementResult.Ok<MembershipDto>(new MembershipDto(userId, orgId, membership.Role!.Code, membership.AppliesToDescendants, membership.GrantedAt));
     }

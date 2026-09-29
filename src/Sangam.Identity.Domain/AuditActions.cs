@@ -63,6 +63,15 @@ public static class AuditActions
     /// <summary>An operator opened a user's record. Reads are audited, not only writes.</summary>
     public const string AdminUserRead = "admin.user.read";
 
+    /// <summary>A partner owner made someone an administrator of their application.</summary>
+    public const string AppAdminGrant = "app.admin.grant";
+
+    /// <summary>A partner owner removed one of their application's administrators.</summary>
+    public const string AppAdminRevoke = "app.admin.revoke";
+
+    /// <summary>A partner changed their application's branding or sign-in policy.</summary>
+    public const string AppSettingsUpdate = "app.settings.update";
+
     /// <summary>An operator changed an application registry entry.</summary>
     public const string AdminAppUpdate = "admin.app.update";
 

@@ -1,0 +1,87 @@
+@inject IPartnerService Partners
+@inject IMfaService Mfa
+@inject AuthenticationStateProvider AuthProvider
+
+@if (_state == GateState.Checking)
+{
+    <p class="sg-note">Checking your access…</p>
+}
+else if (_state == GateState.NotAnAdministrator)
+{
+    <section class="sg-shut">
+        <h1 class="sg-shut-title">You do not administer any application</h1>
+        <p class="sg-shut-body">
+            Your Sangam account is fine — it simply is not an administrator of any application on
+            Sangam. If you should be, ask an owner of the application to add you, or ask imagiQa to
+            make you its first owner.
+        </p>
+        <a class="sg-btn sg-btn--secondary" href="/signout">Sign out</a>
+    </section>
+}
+else if (_state == GateState.MfaRequired)
+{
+    <section class="sg-shut">
+        <h1 class="sg-shut-title">Set up two-step sign-in first</h1>
+        <p class="sg-shut-body">
+            Application administrators must have an authenticator app. Open your Sangam account
+            portal, turn on two-step sign-in under Personal details, then sign in here again.
+        </p>
+        <a class="sg-btn sg-btn--primary" href="@PortalUrl">Go to your account portal</a>
+        <a class="sg-btn sg-btn--secondary" href="/signout">Sign out</a>
+    </section>
+}
+else
+{
+    <CascadingValue Value="_context">@ChildContent</CascadingValue>
+}
+
+@code {
+    /// <summary>The console, shown only once both bars are cleared.</summary>
+    [Parameter]
+    [EditorRequired]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Where to send an administrator who still needs an authenticator.</summary>
+    [Parameter]
+    public string PortalUrl { get; set; } = "https://account.sangamid.in/profile";
+
+    private GateState _state = GateState.Checking;
+    private PartnerContext _context = new(Guid.Empty, "Administrator", []);
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthProvider.GetAuthenticationStateAsync();
+        Guid? userId = SignedInUser.Id(state.User);
+        if (userId is null)
+        {
+            _state = GateState.NotAnAdministrator;
+            return;
+        }
+
+        // Re-read on every visit: an administrator removed a minute ago is out now.
+        IReadOnlyList<PartnerAppRow> apps = await Partners.GetMyAppsAsync(userId.Value);
+        if (apps.Count == 0)
+        {
+            _state = GateState.NotAnAdministrator;
+            return;
+        }
+
+        // Mandatory, and checked here rather than trusted from the sign-in.
+        if (!await Mfa.IsEnrolledAsync(userId.Value))
+        {
+            _state = GateState.MfaRequired;
+            return;
+        }
+
+        _context = new PartnerContext(userId.Value, SignedInUser.Name(state.User), apps);
+        _state = GateState.Open;
+    }
+
+    private enum GateState
+    {
+        Checking,
+        NotAnAdministrator,
+        MfaRequired,
+        Open,
+    }
+}

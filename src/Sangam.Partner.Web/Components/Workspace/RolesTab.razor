@@ -1,0 +1,134 @@
+@inject IPartnerService Partners
+
+<p class="sg-lede">The roles this application understands. A role's code is what arrives in the sign-in token, so the application's own code decides what each one may do; here you only name them and give them to people.</p>
+
+@if (_roles is null)
+{
+  <p class="sg-muted">Loading…</p>
+}
+else
+{
+  <table class="sg-table">
+    <thead><tr><th>Role</th><th>Code</th><th>Permissions</th><th></th></tr></thead>
+    <tbody>
+      @foreach (RoleDto role in _roles)
+      {
+        <tr>
+          <td><span class="sg-name">@role.DisplayName</span>@if (role.Description is not null) { <span class="sg-sub">@role.Description</span> }</td>
+          <td class="sg-mono">@role.Code</td>
+          <td class="sg-mono">@(role.Permissions.Count == 0 ? "—" : string.Join(", ", role.Permissions))</td>
+          <td>
+            @if (role.RetiredAt is not null)
+            {
+              <span class="sg-pill sg-pill--disabled">retired</span>
+            }
+            else if (!role.IsSystem)
+            {
+              <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => Edit(role)" disabled="@_busy">Edit</button>
+              <button type="button" class="sg-btn sg-btn--warn" @onclick="() => _retiring = role" disabled="@_busy">Retire</button>
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}
+
+@if (_retiring is not null)
+{
+  <div class="sg-confirm">
+    <p><strong>Retire @_retiring.DisplayName?</strong> Nobody can be given it any more, and it stops appearing in the sign-in tokens of people who hold it. This cannot be undone here.</p>
+    <div class="sg-actions">
+      <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => _retiring = null">Cancel</button>
+      <button type="button" class="sg-btn sg-btn--danger" @onclick="RetireAsync" disabled="@_busy">Retire it</button>
+    </div>
+  </div>
+}
+
+<h2 class="sg-h2">@(_editingExisting ? "Edit role" : "Add a role")</h2>
+<div class="sg-panel">
+  <div class="sg-form-row">
+    <label class="sg-label" for="role-code">Code</label>
+    <input id="role-code" class="sg-input sg-mono" @bind="_code" @bind:event="oninput" disabled="@_editingExisting" placeholder="nurse" />
+  </div>
+  <div class="sg-form-row">
+    <label class="sg-label" for="role-name">Name</label>
+    <input id="role-name" class="sg-input" @bind="_name" @bind:event="oninput" placeholder="Nurse" />
+  </div>
+  <div class="sg-form-row">
+    <label class="sg-label" for="role-perms">Permissions, separated by commas</label>
+    <input id="role-perms" class="sg-input sg-mono" @bind="_permissions" @bind:event="oninput" placeholder="patient:read, vitals:write" />
+  </div>
+  <div class="sg-actions">
+    @if (_editingExisting)
+    {
+      <button type="button" class="sg-btn sg-btn--ghost" @onclick="Reset">Cancel</button>
+    }
+    <button type="button" class="sg-btn sg-btn--primary" @onclick="SaveAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_code) || string.IsNullOrWhiteSpace(_name))">Save role</button>
+  </div>
+</div>
+
+<StatusLine Ok="_ok" Message="@_message" />
+
+@code {
+    /// <summary>The application being worked on.</summary>
+    [Parameter]
+    [EditorRequired]
+    public WorkspaceInfo Info { get; set; } = null!;
+
+    private IReadOnlyList<RoleDto>? _roles;
+    private RoleDto? _retiring;
+    private bool _editingExisting;
+    private string _code = string.Empty;
+    private string _name = string.Empty;
+    private string _permissions = string.Empty;
+    private bool _busy;
+    private bool _ok;
+    private string? _message;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync() => _roles = await Partners.ListRolesAsync(Info.UserId, Info.AppId);
+
+    private void Edit(RoleDto role)
+    {
+        _editingExisting = true;
+        _code = role.Code;
+        _name = role.DisplayName;
+        _permissions = string.Join(", ", role.Permissions);
+    }
+
+    private void Reset()
+    {
+        _editingExisting = false;
+        _code = string.Empty;
+        _name = string.Empty;
+        _permissions = string.Empty;
+    }
+
+    private async Task SaveAsync()
+    {
+        _busy = true;
+        string[] permissions = _permissions.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        PartnerResult result = await Partners.UpsertRoleAsync(Info.UserId, Info.AppId, _code.Trim(), new RoleUpsert(_name.Trim(), null, permissions, null));
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = result.Message;
+        if (result.Succeeded)
+        {
+            Reset();
+            await LoadAsync();
+        }
+    }
+
+    private async Task RetireAsync()
+    {
+        _busy = true;
+        PartnerResult result = await Partners.RetireRoleAsync(Info.UserId, Info.AppId, _retiring!.Code);
+        _busy = false;
+        _retiring = null;
+        _ok = result.Succeeded;
+        _message = result.Message;
+        await LoadAsync();
+    }
+}

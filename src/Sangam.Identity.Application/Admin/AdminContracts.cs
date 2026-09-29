@@ -67,7 +67,9 @@ public sealed record OperatorRow(Guid UserId, string DisplayName, string Email, 
 /// <param name="SignInPolicy">The app's sign-in rule.</param>
 /// <param name="Users">Users who have granted it access.</param>
 /// <param name="Organisations">Organisations registered through it.</param>
-public sealed record AdminAppRow(Guid Id, string ClientId, string DisplayName, string OwnerCompanyName, AppStatus Status, SignInPolicy SignInPolicy, int Users, int Organisations);
+/// <param name="PartnerOwners">How many of the partner's own staff can manage it on the partner console.</param>
+/// <param name="IsPlatform">Whether it is one of Sangam's own clients: never disabled here, never given partner owners.</param>
+public sealed record AdminAppRow(Guid Id, string ClientId, string DisplayName, string OwnerCompanyName, AppStatus Status, SignInPolicy SignInPolicy, int Users, int Organisations, int PartnerOwners, bool IsPlatform);
 
 /// <summary>Outcome of a console action.</summary>
 /// <param name="Succeeded">Whether it was applied.</param>

@@ -188,3 +188,9 @@ h1[tabindex="-1"]:focus { outline: none; box-shadow: none; }
   .sg-bar { gap: 16px; padding: 0 16px; }
   .sg-main { padding: 24px 16px 48px; }
 }
+
+.sg-warn-text { color: var(--c-warn); }
+
+/* A heading straight after a table or a confirmation box must not sit flush against it. */
+.sg-table + .sg-h2, .sg-confirm + .sg-h2 { margin-top: 28px; }
+.sg-pill--platform { color: var(--c-muted); border-color: var(--c-line); }

@@ -20,7 +20,7 @@
   company gets a short service MoU instead. The end-user Terms and the Privacy Policy name
   imagiQa Healthcare Services Pvt Ltd as operator and data fiduciary.
 - **PostgreSQL.** The documents say PostgreSQL 16; any 16-or-later release works, and
-  developers' local installs may be newer. The server image is pinned in PR-08.
+  developers' local installs may be newer. The server image is pinned in PR-10.
 - **Target framework.** The planning documents say .NET 8 LTS. The build targets **.NET 10 (LTS)**
   — .NET 8 support ends in November 2026 — in line with the rest of the imagiQa portfolio.
 - **Hosting.** Oracle Cloud Free Tier was the v0 recommendation. Phase 1 is a single E2E Networks
@@ -72,6 +72,8 @@
   audited and visible to the user; impersonation refused by design. See
   [`decisions/0005-operator-console-ranks-and-mfa.md`](decisions/0005-operator-console-ranks-and-mfa.md)
   and the plain-language [`authority-model.md`](authority-model.md).
+- **Going live (PR-10).** Bootstrapping the first owner on production, the two-owner rule, and
+  what must be true before the first boot: [`go-live-checklist.md`](go-live-checklist.md).
 - **Partner facts.** The handoff's placeholder copy says LiPi is operated by "Lipi Systems Pvt Ltd,
   Bengaluru". LiPi is an imagiQa product (Ahmedabad). This is runtime data in the app registry,
   not a design change.
@@ -85,6 +87,8 @@
 | PR-03 | Auth screens 1–6 (Razor Pages, no-JS) | Login (three modes), register, verify by code, forgot / reset by code; rate limiting; lockout; sessions; dev outbox |
 | PR-04 | Consent + auth 7–8 + full OIDC flow | Consent screen, sign-out, Authorization Code + PKCE end to end, userinfo, management API |
 | PR-05 | Self-service portal (Blazor Server) — screens 9–10 | Dashboard, linked apps, DPDPA data export, account deletion |
-| PR-06 | Admin console (Blazor Server, dark scope) — screens 11–12 | Dashboard, users table with bulk actions, app registry, audit log, MFA mandatory |
-| PR-07 | `Sangam.Client` NuGet SDK + integration sample | ~10-line partner integration, working sample |
-| PR-08 | Production hardening + E2E deployment | Security headers, backups, runbooks, deployment guide, secret rotation |
+| PR-06 | Operator console (Blazor Server, dark scope) | Four ranks, mandatory authenticator, users, applications, operators, audited reads |
+| PR-07 | Application administrators | The `app_admins` plane: a partner's own staff sign in and manage their roles, organisations and memberships |
+| PR-08 | `Sangam.Client` NuGet SDK + integration sample | ~10-line partner integration, working sample |
+| PR-09 | Anjal email delivery | Verification, reset and sign-in codes sent through Anjal instead of the outbox; `sangamid.in` as a sending domain with SPF, DKIM and DMARC; a recipient allowlist outside production; first real send to a real inbox before go-live |
+| PR-10 | Production hardening + deployment | Certificates, security headers, backups, runbooks, secret rotation, and the [go-live checklist](go-live-checklist.md) |
