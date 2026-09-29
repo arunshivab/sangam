@@ -23,6 +23,7 @@ internal sealed class AppConfiguration : IEntityTypeConfiguration<App>
         b.Property(a => a.Status).HasConversion(new SnakeCaseEnumConverter<AppStatus>()).HasMaxLength(20).IsRequired();
         b.Property(a => a.BrandColour).HasMaxLength(9).IsRequired();
         b.Property(a => a.Glyph).HasMaxLength(4).IsRequired();
+        b.Property(a => a.IsPlatform).HasDefaultValue(false).IsRequired();
         b.Property(a => a.ConsentVersion).HasMaxLength(20).IsRequired();
         b.Property(a => a.SignInPolicy).HasConversion(new SnakeCaseEnumConverter<SignInPolicy>()).HasMaxLength(20).IsRequired();
 

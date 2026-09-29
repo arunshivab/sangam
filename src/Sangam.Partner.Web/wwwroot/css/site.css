@@ -1,0 +1,227 @@
+/* partners.sangamid.in — the partner console, dark scope.
+   Same building blocks as the operator console, on a deliberately different ground (slate blue,
+   not the operator's deep green), so nobody mistakes which console — and which powers — they are in.
+   Contrast is chosen so every body colour clears AA on its ground. */
+
+:root {
+  --c-ground: #141C2B;
+  --c-panel: #1A2436;
+  --c-raise: #212D43;
+  --c-sink: #0E1522;              /* bar and fields: a step darker than the ground */
+  --c-line: #33415C;
+  --c-text: #F2EFE8;
+  --c-muted: #AEB7C7;
+  --c-sand: var(--sg-sandalwood);
+  --c-ok: #8FCBAA;
+  --c-warn: #E3B76A;
+  --c-danger: #F0A08E;
+}
+
+html { color-scheme: dark; }
+body {
+  margin: 0;
+  background: var(--c-ground);
+  color: var(--c-text);
+  font: 400 15px/1.55 var(--sg-font-body);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--c-sand); }
+:focus-visible { outline: none; box-shadow: var(--sg-focus-ring-dark); border-radius: 4px; }
+h1[tabindex="-1"]:focus { outline: none; box-shadow: none; }
+
+/* ---- Bar ---- */
+.sg-bar {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  height: 58px;
+  padding: 0 28px;
+  background: var(--c-sink);
+  border-bottom: 1px solid var(--c-line);
+}
+.sg-bar-brand { font: 600 17px/1 var(--sg-font-body); letter-spacing: -0.01em; }
+.sg-bar-scope {
+  margin-left: 6px;
+  padding: 3px 7px;
+  border-radius: 3px;
+  background: var(--sg-ochre);
+  color: #1A1206;
+  font: 600 10px/1 var(--sg-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  vertical-align: 2px;
+}
+.sg-bar-nav { display: flex; gap: 20px; align-self: stretch; }
+.sg-bar-link {
+  display: inline-flex;
+  align-items: center;
+  color: var(--c-muted);
+  text-decoration: none;
+  font-size: 14px;
+  border-bottom: 2px solid transparent;
+}
+.sg-bar-link:hover { color: var(--c-text); }
+.sg-bar-link--on { color: var(--c-text); border-bottom-color: var(--c-sand); }
+.sg-bar-who { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.sg-bar-name { color: var(--c-text); }
+.sg-bar-out { color: var(--c-muted); text-decoration: none; }
+.sg-bar-out:hover { color: var(--c-text); }
+
+/* ---- Page ---- */
+.sg-main { max-width: 1120px; margin: 0 auto; padding: 32px 28px 64px; }
+.sg-h1 { margin: 0 0 6px; font: 600 28px/1.2 var(--sg-font-body); letter-spacing: -0.01em; }
+.sg-h2 { margin: 0 0 12px; font: 600 15px/1.3 var(--sg-font-body); }
+.sg-h3 { margin: 16px 0 8px; font: 600 13px/1.3 var(--sg-font-body); color: var(--c-muted); }
+.sg-lede { margin: 0 0 22px; color: var(--c-muted); max-width: 78ch; }
+.sg-muted { color: var(--c-muted); font-size: 13px; }
+.sg-mono { font-family: var(--sg-font-mono); font-size: 12.5px; }
+.sg-back { display: inline-block; margin-bottom: 12px; font-size: 13px; text-decoration: none; color: var(--c-muted); }
+
+/* The standing reminder that looking is itself recorded. */
+.sg-read-note {
+  margin: 0 0 20px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--c-sand);
+  background: rgba(217, 201, 168, 0.08);
+  color: var(--c-sand);
+  font-size: 13px;
+}
+
+/* ---- Panels ---- */
+.sg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.sg-panel { padding: 20px 22px; background: var(--c-panel); border: 1px solid var(--c-line); border-radius: 10px; margin-bottom: 16px; }
+.sg-grid .sg-panel { margin-bottom: 0; }
+.sg-facts { margin: 0; display: grid; gap: 7px; }
+.sg-facts div { display: grid; grid-template-columns: 130px 1fr; gap: 12px; font-size: 14px; }
+.sg-facts dt { color: var(--c-muted); }
+.sg-facts dd { margin: 0; }
+.sg-list { margin: 0; padding-left: 18px; font-size: 14px; }
+
+/* ---- Tables ---- */
+.sg-table { width: 100%; border-collapse: collapse; background: var(--c-panel); border: 1px solid var(--c-line); border-radius: 10px; overflow: hidden; font-size: 14px; }
+.sg-table th {
+  padding: 11px 14px;
+  text-align: left;
+  font: 600 10.5px/1 var(--sg-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--c-muted);
+  background: var(--c-raise);
+}
+.sg-table td { padding: 12px 14px; border-top: 1px solid var(--c-line); vertical-align: middle; }
+.sg-table tbody tr:hover { background: var(--c-raise); }
+.sg-name { display: block; font-weight: 500; }
+.sg-sub { display: block; margin-top: 2px; color: var(--c-muted); font-size: 12.5px; }
+
+/* ---- Pills and ranks ---- */
+.sg-pill, .sg-rank {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font: 500 11px/1.4 var(--sg-font-mono);
+  border: 1px solid var(--c-line);
+  color: var(--c-muted);
+  margin-right: 4px;
+}
+.sg-pill--active { color: var(--c-ok); border-color: rgba(143, 203, 170, 0.35); }
+.sg-pill--suspended, .sg-pill--disabled { color: var(--c-warn); border-color: rgba(227, 183, 106, 0.4); }
+.sg-pill--deletedsoft, .sg-pill--deletedhard { color: var(--c-danger); border-color: rgba(240, 160, 142, 0.4); }
+.sg-pill--op { color: var(--c-sand); border-color: rgba(217, 201, 168, 0.4); }
+.sg-rank--owner { color: #1A1206; background: var(--c-sand); border-color: var(--c-sand); }
+.sg-rank--support { color: var(--c-ok); border-color: rgba(143, 203, 170, 0.4); }
+.sg-rank--appmanager, .sg-rank--app { color: var(--c-warn); border-color: rgba(227, 183, 106, 0.4); }
+
+/* ---- Controls ---- */
+.sg-search, .sg-grant { display: flex; gap: 10px; margin-bottom: 18px; }
+.sg-grant { margin-bottom: 8px; }
+.sg-input {
+  flex: 1;
+  height: 40px;
+  padding: 0 12px;
+  background: var(--c-sink);
+  border: 1px solid var(--c-line);
+  border-radius: 6px;
+  color: var(--c-text);
+  font: 400 14px/1 var(--sg-font-body);
+  box-sizing: border-box;
+}
+.sg-grant select.sg-input { flex: 0 0 160px; }
+.sg-form-row { margin-bottom: 14px; }
+.sg-form-row .sg-input { width: 100%; }
+.sg-label { display: block; margin-bottom: 6px; font-size: 13px; color: var(--c-muted); }
+
+.sg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font: 500 13px/1 var(--sg-font-body);
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  width: auto;
+  box-shadow: none;
+}
+.sg-btn--primary { background: var(--c-sand); color: #1A1206; }
+.sg-btn--ghost, .sg-btn--secondary { background: transparent; border-color: var(--c-line); color: var(--c-text); }
+.sg-btn--ghost:hover, .sg-btn--secondary:hover { background: var(--c-raise); }
+.sg-btn--warn { background: transparent; border-color: rgba(227, 183, 106, 0.5); color: var(--c-warn); }
+.sg-btn--danger { background: transparent; border-color: rgba(240, 160, 142, 0.55); color: var(--c-danger); }
+.sg-btn--danger:hover { background: rgba(240, 160, 142, 0.12); }
+.sg-btn:disabled { opacity: 0.4; cursor: default; }
+.sg-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+.sg-confirm { margin-top: 16px; padding: 16px 18px; border: 1px solid rgba(240, 160, 142, 0.45); border-radius: 8px; background: rgba(240, 160, 142, 0.06); }
+.sg-confirm p { margin: 0 0 12px; font-size: 14px; }
+.sg-ok { color: var(--c-ok); font-size: 14px; }
+.sg-warn { color: var(--c-warn); font-size: 14px; }
+
+/* ---- The gate's closed doors ---- */
+.sg-shut { max-width: 520px; margin: 90px auto; padding: 28px 30px; background: var(--c-panel); border: 1px solid var(--c-line); border-radius: 12px; }
+.sg-shut-title { margin: 0 0 10px; font: 600 22px/1.25 var(--sg-font-body); }
+.sg-shut-body { margin: 0 0 20px; color: var(--c-muted); }
+.sg-shut .sg-btn { margin-right: 8px; }
+
+@media (max-width: 900px) {
+  .sg-grid { grid-template-columns: 1fr; }
+  .sg-bar { gap: 16px; padding: 0 16px; }
+  .sg-main { padding: 24px 16px 48px; }
+}
+
+.sg-warn-text { color: var(--c-warn); }
+
+/* ---- Partner console ---- */
+.sg-bar-brand { text-decoration: none; }
+.sg-note { padding: 2rem; color: var(--c-muted); }
+.sg-warn-text { color: var(--c-warn); }
+
+.sg-tiles { list-style: none; margin: 1.5rem 0; padding: 0; display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
+.sg-tile { display: flex; align-items: center; gap: 0.85rem; padding: 1rem; background: var(--c-panel); border: 1px solid var(--c-line); border-radius: 10px; color: var(--c-text); text-decoration: none; }
+.sg-tile:hover { background: var(--c-raise); }
+.sg-tile-glyph { display: inline-grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 8px; color: #FFFFFF; font-weight: 600; font-size: 1.05rem; flex: none; }
+.sg-tile-text { display: flex; flex-direction: column; }
+
+.sg-tabs { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--c-line); margin: 1rem 0 1.25rem; flex-wrap: wrap; }
+.sg-tab { padding: 0.55rem 0.9rem; color: var(--c-muted); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.sg-tab:hover { color: var(--c-text); }
+.sg-tab--on { color: var(--c-text); border-bottom-color: var(--c-sand); }
+
+.sg-split { display: grid; gap: 1rem; grid-template-columns: minmax(16rem, 1fr) minmax(20rem, 2fr); align-items: start; }
+@media (max-width: 52rem) { .sg-split { grid-template-columns: 1fr; } }
+
+.sg-tree { list-style: none; margin: 0 0 1rem; padding: 0; }
+.sg-tree-item { display: flex; flex-direction: column; align-items: flex-start; width: 100%; padding: 0.45rem 0.6rem; background: none; border: 1px solid transparent; border-radius: 6px; color: var(--c-text); font: inherit; text-align: left; cursor: pointer; }
+.sg-tree-item:hover { background: var(--c-raise); }
+.sg-tree-item--on { background: var(--c-raise); border-color: var(--c-sand); }
+
+.sg-check { display: flex; gap: 0.5rem; align-items: baseline; margin: 0.4rem 0; }
+.sg-choices { border: 0; margin: 0; padding: 0; }
+.sg-colour { display: flex; gap: 0.5rem; align-items: center; }
+.sg-colour input[type="color"] { width: 2.4rem; height: 2.2rem; padding: 0; border: 1px solid var(--c-line); border-radius: 6px; background: none; }
+.sg-panel .sg-list { list-style: none; padding-left: 0; }
+
+/* A heading straight after a table or a confirmation box must not sit flush against it. */
+.sg-table + .sg-h2, .sg-confirm + .sg-h2 { margin-top: 28px; }

@@ -82,6 +82,26 @@ public sealed partial class DevelopmentSeeder
         "https://localhost:5301/signout-sangam",
     ];
 
+    /// <summary>Client id of the partner console.</summary>
+    public const string PartnerClientId = "sangam-partner";
+
+    /// <summary>Development client secret of the partner console.</summary>
+    public const string PartnerClientSecret = "sangam-dev-partner-secret-change-me";
+
+    /// <summary>Development redirect URIs of the partner console.</summary>
+    public static IReadOnlyList<string> PartnerRedirectUris { get; } =
+    [
+        "http://localhost:5400/signin-sangam",
+        "https://localhost:5401/signin-sangam",
+    ];
+
+    /// <summary>Development post-logout redirect URIs of the partner console.</summary>
+    public static IReadOnlyList<string> PartnerPostLogoutRedirectUris { get; } =
+    [
+        "http://localhost:5400/signout-sangam",
+        "https://localhost:5401/signout-sangam",
+    ];
+
     /// <summary>S256 challenge for <see cref="DevCallbackVerifier"/>.</summary>
     public static string DevCallbackChallenge { get; } = Convert.ToBase64String(
         System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.ASCII.GetBytes(DevCallbackVerifier)))
@@ -239,6 +259,7 @@ public sealed partial class DevelopmentSeeder
 
         await EnsurePortalAppAsync(now, cancellationToken).ConfigureAwait(false);
         await EnsureConsoleAppAsync(now, cancellationToken).ConfigureAwait(false);
+        await EnsurePartnerConsoleAppAsync(now, cancellationToken).ConfigureAwait(false);
 
         bool hasSystemRole = await _db.Roles.AnyAsync(r => r.AppId == app.Id && r.Code == "org_admin" && r.OrgId == null, cancellationToken).ConfigureAwait(false);
         if (!hasSystemRole)
@@ -283,6 +304,7 @@ public sealed partial class DevelopmentSeeder
         portal.ConsentVersion = "v1";
         portal.RequireConsent = true;
         portal.Status = AppStatus.Active;
+        portal.IsPlatform = true;
         portal.UpdatedAt = now;
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
@@ -339,42 +361,56 @@ public sealed partial class DevelopmentSeeder
         }
     }
 
-    /// <summary>The admin console is a confidential client like any other; its extra bars are enforced inside it.</summary>
-    private async Task EnsureConsoleAppAsync(DateTimeOffset now, CancellationToken cancellationToken)
+    /// <summary>The operator console: a confidential client like any other; its extra bars are enforced inside it.</summary>
+    private Task EnsureConsoleAppAsync(DateTimeOffset now, CancellationToken cancellationToken)
+        => EnsureConfidentialConsoleAsync(
+            new ConsoleClient(AdminClientId, AdminClientSecret, "console", "Sangam console", "The platform operator console.", "http://localhost:5300/", AdminRedirectUris, AdminPostLogoutRedirectUris),
+            now,
+            cancellationToken);
+
+    /// <summary>The partner console: where an application's own staff manage it. Its bars are enforced inside it too.</summary>
+    private Task EnsurePartnerConsoleAppAsync(DateTimeOffset now, CancellationToken cancellationToken)
+        => EnsureConfidentialConsoleAsync(
+            new ConsoleClient(PartnerClientId, PartnerClientSecret, "partners", "Sangam partner console", "Where partners manage their applications on Sangam.", "http://localhost:5400/", PartnerRedirectUris, PartnerPostLogoutRedirectUris),
+            now,
+            cancellationToken);
+
+    private async Task EnsureConfidentialConsoleAsync(ConsoleClient client, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        App? console = await _db.Apps.FirstOrDefaultAsync(a => a.ClientId == AdminClientId, cancellationToken).ConfigureAwait(false);
+        App? console = await _db.Apps.FirstOrDefaultAsync(a => a.ClientId == client.ClientId, cancellationToken).ConfigureAwait(false);
         if (console is null)
         {
-            console = new App { Id = Guid.NewGuid(), ClientId = AdminClientId, Slug = "console", CreatedAt = now };
+            console = new App { Id = Guid.NewGuid(), ClientId = client.ClientId, Slug = client.Slug, CreatedAt = now };
             _db.Apps.Add(console);
         }
 
-        console.DisplayName = "Sangam console";
+        console.DisplayName = client.DisplayName;
         console.OwnerCompanyName = "imagiQa Healthcare Services Pvt Ltd";
-        console.Description = "The platform operator console.";
-        console.HomepageUrl = "http://localhost:5300/";
+        console.Description = client.Description;
+        console.HomepageUrl = client.HomepageUrl;
         console.BrandColour = "#15302E";
         console.Glyph = "\u0B95";
         console.ConsentVersion = "v1";
         console.RequireConsent = true;
         console.Status = AppStatus.Active;
+        console.IsPlatform = true;
         console.UpdatedAt = now;
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        object? existing = await _applications.FindByClientIdAsync(AdminClientId, cancellationToken).ConfigureAwait(false);
+        object? existing = await _applications.FindByClientIdAsync(client.ClientId, cancellationToken).ConfigureAwait(false);
         OpenIddictApplicationDescriptor descriptor = new();
         if (existing is not null)
         {
             await _applications.PopulateAsync(descriptor, existing, cancellationToken).ConfigureAwait(false);
         }
 
-        descriptor.ClientId = AdminClientId;
+        descriptor.ClientId = client.ClientId;
         descriptor.ClientType = ClientTypes.Confidential;
         descriptor.ConsentType = ConsentTypes.Explicit;
-        descriptor.DisplayName = "Sangam console";
+        descriptor.DisplayName = client.DisplayName;
         if (existing is null)
         {
-            descriptor.ClientSecret = AdminClientSecret;
+            descriptor.ClientSecret = client.Secret;
         }
 
         foreach (string permission in new[]
@@ -393,12 +429,12 @@ public sealed partial class DevelopmentSeeder
         }
 
         descriptor.Requirements.Add(Requirements.Features.ProofKeyForCodeExchange);
-        foreach (string uri in AdminRedirectUris)
+        foreach (string uri in client.RedirectUris)
         {
             descriptor.RedirectUris.Add(new Uri(uri));
         }
 
-        foreach (string uri in AdminPostLogoutRedirectUris)
+        foreach (string uri in client.PostLogoutRedirectUris)
         {
             descriptor.PostLogoutRedirectUris.Add(new Uri(uri));
         }
@@ -412,6 +448,16 @@ public sealed partial class DevelopmentSeeder
             await _applications.UpdateAsync(existing, descriptor, cancellationToken).ConfigureAwait(false);
         }
     }
+
+    private sealed record ConsoleClient(
+        string ClientId,
+        string Secret,
+        string Slug,
+        string DisplayName,
+        string Description,
+        string HomepageUrl,
+        IReadOnlyList<string> RedirectUris,
+        IReadOnlyList<string> PostLogoutRedirectUris);
 
     [LoggerMessage(EventId = 1100, Level = LogLevel.Information, Message = "Seeded development sample app '{ClientId}'.")]
     private partial void LogSeeded(string clientId);

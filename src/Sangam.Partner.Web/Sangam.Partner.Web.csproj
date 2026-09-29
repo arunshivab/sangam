@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- partners.sangamid.in - the partner console (Blazor Server).
+       Where an application's own staff manage that application on Sangam: its roles,
+       organisations, people's roles, administrators, branding and sign-in policy. An OpenID
+       Connect client of id.sangamid.in like any other, with two extra bars: the signed-in user
+       must administer at least one application, and must have an authenticator app enrolled.
+       Every rule is enforced in IPartnerService, never in these pages. See ADR-0006. -->
+
+  <PropertyGroup>
+    <RootNamespace>Sangam.Partner.Web</RootNamespace>
+    <Description>Sangam identity platform — partner console for application administrators.</Description>
+    <UserSecretsId>sangam-partner-web</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sangam.Identity.Application\Sangam.Identity.Application.csproj" />
+    <ProjectReference Include="..\Sangam.Identity.Infrastructure\Sangam.Identity.Infrastructure.csproj" />
+    <ProjectReference Include="..\Sangam.Shared\Sangam.Shared.csproj" />
+    <ProjectReference Include="..\Sangam.Web.Shared\Sangam.Web.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sangam.Partner.Web.Tests" />
+  </ItemGroup>
+
+</Project>

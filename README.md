@@ -13,8 +13,15 @@ with Sangam, partner applications receive only the claims the user consented to.
 | `id.sangamid.in` | Authentication server and the eight auth screens | ASP.NET Core Razor Pages + OpenIddict + ASP.NET Core Identity (works with JavaScript disabled) |
 | `account.sangamid.in` | Self-service portal: linked apps, devices, audit log, personal data | Blazor Server |
 | `admin.sangamid.in` | Operator console (MFA mandatory) | Blazor Server |
+| `partners.sangamid.in` | Partner console: an application's own staff manage it (MFA mandatory) | Blazor Server |
 
-Status: **PR-06 — Sangam can be operated**. imagiQa staff run the platform from an operator console
+Status: **PR-07 — partners run their own applications**. A partner's own staff manage their
+application's roles, organisations and people's roles on a separate partner console, as Owners or
+Admins, seeing only people who have linked that application. imagiQa assigns each application's
+first owner; everything a partner does is recorded in their name, and people read it in their own
+log. Next: the `Sangam.Client` SDK (PR-08).
+
+Previously: **PR-06 — Sangam can be operated**. imagiQa staff run the platform from an operator console
 with four ranks, a mandatory authenticator app, and every look at a user's record recorded in that
 user's own log. Anyone can now add an authenticator app to their account. Next: application
 administrators (PR-07).
@@ -44,6 +51,7 @@ cd sangam
 dotnet run --project src/Sangam.Identity.Server      # http://localhost:5100/register
 dotnet run --project src/Sangam.SelfService.Web     # http://localhost:5200  (needs the server above)
 dotnet run --project src/Sangam.Admin.Web           # http://localhost:5300  (operators only)
+dotnet run --project src/Sangam.Partner.Web         # http://localhost:5400  (application administrators only)
 ```
 
 The console opens only for someone holding an operator rank **and** an authenticator app. To make
@@ -54,6 +62,10 @@ dotnet run --project src/Sangam.Admin.Web -- create-operator you@example.in
 ```
 
 It refuses once any operator exists. Then add an authenticator under Personal details in the portal.
+
+The partner console opens for someone who administers at least one application **and** has an
+authenticator app. An AppManager or above makes an application's first owner from the operator
+console's Applications page (**Assign owner**); owners add the rest from the partner console.
 
 In Development the server captures outgoing email instead of sending it; open
 `http://localhost:5100/dev/outbox` to read verification and reset codes.
@@ -71,9 +83,10 @@ src/
   Sangam.Identity.Server/          id.sangamid.in — OIDC server + auth screens (Razor Pages)
   Sangam.SelfService.Web/          account.sangamid.in — portal (Blazor Server)
   Sangam.Admin.Web/                admin.sangamid.in — operator console (Blazor Server)
+  Sangam.Partner.Web/              partners.sangamid.in — partner console (Blazor Server)
   Sangam.Shared/                   DTOs and constants shared with the SDK (plain class library)
   Sangam.Web.Shared/               tokens, brand CSS, LiPi Sans, favicons, mark + lockup components
-  Sangam.Client/                   NuGet SDK partner applications install (PR-07)
+  Sangam.Client/                   NuGet SDK partner applications install (PR-08)
 tests/                             one test project per src/ project
 deploy/                            server stack (Compose: Postgres + Caddy) and the Postgres init script
 localpackages/                     local NuGet feed (LiPicons.Blazor — proprietary, see its README)

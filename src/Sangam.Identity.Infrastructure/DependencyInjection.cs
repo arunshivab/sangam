@@ -7,6 +7,7 @@ using Sangam.Identity.Application.Accounts;
 using Sangam.Identity.Application.Admin;
 using Sangam.Identity.Application.Apps;
 using Sangam.Identity.Application.Consents;
+using Sangam.Identity.Application.Partners;
 using Sangam.Identity.Application.Portal;
 using Sangam.Identity.Application.Tenancy;
 using Sangam.Identity.Domain.Entities;
@@ -15,6 +16,7 @@ using Sangam.Identity.Infrastructure.Admin;
 using Sangam.Identity.Infrastructure.Apps;
 using Sangam.Identity.Infrastructure.Consents;
 using Sangam.Identity.Infrastructure.Maintenance;
+using Sangam.Identity.Infrastructure.Partners;
 using Sangam.Identity.Infrastructure.Persistence;
 using Sangam.Identity.Infrastructure.Portal;
 using Sangam.Identity.Infrastructure.Security;
@@ -83,6 +85,7 @@ public static class DependencyInjection
         services.AddScoped<IManagementService, EfManagementService>();
         services.AddScoped<IPortalService, EfPortalService>();
         services.AddScoped<IAdminService, EfAdminService>();
+        services.AddScoped<IPartnerService, EfPartnerService>();
         services.AddScoped<IMfaService, TotpMfaService>();
         services.AddSingleton<ISessionService, EfSessionService>();
 

@@ -74,7 +74,7 @@ builder.Services.AddOpenIddict()
         else
         {
             throw new InvalidOperationException(
-                "Production signing and encryption certificates are configured in PR-08 (Sangam:Certificates). Refusing to start with development keys.");
+                "No production signing and encryption certificates are configured (Sangam:Certificates). See docs/go-live-checklist.md. Refusing to start with development keys.");
         }
 
         o.DisableAccessTokenEncryption();
@@ -87,7 +87,7 @@ builder.Services.AddOpenIddict()
 
         if (developmentCertificates)
         {
-            // Local runs are plain HTTP on localhost; production sits behind Caddy (TLS + forwarded headers, PR-08).
+            // Local runs are plain HTTP on localhost; production sits behind Caddy (TLS + forwarded headers, PR-10).
             aspnet.DisableTransportSecurityRequirement();
         }
     })

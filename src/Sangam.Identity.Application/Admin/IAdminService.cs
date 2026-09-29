@@ -57,6 +57,13 @@ public interface IAdminService
     /// <summary>Enables or disables an application, which stops or resumes every sign-in to it.</summary>
     Task<AdminResult> SetAppStatusAsync(Guid operatorUserId, Guid appId, AppStatus status, string? ipAddress, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Makes someone an owner of an application, so its partner can manage it on the partner console.
+    /// AppManager and above. Unlike an owner adding an administrator, the person need not have linked
+    /// the application yet: this is imagiQa's own act, done when a partner is onboarded.
+    /// </summary>
+    Task<AdminResult> AssignAppOwnerAsync(Guid operatorUserId, Guid appId, string email, string? ipAddress, CancellationToken cancellationToken = default);
+
     /// <summary>Lists console operators. Owners only.</summary>
     Task<IReadOnlyList<OperatorRow>> ListOperatorsAsync(Guid operatorUserId, CancellationToken cancellationToken = default);
 
