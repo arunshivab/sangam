@@ -1,0 +1,90 @@
+@page "/"
+@implements IDisposable
+@inject PatientRecords Records
+@inject WardState Ward
+@inject TimeProvider Clock
+
+<PageTitle>Patients · imagiQa</PageTitle>
+
+<div class="iq-heading">
+  <h1>Patients</h1>
+  <a class="iq-button" href="/patients/new">Register a patient</a>
+</div>
+
+<div class="iq-search">
+  <input aria-label="Find a patient" placeholder="Name, IQ number or mobile" @bind="_query" @bind:event="oninput" @onkeydown="FindOnEnterAsync" />
+  <button type="button" class="iq-button iq-button--quiet" @onclick="FindAsync">Find</button>
+</div>
+
+@if (_patients is null)
+{
+  <p class="iq-quiet">Loading…</p>
+}
+else if (_patients.Count == 0)
+{
+  <p class="iq-quiet">
+    @(string.IsNullOrWhiteSpace(_shownFor) ? $"No patients registered at {Ward.Current?.OrganisationName} yet." : $"Nobody at {Ward.Current?.OrganisationName} matches “{_shownFor}”.")
+  </p>
+}
+else
+{
+  <p class="iq-quiet">@(string.IsNullOrWhiteSpace(_shownFor) ? "Most recently registered" : $"Matching “{_shownFor}”")</p>
+  <table class="iq-table">
+    <thead><tr><th>IQ number</th><th>Name</th><th>Age / sex</th><th>Mobile</th><th>Registered</th></tr></thead>
+    <tbody>
+      @foreach (PatientSummary p in _patients)
+      {
+        <tr>
+          <td class="iq-num">@p.Mrn</td>
+          <td><a href="@($"/patients/{p.Id:D}")">@p.Name</a></td>
+          <td class="iq-num">@Display.Age(p.DateOfBirth, Today) / @Display.SexLetter(p.Sex)</td>
+          <td class="iq-num">@p.Mobile</td>
+          <td>@Display.When(p.RegisteredAt)</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}
+
+@code {
+    private IReadOnlyList<PatientSummary>? _patients;
+    private string _query = string.Empty;
+    private string _shownFor = string.Empty;
+
+    private DateOnly Today => DateOnly.FromDateTime(Clock.GetUtcNow().UtcDateTime);
+
+    protected override async Task OnInitializedAsync()
+    {
+        Ward.Changed += OnHospitalChanged;
+        await FindAsync();
+    }
+
+    public void Dispose() => Ward.Changed -= OnHospitalChanged;
+
+    private void OnHospitalChanged() => _ = InvokeAsync(async () =>
+    {
+        _query = string.Empty;
+        await FindAsync();
+        StateHasChanged();
+    });
+
+    private async Task FindOnEnterAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await FindAsync();
+        }
+    }
+
+    private async Task FindAsync()
+    {
+        if (Ward.User is null || Ward.Current is null)
+        {
+            _patients = [];
+            return;
+        }
+
+        _shownFor = _query.Trim();
+        _patients = await Records.SearchAsync(Ward.User, Ward.Current.OrganisationId, _shownFor);
+    }
+}

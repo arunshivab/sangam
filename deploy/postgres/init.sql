@@ -25,9 +25,10 @@ WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'sangam_identity')
 -- Throwaway databases for the PostgreSQL-backed tests ([PostgresFact]). Point
 -- SANGAM_TEST_CONNECTION at sangam_identity_test; each test suite with its own host derives
 -- its own database from it by suffix: "_server" and "_portal" (Identity.Server tests),
--- "_admin" (operator console) and "_partner" (partner console), so no in-process host is
+-- "_admin" (operator console), "_partner" (partner console) and "_imagiqa" (the imagiQa sample), so no in-process host is
 -- truncated under by the Infrastructure tests running in parallel. This file runs only when
 -- the data volume is first created; on an existing volume, create a new one by hand.
+-- imagiqa_sample is the imagiQa sample application's own development database (samples/).
 SELECT 'CREATE DATABASE sangam_identity_test WITH OWNER = sangam_identity ENCODING = ''UTF8'''
 WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'sangam_identity_test')
 \gexec
@@ -48,6 +49,14 @@ SELECT 'CREATE DATABASE sangam_identity_test_partner WITH OWNER = sangam_identit
 WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'sangam_identity_test_partner')
 \gexec
 
+SELECT 'CREATE DATABASE sangam_identity_test_imagiqa WITH OWNER = sangam_identity ENCODING = ''UTF8'''
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'sangam_identity_test_imagiqa')
+\gexec
+
+SELECT 'CREATE DATABASE imagiqa_sample WITH OWNER = sangam_identity ENCODING = ''UTF8'''
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'imagiqa_sample')
+\gexec
+
 REVOKE CONNECT ON DATABASE sangam_identity FROM PUBLIC;
 GRANT CONNECT ON DATABASE sangam_identity TO sangam_identity;
 REVOKE CONNECT ON DATABASE sangam_identity_test FROM PUBLIC;
@@ -60,3 +69,7 @@ REVOKE CONNECT ON DATABASE sangam_identity_test_admin FROM PUBLIC;
 GRANT CONNECT ON DATABASE sangam_identity_test_admin TO sangam_identity;
 REVOKE CONNECT ON DATABASE sangam_identity_test_partner FROM PUBLIC;
 GRANT CONNECT ON DATABASE sangam_identity_test_partner TO sangam_identity;
+REVOKE CONNECT ON DATABASE sangam_identity_test_imagiqa FROM PUBLIC;
+GRANT CONNECT ON DATABASE sangam_identity_test_imagiqa TO sangam_identity;
+REVOKE CONNECT ON DATABASE imagiqa_sample FROM PUBLIC;
+GRANT CONNECT ON DATABASE imagiqa_sample TO sangam_identity;

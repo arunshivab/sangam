@@ -1,0 +1,70 @@
+@page "/patients/new"
+@inject PatientRecords Records
+@inject WardState Ward
+@inject NavigationManager Nav
+
+<PageTitle>Register a patient · imagiQa</PageTitle>
+
+<a class="iq-back" href="/">Patients</a>
+<h1>Register a patient</h1>
+<p class="iq-quiet">At @Ward.Current?.OrganisationName. The IQ number is given when you register.</p>
+
+<div class="iq-form">
+  <div class="iq-row">
+    <label for="given">Given name</label>
+    <input id="given" @bind="_given" @bind:event="oninput" autocomplete="off" />
+  </div>
+  <div class="iq-row">
+    <label for="family">Family name <span class="iq-quiet">(optional)</span></label>
+    <input id="family" @bind="_family" @bind:event="oninput" autocomplete="off" />
+  </div>
+  <div class="iq-row">
+    <label for="dob">Date of birth</label>
+    <input id="dob" type="date" @bind="_dob" />
+  </div>
+  <fieldset class="iq-row">
+    <legend>Sex</legend>
+    <label class="iq-choice"><input type="radio" name="sex" checked="@(_sex == "female")" @onchange="@(() => _sex = "female")" /> Female</label>
+    <label class="iq-choice"><input type="radio" name="sex" checked="@(_sex == "male")" @onchange="@(() => _sex = "male")" /> Male</label>
+    <label class="iq-choice"><input type="radio" name="sex" checked="@(_sex == "other")" @onchange="@(() => _sex = "other")" /> Other</label>
+  </fieldset>
+  <div class="iq-row">
+    <label for="mobile">Mobile <span class="iq-quiet">(optional)</span></label>
+    <input id="mobile" inputmode="tel" @bind="_mobile" @bind:event="oninput" autocomplete="off" />
+  </div>
+  <button type="button" class="iq-button" @onclick="RegisterAsync" disabled="@_busy">Register patient</button>
+  @if (_message is not null)
+  {
+    <p class="iq-problem" role="alert">@_message</p>
+  }
+</div>
+
+@code {
+    private string _given = string.Empty;
+    private string _family = string.Empty;
+    private DateOnly? _dob;
+    private string _sex = string.Empty;
+    private string _mobile = string.Empty;
+    private bool _busy;
+    private string? _message;
+
+    private async Task RegisterAsync()
+    {
+        if (_dob is null)
+        {
+            _message = "Enter the date of birth.";
+            return;
+        }
+
+        _busy = true;
+        RecordResult result = await Records.RegisterAsync(Ward.User!, Ward.Current!.OrganisationId, new PatientInput(_given, _family, _dob.Value, _sex, _mobile));
+        _busy = false;
+        if (result.Succeeded)
+        {
+            Nav.NavigateTo($"/patients/{result.Id:D}");
+            return;
+        }
+
+        _message = result.Message;
+    }
+}

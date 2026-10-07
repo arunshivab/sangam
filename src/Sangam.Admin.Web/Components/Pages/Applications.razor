@@ -20,7 +20,7 @@ else
         <tr>
           <td><span class="sg-name">@row.DisplayName</span><span class="sg-sub">@row.OwnerCompanyName</span></td>
           <td class="sg-mono">@row.ClientId</td>
-          <td class="sg-mono">@row.SignInPolicy.ToString().ToLowerInvariant()</td>
+          <td>@PolicyName(row.SignInPolicy)</td>
           <td>@row.Users</td>
           <td>@row.Organisations</td>
           <td>@if (row.IsPlatform) { <span class="sg-muted">—</span> } else if (row.PartnerOwners == 0) { <span class="sg-warn-text">none</span> } else { @row.PartnerOwners }</td>
@@ -140,4 +140,13 @@ else
         _message = result.Message;
         await LoadAsync();
     }
+
+    // The same words the partner console uses for the same rules.
+    private static string PolicyName(SignInPolicy policy) => policy switch
+    {
+        SignInPolicy.Password => "Password only",
+        SignInPolicy.OtpOnly => "Email code only",
+        SignInPolicy.PasswordAndOtp => "Always two-step",
+        _ => "Each person's choice",
+    };
 }

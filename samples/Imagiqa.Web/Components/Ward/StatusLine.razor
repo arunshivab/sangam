@@ -1,0 +1,10 @@
+@if (Result is not null)
+{
+  <p class="@(Result.Succeeded ? "iq-done" : "iq-problem")" role="status">@Result.Message</p>
+}
+
+@code {
+    /// <summary>The last outcome, if any.</summary>
+    [Parameter]
+    public RecordResult? Result { get; set; }
+}

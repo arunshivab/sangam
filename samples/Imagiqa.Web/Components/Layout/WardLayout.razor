@@ -1,0 +1,88 @@
+@inherits LayoutComponentBase
+@inject WardState Ward
+@inject AuthenticationStateProvider Auth
+@inject NavigationManager Nav
+
+<div class="iq-shell">
+  <header class="iq-bar">
+    <a class="iq-mark" href="/">imagiQa</a>
+    @if (Ward.Hospitals.Count > 1)
+    {
+      <label class="iq-place">
+        <span class="iq-visually-hidden">Hospital</span>
+        <select value="@Ward.Current?.OrganisationId" @onchange="SwitchAsync">
+          @foreach (SangamMembership hospital in Ward.Hospitals)
+          {
+            <option value="@hospital.OrganisationId">@hospital.OrganisationName</option>
+          }
+        </select>
+      </label>
+    }
+    else if (Ward.Current is not null)
+    {
+      <span class="iq-place">@Ward.Current.OrganisationName</span>
+    }
+    <span class="iq-who">
+      @if (Ward.User is not null)
+      {
+        <span>@Ward.User.Name</span>
+        @if (RoleText is { Length: > 0 })
+        {
+          <span class="iq-role">@RoleText</span>
+        }
+      }
+      <a class="iq-out" href="/signout" data-enhance-nav="false">Sign out</a>
+    </span>
+  </header>
+
+  <main class="iq-main">
+    @if (!_loaded)
+    {
+      <p class="iq-quiet">Opening…</p>
+    }
+    else if (Ward.Current is null)
+    {
+      <section class="iq-closed">
+        <h1>You have no role at a hospital on imagiQa yet</h1>
+        <p>
+          You are signed in with Sangam, but no hospital has made you a doctor or a nurse on
+          imagiQa. Ask your hospital's imagiQa administrator to give you a role, then sign out and
+          sign in again.
+        </p>
+        <a class="iq-button iq-button--quiet" href="/signout" data-enhance-nav="false">Sign out</a>
+      </section>
+    }
+    else
+    {
+      @Body
+    }
+  </main>
+</div>
+
+@code {
+    private bool _loaded;
+
+    private string RoleText => (Ward.IsDoctor, Ward.IsNurse) switch
+    {
+        (true, true) => "Doctor and nurse",
+        (true, false) => "Doctor",
+        (false, true) => "Nurse",
+        _ => string.Empty,
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await Auth.GetAuthenticationStateAsync();
+        Ward.Load(state.User.GetSangamUser());
+        _loaded = true;
+    }
+
+    private void SwitchAsync(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out Guid id))
+        {
+            Ward.Switch(id);
+            Nav.NavigateTo("/");
+        }
+    }
+}
