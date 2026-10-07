@@ -58,6 +58,7 @@ jobs:
           psql "postgresql://sangam_identity:sangam_dev@localhost:5432/sangam_identity_test" -v ON_ERROR_STOP=1 -c "CREATE DATABASE sangam_identity_test_portal OWNER sangam_identity;"
           psql "postgresql://sangam_identity:sangam_dev@localhost:5432/sangam_identity_test" -v ON_ERROR_STOP=1 -c "CREATE DATABASE sangam_identity_test_admin OWNER sangam_identity;"
           psql "postgresql://sangam_identity:sangam_dev@localhost:5432/sangam_identity_test" -v ON_ERROR_STOP=1 -c "CREATE DATABASE sangam_identity_test_partner OWNER sangam_identity;"
+          psql "postgresql://sangam_identity:sangam_dev@localhost:5432/sangam_identity_test" -v ON_ERROR_STOP=1 -c "CREATE DATABASE sangam_identity_test_imagiqa OWNER sangam_identity;"
 
       - name: Test (including PostgreSQL-backed tests)
         run: dotnet test Sangam.sln --configuration Release --no-build --logger "trx;LogFileName=results.trx" --results-directory TestResults

@@ -1,0 +1,157 @@
+@page "/patients/{Id:guid}"
+@inject PatientRecords Records
+@inject WardState Ward
+@inject TimeProvider Clock
+
+@if (_loading)
+{
+  <p class="iq-quiet">Loading…</p>
+}
+else if (_detail is null)
+{
+  <PageTitle>Not found · imagiQa</PageTitle>
+  <a class="iq-back" href="/">Patients</a>
+  <h1>No such patient at @Ward.Current?.OrganisationName</h1>
+  <p class="iq-quiet">Patients are seen only at the hospital that registered them.</p>
+}
+else
+{
+  PatientSummary p = _detail.Patient;
+  <PageTitle>@p.Name · imagiQa</PageTitle>
+  <a class="iq-back" href="/">Patients</a>
+
+  <section class="iq-band" aria-label="Patient">
+    <p class="iq-band-mrn">@p.Mrn</p>
+    <h1 class="iq-band-name">@p.Name</h1>
+    <p class="iq-band-facts">
+      <span>@Display.Age(p.DateOfBirth, Today), @(p.Sex)</span>
+      <span>Born @Display.Date(p.DateOfBirth)</span>
+      @if (p.Mobile is not null)
+      {
+        <span>Mobile @p.Mobile</span>
+      }
+      <span>Registered by @_detail.RegisteredByName, @Display.When(p.RegisteredAt)</span>
+    </p>
+  </section>
+
+  <div class="iq-columns">
+    <section>
+      <h2>Vital signs</h2>
+      @if (Ward.IsNurse)
+      {
+        <div class="iq-form iq-form--inline">
+          <label>Pulse <input type="number" @bind="_pulse" min="20" max="250" /></label>
+          <label>BP <span class="iq-bp"><input type="number" aria-label="Systolic" @bind="_systolic" /> / <input type="number" aria-label="Diastolic" @bind="_diastolic" /></span></label>
+          <label>Temp °C <input type="number" step="0.1" @bind="_temperature" /></label>
+          <label>SpO₂ % <input type="number" @bind="_spo2" /></label>
+          <label>Resp. rate <input type="number" @bind="_rate" /></label>
+          <button type="button" class="iq-button" @onclick="RecordVitalsAsync" disabled="@_busy">Record vital signs</button>
+        </div>
+        <StatusLine Result="_vitalsResult" />
+      }
+      @if (_detail.Vitals.Count == 0)
+      {
+        <p class="iq-quiet">None recorded yet.@(Ward.IsNurse ? string.Empty : " Nurses record vital signs.")</p>
+      }
+      else
+      {
+        <table class="iq-table">
+          <thead><tr><th>Taken</th><th>Pulse</th><th>BP</th><th>Temp</th><th>SpO₂</th><th>RR</th><th>By</th></tr></thead>
+          <tbody>
+            @foreach (VitalSigns v in _detail.Vitals)
+            {
+              (bool Pulse, bool Systolic, bool Temperature, bool SpO2, bool Rate) flag = Display.Flags(v.Pulse, v.Systolic, v.TemperatureC, v.SpO2, v.RespiratoryRate);
+              <tr>
+                <td>@Display.When(v.RecordedAt)</td>
+                <td class="iq-num @(flag.Pulse ? "iq-flag" : null)">@v.Pulse</td>
+                <td class="iq-num @(flag.Systolic ? "iq-flag" : null)">@(v.Systolic is null ? null : $"{v.Systolic}/{v.Diastolic}")</td>
+                <td class="iq-num @(flag.Temperature ? "iq-flag" : null)">@v.TemperatureC</td>
+                <td class="iq-num @(flag.SpO2 ? "iq-flag" : null)">@v.SpO2</td>
+                <td class="iq-num @(flag.Rate ? "iq-flag" : null)">@v.RespiratoryRate</td>
+                <td>@v.RecordedByName</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        <p class="iq-quiet">Readings outside the usual adult range are shown in red.</p>
+      }
+    </section>
+
+    <section>
+      <h2>Consultation notes</h2>
+      @if (Ward.IsDoctor)
+      {
+        <div class="iq-form">
+          <label class="iq-visually-hidden" for="note">New note</label>
+          <textarea id="note" rows="5" maxlength="4000" placeholder="Complaint, findings, plan" @bind="_note" @bind:event="oninput"></textarea>
+          <button type="button" class="iq-button" @onclick="AddNoteAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_note))">Save note</button>
+        </div>
+        <StatusLine Result="_noteResult" />
+      }
+      @if (_detail.Notes.Count == 0)
+      {
+        <p class="iq-quiet">No notes yet.@(Ward.IsDoctor ? string.Empty : " Doctors write consultation notes.")</p>
+      }
+      @foreach (ConsultationNote n in _detail.Notes)
+      {
+        <article class="iq-note">
+          <p class="iq-note-meta">@n.WrittenByName, @Display.When(n.WrittenAt)</p>
+          <p class="iq-note-text">@n.Text</p>
+        </article>
+      }
+    </section>
+  </div>
+}
+
+@code {
+    /// <summary>The patient.</summary>
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private PatientDetail? _detail;
+    private bool _loading = true;
+    private bool _busy;
+    private int? _pulse;
+    private int? _systolic;
+    private int? _diastolic;
+    private decimal? _temperature;
+    private int? _spo2;
+    private int? _rate;
+    private string _note = string.Empty;
+    private RecordResult? _vitalsResult;
+    private RecordResult? _noteResult;
+
+    private DateOnly Today => DateOnly.FromDateTime(Clock.GetUtcNow().UtcDateTime);
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _detail = Ward.User is null || Ward.Current is null ? null : await Records.GetAsync(Ward.User, Ward.Current.OrganisationId, Id);
+        _loading = false;
+    }
+
+    private async Task RecordVitalsAsync()
+    {
+        _busy = true;
+        _vitalsResult = await Records.RecordVitalsAsync(Ward.User!, Ward.Current!.OrganisationId, Id, new VitalsInput(_pulse, _systolic, _diastolic, _temperature, _spo2, _rate));
+        _busy = false;
+        if (_vitalsResult.Succeeded)
+        {
+            (_pulse, _systolic, _diastolic, _temperature, _spo2, _rate) = (null, null, null, null, null, null);
+            await LoadAsync();
+        }
+    }
+
+    private async Task AddNoteAsync()
+    {
+        _busy = true;
+        _noteResult = await Records.AddNoteAsync(Ward.User!, Ward.Current!.OrganisationId, Id, _note);
+        _busy = false;
+        if (_noteResult.Succeeded)
+        {
+            _note = string.Empty;
+            await LoadAsync();
+        }
+    }
+}

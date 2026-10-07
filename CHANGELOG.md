@@ -6,6 +6,30 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added — PR-08 Sangam.Client SDK and the imagiQa sample
+- `Sangam.Client` is now a real, packable SDK (with `Sangam.Shared`): `AddSangam` adds sign-in with
+  authorization code + PKCE in one call, validating its options at start-up; `MapSangamSignOut`
+  signs out of the application and Sangam; `GetSangamUser` gives the person's id, name, email and
+  memberships, with `HasRole` and `HasPermission` applying the organisation rule (a role holds where
+  given, and below only if it inherits). The claim parser accepts both token shapes and skips
+  malformed entries. Package README included. ADR-0007.
+- `samples/Imagiqa.Web` — imagiQa, a small Blazor hospital application (port 5500, own database
+  `imagiqa_sample`): doctors and nurses register and find patients, nurses record vital signs,
+  doctors write consultation notes; patients are seen only at the hospital that registered them.
+  Every rule in `PatientRecords`, decided from Sangam's roles alone.
+- The development seeder registers imagiQa as a partner application with `doctor`, `nurse` and
+  `org_admin` roles, created once and never overwritten.
+- Tests: 9 SDK tests; 11 imagiQa tests (rules against PostgreSQL, pages on the real host, the
+  interactivity guard). Test database `sangam_identity_test_imagiqa` and dev database
+  `imagiqa_sample` in CI and `deploy/postgres/init.sql`.
+
+### Changed — PR-08
+- `SaveTokens` defaults to on in the SDK, so sign-out sends `id_token_hint` and Sangam returns the
+  person to the application; found in the browser run.
+- The operator console shows sign-in rules in words ("Always two-step") instead of raw values.
+- `Microsoft.EntityFrameworkCore.Relational` is pinned centrally, removing a version-conflict
+  warning; generated migrations under `samples/` are exempt from analysers like those under `src/`.
+
 ### Added — PR-07 Partner console and application administrators
 - `partners.sangamid.in` (`Sangam.Partner.Web`, Blazor Server, ports 5400/5401): where an
   application's own staff manage it. An ordinary OIDC client, `sangam-partner`, with a 2-hour
