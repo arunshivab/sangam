@@ -1,18 +1,33 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- The NuGet SDK partner applications install. Thin wrapper over
-       Microsoft.AspNetCore.Authentication.OpenIdConnect with Sangam helpers.
-       Filled in PR-07; packable from that PR onwards. -->
+  <!-- The NuGet SDK partner applications install: "Sign in with Sangam" for ASP.NET Core in one
+       call, and a typed view of who signed in and which roles they hold in which organisations.
+       A thin layer over Microsoft.AspNetCore.Authentication.OpenIdConnect; it never talks to
+       Sangam's database and references nothing server-side (see LayeringTests). -->
 
   <PropertyGroup>
     <RootNamespace>Sangam.Client</RootNamespace>
     <PackageId>Sangam.Client</PackageId>
-    <Description>Sign in with Sangam — OpenID Connect client helpers for ASP.NET Core partner applications.</Description>
-    <IsPackable>false</IsPackable>
+    <Description>Sign in with Sangam — OpenID Connect sign-in, organisations and roles for ASP.NET Core applications.</Description>
+    <PackageTags>sangam;sangamid;openid-connect;oidc;identity;aspnetcore;blazor</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Sangam.Shared\Sangam.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

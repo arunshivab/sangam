@@ -82,6 +82,26 @@ public sealed partial class DevelopmentSeeder
         "https://localhost:5301/signout-sangam",
     ];
 
+    /// <summary>Client id of imagiQa, the sample hospital application in <c>samples/</c>.</summary>
+    public const string ImagiqaClientId = "imagiqa";
+
+    /// <summary>Development client secret of imagiQa.</summary>
+    public const string ImagiqaClientSecret = "imagiqa-dev-secret-change-me";
+
+    /// <summary>imagiQa's development redirect URIs.</summary>
+    public static IReadOnlyList<string> ImagiqaRedirectUris { get; } =
+    [
+        "http://localhost:5500/signin-sangam",
+        "https://localhost:5501/signin-sangam",
+    ];
+
+    /// <summary>imagiQa's development post-logout redirect URIs.</summary>
+    public static IReadOnlyList<string> ImagiqaPostLogoutRedirectUris { get; } =
+    [
+        "http://localhost:5500/signout-sangam",
+        "https://localhost:5501/signout-sangam",
+    ];
+
     /// <summary>Client id of the partner console.</summary>
     public const string PartnerClientId = "sangam-partner";
 
@@ -145,6 +165,8 @@ public sealed partial class DevelopmentSeeder
         changed |= await EnsureScopesAsync(cancellationToken).ConfigureAwait(false);
         changed |= await EnsureSampleClientAsync(cancellationToken).ConfigureAwait(false);
         changed |= await EnsureSampleAppAsync(cancellationToken).ConfigureAwait(false);
+        changed |= await EnsureImagiqaClientAsync(cancellationToken).ConfigureAwait(false);
+        changed |= await EnsureImagiqaAppAsync(cancellationToken).ConfigureAwait(false);
 
         if (changed)
         {
@@ -278,6 +300,131 @@ public sealed partial class DevelopmentSeeder
         }
 
         bool changed = created || !hasSystemRole || _db.ChangeTracker.HasChanges();
+        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return changed;
+    }
+
+    /// <summary>
+    /// imagiQa is registered exactly as a partner's application would be: explicit consent,
+    /// PKCE, and <c>orgs.read</c> so its sign-in carries the person's hospital roles.
+    /// </summary>
+    private async Task<bool> EnsureImagiqaClientAsync(CancellationToken cancellationToken)
+    {
+        object? existing = await _applications.FindByClientIdAsync(ImagiqaClientId, cancellationToken).ConfigureAwait(false);
+        OpenIddictApplicationDescriptor descriptor = new();
+        if (existing is not null)
+        {
+            await _applications.PopulateAsync(descriptor, existing, cancellationToken).ConfigureAwait(false);
+        }
+
+        descriptor.ClientId = ImagiqaClientId;
+        descriptor.ClientType = ClientTypes.Confidential;
+        descriptor.ConsentType = ConsentTypes.Explicit;
+        descriptor.DisplayName = "imagiQa";
+        if (existing is null)
+        {
+            descriptor.ClientSecret = ImagiqaClientSecret;
+        }
+
+        string[] permissions =
+        [
+            Permissions.Endpoints.Authorization,
+            Permissions.Endpoints.Token,
+            Permissions.Endpoints.EndSession,
+            Permissions.GrantTypes.AuthorizationCode,
+            Permissions.GrantTypes.RefreshToken,
+            Permissions.ResponseTypes.Code,
+            Permissions.Prefixes.Scope + SangamScopes.Profile,
+            Permissions.Prefixes.Scope + SangamScopes.Email,
+            Permissions.Prefixes.Scope + SangamScopes.OrgsRead,
+        ];
+        bool changed = existing is null
+            || !permissions.All(descriptor.Permissions.Contains)
+            || !ImagiqaRedirectUris.All(u => descriptor.RedirectUris.Contains(new Uri(u)));
+        foreach (string permission in permissions)
+        {
+            descriptor.Permissions.Add(permission);
+        }
+
+        descriptor.Requirements.Add(Requirements.Features.ProofKeyForCodeExchange);
+        foreach (string uri in ImagiqaRedirectUris)
+        {
+            descriptor.RedirectUris.Add(new Uri(uri));
+        }
+
+        foreach (string uri in ImagiqaPostLogoutRedirectUris)
+        {
+            descriptor.PostLogoutRedirectUris.Add(new Uri(uri));
+        }
+
+        if (existing is null)
+        {
+            await _applications.CreateAsync(descriptor, cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+
+        if (changed)
+        {
+            await _applications.UpdateAsync(existing, descriptor, cancellationToken).ConfigureAwait(false);
+        }
+
+        return changed;
+    }
+
+    /// <summary>
+    /// imagiQa's registry entry and its role vocabulary. Created once and then left alone, so what
+    /// its partner changes on the partner console survives a restart.
+    /// </summary>
+    private async Task<bool> EnsureImagiqaAppAsync(CancellationToken cancellationToken)
+    {
+        DateTimeOffset now = _clock.UtcNow;
+        App? app = await _db.Apps.FirstOrDefaultAsync(a => a.ClientId == ImagiqaClientId, cancellationToken).ConfigureAwait(false);
+        bool created = app is null;
+        if (app is null)
+        {
+            app = new App
+            {
+                Id = Guid.NewGuid(),
+                ClientId = ImagiqaClientId,
+                Slug = "imagiqa",
+                DisplayName = "imagiQa",
+                OwnerCompanyName = "imagiQa Healthcare Services Pvt Ltd",
+                Description = "A small hospital information system that shows how an application signs people in with Sangam.",
+                HomepageUrl = "http://localhost:5500/",
+                BrandColour = "#2A3F8F",
+                Glyph = "iQ",
+                ConsentVersion = "v1",
+                RequireConsent = true,
+                Status = AppStatus.Active,
+                CreatedAt = now,
+                UpdatedAt = now,
+            };
+            _db.Apps.Add(app);
+        }
+
+        (string Code, string Name, string Description, string Permissions)[] roles =
+        [
+            ("org_admin", "Organisation admin", "Manages members and roles of an organisation for this app.", "[\"org:manage\",\"user:invite\"]"),
+            ("doctor", "Doctor", "Registers and finds patients, reads vitals, writes consultation notes.", "[\"patients:read\",\"patients:write\",\"vitals:read\",\"notes:write\"]"),
+            ("nurse", "Nurse", "Registers and finds patients, records vitals, reads consultation notes.", "[\"patients:read\",\"patients:write\",\"vitals:write\",\"notes:read\"]"),
+        ];
+        List<string> existingRoles = await _db.Roles.Where(r => r.AppId == app.Id && r.OrgId == null).Select(r => r.Code).ToListAsync(cancellationToken).ConfigureAwait(false);
+        foreach ((string code, string name, string description, string permissions) in roles.Where(r => !existingRoles.Contains(r.Code)))
+        {
+            _db.Roles.Add(new Role
+            {
+                Id = Guid.NewGuid(),
+                AppId = app.Id,
+                Code = code,
+                DisplayName = name,
+                Description = description,
+                Permissions = permissions,
+                IsSystem = code == "org_admin",
+                CreatedAt = now,
+            });
+        }
+
+        bool changed = created || _db.ChangeTracker.HasChanges();
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return changed;
     }

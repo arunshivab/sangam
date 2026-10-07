@@ -8,6 +8,8 @@
   <PropertyGroup>
     <RootNamespace>Sangam.Shared</RootNamespace>
     <Description>Sangam identity platform — shared contracts and constants.</Description>
+    <!-- Packed alongside Sangam.Client, which depends on it. -->
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
 
 </Project>

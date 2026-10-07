@@ -15,7 +15,13 @@ with Sangam, partner applications receive only the claims the user consented to.
 | `admin.sangamid.in` | Operator console (MFA mandatory) | Blazor Server |
 | `partners.sangamid.in` | Partner console: an application's own staff manage it (MFA mandatory) | Blazor Server |
 
-Status: **PR-07 — partners run their own applications**. A partner's own staff manage their
+Status: **PR-08 — applications can use Sangam in a few lines**. The `Sangam.Client` package adds
+"Sign in with Sangam" to an ASP.NET Core or Blazor application in one call and tells it which roles
+each person holds in which organisation. imagiQa, a small sample hospital application, uses it end
+to end: its doctors and nurses get their roles from the partner console. Next: Anjal email delivery
+(PR-09).
+
+Previously: **PR-07 — partners run their own applications**. A partner's own staff manage their
 application's roles, organisations and people's roles on a separate partner console, as Owners or
 Admins, seeing only people who have linked that application. imagiQa assigns each application's
 first owner; everything a partner does is recorded in their name, and people read it in their own
@@ -52,6 +58,7 @@ dotnet run --project src/Sangam.Identity.Server      # http://localhost:5100/reg
 dotnet run --project src/Sangam.SelfService.Web     # http://localhost:5200  (needs the server above)
 dotnet run --project src/Sangam.Admin.Web           # http://localhost:5300  (operators only)
 dotnet run --project src/Sangam.Partner.Web         # http://localhost:5400  (application administrators only)
+dotnet run --project samples/Imagiqa.Web            # http://localhost:5500  (sample hospital application)
 ```
 
 The console opens only for someone holding an operator rank **and** an authenticator app. To make
@@ -86,8 +93,9 @@ src/
   Sangam.Partner.Web/              partners.sangamid.in — partner console (Blazor Server)
   Sangam.Shared/                   DTOs and constants shared with the SDK (plain class library)
   Sangam.Web.Shared/               tokens, brand CSS, LiPi Sans, favicons, mark + lockup components
-  Sangam.Client/                   NuGet SDK partner applications install (PR-08)
-tests/                             one test project per src/ project
+  Sangam.Client/                   NuGet SDK partner applications install — see its README
+samples/Imagiqa.Web/              imagiQa — sample hospital application using Sangam.Client
+tests/                             one test project per src/ project, plus the sample's
 deploy/                            server stack (Compose: Postgres + Caddy) and the Postgres init script
 localpackages/                     local NuGet feed (LiPicons.Blazor — proprietary, see its README)
 docs/design/                       the authoritative design handoff

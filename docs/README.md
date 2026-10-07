@@ -89,6 +89,6 @@
 | PR-05 | Self-service portal (Blazor Server) — screens 9–10 | Dashboard, linked apps, DPDPA data export, account deletion |
 | PR-06 | Operator console (Blazor Server, dark scope) | Four ranks, mandatory authenticator, users, applications, operators, audited reads |
 | PR-07 | Application administrators | The `app_admins` plane: a partner's own staff sign in and manage their roles, organisations and memberships |
-| PR-08 | `Sangam.Client` NuGet SDK + integration sample | ~10-line partner integration, working sample |
+| PR-08 | `Sangam.Client` NuGet SDK + imagiQa sample | Sign-in in one call; roles per organisation; imagiQa sample hospital app (ADR-0007) |
 | PR-09 | Anjal email delivery | Verification, reset and sign-in codes sent through Anjal instead of the outbox; `sangamid.in` as a sending domain with SPF, DKIM and DMARC; a recipient allowlist outside production; first real send to a real inbox before go-live |
 | PR-10 | Production hardening + deployment | Certificates, security headers, backups, runbooks, secret rotation, and the [go-live checklist](go-live-checklist.md) |
