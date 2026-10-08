@@ -1,5 +1,5 @@
-using System.Globalization;
 using Microsoft.Extensions.Localization;
+using Sangam.Shared;
 using Sangam.Web.Shared.Localization;
 
 namespace Sangam.SelfService.Web.Components.Common;
@@ -22,11 +22,11 @@ public static class Relative
             { TotalHours: < 24 } => L["{0} hours ago", (int)age.TotalHours],
             { TotalDays: < 2 } => L["yesterday"],
             { TotalDays: < 30 } => L["{0} days ago", (int)age.TotalDays],
-            _ => value.ToString("d MMM yyyy", CultureInfo.CurrentCulture),
+            _ => IndiaTime.Date(value),
         };
     }
 
     /// <summary>A full timestamp for titles and tables.</summary>
     /// <param name="value">The instant.</param>
-    public static string Full(DateTimeOffset value) => value.ToString("d MMM yyyy, HH:mm 'UTC'", CultureInfo.CurrentCulture); // i18n-ignore: a format
+    public static string Full(DateTimeOffset value) => IndiaTime.Stamp(value);
 }

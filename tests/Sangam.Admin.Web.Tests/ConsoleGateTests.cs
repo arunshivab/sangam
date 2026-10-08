@@ -71,7 +71,7 @@ public sealed class ConsoleGateTests : IClassFixture<ConsoleFactory>
         Guid viewer = await _factory.SeedAsync(PlatformRole.Viewer, mfa: true, "Watcher");
         string html = System.Net.WebUtility.HtmlDecode(await GetAsync(viewer, "/monitoring"));
         Assert.Contains("href=\"/monitoring\"", html, StringComparison.Ordinal);
-        foreach (string panel in new[] { "health", "last-hour", "hours", "anjal", "breach-list", "storage", "certificates", "backups" })
+        foreach (string panel in new[] { "health", "last-hour", "hours", "anjal", "breach-list", "storage", "certificates", "grievances", "audit-archive", "backups" })
         {
             Assert.Contains($"data-panel=\"{panel}\"", html, StringComparison.Ordinal);
         }
@@ -80,6 +80,39 @@ public sealed class ConsoleGateTests : IClassFixture<ConsoleFactory>
 
         Guid patient = await _factory.SeedAsync(role: null, mfa: true, "Patient");
         Assert.DoesNotContain("data-panel=\"health\"", await GetAsync(patient, "/monitoring"), StringComparison.Ordinal);
+    }
+
+    [PostgresFact]
+    public async Task TheGrievanceLog_IsReadByEveryOperator_AndWrittenBySupport()
+    {
+        Guid viewer = await _factory.SeedAsync(PlatformRole.Viewer, mfa: true, "Reader");
+        string viewed = System.Net.WebUtility.HtmlDecode(await GetAsync(viewer, "/grievances"));
+        Assert.Contains("href=\"/grievances\"", viewed, StringComparison.Ordinal);
+        Assert.Contains("Acknowledge within two working days", viewed, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-panel=\"log-grievance\"", viewed, StringComparison.Ordinal);
+
+        Guid support = await _factory.SeedAsync(PlatformRole.Support, mfa: true, "Desk");
+        Assert.Contains("data-panel=\"log-grievance\"", await GetAsync(support, "/grievances"), StringComparison.Ordinal);
+
+        Guid patient = await _factory.SeedAsync(role: null, mfa: true, "Outsider");
+        Assert.DoesNotContain("Acknowledge within two working days", System.Net.WebUtility.HtmlDecode(await GetAsync(patient, "/grievances")), StringComparison.Ordinal);
+    }
+
+    [PostgresFact]
+    public async Task SamlServiceProviders_AreReadByEveryOperator_AndRegisteredByAnAppManager()
+    {
+        Guid viewer = await _factory.SeedAsync(PlatformRole.Viewer, mfa: true, "Looker");
+        string viewed = System.Net.WebUtility.HtmlDecode(await GetAsync(viewer, "/apps/saml"));
+        Assert.Contains("Older applications that speak SAML 2.0", viewed, StringComparison.Ordinal);
+        Assert.Contains("/saml/metadata", viewed, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-panel=\"saml-sp\"", viewed, StringComparison.Ordinal);
+        Assert.Contains("href=\"/apps/saml\"", await GetAsync(viewer, "/apps"), StringComparison.Ordinal);
+
+        Guid manager = await _factory.SeedAsync(PlatformRole.AppManager, mfa: true, "Registrar");
+        Assert.Contains("data-panel=\"saml-sp\"", await GetAsync(manager, "/apps/saml"), StringComparison.Ordinal);
+
+        Guid patient = await _factory.SeedAsync(role: null, mfa: true, "Stranger");
+        Assert.DoesNotContain("Older applications that speak SAML 2.0", System.Net.WebUtility.HtmlDecode(await GetAsync(patient, "/apps/saml")), StringComparison.Ordinal);
     }
 
     [PostgresFact]

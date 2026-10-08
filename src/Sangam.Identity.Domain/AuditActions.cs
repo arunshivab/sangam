@@ -225,6 +225,27 @@ public static class AuditActions
     /// <summary>Tokens issued to an app for a user (grant type in metadata).</summary>
     public const string TokenIssue = "token.issue";
 
+    /// <summary>An application exchanged a person's access token for one addressed to another application (PR-21).</summary>
+    public const string TokenExchange = "token.exchange";
+
+    /// <summary>A person approved a device's sign-in at /device (PR-21).</summary>
+    public const string DeviceApprove = "device.approve";
+
+    /// <summary>A person refused a device's sign-in at /device (PR-21).</summary>
+    public const string DeviceDeny = "device.deny";
+
+    /// <summary>A SAML assertion was issued to a service provider (PR-22).</summary>
+    public const string SamlAssertion = "saml.assertion";
+
+    /// <summary>A SAML service provider asked Sangam to sign the person out (PR-22).</summary>
+    public const string SamlLogout = "saml.logout";
+
+    /// <summary>A SAML service provider was registered in the console (PR-22).</summary>
+    public const string SamlProviderRegister = "saml.provider.register";
+
+    /// <summary>A SAML service provider's settings were changed (PR-22).</summary>
+    public const string SamlProviderUpdate = "saml.provider.update";
+
     /// <summary>An app-initiated sign-out ended the session.</summary>
     public const string UserLogoutApp = "user.logout.app";
 
@@ -240,6 +261,24 @@ public static class AuditActions
     /// <summary>Reference data or the bootstrap app was seeded.</summary>
     public const string SystemSeed = "system.seed";
 
-    /// <summary>The audit retention job removed events older than the configured period (OI-039).</summary>
-    public const string AuditRetentionPurge = "audit.retention.purge";
+    /// <summary>An application was registered, or its registration corrected, from the deployment's settings (R4).</summary>
+    public const string SystemClientRegistered = "system.client.registered";
+
+    /// <summary>Events older than a year moved into an encrypted archive file, anonymised (D-A).</summary>
+    public const string AuditArchive = "audit.archive";
+
+    /// <summary>An archive file older than seven years was deleted (D-A).</summary>
+    public const string AuditArchivePurge = "audit.archive.purge";
+
+    /// <summary>A grievance was logged (D-D).</summary>
+    public const string GrievanceLog = "grievance.log";
+
+    /// <summary>A grievance was acknowledged (D-D).</summary>
+    public const string GrievanceAcknowledge = "grievance.acknowledge";
+
+    /// <summary>A note was added to a grievance (D-D).</summary>
+    public const string GrievanceNote = "grievance.note";
+
+    /// <summary>A grievance was closed, resolved or declined (D-D).</summary>
+    public const string GrievanceClose = "grievance.close";
 }

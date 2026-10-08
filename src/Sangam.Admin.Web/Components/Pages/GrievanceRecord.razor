@@ -1,0 +1,156 @@
+@page "/grievances/{GrievanceId:guid}"
+@using Sangam.Identity.Application.Grievances
+@inject IGrievanceService Grievances
+
+<PageTitle>@(_detail?.Row.Reference ?? L["Grievance"]) · @L["Sangam console"]</PageTitle>
+
+@if (_detail is null)
+{
+  <p class="sg-muted">@(_loaded ? L["That grievance does not exist."] : L["Loading…"])</p>
+}
+else
+{
+  GrievanceRow row = _detail.Row;
+  <a class="sg-back" href="/grievances">@L["← Grievances"]</a>
+  <h1 class="sg-h1 sg-mono">@row.Reference</h1>
+  <p class="sg-lede">@GrievanceText.Status(row.Status) · @GrievanceText.Category(row.Category)</p>
+
+  <div class="sg-grid">
+    <section class="sg-panel" data-panel="grievance">
+      <h2 class="sg-h2">@L["The grievance"]</h2>
+      <dl class="sg-facts">
+        <div><dt>@L["From"]</dt><dd>@row.Name<span class="sg-sub sg-mono">@_detail.Contact</span></dd></div>
+        @if (_detail.AccountEmail is string account)
+        {
+          <div><dt>@L["Sangam account"]</dt><dd class="sg-mono">@account</dd></div>
+        }
+        <div><dt>@L["Received"]</dt><dd>@IndiaTime.Stamp(row.ReceivedAt) · @GrievanceText.Channel(_detail.Channel)</dd></div>
+        <div><dt>@L["Acknowledge by"]</dt><dd class="@(row.AcknowledgeOverdue ? "sg-warn-text" : null)">@IndiaTime.Stamp(row.AcknowledgeBy)</dd></div>
+        <div><dt>@L["Answer by"]</dt><dd class="@(row.ResolveOverdue ? "sg-warn-text" : null)">@IndiaTime.Stamp(row.ResolveBy)</dd></div>
+      </dl>
+      <p class="sg-pre">@_detail.Summary</p>
+      @if (_detail.Resolution is string answer)
+      {
+        <h3 class="sg-h3">@L["The answer given"]</h3>
+        <p class="sg-pre">@answer</p>
+      }
+    </section>
+
+    <section class="sg-panel" data-panel="history">
+      <h2 class="sg-h2">@L["History"]</h2>
+      <ol class="sg-timeline">
+        @foreach (GrievanceStep step in _detail.History)
+        {
+          <li><span class="sg-mono">@IndiaTime.Compact(step.At)</span> · <strong>@GrievanceText.Step(step.Kind)</strong> · @step.Operator<span class="sg-sub sg-pre">@StepText(step)</span></li>
+        }
+      </ol>
+    </section>
+  </div>
+
+  @if (_detail.CanAct)
+  {
+    @if (row.Status == GrievanceStatus.Received)
+    {
+      <section class="sg-panel" data-panel="acknowledge">
+        <h2 class="sg-h2">@L["Acknowledge"]</h2>
+        <label class="sg-check"><input type="checkbox" @bind="_emailAck" disabled="@(!_detail.Contact.Contains('@'))" /> @L["E-mail the acknowledgement, with the reference and the date we will answer by"]</label>
+        <div class="sg-actions">
+          <button type="button" class="sg-btn sg-btn--primary" @onclick="AcknowledgeAsync" disabled="@_busy">@L["Acknowledge"]</button>
+        </div>
+      </section>
+    }
+
+    <section class="sg-panel" data-panel="note">
+      <h2 class="sg-h2">@L["Add a note"]</h2>
+      <textarea class="sg-input" rows="3" @bind="_note" @bind:event="oninput" maxlength="4000" aria-label="@L["Note"]"></textarea>
+      <div class="sg-actions">
+        <button type="button" class="sg-btn sg-btn--ghost" @onclick="NoteAsync" disabled="@(_busy || _note.Trim().Length < 3)">@L["Add the note"]</button>
+      </div>
+    </section>
+
+    @if (row.Status is GrievanceStatus.Received or GrievanceStatus.Acknowledged)
+    {
+      <section class="sg-panel" data-panel="close">
+        <h2 class="sg-h2">@L["Answer and close"]</h2>
+        <div class="sg-form-row">
+          <label class="sg-label" for="g-outcome">@L["Outcome"]</label>
+          <select id="g-outcome" class="sg-input" @bind="_outcome">
+            <option value="@GrievanceStatus.Resolved">@L["Resolved: their request was met"]</option>
+            <option value="@GrievanceStatus.Declined">@L["Declined: it could not be met, and why"]</option>
+          </select>
+        </div>
+        <div class="sg-form-row">
+          <label class="sg-label" for="g-answer">@L["The answer given to the person"]</label>
+          <textarea id="g-answer" class="sg-input" rows="5" @bind="_answer" @bind:event="oninput" maxlength="4000"></textarea>
+        </div>
+        <label class="sg-check"><input type="checkbox" @bind="_emailAnswer" disabled="@(!_detail.Contact.Contains('@'))" /> @L["E-mail the answer, with where to complain if they are not satisfied"]</label>
+        <div class="sg-actions">
+          <button type="button" class="sg-btn sg-btn--warn" @onclick="CloseAsync" disabled="@(_busy || _answer.Trim().Length < 20)">@L["Close the grievance"]</button>
+        </div>
+      </section>
+    }
+  }
+
+  @if (_message is not null)
+  {
+    <p class="@(_ok ? "sg-ok" : "sg-warn")">@_message</p>
+  }
+}
+
+@code {
+    [Parameter]
+    public Guid GrievanceId { get; set; }
+
+    [CascadingParameter]
+    public ConsoleContext? Context { get; set; }
+
+    private GrievanceDetail? _detail;
+    private bool _loaded;
+    private bool _busy;
+    private bool _ok;
+    private string? _message;
+    private bool _emailAck = true;
+    private bool _emailAnswer = true;
+    private string _note = string.Empty;
+    private string _answer = string.Empty;
+    private GrievanceStatus _outcome = GrievanceStatus.Resolved;
+
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        if (Context is null)
+        {
+            return;
+        }
+
+        _detail = await Grievances.GetAsync(Context.UserId, GrievanceId);
+        _loaded = true;
+    }
+
+    private string StepText(GrievanceStep step) => step.Kind switch
+    {
+        "acknowledged" => L[step.Text],
+        _ => step.Text,
+    };
+
+    private async Task RunAsync(Func<Task<AdminResult>> action)
+    {
+        _busy = true;
+        AdminResult result = await action();
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = L[result.Message ?? string.Empty];
+        if (result.Succeeded)
+        {
+            _note = string.Empty;
+            await LoadAsync();
+        }
+    }
+
+    private Task AcknowledgeAsync() => RunAsync(() => Grievances.AcknowledgeAsync(Context!.UserId, GrievanceId, _emailAck && _detail!.Contact.Contains('@'), null));
+
+    private Task NoteAsync() => RunAsync(() => Grievances.AddNoteAsync(Context!.UserId, GrievanceId, _note, null));
+
+    private Task CloseAsync() => RunAsync(() => Grievances.CloseAsync(Context!.UserId, GrievanceId, _outcome, _answer, _emailAnswer && _detail!.Contact.Contains('@'), null));
+}

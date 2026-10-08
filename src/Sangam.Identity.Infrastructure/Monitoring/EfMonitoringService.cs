@@ -115,6 +115,10 @@ public sealed class EfMonitoringService : IMonitoringService
                 .Select(a => new AlertRow(a.Key, a.Summary, a.OpenedAt, a.ResolvedAt))
                 .ToListAsync(cancellationToken).ConfigureAwait(false);
 
+            // V-10: the list as the identity server sees it — the host that checks passwords — not this host's settings.
+            List<HostBreachList> reports = await BreachReportsAsync(db, cancellationToken).ConfigureAwait(false);
+            HostBreachList? source = reports.FirstOrDefault(r => r.Host.StartsWith(_options.PasswordHost, StringComparison.OrdinalIgnoreCase));
+
             return new MonitoringSnapshot(
                 now,
                 hosts,
@@ -126,10 +130,60 @@ public sealed class EfMonitoringService : IMonitoringService
                 await _tls.CheckAsync(_options.TlsHostList, cancellationToken).ConfigureAwait(false),
                 ReadJob("backup.json"),
                 ReadJob("restore-drill.json"),
-                _breaches.Status,
+                source?.Status ?? _breaches.Status,
                 anjalStatus,
-                alerts);
+                alerts)
+            {
+                BreachListReports = reports,
+                BreachListSource = source,
+                AuditArchive = await AuditArchiveAsync(db, cancellationToken).ConfigureAwait(false),
+                Grievances = new GrievanceCounts(
+                    await db.Grievances.CountAsync(g => g.ClosedAt == null, cancellationToken).ConfigureAwait(false),
+                    await db.Grievances.CountAsync(g => g.ClosedAt == null && g.AcknowledgedAt == null && g.AcknowledgeBy < now, cancellationToken).ConfigureAwait(false),
+                    await db.Grievances.CountAsync(g => g.ClosedAt == null && g.ResolveBy < now, cancellationToken).ConfigureAwait(false)),
+            };
         }
+    }
+
+    private static async Task<AuditArchiveStatus?> AuditArchiveAsync(SangamDbContext db, CancellationToken cancellationToken)
+    {
+        string? payload = await db.HostReports.AsNoTracking()
+            .Where(r => r.Subject == Audit.AuditArchiver.ReportSubject)
+            .OrderByDescending(r => r.ReportedAt)
+            .Select(r => r.Payload)
+            .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return payload is null ? null : JsonSerializer.Deserialize<AuditArchiveStatus>(payload);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static async Task<List<HostBreachList>> BreachReportsAsync(SangamDbContext db, CancellationToken cancellationToken)
+    {
+        List<HostBreachList> reports = [];
+        foreach (Domain.Entities.HostReport row in await db.HostReports.AsNoTracking()
+            .Where(r => r.Subject == MetricsRecorder.BreachListSubject)
+            .OrderBy(r => r.Host)
+            .ToListAsync(cancellationToken).ConfigureAwait(false))
+        {
+            try
+            {
+                if (JsonSerializer.Deserialize<BreachListStatus>(row.Payload) is BreachListStatus status)
+                {
+                    reports.Add(new HostBreachList(row.Host, status, row.ReportedAt));
+                }
+            }
+            catch (JsonException)
+            {
+                // A report this version cannot read is left out; the host writes a fresh one within a minute.
+            }
+        }
+
+        return reports;
     }
 
     private static async Task<DatabaseStatus> DatabaseAsync(SangamDbContext db, CancellationToken cancellationToken)

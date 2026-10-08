@@ -31,7 +31,10 @@ x-host: &host
     # The address and paths are confirmed after Anjal's own testing (docs/anjal-messaging-contract.md).
     Sangam__Anjal__BaseUrl: "SET-ANJAL-API-URL"
     Sangam__Anjal__FromAddress: no-reply@sangamid.in
-    # D-J: offline only. The check stays off until the founder switches it on AND the list is loaded.
+    # D-J: offline only. The check stays off until the founder switches it on AND the list is loaded. Switch it on
+    # here, for every host, never in one service: the identity server checks passwords, the partner console offers
+    # the per-application setting, and /monitoring shows the identity server's own report (V-10, SGM-303).
+    Sangam__Passwords__BreachCheck__Enabled: "false"
     Sangam__Passwords__BreachCheck__ListPath: /var/lib/sangam/pwned/pwned-passwords.bin
     # D-H: self-hosted monitoring; no third party. Every host records its metrics into the database.
     Sangam__Monitoring__StatusDirectory: /var/lib/sangam/status
@@ -40,6 +43,11 @@ services:
   identity:
     <<: *host
     build: { context: ../.., target: app, args: { PROJECT: Sangam.Identity.Server } }
+    # The shared volumes, plus D-A's audit archive: written here only, kept on the server and in the encrypted backups.
+    volumes:
+      - /srv/sangam/pwned:/var/lib/sangam/pwned:ro
+      - /srv/sangam/status:/var/lib/sangam/status:ro
+      - /srv/sangam/audit-archive:/var/lib/sangam/audit-archive
     environment:
       <<: *env
       Sangam__Issuer: https://id.sangamid.in
@@ -47,7 +55,7 @@ services:
       # D-H: the identity server evaluates the thresholds and alerts the founder by e-mail and SMS through Anjal.
       Sangam__Monitoring__Evaluate: "true"
       Sangam__Monitoring__ExpectedHosts: identity,portal,admin,partner
-      Sangam__Monitoring__TlsHosts: id.sangamid.in,account.sangamid.in,admin.sangamid.in,partner.sangamid.in
+      Sangam__Monitoring__TlsHosts: id.sangamid.in,account.sangamid.in,admin.sangamid.in,partners.sangamid.in,demo.sangamid.in
       Sangam__Monitoring__AnjalHealthUrl: "SET-ANJAL-HEALTH-URL"
       Sangam__Alerts__Emails: "SET-FOUNDER-ALERT-EMAIL"
       Sangam__Alerts__Mobiles: "SET-FOUNDER-ALERT-MOBILE"
@@ -56,7 +64,29 @@ services:
       Sangam__Passkeys__Origins: https://id.sangamid.in
       Sangam__Certificates__Signing__0__Path: /run/secrets/signing_current.pfx
       Sangam__Certificates__Encryption__0__Path: /run/secrets/encryption_current.pfx
-      # Audit retention is unset until the founder decides the periods (Sangam__Audit__RetentionDays).
+      # D-A: a year live, then encrypted for the founder's offline key (only the public certificate is here),
+      # IP addresses shortened and browser details dropped; archive files deleted at seven years.
+      Sangam__Audit__Directory: /var/lib/sangam/audit-archive
+      Sangam__Audit__CertificatePath: /run/secrets/audit_archive.crt
+      # R4: the applications this deployment runs, registered from these settings each time the server starts:
+      # exactly these redirect addresses (<BaseUrl>signin-sangam, <BaseUrl>signout-sangam), and the same secrets
+      # the hosts use (mounted below under the names the registration reads).
+      Sangam__Clients__portal__ClientId: sangam-portal
+      Sangam__Clients__portal__Kind: portal
+      Sangam__Clients__portal__BaseUrl: https://account.sangamid.in/
+      Sangam__Clients__admin__ClientId: sangam-admin
+      Sangam__Clients__admin__Kind: console
+      Sangam__Clients__admin__BaseUrl: https://admin.sangamid.in/
+      Sangam__Clients__partner__ClientId: sangam-partner
+      Sangam__Clients__partner__Kind: partner
+      Sangam__Clients__partner__BaseUrl: https://partners.sangamid.in/
+      # D-I: the imagiQa sample, the first pilot application, at demo.sangamid.in.
+      Sangam__Clients__demo__ClientId: imagiqa
+      Sangam__Clients__demo__Kind: application
+      Sangam__Clients__demo__BaseUrl: https://demo.sangamid.in/
+      Sangam__Clients__demo__DisplayName: imagiQa (demo)
+      Sangam__Clients__demo__Description: "A small hospital information system that shows how an application signs people in with Sangam. Demo, not for real patient data."
+      Sangam__Clients__demo__OwnerCompanyName: imagiQa Healthcare Services Pvt Ltd
     secrets:
       - source: ConnectionStrings__Sangam
       - source: Sangam__Anjal__ApiKey
@@ -66,6 +96,11 @@ services:
       - source: encryption_current.pfx
       - source: keyring_current.pfx
       - source: Sangam__DataProtection__Certificates__0__Password
+      - source: audit_archive.crt
+      - { source: Sangam__Portal__ClientSecret, target: Sangam__Clients__portal__Secret }
+      - { source: Sangam__Admin__ClientSecret, target: Sangam__Clients__admin__Secret }
+      - { source: Sangam__Partner__ClientSecret, target: Sangam__Clients__partner__Secret }
+      - { source: Imagiqa__ClientSecret, target: Sangam__Clients__demo__Secret }
 
   portal:
     <<: *host
@@ -91,6 +126,32 @@ services:
       Sangam__Monitoring__HostName: partner
     secrets: [ConnectionStrings__Sangam, Sangam__Partner__ClientSecret, Sangam__Anjal__ApiKey, keyring_current.pfx, Sangam__DataProtection__Certificates__0__Password]
 
+  # D-I: the imagiQa sample at demo.sangamid.in — bannered "Demo, not for real patient data" on every page; its
+  # own database (imagiqa_demo) and role; registered with Sangam by the identity server's settings above.
+  demo:
+    restart: unless-stopped
+    networks: [edge, sangam-db]
+    build: { context: ../.., target: app, args: { PROJECT: Imagiqa.Web, PROJECT_DIR: samples } }
+    volumes:
+      - /srv/sangam/demo-keys:/var/lib/imagiqa/keys
+    logging:
+      driver: local
+      options:
+        max-size: "20m"
+        max-file: "10"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      SANGAM_SECRETS_DIR: /run/secrets
+      Sangam__Authority: https://id.sangamid.in
+      Sangam__ClientId: imagiqa
+      Imagiqa__Demo: "true"
+      Imagiqa__MigrateOnStartup: "true"
+      Imagiqa__ForwardedHeaders__KnownNetworks: 172.30.0.0/24
+      Imagiqa__DataProtection__KeysDirectory: /var/lib/imagiqa/keys
+    secrets:
+      - { source: Imagiqa__ClientSecret, target: Sangam__ClientSecret }
+      - ConnectionStrings__Imagiqa
+
   caddy:
     image: caddy:2
     restart: unless-stopped
@@ -113,6 +174,9 @@ secrets:
   Sangam__Portal__ClientSecret: { file: ./secrets/Sangam__Portal__ClientSecret }
   Sangam__Admin__ClientSecret: { file: ./secrets/Sangam__Admin__ClientSecret }
   Sangam__Partner__ClientSecret: { file: ./secrets/Sangam__Partner__ClientSecret }
+  audit_archive.crt: { file: ./secrets/audit_archive.crt }
+  Imagiqa__ClientSecret: { file: ./secrets/Imagiqa__ClientSecret }
+  ConnectionStrings__Imagiqa: { file: ./secrets/ConnectionStrings__Imagiqa }
 
 volumes:
   caddy_data:

@@ -20,7 +20,7 @@ namespace Imagiqa.Web.Tests;
 /// application exactly what a Sangam sign-in would: a subject, a name, and the <c>sangam_orgs</c>
 /// claim.
 /// </summary>
-public sealed class ImagiqaFactory : WebApplicationFactory<Program>
+public class ImagiqaFactory : WebApplicationFactory<Program>
 {
     /// <summary>Environment variable holding the shared PostgreSQL test connection.</summary>
     public const string ConnectionEnvironmentVariable = "SANGAM_TEST_CONNECTION";

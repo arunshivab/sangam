@@ -170,6 +170,8 @@ select.sg-field { appearance: auto; padding-right: 36px; }
 .sg-field--dial { padding-left: var(--sg-space-2); padding-right: var(--sg-space-1); font-family: var(--sg-font-mono); font-size: 14px; }
 .sg-field-error--hidden:empty { display: none; }
 .sg-field--code { font-family: var(--sg-font-mono); font-size: 22px; letter-spacing: 0.32em; text-align: center; }
+/* PR-21: the code a device shows, repeated on /device so the person can compare. */
+.sg-code-show { margin: var(--sg-space-3) 0; overflow-wrap: anywhere; }
 
 /* Reserved message row under every field. */
 .sg-field-error {

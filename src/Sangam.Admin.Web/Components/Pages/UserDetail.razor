@@ -27,14 +27,14 @@ else
         <div><dt>@L["Two-step"]</dt><dd>@(_detail.Row.MfaEnrolled ? L["authenticator enrolled"] : L["none"])</dd></div>
         <div><dt>@L["Date of birth"]</dt><dd>@_detail.DateOfBirth.ToString("d MMM yyyy", CultureInfo.CurrentCulture)</dd></div>
         <div><dt>@L["Signs in with"]</dt><dd>@ModeText(_detail.SignInPreference)</dd></div>
-        <div><dt>@L["Last sign-in"]</dt><dd>@(_detail.LastSignInAt?.ToString("d MMM yyyy, HH:mm 'UTC'", CultureInfo.CurrentCulture) ?? L["never"])</dd></div>
+        <div><dt>@L["Last sign-in"]</dt><dd>@((_detail.LastSignInAt is DateTimeOffset lastSignIn ? IndiaTime.Stamp(lastSignIn) : null) ?? L["never"])</dd></div>
         <div><dt>@L["Live sessions"]</dt><dd>@_detail.ActiveSessions</dd></div>
-        <div><dt>@L["Joined"]</dt><dd>@_detail.Row.CreatedAt.ToString("d MMM yyyy", CultureInfo.CurrentCulture)</dd></div>
+        <div><dt>@L["Joined"]</dt><dd>@IndiaTime.Date(_detail.Row.CreatedAt)</dd></div>
       </dl>
       @if (_detail.Row.PurgeAfter is not null)
       {
         <p class="sg-warn">
-          @L["Deletion requested — purge on {0}.", _detail.Row.PurgeAfter.Value.ToString("d MMM yyyy", CultureInfo.CurrentCulture)]
+          @L["Deletion requested — purge on {0}.", IndiaTime.Date(_detail.Row.PurgeAfter.Value)]
           @if (_detail.Row.OnHold)
           {
             <span>@L["Held: {0}", _detail.HoldReason ?? string.Empty]</span>
@@ -291,7 +291,7 @@ else
         }
     }
 
-    private static string When(DateTimeOffset at) => at.ToOffset(TimeSpan.FromHours(5.5)).ToString("f", CultureInfo.CurrentCulture) + " IST";
+    private static string When(DateTimeOffset at) => IndiaTime.Full(at);
 
     private Task SignOutAsync() => RunAsync(() => Admin.ForceSignOutAsync(Context!.UserId, UserId, null));
 

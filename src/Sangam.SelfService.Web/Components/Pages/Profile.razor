@@ -85,7 +85,7 @@ else
     <dl class="sg-facts">
       <div><dt>@L["Email"]</dt><dd>@_user.Email · @(_user.EmailVerified ? L["verified"] : L["not verified"])</dd></div>
       <div><dt>@L["Date of birth"]</dt><dd>@_user.DateOfBirth.ToString("d MMMM yyyy", CultureInfo.CurrentCulture)</dd></div>
-      <div><dt>@L["Member since"]</dt><dd>@_user.CreatedAt.ToString("d MMMM yyyy", CultureInfo.CurrentCulture)</dd></div>
+      <div><dt>@L["Member since"]</dt><dd>@IndiaTime.LongDate(_user.CreatedAt)</dd></div>
     </dl>
     <div class="sg-field-group" aria-live="polite">
       <span class="sg-label">@L["Change your email"]</span>
@@ -215,7 +215,7 @@ else
     @if (_deletion?.Requested == true)
     {
       <p class="sg-panel-body">
-        @L.Markup("Your account is scheduled for deletion on {0}. Until then you can change your mind and everything comes back. After that date your name, email, mobile and password are destroyed permanently.", LocalizedMarkup.Tag("strong", _deletion.PurgeAfter?.ToString("d MMMM yyyy", CultureInfo.CurrentCulture)))
+        @L.Markup("Your account is scheduled for deletion on {0}. Until then you can change your mind and everything comes back. After that date your name, email, mobile and password are destroyed permanently.", LocalizedMarkup.Tag("strong", (_deletion.PurgeAfter is DateTimeOffset purge ? IndiaTime.LongDate(purge) : null)))
         @if (_deletion.OnHold)
         {
           <span> @L["A Sangam operator has placed a hold on this account, so the deletion will not run until the hold is cleared."]</span>

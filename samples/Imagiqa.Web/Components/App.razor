@@ -1,3 +1,4 @@
+@inject IConfiguration Configuration
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,6 +9,11 @@
   <HeadOutlet @rendermode="InteractiveServer" />
 </head>
 <body>
+  @if (Configuration.GetValue<bool>("Imagiqa:Demo"))
+  {
+    @* D-I: demo.sangamid.in is a demonstration; nobody may enter a real patient there. *@
+    <div class="iq-demo" role="note">Demo, not for real patient data. Every patient here is made up; anything entered may be erased.</div>
+  }
   @* Interactive: without this every page is static HTML and no @onclick ever runs. *@
   <Routes @rendermode="InteractiveServer" />
   <script src="_framework/blazor.web.js"></script>

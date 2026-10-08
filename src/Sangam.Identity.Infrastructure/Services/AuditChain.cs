@@ -85,7 +85,8 @@ public static class AuditChain
     /// <summary>
     /// Re-computes the chain in id order from the oldest remaining chained event. Returns the id of
     /// the first event whose hash does not match, or <see langword="null"/> when the chain is intact.
-    /// Events written before the chain existed (no hash) are skipped.
+    /// Events written before the chain existed (no hash) are skipped. The oldest remaining event must
+    /// either start the chain or continue from the last hash an <c>audit.archive</c> event recorded (D-A).
     /// </summary>
     /// <param name="db">Database context.</param>
     /// <param name="cancellationToken">Cancellation.</param>
@@ -94,12 +95,22 @@ public static class AuditChain
         ArgumentNullException.ThrowIfNull(db);
         string? previous = null;
         bool first = true;
+        List<string> archives = await db.AuditEvents.AsNoTracking()
+            .Where(x => x.Action == Domain.AuditActions.AuditArchive)
+            .Select(x => x.Metadata)
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
         await foreach (AuditEvent e in db.AuditEvents.AsNoTracking().Where(x => x.Hash != null).OrderBy(x => x.Id).AsAsyncEnumerable().WithCancellation(cancellationToken).ConfigureAwait(false))
         {
             if (first)
             {
-                // The oldest remaining event is the trusted start: retention removes the head of
-                // the chain, and records what it removed in an audit.retention.purge event.
+                // The oldest remaining event starts the walk. D-A's archive removes the head of the chain, and records
+                // in an audit.archive event the hash it ends with: a head that does not continue from such a record was
+                // cut off some other way.
+                if (e.PrevHash is not null && !ArchivedUpTo(archives, e.PrevHash))
+                {
+                    return e.Id;
+                }
+
                 previous = e.PrevHash;
                 first = false;
             }
@@ -113,5 +124,13 @@ public static class AuditChain
         }
 
         return null;
+    }
+
+    private static bool ArchivedUpTo(List<string> archives, string hash)
+    {
+        // The archive's own record says where the chain it removed ended.
+        string spaced = "\"last_hash\": \"" + hash + "\"";
+        string compact = "\"last_hash\":\"" + hash + "\"";
+        return archives.Any(m => m.Contains(spaced, StringComparison.Ordinal) || m.Contains(compact, StringComparison.Ordinal));
     }
 }

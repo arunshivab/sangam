@@ -1,11 +1,13 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
 using System.Reflection;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Npgsql;
+using Sangam.Identity.Application.Security;
 using Sangam.Identity.Infrastructure.Persistence;
 
 namespace Sangam.Identity.Infrastructure.Monitoring;
@@ -13,7 +15,8 @@ namespace Sangam.Identity.Infrastructure.Monitoring;
 /// <summary>
 /// Listens to Sangam's own meters (every meter whose name starts with <c>Sangam.</c>) with .NET's built-in
 /// <see cref="MeterListener"/>, adds the measurements up a minute at a time, and writes them to <c>metric_points</c>
-/// (D-H). Several hosts write side by side; each row is keyed by its host. No exporter, no third party.
+/// (D-H). Several hosts write side by side; each row is keyed by its host. No exporter, no third party. Each flush
+/// also reports what only this host can see — its breached-password list (V-10) — to <c>host_reports</c>.
 /// </summary>
 public sealed partial class MetricsRecorder : BackgroundService
 {
@@ -21,6 +24,7 @@ public sealed partial class MetricsRecorder : BackgroundService
     private readonly IDbContextFactory<SangamDbContext> _contexts;
     private readonly ILogger<MetricsRecorder> _logger;
     private readonly MeterListener _listener = new();
+    private readonly IBreachListStatus? _breaches;
     private readonly TimeSpan _interval;
     private readonly bool _enabled;
 
@@ -29,8 +33,10 @@ public sealed partial class MetricsRecorder : BackgroundService
     /// <param name="probe">The host's gauges (created here so they exist before the first collection).</param>
     /// <param name="configuration">Configuration (<c>Sangam:Monitoring</c>).</param>
     /// <param name="logger">Logger.</param>
-    public MetricsRecorder(IDbContextFactory<SangamDbContext> contexts, HostProbe probe, IConfiguration configuration, ILogger<MetricsRecorder> logger)
+    /// <param name="breaches">This host's breached-password list, reported every flush (V-10).</param>
+    public MetricsRecorder(IDbContextFactory<SangamDbContext> contexts, HostProbe probe, IConfiguration configuration, ILogger<MetricsRecorder> logger, IBreachListStatus? breaches = null)
     {
+        _breaches = breaches;
         ArgumentNullException.ThrowIfNull(probe);
         ArgumentNullException.ThrowIfNull(configuration);
         _contexts = contexts ?? throw new ArgumentNullException(nameof(contexts));
@@ -68,10 +74,14 @@ public sealed partial class MetricsRecorder : BackgroundService
         return name.Length > 40 ? name[..40] : name;
     }
 
+    /// <summary>The <c>host_reports</c> subject of the breached-password list.</summary>
+    public const string BreachListSubject = "breach_list";
+
     /// <summary>Takes the gauges' readings and writes the minute so far; returns how many rows were written.</summary>
     /// <param name="cancellationToken">Cancellation token.</param>
     public async Task<int> FlushAsync(CancellationToken cancellationToken = default)
     {
+        await ReportAsync(cancellationToken).ConfigureAwait(false);
         _listener.RecordObservableInstruments();
         DateTimeOffset now = DateTimeOffset.UtcNow;
         DateTimeOffset minute = new(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, TimeSpan.Zero);
@@ -126,6 +136,32 @@ public sealed partial class MetricsRecorder : BackgroundService
         }
 
         return taken.Count;
+    }
+
+    /// <summary>Writes this host's reports (V-10): the breached-password list as this host sees it.</summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task ReportAsync(CancellationToken cancellationToken = default)
+    {
+        if (_breaches is null)
+        {
+            return;
+        }
+
+        string payload = JsonSerializer.Serialize(_breaches.Status);
+        SangamDbContext db = await _contexts.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        await using (db.ConfigureAwait(false))
+        {
+            await db.Database.ExecuteSqlRawAsync(
+                "INSERT INTO host_reports (host, subject, payload, reported_at) VALUES (@host, @subject, @payload, @at) " +
+                "ON CONFLICT (host, subject) DO UPDATE SET payload = excluded.payload, reported_at = excluded.reported_at",
+                [
+                    new NpgsqlParameter("host", HostName),
+                    new NpgsqlParameter("subject", BreachListSubject),
+                    new NpgsqlParameter("payload", payload),
+                    new NpgsqlParameter("at", DateTimeOffset.UtcNow),
+                ],
+                cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <inheritdoc />

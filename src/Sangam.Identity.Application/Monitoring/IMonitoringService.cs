@@ -70,6 +70,29 @@ public sealed record AnjalStatus(bool Configured, DateTimeOffset? LastChecked, b
 /// <param name="ResolvedAt">When it cleared.</param>
 public sealed record AlertRow(string Key, string Summary, DateTimeOffset OpenedAt, DateTimeOffset? ResolvedAt);
 
+/// <summary>The grievance log at a glance (D-D).</summary>
+/// <param name="Open">Open grievances.</param>
+/// <param name="AcknowledgeOverdue">Not acknowledged within two working days.</param>
+/// <param name="ResolveOverdue">Not resolved within thirty days.</param>
+public sealed record GrievanceCounts(int Open, int AcknowledgeOverdue, int ResolveOverdue);
+
+/// <summary>The audit archive's state (D-A), as the archiving host last reported it.</summary>
+/// <param name="Enabled">Whether archiving is set up.</param>
+/// <param name="LastRun">When it last ran.</param>
+/// <param name="Files">Archive files on disk.</param>
+/// <param name="Events">Events in them.</param>
+/// <param name="OldestArchived">The oldest archived event.</param>
+/// <param name="OldestLive">The oldest event still in the live table.</param>
+/// <param name="LiveDays">Days an event stays live.</param>
+/// <param name="PurgeYears">Years an archive is kept.</param>
+public sealed record AuditArchiveStatus(bool Enabled, DateTimeOffset LastRun, int Files, long Events, DateTimeOffset? OldestArchived, DateTimeOffset? OldestLive, int LiveDays, int PurgeYears);
+
+/// <summary>The breached-password list as one host reported it (V-10).</summary>
+/// <param name="Host">The host.</param>
+/// <param name="Status">Its list's state.</param>
+/// <param name="ReportedAt">When it reported.</param>
+public sealed record HostBreachList(string Host, BreachListStatus Status, DateTimeOffset ReportedAt);
+
 /// <summary>Everything on the monitoring page (D-H).</summary>
 /// <param name="At">When it was taken.</param>
 /// <param name="Hosts">The hosts.</param>
@@ -97,7 +120,23 @@ public sealed record MonitoringSnapshot(
     JobStatus RestoreDrill,
     BreachListStatus BreachList,
     AnjalStatus Anjal,
-    IReadOnlyList<AlertRow> Alerts);
+    IReadOnlyList<AlertRow> Alerts)
+{
+    /// <summary>
+    /// Every host's report of its breached-password list (V-10); <see cref="BreachList"/> is the identity server's,
+    /// the one that checks passwords.
+    /// </summary>
+    public IReadOnlyList<HostBreachList> BreachListReports { get; init; } = [];
+
+    /// <summary>The host whose report <see cref="BreachList"/> is, and when it reported; <see langword="null"/> when no host has reported.</summary>
+    public HostBreachList? BreachListSource { get; init; }
+
+    /// <summary>The audit archive (D-A); <see langword="null"/> when it has never run.</summary>
+    public AuditArchiveStatus? AuditArchive { get; init; }
+
+    /// <summary>The grievance log's open and overdue counts (D-D).</summary>
+    public GrievanceCounts Grievances { get; init; } = new(0, 0, 0);
+}
 
 /// <summary>Sangam's own monitoring (D-H): no third party; the numbers live in Sangam's database.</summary>
 public interface IMonitoringService

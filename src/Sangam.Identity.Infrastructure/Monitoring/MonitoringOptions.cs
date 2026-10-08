@@ -29,6 +29,13 @@ public sealed class MonitoringOptions
     /// <summary>How long metric rows are kept.</summary>
     public int RetentionDays { get; set; } = 90;
 
+    /// <summary>
+    /// The host that checks passwords — the identity server (V-10). The monitoring page shows the breached-password
+    /// list as this host reports it; a host whose name starts with this value matches (<c>identity</c>,
+    /// <c>identity.server</c>).
+    /// </summary>
+    public string PasswordHost { get; set; } = "identity";
+
     /// <summary>The thresholds.</summary>
     public AlertThresholds Alerts { get; set; } = new();
 

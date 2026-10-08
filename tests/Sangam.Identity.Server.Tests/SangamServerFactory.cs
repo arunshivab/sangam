@@ -59,7 +59,45 @@ public sealed class SangamServerFactory : WebApplicationFactory<Program>
         builder.UseSetting("Sangam:PasswordHashing:Iterations", "2");
         builder.UseSetting("Logging:LogLevel:Microsoft.EntityFrameworkCore", "Warning");
         builder.UseSetting("Logging:LogLevel:OpenIddict", "Warning");
+        // PR-21: a spent refresh token reused at once is theft, here; no leeway to wait out in a test.
+        builder.UseSetting("Sangam:Tokens:RefreshReuseLeewaySeconds", "0");
+        if (HasDatabase)
+        {
+            // PR-21: registered from settings like a deployment's own (R4): a native app, a device app, an application
+            // allowed to exchange tokens for imagiQa, and one that must use pushed authorization requests.
+            builder.UseSetting("Sangam:Clients:native:ClientId", NativeClientId);
+            builder.UseSetting("Sangam:Clients:native:Kind", "native");
+            builder.UseSetting("Sangam:Clients:native:RedirectUris", NativeRedirectUri + ",http://127.0.0.1/callback,https://app.example.in/native/callback");
+            builder.UseSetting("Sangam:Clients:device:ClientId", DeviceClientId);
+            builder.UseSetting("Sangam:Clients:device:Kind", "device");
+            builder.UseSetting("Sangam:Clients:exchanger:ClientId", ExchangerClientId);
+            builder.UseSetting("Sangam:Clients:exchanger:BaseUrl", "https://exchanger.example.in/");
+            builder.UseSetting("Sangam:Clients:exchanger:Secret", ExchangerSecret);
+            builder.UseSetting("Sangam:Clients:exchanger:ExchangeAudiences", "imagiqa");
+            builder.UseSetting("Sangam:Clients:paronly:ClientId", ParOnlyClientId);
+            builder.UseSetting("Sangam:Clients:paronly:BaseUrl", "https://par.example.in/");
+            builder.UseSetting("Sangam:Clients:paronly:Secret", ExchangerSecret);
+            builder.UseSetting("Sangam:Clients:paronly:RequirePushedAuthorization", "true");
+        }
     }
+
+    /// <summary>PR-21 test native application.</summary>
+    public const string NativeClientId = "test-native";
+
+    /// <summary>Its private-use redirect address.</summary>
+    public const string NativeRedirectUri = "in.sangamid.test:/callback";
+
+    /// <summary>PR-21 test device application.</summary>
+    public const string DeviceClientId = "test-device";
+
+    /// <summary>PR-21 test application that may exchange tokens for imagiQa.</summary>
+    public const string ExchangerClientId = "test-exchanger";
+
+    /// <summary>Its secret (and the PAR-only application's).</summary>
+    public const string ExchangerSecret = "exchanger-secret-0123456789abcdefghijklmn";
+
+    /// <summary>PR-21 test application that must use pushed authorization requests.</summary>
+    public const string ParOnlyClientId = "test-par-only";
 }
 
 /// <summary>Serialises the server test classes on one shared host.</summary>

@@ -139,12 +139,12 @@ public static class WebHosting
             return configuration;
         }
 
-        // Certificates (.pfx) live alongside the secrets but are files, not settings.
+        // Certificates (.pfx, and D-A's public .crt) live alongside the secrets but are files, not settings.
         return configuration.AddKeyPerFile(source =>
         {
             source.FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(directory);
             source.Optional = true;
-            source.IgnoreCondition = name => name.StartsWith("ignore.", StringComparison.Ordinal) || name.EndsWith(".pfx", StringComparison.OrdinalIgnoreCase);
+            source.IgnoreCondition = name => name.StartsWith("ignore.", StringComparison.Ordinal) || name.EndsWith(".pfx", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".crt", StringComparison.OrdinalIgnoreCase);
         });
     }
 

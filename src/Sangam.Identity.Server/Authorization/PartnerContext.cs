@@ -41,12 +41,15 @@ public static class PartnerContext
         return query.TryGetValue(OrganisationParameter, out Microsoft.Extensions.Primitives.StringValues value) && Guid.TryParse(value.ToString(), out Guid id) ? id : null;
     }
 
-    /// <summary>Extracts <c>client_id</c> from a local return URL that points at the authorization endpoint.</summary>
+    /// <summary>
+    /// Extracts <c>client_id</c> from a local return URL that points at the authorization endpoint, or at the SAML
+    /// continuation (<c>/saml/continue</c>, PR-22), so a SAML sign-in gets the same partner chip, policy and consent.
+    /// </summary>
     /// <param name="returnUrl">Local return URL.</param>
     /// <returns>The client id, or <see langword="null"/>.</returns>
     public static string? ClientIdFromReturnUrl(string? returnUrl)
     {
-        if (string.IsNullOrEmpty(returnUrl) || !returnUrl.StartsWith("/connect/authorize", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrEmpty(returnUrl) || !(returnUrl.StartsWith("/connect/authorize", StringComparison.OrdinalIgnoreCase) || returnUrl.StartsWith("/saml/continue", StringComparison.OrdinalIgnoreCase)))
         {
             return null;
         }

@@ -6,7 +6,9 @@
 
 <section class="sg-card sg-card--wide">
   <h1 class="sg-card-title">Development outbox</h1>
-  <p class="sg-card-body">The last @Sangam.Identity.Infrastructure.Services.InMemoryEmailOutbox.Capacity emails this server would have sent. Development only; nothing here leaves the machine.</p>
+  <p class="sg-card-body">@(Model.Shared
+      ? "The last 50 e-mails and texts any Sangam host on this machine would have sent — the identity server, the portal and both consoles. Development only; nothing here leaves the machine."
+      : "The last 50 e-mails and texts this server would have sent. Development only; nothing here leaves the machine.")</p>
   @if (Model.TextMessages.Count > 0)
   {
     <h2 class="sg-card-title">Text messages</h2>
@@ -14,10 +16,10 @@
     {
       <article class="sg-mail">
         <div class="sg-mail-head">
-          <span class="sg-mono">@t.SentAt.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) UTC</span>
-          <span>to <span class="sg-mono">@t.Message.ToE164</span> from <span class="sg-mono">@t.Message.SenderHeader</span> · template <span class="sg-mono">@t.Message.TemplateKey</span></span>
+          <span class="sg-mono">@Sangam.Shared.IndiaTime.Format(t.SentAt, "HH:mm:ss") IST</span>
+          <span>to <span class="sg-mono">@t.Recipient</span> · <span class="sg-mono">@t.Subject</span>@(t.Host is null ? "" : " · from " + t.Host)</span>
         </div>
-        <pre class="sg-mail-body">@t.Message.Text</pre>
+        <pre class="sg-mail-body">@t.Body</pre>
       </article>
     }
     <h2 class="sg-card-title">Emails</h2>
@@ -30,11 +32,11 @@
   {
     <article class="sg-mail">
       <div class="sg-mail-head">
-        <span class="sg-mono">@m.SentAt.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) UTC</span>
-        <span>to <span class="sg-mono">@m.Message.ToEmail</span></span>
+        <span class="sg-mono">@Sangam.Shared.IndiaTime.Format(m.SentAt, "HH:mm:ss") IST</span>
+        <span>to <span class="sg-mono">@m.Recipient</span>@(m.Host is null ? "" : " · from " + m.Host)</span>
       </div>
-      <h2 class="sg-mail-subject">@m.Message.Subject</h2>
-      <pre class="sg-mail-body">@m.Message.TextBody</pre>
+      <h2 class="sg-mail-subject">@m.Subject</h2>
+      <pre class="sg-mail-body">@m.Body</pre>
     </article>
   }
 </section>

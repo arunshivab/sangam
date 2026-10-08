@@ -117,6 +117,8 @@ public partial class TemplateEditor : ComponentBase
         MessageTemplateKinds.SmsOperatorAlert => L["Text message: alert to the platform owner"],
         MessageTemplateKinds.TwoStepResetRequested => L["E-mail: support was asked to reset two-step sign-in (with the cancel link)"],
         MessageTemplateKinds.OperatorAlert => L["E-mail: alert to the platform owner"],
+        MessageTemplateKinds.GrievanceAcknowledgement => L["E-mail: acknowledgement of a grievance"],
+        MessageTemplateKinds.GrievanceResolution => L["E-mail: the answer to a grievance"],
         _ => L["Text message: confirm an action"],
     };
 

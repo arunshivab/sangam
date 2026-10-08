@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Sangam.Identity.Application.Abstractions;
+using Sangam.Identity.Infrastructure.Services;
 
 namespace Sangam.Identity.Infrastructure.Sms;
 
@@ -16,12 +17,15 @@ public sealed partial class InMemorySmsOutbox : ISmsSender
     private readonly Lock _gate = new();
     private readonly LinkedList<SentSms> _messages = new();
     private readonly ILogger<InMemorySmsOutbox> _logger;
+    private readonly DevOutboxStore? _shared;
 
     /// <summary>Initialises the outbox.</summary>
     /// <param name="logger">Logger.</param>
-    public InMemorySmsOutbox(ILogger<InMemorySmsOutbox> logger)
+    /// <param name="shared">The outbox all hosts share in Development (V-11), when switched on.</param>
+    public InMemorySmsOutbox(ILogger<InMemorySmsOutbox> logger, DevOutboxStore? shared = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _shared = shared;
     }
 
     /// <inheritdoc />
@@ -43,12 +47,12 @@ public sealed partial class InMemorySmsOutbox : ISmsSender
     }
 
     /// <inheritdoc />
-    public Task<SmsSendResult> SendAsync(OutgoingSms message, CancellationToken cancellationToken = default)
+    public async Task<SmsSendResult> SendAsync(OutgoingSms message, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(message);
         if (Refuse)
         {
-            return Task.FromResult(new SmsSendResult(false, Name, Error: "refused by the test outbox"));
+            return new SmsSendResult(false, Name, Error: "refused by the test outbox");
         }
 
         string id = "outbox-" + Guid.NewGuid().ToString("N");
@@ -67,7 +71,12 @@ public sealed partial class InMemorySmsOutbox : ISmsSender
             LogSms(message.TemplateKey, masked);
         }
 
-        return Task.FromResult(new SmsSendResult(true, Name, id));
+        if (_shared is not null)
+        {
+            await _shared.RecordAsync("sms", message.ToE164, message.TemplateKey + " · " + message.SenderHeader, message.Text, cancellationToken).ConfigureAwait(false);
+        }
+
+        return new SmsSendResult(true, Name, id);
     }
 
     /// <summary>The newest message to <paramref name="toE164"/>, or <see langword="null"/>.</summary>

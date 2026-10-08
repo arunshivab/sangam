@@ -214,6 +214,7 @@ public sealed partial class DevelopmentSeeder
         string[] permissions =
         [
             Permissions.Endpoints.Authorization,
+            Permissions.Endpoints.PushedAuthorization,
             Permissions.Endpoints.Token,
             Permissions.Endpoints.EndSession,
             Permissions.Endpoints.Introspection,
@@ -331,6 +332,7 @@ public sealed partial class DevelopmentSeeder
         string[] permissions =
         [
             Permissions.Endpoints.Authorization,
+            Permissions.Endpoints.PushedAuthorization,
             Permissions.Endpoints.Token,
             Permissions.Endpoints.EndSession,
             Permissions.Endpoints.Introspection,
@@ -478,6 +480,7 @@ public sealed partial class DevelopmentSeeder
         foreach (string permission in new[]
         {
             Permissions.Endpoints.Authorization,
+            Permissions.Endpoints.PushedAuthorization,
             Permissions.Endpoints.Token,
             Permissions.Endpoints.EndSession,
             Permissions.Endpoints.Introspection,
@@ -569,6 +572,7 @@ public sealed partial class DevelopmentSeeder
         foreach (string permission in new[]
         {
             Permissions.Endpoints.Authorization,
+            Permissions.Endpoints.PushedAuthorization,
             Permissions.Endpoints.Token,
             Permissions.Endpoints.EndSession,
             Permissions.Endpoints.Introspection,

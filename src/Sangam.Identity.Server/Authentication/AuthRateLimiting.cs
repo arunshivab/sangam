@@ -21,6 +21,9 @@ public static class AuthRateLimiting
     /// <summary>Policy for <c>/connect/userinfo</c> (OI-035).</summary>
     public const string UserInfoPolicy = "userinfo";
 
+    /// <summary>The protocol endpoints OpenIddict answers before routing (PR-20, PR-21).</summary>
+    private static readonly HashSet<string> ProtocolPaths = new(StringComparer.OrdinalIgnoreCase) { "/connect/device", "/connect/par", "/connect/introspect", "/connect/revoke" };
+
     /// <summary>Policy for the management API, <c>/api/v1</c> (OI-035).</summary>
     public const string ApiPolicy = "api";
 
@@ -67,6 +70,12 @@ public static class AuthRateLimiting
             o.AddPolicy(TokenPolicy, ctx => PerIp(ctx, enabled, tokenPerMinute));
             o.AddPolicy(UserInfoPolicy, ctx => PerIp(ctx, enabled, userInfoPerMinute));
             o.AddPolicy(ApiPolicy, ctx => PerIp(ctx, enabled, apiPerMinute));
+
+            // OpenIddict answers these itself, before routing, so no endpoint policy reaches them: device codes,
+            // pushed requests, introspection and revocation are limited here, per address, like the token endpoint.
+            o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx => ProtocolPaths.Contains(ctx.Request.Path.Value ?? string.Empty)
+                ? PerIp(ctx, enabled, tokenPerMinute)
+                : RateLimitPartition.GetNoLimiter("none"));
         });
 
         return services;

@@ -158,6 +158,20 @@ else
             {
               <span class="sg-muted">@(s.BreachList.Problem is string problem ? L[problem] : L["not loaded"])</span>
             }</dd>
+        <dt>@L["Reported by"]</dt>
+        <dd>@if (s.BreachListSource is HostBreachList source)
+            {
+              <span class="sg-mono">@source.Host</span><span class="sg-muted"> · @When(source.ReportedAt)</span>
+            }
+            else
+            {
+              <span class="sg-muted">@L["the identity server has not reported yet; shown from this console's own settings"]</span>
+            }</dd>
+        @foreach (HostBreachList other in s.BreachListReports.Where(r => s.BreachListSource is not null && r.Host != s.BreachListSource.Host && (r.Status.Enabled != s.BreachList.Enabled || r.Status.Loaded != s.BreachList.Loaded)))
+        {
+          <dt class="sg-mono">@other.Host</dt>
+          <dd class="sg-warn-text">@L["sees it differently: {0}", other.Status.Enabled && other.Status.Loaded ? L["on"] : other.Status.Enabled ? L["switched on, but off until the list is loaded"] : L["off"]]</dd>
+        }
       </dl>
     </section>
   </div>
@@ -195,7 +209,7 @@ else
           <dt class="sg-mono">@tls.Host</dt>
           <dd>@if (tls.NotAfter is DateTimeOffset notAfter)
               {
-                @L["expires {0}", notAfter.ToString("d MMM yyyy", CultureInfo.CurrentCulture)]
+                @L["expires {0}", IndiaTime.Date(notAfter)]
               }
               else
               {
@@ -205,6 +219,36 @@ else
       </dl>
     </section>
   </div>
+
+  <section class="sg-panel" data-panel="grievances">
+    <h2 class="sg-h2">@L["Grievances"]</h2>
+    <dl class="sg-facts">
+      <dt>@L["Open"]</dt><dd>@s.Grievances.Open</dd>
+      <dt>@L["Overdue"]</dt>
+      <dd class="@(s.Grievances.AcknowledgeOverdue + s.Grievances.ResolveOverdue > 0 ? "sg-warn-text" : null)">@L["{0} not acknowledged in time, {1} not answered in time", s.Grievances.AcknowledgeOverdue, s.Grievances.ResolveOverdue] · <a href="/grievances">@L["the grievance log"]</a></dd>
+    </dl>
+  </section>
+
+  <section class="sg-panel" data-panel="audit-archive">
+    <h2 class="sg-h2">@L["Audit archive"]</h2>
+    <dl class="sg-facts">
+      @if (s.AuditArchive is AuditArchiveStatus archive)
+      {
+        <dt>@L["Last run"]</dt><dd>@When(archive.LastRun)</dd>
+        <dt>@L["Archive"]</dt>
+        <dd>@L["{0} files, {1} events", archive.Files, archive.Events.ToString("N0", CultureInfo.CurrentCulture)]@if (archive.OldestArchived is DateTimeOffset oldestArchived)
+            {
+              <span class="sg-muted"> · @L["oldest {0}", IndiaTime.Date(oldestArchived)]</span>
+            }</dd>
+        <dt>@L["Oldest live event"]</dt><dd>@(archive.OldestLive is DateTimeOffset oldestLive ? IndiaTime.Date(oldestLive) : "—")</dd>
+        <dt>@L["Rule"]</dt><dd class="sg-muted">@L["{0} days live, then encrypted with IP addresses shortened and browser details removed; deleted after {1} years", archive.LiveDays, archive.PurgeYears]</dd>
+      }
+      else
+      {
+        <dt>@L["State"]</dt><dd class="sg-muted">@L["not set up: every audit event stays live until the archive is configured"]</dd>
+      }
+    </dl>
+  </section>
 
   <section class="sg-panel" data-panel="backups">
     <h2 class="sg-h2">@L["Backups"]</h2>
@@ -216,8 +260,6 @@ else
 }
 
 @code {
-    private static readonly TimeSpan India = TimeSpan.FromHours(5.5);
-
     [CascadingParameter]
     public ConsoleContext? Context { get; set; }
 
@@ -240,9 +282,9 @@ else
         _busy = false;
     }
 
-    private static string When(DateTimeOffset at) => at.ToOffset(India).ToString("d MMM, HH:mm", CultureInfo.CurrentCulture);
+    private static string When(DateTimeOffset at) => IndiaTime.Compact(at);
 
-    private static string Hour(DateTimeOffset at) => at.ToOffset(India).ToString("d MMM HH:00", CultureInfo.CurrentCulture);
+    private static string Hour(DateTimeOffset at) => IndiaTime.Format(at, "d MMM HH:00");
 
     private static string Width(long value, long max) => max <= 0 ? "0%" : (100.0 * value / max).ToString("F0", CultureInfo.InvariantCulture) + "%";
 

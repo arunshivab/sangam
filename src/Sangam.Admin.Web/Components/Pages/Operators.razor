@@ -28,7 +28,7 @@ else
             <td><span class="sg-name">@row.DisplayName</span><span class="sg-sub sg-mono">@row.Email</span></td>
             <td><span class="sg-rank sg-rank--@row.Role.ToString().ToLowerInvariant()">@L[PlatformRanks.Label(row.Role)]</span></td>
             <td>@(row.MfaEnrolled ? "on" : Blocked)</td>
-            <td class="sg-mono">@row.GrantedAt.ToString("d MMM yyyy", CultureInfo.CurrentCulture)</td>
+            <td class="sg-mono">@IndiaTime.Date(row.GrantedAt)</td>
             <td>@(row.GrantedByName ?? L["bootstrap"])</td>
             <td>
               @if (row.UserId != Context.UserId)
