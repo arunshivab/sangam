@@ -4,6 +4,51 @@ All notable changes to Sangam are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [1.0.0-rc.2] - second release candidate
+
+Sangam 1.0.0-rc.2 adds the checks that keep running on their own, and fixes found while testing rc.1. Version 1.0.0
+is still kept for the day Sangam goes live.
+
+### Checks (CI and nightly)
+- **CodeQL** (`.github/workflows/codeql.yml`) analyses C#, JavaScript/TypeScript, Python, Java and the workflows
+  themselves on every pull request, on main and weekly. The ruleset's "Require code scanning results" rule turns a
+  high or critical security alert into a failed pull request.
+- **`migrations`** (CI): fails when an entity changes without its migration, for Sangam's database and for the
+  imagiQa sample's (`dotnet ef migrations has-pending-model-changes`; no database needed).
+- **Nightly** (`.github/workflows/nightly.yml`, 02:30 IST and on demand), with the four hosts started on a fresh
+  database (`tools/ci/start-hosts.sh`):
+  - `accessibility`: the R7 walk, now in the repository (`tools/accessibility/axe_walk.py`). axe-core on every
+    screen in Hindi, Malayalam and English. It fails on any WCAG 2.2 AA violation, Content-Security-Policy
+    violation or broken live connection. It now also adds an organisation in the partner console and selects it.
+  - `zap-baseline`: the OWASP ZAP baseline scan of each host (`tools/security/zap-baseline.sh`). It fails on any
+    FAIL; warnings are reported.
+- **Dependabot** (`.github/dependabot.yml`): weekly, grouped update pull requests for NuGet, npm, pip, Maven,
+  GitHub Actions and Docker. Each runs the full CI.
+- ASVS V1.14.3 and V14.2.1 move from Partly to Met (154 met, 77 partly; `docs/security/asvs-l2.md`).
+
+### Fixes
+- **"Email me a code" on an account that signs in with a password.** No code is sent, as before, and the screen
+  still looks the same for every address, so it never shows which addresses have accounts. Now the owner is told
+  by e-mail: "Sign in to Sangam with your password", with the way to reset it. At most 3 a day per account, and
+  every request is audited (`user.otp.password_account`). Both code screens say this may happen. Message text in
+  English, Hindi and Malayalam (`password_account_code_notice`, editable by the platform).
+- **Partner console, organisations:** choosing an organisation ended the browser's live connection from R3 until
+  rc.1, because its two editors shared one key. Fixed in rc.1; rc.2 adds the walk step that would have caught it.
+  The chosen organisation is now marked by a bar, a bold name and a tick, not only a tint (and `aria-pressed`).
+- **Connection lost:** the portal and both consoles now say when their live connection drops, and offer to try
+  again or reload (`ConnectionStatus` in Sangam.Web.Shared). Before, buttons silently stopped working. The same box
+  replaces Blazor's error message when a page fails.
+- **Monitoring on Windows:** the free-space gauge watched "/" by default, which is not a drive on Windows, so it
+  reported nothing there (and one test failed on Windows machines with PostgreSQL). It now watches the drive the
+  host runs from.
+- **Tests:** the admin, partner and portal web tests that share a database run one class at a time, so two hosts
+  never migrate a fresh database at once. This was the R7 CI failure. The security job installs the Java SDK
+  before resolving its dependencies (rc.1 fix, recorded here).
+
+### Versions
+- 1.0.0-rc.2 everywhere: .NET assemblies, npm and Maven 1.0.0-rc.2, PyPI 1.0.0rc2, Kubernetes images and the
+  migration job (`sangam-migrate-1-0-0-rc-2`).
+
 ## [1.0.0-rc.1] - R7 certification readiness (first release candidate)
 
 Sangam 1.0.0-rc.1 is the first release candidate for 1.0.0. Version 1.0.0 is kept for the day Sangam goes live,

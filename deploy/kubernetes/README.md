@@ -35,7 +35,7 @@ Prerequisites:
 - PostgreSQL as above.
 
 1. **Images.** Build and push them from the repository root, with the same commands as
-   `deploy/production/README.md`, tagged `1.0.0-rc.1`: `sangam/identity`, `sangam/portal`, `sangam/admin`,
+   `deploy/production/README.md`, tagged `1.0.0-rc.2`: `sangam/identity`, `sangam/portal`, `sangam/admin`,
    `sangam/partner`, `sangam/migrator`. Point the image names at your registry with a kustomize `images:` entry.
 2. **Secrets.** Each file of `deploy/production/secrets` becomes a key of a Kubernetes secret. The hosts read them
    from `/run/secrets`, exactly as on the VM:
@@ -53,12 +53,12 @@ Prerequisites:
    `overlays/kind/make-secrets.sh` shows every command.
 3. **Settings.** Copy `base/config.yaml` into your overlay and fill in the `SET-…` values, the same ones as
    `deploy/production/docker-compose.yml`. Set `Sangam__ForwardedHeaders__KnownNetworks` to your pod network.
-4. **Migrate, then roll out.** Apply the overlay. The `sangam-migrate-1-0-0-rc-1` job runs the migrations. Each release
+4. **Migrate, then roll out.** Apply the overlay. The `sangam-migrate-1-0-0-rc-2` job runs the migrations. Each release
    gets a new job name, so the job runs before the new hosts take traffic:
 
    ```sh
    kubectl apply -k overlays/<yours>
-   kubectl -n sangam wait --for=condition=complete job/sangam-migrate-1-0-0-rc-1 --timeout=10m
+   kubectl -n sangam wait --for=condition=complete job/sangam-migrate-1-0-0-rc-2 --timeout=10m
    kubectl -n sangam rollout status deploy/identity deploy/portal deploy/admin deploy/partner
    ```
 
@@ -94,12 +94,12 @@ The NetworkPolicy admits traffic only from the ingress controller's namespace.
 ## Prove it locally
 
 This needs Docker, kind and kubectl, plus Python with Playwright for the browser checks. The four host images and
-the migrator must be built as `sangam/*:1.0.0-rc.1`.
+the migrator must be built as `sangam/*:1.0.0-rc.2`.
 
 ```sh
 cd deploy/kubernetes/overlays/kind
 kind create cluster --config kind-cluster.yaml
-for i in identity portal admin partner migrator; do kind load docker-image sangam/$i:1.0.0-rc.1 --name sangam; done
+for i in identity portal admin partner migrator; do kind load docker-image sangam/$i:1.0.0-rc.2 --name sangam; done
 bash make-secrets.sh
 kubectl apply -k .
 python3 ha-proof.py      # sign-in, failover, rolling restart, node loss, one worker at a time

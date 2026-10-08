@@ -22,6 +22,10 @@
   {
     <h1 class="sg-card-title sg-card-title--centre">@L["Check your email"]</h1>
     <p class="sg-card-body sg-card-body--centre">@L["We sent a 6-digit sign-in code. It is valid for 10 minutes and can be used once."]</p>
+    @if (Model.Passwordless)
+    {
+      <p class="sg-card-body sg-card-body--centre sg-hint">@L["No code? If your account signs in with a password, we have emailed you a reminder instead."]</p>
+    }
   }
   <partial name="_Banner" model="@(("info", Model.Notice ?? string.Empty))" />
   <partial name="_Banner" model="@(("danger", Model.Error ?? string.Empty))" />

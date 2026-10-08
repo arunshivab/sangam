@@ -1,0 +1,20 @@
+@using Microsoft.Extensions.Localization
+@using Sangam.Web.Shared.Localization
+@inject IStringLocalizer<SangamText> L
+
+@* Static markup on purpose: it must still work after the live connection has gone. Blazor shows and hides these two
+   boxes itself (components-reconnect-modal and blazor-error-ui); connection.js wires their buttons. *@
+<link rel="stylesheet" href="_content/Sangam.Web.Shared/css/sangam-connection.css" />
+<div id="components-reconnect-modal" class="sg-conn" role="status" aria-live="polite">
+  <div class="sg-conn-box">
+    <p class="sg-conn-retrying">@L["The connection to Sangam was lost. Trying to reconnect…"]</p>
+    <p class="sg-conn-failed">@L["Could not reconnect."] <button type="button" class="sg-conn-btn" data-conn="retry">@L["Try again"]</button></p>
+    <p class="sg-conn-rejected">@L["This page has to be reloaded to carry on."] <button type="button" class="sg-conn-btn" data-conn="reload">@L["Reload the page"]</button></p>
+  </div>
+</div>
+<div id="blazor-error-ui" class="sg-conn" role="alert">
+  <div class="sg-conn-box">
+    <p>@L["Something went wrong on this page. Reload it to carry on."] <button type="button" class="sg-conn-btn" data-conn="reload">@L["Reload the page"]</button></p>
+  </div>
+</div>
+<script src="_content/Sangam.Web.Shared/js/connection.js"></script>

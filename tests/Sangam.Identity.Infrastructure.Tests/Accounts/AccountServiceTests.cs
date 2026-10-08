@@ -2,8 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Sangam.Identity.Application.Accounts;
+using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Entities;
 using Sangam.Identity.Domain.Enums;
+using Sangam.Identity.Infrastructure.Accounts;
 using Sangam.Identity.Infrastructure.Persistence;
 using Sangam.Identity.Infrastructure.Services;
 using Sangam.Identity.Infrastructure.Tests.Postgres;
@@ -226,6 +228,44 @@ public sealed class AccountServiceTests : IAsyncLifetime
         SignInCheck forced = await accounts.BeginOtpSignInAsync(Rajesh.Email, SignInPolicy.OtpOnly);
         Assert.Equal(SignInStatus.RequiresOtp, forced.Status);
         Assert.Equal(SignInStatus.InvalidCredentials, (await accounts.BeginOtpSignInAsync("nobody@example.in", SignInPolicy.OtpOnly)).Status);
+    }
+
+    [PostgresFact]
+    public async Task ACodeAskedForAPasswordAccount_SendsAReminder_NotACode_AFewTimesADay()
+    {
+        using IServiceScope scope = _provider.CreateScope();
+        IAccountService accounts = scope.ServiceProvider.GetRequiredService<IAccountService>();
+        InMemoryEmailOutbox outbox = scope.ServiceProvider.GetRequiredService<InMemoryEmailOutbox>();
+        SangamDbContext db = scope.ServiceProvider.GetRequiredService<SangamDbContext>();
+        Guid userId = await RegisterVerifiedAsync(scope, Rajesh);
+        int before = outbox.Recent.Count;
+
+        // rc.2: the answer is the same as for an unknown address; the owner hears the rest by e-mail.
+        SignInCheck check = await accounts.BeginOtpSignInAsync(Rajesh.Email, null);
+        Assert.Equal(SignInStatus.InvalidCredentials, check.Status);
+        Assert.Null(check.User);
+        SentEmail reminder = outbox.LatestFor(Rajesh.Email)!;
+        Assert.Equal("Sign in to Sangam with your password", reminder.Message.Subject);
+        Assert.Contains("Forgot password?", reminder.Message.TextBody, StringComparison.Ordinal);
+        Assert.DoesNotMatch(@"\b\d{6}\b", reminder.Message.TextBody);
+
+        // Asked again and again: only a few reminders a day reach the mailbox, but every request is audited.
+        for (int i = 0; i < 4; i++)
+        {
+            await accounts.BeginOtpSignInAsync(Rajesh.Email, null);
+        }
+
+        Assert.Equal(before + AccountService.PasswordAccountRemindersPerDay, outbox.Recent.Count);
+        List<string> audited = await db.AuditEvents
+            .Where(e => e.Action == AuditActions.UserOtpPasswordAccount && e.TargetId == userId)
+            .Select(e => e.Metadata).ToListAsync();
+        Assert.Equal(5, audited.Count);
+        Assert.Equal(AccountService.PasswordAccountRemindersPerDay, audited.Count(m => m.Contains("email", StringComparison.Ordinal)));
+
+        // An unknown address gets nothing, and nobody is written to.
+        int afterOwner = outbox.Recent.Count;
+        Assert.Equal(SignInStatus.InvalidCredentials, (await accounts.BeginOtpSignInAsync("nobody@example.in", null)).Status);
+        Assert.Equal(afterOwner, outbox.Recent.Count);
     }
 
     [PostgresFact]

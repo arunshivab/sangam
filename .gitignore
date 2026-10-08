@@ -50,3 +50,7 @@ deploy/production/secrets/*
 
 # R6: the SDK samples buffer audit events here when run from the repository.
 sangam-audit/
+
+# rc.2: Python caches from the tools/ scripts
+__pycache__/
+*.pyc

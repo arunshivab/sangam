@@ -114,8 +114,32 @@ jobs:
       - name: Verify formatting and style
         run: dotnet format Sangam.sln --verify-no-changes --no-restore
 
+  # rc.2: a change to an entity or its configuration must come with its migration. Fails when the model differs from
+  # the last migration's snapshot, for Sangam's database and for the imagiQa sample's. Needs no database.
+  migrations:
+    name: migrations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up .NET (from global.json)
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Restore (solution and the dotnet-ef tool from .config)
+        run: |
+          dotnet restore Sangam.sln
+          dotnet tool restore
+
+      - name: Sangam (Sangam.Identity.Infrastructure)
+        run: dotnet ef migrations has-pending-model-changes --project src/Sangam.Identity.Infrastructure --startup-project src/Sangam.Identity.Infrastructure
+
+      - name: imagiQa sample (Imagiqa.Web)
+        run: dotnet ef migrations has-pending-model-changes --project samples/Imagiqa.Web --startup-project samples/Imagiqa.Web
+
   # R6: the JavaScript/TypeScript, Python and Java SDKs, each running the shared conformance vectors
-  # (sdk/conformance/vectors.json) and its own tests. Not yet a required check: add "sdks" to the ruleset when ready.
+  # (sdk/conformance/vectors.json) and its own tests. A required check since R7.
   sdks:
     name: sdks
     runs-on: ubuntu-latest
@@ -151,7 +175,7 @@ jobs:
         run: mvn -B -ntp verify
 
   # R7 (SGM-503): known vulnerabilities in every dependency and in the container image. Fails on high or critical.
-  # Not yet a required check: add "security" to the ruleset once it has passed on main.
+  # A required check since R7.
   security:
     name: security
     runs-on: ubuntu-latest

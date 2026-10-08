@@ -109,6 +109,7 @@ public partial class TemplateEditor : ComponentBase
         MessageTemplateKinds.EmailChangedNotice => L["E-mail: notice that the address changed"],
         MessageTemplateKinds.TwoStepResetNotice => L["E-mail: notice that two-step sign-in was reset"],
         MessageTemplateKinds.RegistrationAttemptNotice => L["E-mail: someone tried to register with this address"],
+        MessageTemplateKinds.PasswordAccountCodeNotice => L["E-mail: someone asked for a sign-in code, but the account signs in with a password"],
         MessageTemplateKinds.MobileAttemptNotice => L["E-mail: someone tried to register with this mobile"],
         MessageTemplateKinds.SmsSignIn => L["Text message: sign-in code"],
         MessageTemplateKinds.SmsMobileVerification => L["Text message: verify a mobile"],

@@ -1,0 +1,134 @@
+name: Nightly
+
+# rc.2 (SGM-503): checks that need the four hosts running, too slow for every pull request. Each night (02:30 IST) on
+# main, and on demand from the Actions tab:
+#   accessibility  axe-core on every screen in Hindi, Malayalam and English, including choosing an organisation in the
+#                  partner console (tools/accessibility/axe_walk.py); fails on any WCAG 2.2 AA violation, any
+#                  Content-Security-Policy violation, or a broken live connection
+#   zap-baseline   the OWASP ZAP baseline scan of each host (tools/security/zap-baseline.sh); fails on any FAIL
+# A failure e-mails the repository owner (GitHub's notification for a failed scheduled run).
+
+on:
+  schedule:
+    - cron: "0 21 * * *"   # 21:00 UTC = 02:30 IST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  accessibility:
+    name: accessibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: sangam_identity
+          POSTGRES_PASSWORD: sangam_dev
+          POSTGRES_DB: sangam_identity
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sangam_identity -d sangam_identity"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up .NET (from global.json)
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Build
+        run: dotnet build Sangam.sln --configuration Release
+
+      - name: Start the four hosts (Development)
+        run: bash tools/ci/start-hosts.sh
+
+      - name: axe-core and a browser
+        run: |
+          npm install --prefix "$RUNNER_TEMP/axe" axe-core@4.14.0
+          pip install playwright==1.56.0
+          python -m playwright install --with-deps chromium
+
+      - name: Walk every screen in hi-IN, ml-IN and en-IN
+        env:
+          AXE_JS: ${{ runner.temp }}/axe/node_modules/axe-core/axe.min.js
+          SANGAM_DB: postgresql://sangam_identity:sangam_dev@localhost:5432/sangam_identity
+        run: python tools/accessibility/axe_walk.py artifacts/a11y
+
+      - name: Stop the hosts
+        if: always()
+        run: bash tools/ci/start-hosts.sh stop
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: accessibility
+          path: |
+            artifacts/a11y
+            artifacts/hosts/*.log
+
+  zap-baseline:
+    name: zap-baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: sangam_identity
+          POSTGRES_PASSWORD: sangam_dev
+          POSTGRES_DB: sangam_identity
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sangam_identity -d sangam_identity"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up .NET (from global.json)
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Build
+        run: dotnet build Sangam.sln --configuration Release
+
+      - name: Start the four hosts (Development)
+        run: bash tools/ci/start-hosts.sh
+
+      - name: ZAP baseline, one host at a time
+        run: bash tools/security/zap-baseline.sh artifacts/zap
+
+      - name: Stop the hosts
+        if: always()
+        run: bash tools/ci/start-hosts.sh stop
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: zap-baseline
+          path: |
+            artifacts/zap
+            artifacts/hosts/*.log

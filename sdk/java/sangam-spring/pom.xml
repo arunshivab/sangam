@@ -2,7 +2,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <parent><groupId>in.sangamid</groupId><artifactId>sangam-parent</artifactId><version>1.0.0-rc.1</version></parent>
+  <parent><groupId>in.sangamid</groupId><artifactId>sangam-parent</artifactId><version>1.0.0-rc.2</version></parent>
   <artifactId>sangam-spring</artifactId>
   <name>Sangam for Spring Security</name>
   <description>Sign in with Sangam for Spring Boot: authorization code with PKCE, step-up with @RequireStepUp, the signed-in SangamUser and the shared audit helper.</description>
