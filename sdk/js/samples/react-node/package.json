@@ -1,6 +1,6 @@
 {
   "name": "sangam-sample-react-node",
-  "version": "0.15.0",
+  "version": "1.0.0-rc.1",
   "private": true,
   "description": "Sample: React in the browser, Node (Express) behind it, signing in with Sangam. Sign-in, a permission check, step-up for a signature, and a shared audit event.",
   "license": "Apache-2.0",
@@ -9,6 +9,6 @@
     "build": "tsc -p tsconfig.json && esbuild web/app.tsx --bundle --minify --format=esm --outfile=public/app.js --jsx=automatic --log-level=warning",
     "start": "node dist/server/main.js"
   },
-  "dependencies": { "@sangam/node": "0.15.0", "@sangam/react": "0.15.0", "express": "^5.1.0", "react": "^19.1.0", "react-dom": "^19.1.0" },
+  "dependencies": { "@sangam/node": "1.0.0-rc.1", "@sangam/react": "1.0.0-rc.1", "express": "^5.1.0", "react": "^19.1.0", "react-dom": "^19.1.0" },
   "devDependencies": { "typescript": "^5.9.3", "esbuild": "^0.25.0", "@types/express": "^5.0.3", "@types/node": "^22.18.0", "@types/react": "^19.1.0", "@types/react-dom": "^19.1.0" }
 }

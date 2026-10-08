@@ -1,3 +1,5 @@
+using System.Reflection;
+
 namespace Sangam.Identity.Server.Tests;
 
 /// <summary>Boots the host in-process and checks the foundation page renders the brand.</summary>
@@ -24,6 +26,19 @@ public sealed class HostSmokeTests
         Assert.Contains("Foundation check", html, StringComparison.Ordinal);
         Assert.Contains("_content/Sangam.Web.Shared/css/sangam-tokens.css", html, StringComparison.Ordinal);
         Assert.Contains("_content/Sangam.Web.Shared/fonts/lipi/lipi.css", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Root_ShowsTheFullVersion_ReleaseCandidateIncluded()
+    {
+        using HttpClient client = _factory.CreateClient();
+        string expected = typeof(Pages.IndexModel).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion.Split('+')[0];
+
+        string html = await client.GetStringAsync(new Uri("/", UriKind.Relative));
+
+        // The release candidate suffix (for example 1.0.0-rc.1) is shown, not cut back to 1.0.0.
+        Assert.Contains("v" + expected + "</p>", html, StringComparison.Ordinal);
     }
 
     [Fact]

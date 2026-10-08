@@ -92,6 +92,9 @@ public sealed class SangamDbContext : IdentityUserContext<SangamUser, Guid>, IDa
     /// <summary>Monitoring: what each host reports about itself, such as the breached-password list (V-10).</summary>
     public DbSet<HostReport> HostReports => Set<HostReport>();
 
+    /// <summary>Wrong passwords for addresses with no account, shared by every replica (D-L, R7).</summary>
+    public DbSet<UnknownAddressAttempt> UnknownAddressAttempts => Set<UnknownAddressAttempt>();
+
     /// <summary>Development only: every host's captured e-mails and texts, for <c>/dev/outbox</c> (V-11).</summary>
     public DbSet<DevOutboxMessage> DevOutbox => Set<DevOutboxMessage>();
 

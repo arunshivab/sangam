@@ -1,0 +1,57 @@
+# The four public hosts. TLS terminates at the ingress controller (certificate in secret sangam-tls, for example
+# from cert-manager); HSTS and the other security headers come from the hosts themselves.
+# Written for Traefik (README, "Ingress", for others: the hosts need only HTTP routing, WebSockets for Blazor,
+# a cookie that pins a browser to one portal or console pod, and X-Forwarded-For/Proto).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sangam
+  namespace: sangam
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  tls:
+    - hosts: [id.sangamid.in, account.sangamid.in, admin.sangamid.in, partners.sangamid.in]
+      secretName: sangam-tls
+  rules:
+    - host: id.sangamid.in
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: identity
+                port:
+                  name: http
+    - host: account.sangamid.in
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: portal
+                port:
+                  name: http
+    - host: admin.sangamid.in
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: admin
+                port:
+                  name: http
+    - host: partners.sangamid.in
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: partner
+                port:
+                  name: http

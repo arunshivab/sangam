@@ -53,3 +53,14 @@ internal sealed class DevOutboxMessageConfiguration : IEntityTypeConfiguration<D
         b.Property(m => m.Subject).HasMaxLength(500);
     }
 }
+
+internal sealed class UnknownAddressAttemptConfiguration : IEntityTypeConfiguration<UnknownAddressAttempt>
+{
+    public void Configure(EntityTypeBuilder<UnknownAddressAttempt> b)
+    {
+        b.ToTable("unknown_address_attempts");
+        b.HasKey(a => a.Key);
+        b.Property(a => a.Key).HasMaxLength(64);
+        b.HasIndex(a => a.LastSeen).HasDatabaseName("idx_unknown_address_attempts_last_seen");
+    }
+}

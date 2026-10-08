@@ -62,7 +62,11 @@ public static class EmailSenderGuard
         return null;
     }
 
-    /// <summary>A single-label name such as <c>anjal</c> (a container on the same Docker network) or localhost.</summary>
+    /// <summary>
+    /// A single-label name such as <c>anjal</c> (a container on the same Docker network), localhost, or (R7, PR-33) a
+    /// Kubernetes service name inside the cluster (<c>anjal.messaging.svc</c>, <c>anjal.messaging.svc.cluster.local</c>).
+    /// </summary>
     private static bool IsPrivateName(string host)
-        => string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase) || !host.Contains('.', StringComparison.Ordinal);
+        => string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase) || !host.Contains('.', StringComparison.Ordinal)
+            || host.EndsWith(".svc", StringComparison.OrdinalIgnoreCase) || host.EndsWith(".svc.cluster.local", StringComparison.OrdinalIgnoreCase);
 }

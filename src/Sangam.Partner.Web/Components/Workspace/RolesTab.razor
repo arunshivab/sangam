@@ -8,30 +8,32 @@
 }
 else
 {
-  <table class="sg-table">
-    <thead><tr><th>@L["Role"]</th><th>@L["Code"]</th><th>@L["Permissions"]</th><th></th></tr></thead>
-    <tbody>
-      @foreach (RoleDto role in _roles)
-      {
-        <tr>
-          <td><span class="sg-name">@role.DisplayName</span>@if (role.Description is not null) { <span class="sg-sub">@role.Description</span> }</td>
-          <td class="sg-mono">@role.Code</td>
-          <td class="sg-mono">@(role.Permissions.Count == 0 ? "—" : string.Join(", ", role.Permissions))</td>
-          <td>
-            @if (role.RetiredAt is not null)
-            {
-              <span class="sg-pill sg-pill--disabled">@L["retired"]</span>
-            }
-            else if (!role.IsSystem)
-            {
-              <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => Edit(role)" disabled="@_busy">@L["Edit"]</button>
-              <button type="button" class="sg-btn sg-btn--warn" @onclick="() => _retiring = role" disabled="@_busy">@L["Retire"]</button>
-            }
-          </td>
-        </tr>
-      }
-    </tbody>
-  </table>
+  <div class="sg-table-wrap">
+    <table class="sg-table">
+      <thead><tr><th>@L["Role"]</th><th>@L["Code"]</th><th>@L["Permissions"]</th><th></th></tr></thead>
+      <tbody>
+        @foreach (RoleDto role in _roles)
+        {
+          <tr>
+            <td><span class="sg-name">@role.DisplayName</span>@if (role.Description is not null) { <span class="sg-sub">@role.Description</span> }</td>
+            <td class="sg-mono">@role.Code</td>
+            <td class="sg-mono">@(role.Permissions.Count == 0 ? "—" : string.Join(", ", role.Permissions))</td>
+            <td>
+              @if (role.RetiredAt is not null)
+              {
+                <span class="sg-pill sg-pill--disabled">@L["retired"]</span>
+              }
+              else if (!role.IsSystem)
+              {
+                <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => Edit(role)" disabled="@_busy">@L["Edit"]</button>
+                <button type="button" class="sg-btn sg-btn--warn" @onclick="() => _retiring = role" disabled="@_busy">@L["Retire"]</button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
 }
 
 @if (_retiring is not null)

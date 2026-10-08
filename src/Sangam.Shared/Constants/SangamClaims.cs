@@ -12,6 +12,13 @@ public static class SangamClaims
     /// </summary>
     public const string SessionId = "sid";
 
+    /// <summary>
+    /// R7 (ASVS V3.3.3): the person's security stamp when the sign-in was made, kept only in server-side tokens (codes,
+    /// refresh tokens). A refresh is refused once it has changed — a password reset, signing out everywhere, a new
+    /// e-mail or a change to two-step sign-in.
+    /// </summary>
+    public const string SecurityStamp = "sangam_stamp";
+
     /// <summary>JSON array of organisation memberships scoped to the requesting app; see <see cref="SangamOrgClaim"/> for members.</summary>
     public const string Orgs = "sangam_orgs";
 

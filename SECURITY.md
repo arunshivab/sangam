@@ -10,7 +10,7 @@ application that trusts it, so we treat every report seriously and respond quick
 Email **security@sangamid.in** with:
 
 - a description of the issue and the component affected
-  (`id.sangamid.in`, `account.sangamid.in`, `admin.sangamid.in`, `Sangam.Client`, or the code),
+  (`id.sangamid.in`, `account.sangamid.in`, `admin.sangamid.in`, `partners.sangamid.in`, an SDK, or the code),
 - steps to reproduce, or a proof of concept,
 - the impact as you understand it,
 - how you would like to be credited, if at all.
@@ -21,8 +21,8 @@ the fix progresses and tell you when it ships.
 
 ## Scope
 
-In scope: the code in this repository, the hosted services at `*.sangamid.in`, and the
-`Sangam.Client` package. Out of scope: partner applications that integrate with Sangam
+In scope: the code in this repository, the hosted services at `*.sangamid.in`, and the SDKs
+(`Sangam.Client`, `@sangam/*`, `sangam-client`, `in.sangamid:*`). Out of scope: partner applications that integrate with Sangam
 (report those to the partner), denial of service by traffic volume, and findings that require
 physical access to a user's device.
 

@@ -5,7 +5,7 @@
   <!-- Sangam SDK for Java (R6, PR-29, SGM-306): the core library, the Spring Security adapter and the sample. -->
   <groupId>in.sangamid</groupId>
   <artifactId>sangam-parent</artifactId>
-  <version>0.15.0</version>
+  <version>1.0.0-rc.1</version>
   <packaging>pom</packaging>
   <name>Sangam SDK for Java</name>
   <licenses><license><name>Apache-2.0</name><url>https://www.apache.org/licenses/LICENSE-2.0</url></license></licenses>
@@ -19,7 +19,10 @@
   <properties>
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <spring-boot.version>3.5.16</spring-boot.version>
+    <spring-boot.version>4.1.1</spring-boot.version>
+    <!-- R7 security pass: newer than Spring Boot 4.1.1 manages, for fixed CVEs (see docs/security/dependency-scan.md). -->
+    <tomcat.version>11.0.26</tomcat.version>
+    <jackson3.version>3.1.7</jackson3.version>
     <nimbus.version>10.10</nimbus.version>
     <jackson.version>2.22.3</jackson.version>
     <junit.version>5.13.4</junit.version>
@@ -27,6 +30,24 @@
 
   <dependencyManagement>
     <dependencies>
+      <!-- Imported before Spring Boot's BOM so these versions win. -->
+      <dependency>
+        <groupId>com.fasterxml.jackson</groupId>
+        <artifactId>jackson-bom</artifactId>
+        <version>${jackson.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>tools.jackson</groupId>
+        <artifactId>jackson-bom</artifactId>
+        <version>${jackson3.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency><groupId>org.apache.tomcat.embed</groupId><artifactId>tomcat-embed-core</artifactId><version>${tomcat.version}</version></dependency>
+      <dependency><groupId>org.apache.tomcat.embed</groupId><artifactId>tomcat-embed-el</artifactId><version>${tomcat.version}</version></dependency>
+      <dependency><groupId>org.apache.tomcat.embed</groupId><artifactId>tomcat-embed-websocket</artifactId><version>${tomcat.version}</version></dependency>
       <dependency>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-dependencies</artifactId>

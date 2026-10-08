@@ -8,29 +8,31 @@
 }
 else
 {
-  <table class="sg-table">
-    <thead><tr><th>@L["Person"]</th><th>@L["Rank"]</th><th>@L["Authenticator"]</th><th>@L["Since"]</th><th></th></tr></thead>
-    <tbody>
-      @foreach (AppAdminRow admin in _admins)
-      {
-        <tr>
-          <td><span class="sg-name">@admin.DisplayName</span><span class="sg-sub">@admin.Email</span></td>
-          <td><span class="sg-rank sg-rank--@(admin.Role == AppAdminRole.Owner ? "owner" : "app")">@(admin.Role == AppAdminRole.Owner ? L["Owner"] : L["Administrator"])</span></td>
-          <td>@if (admin.MfaEnrolled) { <span>@L["set up"]</span> } else { <span class="sg-warn-text">@L["not yet — cannot sign in here"]</span> }</td>
-          <td>@Sangam.Shared.IndiaTime.Date(admin.GrantedAt)</td>
-          <td>
-            @if (admin.UserId != Info.UserId)
-            {
-              <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => ChangeAsync(admin, admin.Role == AppAdminRole.Owner ? AppAdminRole.Admin : AppAdminRole.Owner)" disabled="@_busy">
-                @(admin.Role == AppAdminRole.Owner ? L["Make administrator"] : L["Make owner"])
-              </button>
-            }
-            <button type="button" class="sg-btn sg-btn--warn" @onclick="() => _removing = admin" disabled="@_busy">@L["Remove"]</button>
-          </td>
-        </tr>
-      }
-    </tbody>
-  </table>
+  <div class="sg-table-wrap">
+    <table class="sg-table">
+      <thead><tr><th>@L["Person"]</th><th>@L["Rank"]</th><th>@L["Authenticator"]</th><th>@L["Since"]</th><th></th></tr></thead>
+      <tbody>
+        @foreach (AppAdminRow admin in _admins)
+        {
+          <tr>
+            <td><span class="sg-name">@admin.DisplayName</span><span class="sg-sub">@admin.Email</span></td>
+            <td><span class="sg-rank sg-rank--@(admin.Role == AppAdminRole.Owner ? "owner" : "app")">@(admin.Role == AppAdminRole.Owner ? L["Owner"] : L["Administrator"])</span></td>
+            <td>@if (admin.MfaEnrolled) { <span>@L["set up"]</span> } else { <span class="sg-warn-text">@L["not yet — cannot sign in here"]</span> }</td>
+            <td>@Sangam.Shared.IndiaTime.Date(admin.GrantedAt)</td>
+            <td>
+              @if (admin.UserId != Info.UserId)
+              {
+                <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => ChangeAsync(admin, admin.Role == AppAdminRole.Owner ? AppAdminRole.Admin : AppAdminRole.Owner)" disabled="@_busy">
+                  @(admin.Role == AppAdminRole.Owner ? L["Make administrator"] : L["Make owner"])
+                </button>
+              }
+              <button type="button" class="sg-btn sg-btn--warn" @onclick="() => _removing = admin" disabled="@_busy">@L["Remove"]</button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
 }
 
 @if (_removing is not null)

@@ -1,0 +1,58 @@
+@* PR-32 (CAP-110): the application's evidence pack for its own auditors. A plain form posting to
+   /apps/{id}/evidence, so the browser downloads the zip; the endpoint repeats the console's checks. *@
+@using Microsoft.AspNetCore.Components.Forms
+@using Sangam.Identity.Application.Abstractions
+@inject IClock Clock
+
+<p class="sg-lede">@L["An evidence pack holds what an auditor of {0} asks about the controls Sangam runs for it: who may sign in and as what, the sign-in rules, who administers it, every role granted or taken away in the period, and the audit trail with its integrity check. Every file is listed with its SHA-256.", Info.AppName]</p>
+
+<div class="sg-panel" data-panel="evidence">
+  <h2 class="sg-h3">@L["Download an evidence pack"]</h2>
+  <form method="post" action="@($"/apps/{Info.AppId:D}/evidence")" data-enhance="false">
+    <AntiforgeryToken />
+    <div class="sg-form-row">
+      <label class="sg-label" for="evidence-from">@L["From"]</label>
+      <input id="evidence-from" name="from" class="sg-input" type="date" value="@_from" required />
+    </div>
+    <div class="sg-form-row">
+      <label class="sg-label" for="evidence-to">@L["To (up to a year after)"]</label>
+      <input id="evidence-to" name="to" class="sg-input" type="date" value="@_to" required />
+    </div>
+    <div class="sg-actions">
+      <button type="submit" class="sg-btn sg-btn--primary">@L["Download evidence pack"]</button>
+    </div>
+  </form>
+  <p class="sg-muted">@L["Days are India time. The download is recorded in Sangam's audit log, with the pack's SHA-256."]</p>
+</div>
+
+<div class="sg-panel" data-panel="evidence-contents">
+  <h2 class="sg-h3">@L["What is in it"]</h2>
+  <ul class="sg-list">
+    <li>@L["The application's registration and its sign-in rules, and any organisation's own."]</li>
+    <li>@L["Its administrators, with whether each has two-step sign-in."]</li>
+    <li>@L["Its roles and permissions, and its organisations."]</li>
+    <li>@L["Everyone with a role now, where, until when, and when they last signed in to it."]</li>
+    <li>@L["Joiners, movers and leavers in the period, and by whom."]</li>
+    <li>@L["The audit events about the application in the shared audit schema, and the audit log's hash chain, checked."]</li>
+    <li>@L["Provisioning, webhooks, attributes and claims as configured — never a secret."]</li>
+  </ul>
+  <p class="sg-muted">@L["It is evidence for your own audit, such as NABH or ISO/IEC 27001. It is not a certification of Sangam or of {0}.", Info.AppName]</p>
+</div>
+
+@code {
+    /// <summary>The application.</summary>
+    [Parameter]
+    [EditorRequired]
+    public WorkspaceInfo Info { get; set; } = default!;
+
+    private string _from = string.Empty;
+    private string _to = string.Empty;
+
+    /// <inheritdoc />
+    protected override void OnInitialized()
+    {
+        DateOnly today = DateOnly.FromDateTime(Clock.UtcNow.ToOffset(TimeSpan.FromHours(5.5)).DateTime);
+        _from = today.AddDays(-89).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        _to = today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+    }
+}

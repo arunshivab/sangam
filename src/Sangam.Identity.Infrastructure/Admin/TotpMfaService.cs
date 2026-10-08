@@ -25,13 +25,16 @@ public sealed class TotpMfaService : IMfaService
     private readonly UserManager<SangamUser> _users;
     private readonly SangamDbContext _db;
     private readonly IAuditWriter _audit;
+    private readonly Accounts.SecurityNotices? _notices;
 
     /// <summary>Initialises the service.</summary>
     /// <param name="users">Identity user manager.</param>
     /// <param name="db">Database, to check operator status.</param>
     /// <param name="audit">Audit writer.</param>
-    public TotpMfaService(UserManager<SangamUser> users, SangamDbContext db, IAuditWriter audit)
+    /// <param name="notices">Security notices to the person (R7); none when null.</param>
+    public TotpMfaService(UserManager<SangamUser> users, SangamDbContext db, IAuditWriter audit, Accounts.SecurityNotices? notices = null)
     {
+        _notices = notices;
         _users = users ?? throw new ArgumentNullException(nameof(users));
         _db = db ?? throw new ArgumentNullException(nameof(db));
         _audit = audit ?? throw new ArgumentNullException(nameof(audit));
@@ -87,6 +90,10 @@ public sealed class TotpMfaService : IMfaService
         await _audit.WriteAsync(
             new AuditEntry(AuditActions.UserMfaEnable, AuditActorType.User, userId, TargetType: "user", TargetId: userId, IpAddress: ipAddress),
             cancellationToken).ConfigureAwait(false);
+        if (_notices is not null)
+        {
+            await _notices.SendAsync(MessageTemplateKinds.AuthenticatorAddedNotice, user, cancellationToken).ConfigureAwait(false);
+        }
 
         return new MfaConfirmation(true, [.. codes ?? []]);
     }
@@ -148,6 +155,11 @@ public sealed class TotpMfaService : IMfaService
         await _audit.WriteAsync(
             new AuditEntry(AuditActions.UserMfaDisable, AuditActorType.User, userId, TargetType: "user", TargetId: userId, IpAddress: ipAddress),
             cancellationToken).ConfigureAwait(false);
+        if (_notices is not null)
+        {
+            await _notices.SendAsync(MessageTemplateKinds.AuthenticatorRemovedNotice, user, cancellationToken).ConfigureAwait(false);
+        }
+
         return true;
     }
 

@@ -1,0 +1,47 @@
+# Once per release, before the new hosts roll out: the EF Core migration bundle, run with the schema owner's
+# connection string (secret sangam-migrator, key CONNECTION). Re-running it is safe: applied migrations are skipped.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sangam-migrate-1-0-0-rc-1
+  namespace: sangam
+  labels:
+    app.kubernetes.io/name: migrator
+    app.kubernetes.io/part-of: sangam
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: migrator
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1654
+        runAsGroup: 1654
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: migrator
+          image: sangam/migrator:1.0.0-rc.1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CONNECTION
+              valueFrom:
+                secretKeyRef:
+                  name: sangam-migrator
+                  key: CONNECTION
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

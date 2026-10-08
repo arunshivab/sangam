@@ -20,6 +20,18 @@ public sealed class TemplateTextTests
     }
 
     [Fact]
+    public void ASubject_StaysOnOneLine_WhateverIsFilledIntoIt()
+    {
+        // R7 (ASVS V5.2.3): a name with a line break must not start a new mail header.
+        Dictionary<string, string> values = new() { ["name"] = "Asha\r\nBcc: someone@example.in", ["code"] = "123456", ["minutes"] = "10" };
+        string subject = TemplateText.FillSubject("Hello {{name}}", values);
+        Assert.DoesNotContain('\r', subject);
+        Assert.DoesNotContain('\n', subject);
+        Assert.Equal("Hello Asha  Bcc: someone@example.in", subject);
+        Assert.NotNull(TemplateText.CheckEmail(MessageTemplateKinds.All.First(k => !k.Sms), "Line one\rline two", "Body {code}"));
+    }
+
+    [Fact]
     public void EveryKind_HasABuiltInText_InEnglishHindiAndMalayalam_WithTheSameVariables()
     {
         foreach (MessageTemplateKind kind in MessageTemplateKinds.All.Where(k => !k.Sms))

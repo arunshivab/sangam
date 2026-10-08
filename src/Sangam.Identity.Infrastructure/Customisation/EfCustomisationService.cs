@@ -421,7 +421,7 @@ public sealed class EfCustomisationService : ICustomisationService, IMessageTemp
             ["new_email"] = "a•••@example.in",
         };
         string text = TemplateText.Fill(body, values);
-        return new EmailPreview(TemplateText.Fill(subject ?? string.Empty, values), text, TemplateText.Html(text, values, heading, ValidAccent(accent), NormaliseLanguage(language)));
+        return new EmailPreview(TemplateText.FillSubject(subject ?? string.Empty, values), text, TemplateText.Html(text, values, heading, ValidAccent(accent), NormaliseLanguage(language)));
     }
 
     /// <inheritdoc />
@@ -470,7 +470,7 @@ public sealed class EfCustomisationService : ICustomisationService, IMessageTemp
         Dictionary<string, string> all = new(values, StringComparer.Ordinal);
         all.TryAdd("application", heading);
         string text = TemplateText.Fill(body, all);
-        return new EmailMessage(toEmail, toName, TemplateText.Fill(subject ?? string.Empty, all), text, TemplateText.Html(text, all, heading, accent, lang));
+        return new EmailMessage(toEmail, toName, TemplateText.FillSubject(subject ?? string.Empty, all), text, TemplateText.Html(text, all, heading, accent, lang));
     }
 
     /// <inheritdoc />

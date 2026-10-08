@@ -83,6 +83,11 @@ body {
 }
 a { color: var(--sg-palm-shade); text-decoration: none; }
 a:hover { color: var(--sg-ochre); }
+/* R7 (WCAG 1.4.1): a link inside running text is underlined, so it is not told apart by colour alone. */
+p a:not(.sg-btn), li a:not(.sg-btn), dd a:not(.sg-btn), td a:not(.sg-btn), label a, .sg-note a, .sg-alt a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 
 /* ---- Controls ------------------------------------------------------ */
 .sg-field {
@@ -109,9 +114,9 @@ a:hover { color: var(--sg-ochre); }
   transition: background 150ms, color 150ms, border-color 150ms;
 }
 .sg-btn--primary   { color: var(--sg-cream); background: var(--sg-teal); border: 1px solid var(--sg-teal); }
-.sg-btn--primary:hover { background: var(--sg-palm-shade); border-color: var(--sg-palm-shade); }
+.sg-btn--primary:hover { color: var(--sg-cream); background: var(--sg-palm-shade); border-color: var(--sg-palm-shade); }
 .sg-btn--secondary { color: var(--sg-teal); background: transparent; border: 1px solid var(--sg-teal); }
-.sg-btn--secondary:hover { background: #E7EDEA; }
+.sg-btn--secondary:hover { color: var(--sg-teal); background: #E7EDEA; } /* R7: a link styled as a button keeps its colour (a:hover's ochre read at 4.4:1) */
 .sg-btn--tertiary  { color: var(--sg-palm-shade); background: transparent; border: 1px solid transparent; }
 .sg-btn--tertiary:hover { color: var(--sg-ochre); }
 .sg-btn--danger    { color: var(--sg-danger); background: transparent; border: 1px solid #D9B3A8; }

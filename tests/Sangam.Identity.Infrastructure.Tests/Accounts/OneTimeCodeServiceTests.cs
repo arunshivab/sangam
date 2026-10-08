@@ -67,6 +67,45 @@ public sealed class OneTimeCodeServiceTests : IAsyncLifetime
     }
 
     [PostgresFact]
+    public async Task ParallelWrongGuesses_UseUpExactlyTheAttempts_AndTheRightCodeIsThenRefused()
+    {
+        // R7 (ASVS V11.1.6): each guess on its own connection, all at once. Before the fix the attempt count was read and
+        // written back by each request, so parallel guesses counted as one and the right code still worked afterwards.
+        string code;
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            (_, string? issued) = await new OneTimeCodeService(db, _clock, Options).IssueAsync(_userId, OneTimeCodePurpose.SignIn);
+            code = issued!;
+        }
+
+        // A row lock held while the guesses arrive makes them truly overlap: reads still go through, writes wait for it.
+        string wrong = code == "000000" ? "111111" : "000000";
+        OtpVerifyStatus[] results;
+        await using (SangamDbContext locker = _pg.CreateContext())
+        {
+            await using Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction hold = await locker.Database.BeginTransactionAsync();
+            await locker.Database.ExecuteSqlRawAsync("SELECT 1 FROM one_time_codes FOR UPDATE");
+            Task<OtpVerifyStatus>[] guesses = [.. Enumerable.Range(0, 20).Select(_ => Task.Run(async () =>
+            {
+                await using SangamDbContext db = _pg.CreateContext();
+                return await new OneTimeCodeService(db, _clock, Options).VerifyAsync(_userId, OneTimeCodePurpose.SignIn, wrong);
+            }))];
+            await Task.Delay(1500);
+            await hold.CommitAsync();
+            results = await Task.WhenAll(guesses);
+        }
+
+        Assert.DoesNotContain(OtpVerifyStatus.Valid, results);
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            OneTimeCode row = await db.OneTimeCodes.AsNoTracking().SingleAsync();
+            Assert.Equal(Options.MaxAttempts, row.FailedAttempts);
+            Assert.True(row.ExpiresAt <= _clock.UtcNow);
+            Assert.Equal(OtpVerifyStatus.Expired, await new OneTimeCodeService(db, _clock, Options).VerifyAsync(_userId, OneTimeCodePurpose.SignIn, code));
+        }
+    }
+
+    [PostgresFact]
     public async Task Verify_IgnoresSpacesAndIsPurposeBound()
     {
         await using SangamDbContext db = _pg.CreateContext();

@@ -173,6 +173,51 @@ Checks:
       then partners build them from the repository.
 - [ ] Add the `sdks` CI job to the branch ruleset once it has passed on main.
 
+## Added by R7 (v1.0.0-rc.1, certification readiness)
+
+Security (docs/security/, SGM-503):
+
+- [ ] Add the `security` CI job to the branch ruleset, beside build, format and sdks. It already fails on any high or
+      critical finding.
+- [ ] Commission the external penetration test from `docs/security/pentest-scope.md`, on a staging copy built from
+      this release. Record its findings in SGM-503 and SGM-701.
+- [ ] Decide the ASVS gaps that are yours to decide (SGM-908 lists the options):
+  - [ ] Password policy: keep 8 characters with classes, or move to 12 without classes (V2.1.1, V2.1.9).
+  - [ ] A pepper for password hashes (V2.4.5).
+  - [ ] Keys: files on the VM for the pilot, or a key vault or HSM (V6.4.2).
+  - [ ] Antivirus on logo uploads (V12.4.2).
+  - [ ] `__Host-` cookie names at the cut-over (V3.4.4).
+  - [ ] Linking people through the management API: consent first, or pairwise ids (V4.2.1, OI-050).
+- [ ] Confirm volume encryption on the E2E VM, and NTP on it (V6.1.1, V7.3.4).
+- [ ] Confirm the reverse proxy sends `X-Forwarded-Proto: https` (Caddy does, unchanged). Since R7, cookies are always
+      Secure, so a page with a form reached over plain HTTP answers 500 instead of setting a cookie (OI-057).
+- [ ] Publish a security contact (`/.well-known/security.txt` through Caddy) and register the CERT-In point of
+      contact.
+
+Audit and evidence (PR-32):
+
+- [ ] Turn on SIEM streaming to a store outside the VM (`Sangam:Siem:*`, docs/siem.md). Until then, the audit log's
+      only copy lives with the database and its backups.
+- [ ] Tell each partner about evidence packs (partner console → application → Evidence, docs/evidence-packs.md).
+
+Accessibility (PR-31):
+
+- [ ] Keep the three-language accessibility check in each release's gate (WCAG 2.2 AA with axe; results in SGM-507).
+
+ISMS (SGM-907 to SGM-909, drafts):
+
+- [ ] Adopt or amend the core policies (SGM-909) and sign the information security policy.
+- [ ] Review the statement of applicability (SGM-907) and the risk treatment plan (SGM-908). Accept the residual
+      risks you accept, in writing.
+- [ ] Certification needs an internal audit and a management review before a certification body's stage 1 audit.
+      Neither has happened.
+
+Kubernetes (PR-33, optional):
+
+- [ ] Only when one VM is no longer enough: `deploy/kubernetes/README.md`. It needs a replicated PostgreSQL and a
+      ReadWriteMany volume for the audit archive. Since R7, every host may run the background work: one replica at a
+      time takes each round.
+
 ## Bootstrapping the first owner — a deliberate, one-time act
 
 Nothing created on a developer's machine reaches production: migrations carry schema, never rows.
@@ -208,5 +253,5 @@ named person, because the audit log records *who* acted.
 
 - [ ] Restore test of the database backup — a backup that has never been restored is a hope, not
       a backup.
-- [ ] Confirm the hourly maintenance sweep is running (`Sangam:Maintenance:Enabled` true on exactly
-      one node).
+- [ ] Confirm the hourly maintenance sweep is running (`Sangam:Maintenance:Enabled`). Since R7 every host may run
+      it: a database lock lets one host at a time sweep.

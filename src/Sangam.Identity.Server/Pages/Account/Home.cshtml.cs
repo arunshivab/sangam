@@ -48,7 +48,10 @@ public sealed class HomeModel : AuthPageModel
     public string? Notice { get; private set; }
 
     /// <summary>Renders the page.</summary>
-    public async Task<IActionResult> OnGetAsync(bool saved, CancellationToken cancellationToken)
+    /// <param name="saved">The preference was just saved.</param>
+    /// <param name="passwordChanged">The password was just changed (R7).</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    public async Task<IActionResult> OnGetAsync(bool saved, bool passwordChanged, CancellationToken cancellationToken)
     {
         if (!await LoadAsync(cancellationToken))
         {
@@ -58,6 +61,10 @@ public sealed class HomeModel : AuthPageModel
         if (saved)
         {
             Notice = L["Your sign-in preference has been saved."];
+        }
+        else if (passwordChanged)
+        {
+            Notice = L["Your password is changed. Your other devices are being signed out."];
         }
 
         return Page();

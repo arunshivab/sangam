@@ -25,6 +25,7 @@ else
     <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("provisioning")">@L["Provisioning"]</NavLink>
     <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("webhooks")">@L["Webhooks"]</NavLink>
     <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("attributes")">@L["Attributes & claims"]</NavLink>
+    <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("evidence")">@L["Evidence"]</NavLink>
   </nav>
 
   @switch (CurrentTab)
@@ -46,6 +47,9 @@ else
       break;
     case "provisioning":
       <ProvisioningTab Info="_info" />
+      break;
+    case "evidence":
+      <EvidenceTab Info="_info" />
       break;
     case "messages":
       <p class="sg-lede">@L["The e-mails Sangam sends for {0}: sign-in and verification codes, password resets and invitations. Security notices stay Sangam's own.", _info.AppName]</p>

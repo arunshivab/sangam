@@ -102,6 +102,7 @@ public sealed class LogoutModel : AuthPageModel
 
         await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
         await SangamAuthentication.ClearPendingAsync(HttpContext);
+        Response.Headers["Clear-Site-Data"] = Sangam.Web.Shared.Hosting.SecurityHeaders.ClearSiteData;
 
         if (id is not null)
         {

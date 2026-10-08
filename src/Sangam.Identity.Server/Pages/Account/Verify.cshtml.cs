@@ -11,7 +11,7 @@ using Sangam.Identity.Server.Authorization;
 
 namespace Sangam.Identity.Server.Pages.Account;
 
-/// <summary>Screen 3 — email verification by code, with a no-JS resend countdown (meta refresh).</summary>
+/// <summary>Screen 3 — email verification by code, with a resend countdown kept in the page (R7: no meta refresh).</summary>
 public sealed class VerifyModel : AuthPageModel
 {
     private readonly IAccountService _accounts;
@@ -55,9 +55,6 @@ public sealed class VerifyModel : AuthPageModel
 
     /// <summary>Countdown as m:ss.</summary>
     public string ResendLabel => TimeSpan.FromSeconds(ResendIn).ToString(@"m\:ss", CultureInfo.InvariantCulture);
-
-    /// <summary>Meta-refresh interval.</summary>
-    public int RefreshSeconds => ResendIn > 0 ? ResendIn : 0;
 
     /// <summary>Renders the code form.</summary>
     public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken)

@@ -87,6 +87,19 @@ public sealed record GrievanceCounts(int Open, int AcknowledgeOverdue, int Resol
 /// <param name="PurgeYears">Years an archive is kept.</param>
 public sealed record AuditArchiveStatus(bool Enabled, DateTimeOffset LastRun, int Files, long Events, DateTimeOffset? OldestArchived, DateTimeOffset? OldestLive, int LiveDays, int PurgeYears);
 
+/// <summary>What the SIEM stream has done, kept in <c>host_reports</c> and shown on the monitoring page (PR-32).</summary>
+/// <param name="LastId">The last audit id sent: the position a restart resumes from.</param>
+/// <param name="Sent">Events sent since streaming began.</param>
+/// <param name="Lag">Events recorded but not yet sent, when last checked.</param>
+/// <param name="Receiver">host:port.</param>
+/// <param name="Format">cef or json.</param>
+/// <param name="Tls">Whether the connection used TLS.</param>
+/// <param name="CheckedAt">When the stream last looked for events.</param>
+/// <param name="LastSentAt">When an event was last sent.</param>
+/// <param name="LastError">The last failure, or <see langword="null"/> when the last round succeeded.</param>
+/// <param name="LastErrorAt">When the last failure happened.</param>
+public sealed record SiemStatus(long LastId, long Sent, long Lag, string Receiver, string Format, bool Tls, DateTimeOffset CheckedAt, DateTimeOffset? LastSentAt, string? LastError, DateTimeOffset? LastErrorAt);
+
 /// <summary>The breached-password list as one host reported it (V-10).</summary>
 /// <param name="Host">The host.</param>
 /// <param name="Status">Its list's state.</param>
@@ -133,6 +146,9 @@ public sealed record MonitoringSnapshot(
 
     /// <summary>The audit archive (D-A); <see langword="null"/> when it has never run.</summary>
     public AuditArchiveStatus? AuditArchive { get; init; }
+
+    /// <summary>SIEM streaming (PR-32); <see langword="null"/> when it has never run.</summary>
+    public SiemStatus? Siem { get; init; }
 
     /// <summary>The grievance log's open and overdue counts (D-D).</summary>
     public GrievanceCounts Grievances { get; init; } = new(0, 0, 0);

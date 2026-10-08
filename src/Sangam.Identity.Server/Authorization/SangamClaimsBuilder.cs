@@ -100,6 +100,11 @@ public static class SangamClaimsBuilder
             identity.SetClaim(SangamClaims.SessionId, sessionId);
         }
 
+        if (!string.IsNullOrEmpty(user.SecurityStamp))
+        {
+            identity.SetClaim(SangamClaims.SecurityStamp, user.SecurityStamp);
+        }
+
         if (proof is not null)
         {
             identity.SetClaim(Claims.AuthenticationContextReference, proof.Acr);
@@ -127,7 +132,7 @@ public static class SangamClaimsBuilder
             Claims.Subject or Claims.Name or Claims.Email or Claims.EmailVerified or SangamClaims.SessionId or SangamClaims.Orgs
                 or Claims.AuthenticationContextReference or Claims.AuthenticationMethodReference or Claims.AuthenticationTime
                 => [Destinations.AccessToken, Destinations.IdentityToken],
-            "AspNet.Identity.SecurityStamp" => [],
+            "AspNet.Identity.SecurityStamp" or SangamClaims.SecurityStamp => [],
             _ => [Destinations.AccessToken],
         };
     }

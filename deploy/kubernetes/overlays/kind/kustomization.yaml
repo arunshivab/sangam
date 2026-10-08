@@ -1,0 +1,140 @@
+# The base, as it runs on a local kind cluster for the high-availability proof (README, "Prove it locally").
+# Host names become *.sangam.test; images are the ones built and loaded locally; a test CA is trusted.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+  - data.yaml
+  - traefik.yaml
+patches:
+  - target:
+      kind: ConfigMap
+      name: sangam-common
+    patch: |
+      - op: replace
+        path: /data/Sangam__Authority
+        value: https://id.sangam.test:8443
+      - op: replace
+        path: /data/Sangam__PortalUrl
+        value: https://account.sangam.test:8443
+      - op: replace
+        path: /data/Sangam__Anjal__BaseUrl
+        value: http://anjal.sangam-data.svc.cluster.local:8080/
+      - op: add
+        path: /data/SSL_CERT_FILE
+        value: /etc/sangam-test-ca/bundle.crt
+  - target:
+      kind: ConfigMap
+      name: sangam-identity
+    patch: |
+      - op: replace
+        path: /data/Sangam__Issuer
+        value: https://id.sangam.test:8443
+      - op: replace
+        path: /data/Sangam__Monitoring__TlsHosts
+        value: id.sangam.test
+      - op: replace
+        path: /data/Sangam__Monitoring__AnjalHealthUrl
+        value: http://anjal.sangam-data.svc.cluster.local:8080/health
+      - op: replace
+        path: /data/Sangam__Alerts__Emails
+        value: founder@sangam.test
+      - op: replace
+        path: /data/Sangam__Alerts__Mobiles
+        value: "+919000000000"
+      - op: replace
+        path: /data/Sangam__Passkeys__RpId
+        value: id.sangam.test
+      - op: replace
+        path: /data/Sangam__Passkeys__Origins
+        value: https://id.sangam.test:8443
+      - op: replace
+        path: /data/Sangam__Clients__portal__BaseUrl
+        value: https://account.sangam.test:8443/
+      - op: replace
+        path: /data/Sangam__Clients__admin__BaseUrl
+        value: https://admin.sangam.test:8443/
+      - op: replace
+        path: /data/Sangam__Clients__partner__BaseUrl
+        value: https://partners.sangam.test:8443/
+      - op: replace
+        path: /data/Sangam__Registration__InvitationOnly
+        value: "false"
+  # Every host: the locally built image, the test CA, and the public names resolved to the ingress inside the cluster.
+  - target:
+      kind: Deployment
+      labelSelector: app.kubernetes.io/part-of=sangam
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: Never
+      - op: add
+        path: /spec/template/spec/hostAliases
+        value:
+          - ip: 10.96.0.200
+            hostnames: [id.sangam.test, account.sangam.test, admin.sangam.test, partners.sangam.test]
+      - op: add
+        path: /spec/template/spec/containers/0/volumeMounts/-
+        value:
+          name: test-ca
+          mountPath: /etc/sangam-test-ca
+          readOnly: true
+      - op: add
+        path: /spec/template/spec/volumes/-
+        value:
+          name: test-ca
+          configMap:
+            name: sangam-test-ca
+  - target:
+      kind: Job
+      name: sangam-migrate-1-0-0-rc-1
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: Never
+  # kind has only node-local volumes: the audit archive is a scratch directory here (the archive starts after a year).
+  - target:
+      kind: PersistentVolumeClaim
+      name: sangam-audit-archive
+    patch: |
+      $patch: delete
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: sangam-audit-archive
+  - target:
+      kind: Deployment
+      name: identity
+    patch: |
+      - op: replace
+        path: /spec/template/spec/volumes/2
+        value:
+          name: audit-archive
+          emptyDir: {}
+  # Two workers: insist on one replica per worker, so losing a node is a real test.
+  - target:
+      kind: Deployment
+      labelSelector: app.kubernetes.io/part-of=sangam
+    patch: |
+      - op: replace
+        path: /spec/template/spec/topologySpreadConstraints/0/whenUnsatisfiable
+        value: DoNotSchedule
+  - target:
+      kind: Ingress
+      name: sangam
+    patch: |
+      - op: replace
+        path: /spec/tls/0/hosts
+        value: [id.sangam.test, account.sangam.test, admin.sangam.test, partners.sangam.test]
+      - op: replace
+        path: /spec/rules/0/host
+        value: id.sangam.test
+      - op: replace
+        path: /spec/rules/1/host
+        value: account.sangam.test
+      - op: replace
+        path: /spec/rules/2/host
+        value: admin.sangam.test
+      - op: replace
+        path: /spec/rules/3/host
+        value: partners.sangam.test

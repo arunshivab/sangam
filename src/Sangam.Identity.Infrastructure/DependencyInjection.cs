@@ -89,7 +89,11 @@ public static class DependencyInjection
             })
             .AddEntityFrameworkStores<SangamDbContext>()
             .AddDefaultTokenProviders()
-            .AddPasswordValidator<PolicyPasswordValidator>();
+            .AddPasswordValidator<PolicyPasswordValidator>()
+            // R7: authenticator secrets encrypted and recovery codes hashed (ASVS V2.8.2, V2.6.2); authenticator codes
+            // accepted once (V2.8.4).
+            .AddUserStore<Accounts.SangamUserStore>()
+            .AddTokenProvider<Accounts.SangamAuthenticatorTokenProvider>(TokenOptions.DefaultAuthenticatorProvider);
 
         // PR-16: platform → application → organisation security policies, and the breached-password check.
         PolicySettings policies = PolicySettings.From(configuration);
@@ -111,7 +115,8 @@ public static class DependencyInjection
         services.AddSingleton(registration);
         services.AddScoped<OneTimeCodeService>();
         services.AddScoped<IAccountService, AccountService>();
-        services.AddSingleton(sp => new UnknownAddressLockout(sp.GetRequiredService<IClock>(), 5, TimeSpan.FromMinutes(15)));
+        services.AddScoped<Accounts.SecurityNotices>();
+        services.AddSingleton(sp => new UnknownAddressLockout(sp.GetRequiredService<IDbContextFactory<SangamDbContext>>(), sp.GetRequiredService<IClock>(), 5, TimeSpan.FromMinutes(15)));
         services.AddScoped<IAppDirectory, EfAppDirectory>();
         services.AddScoped<IConsentService, EfConsentService>();
         services.AddScoped<ITenancyQuery, EfTenancyQuery>();
@@ -219,6 +224,7 @@ public static class DependencyInjection
             .ConfigurePrimaryHttpMessageHandler(sp => Provisioning.OutboundHttp.CreateHandler(sp.GetRequiredService<Provisioning.OutboundSettings>().AllowPrivate));
         services.AddScoped<Tenancy.MembershipExpiry>();
         services.AddScoped<Application.Attributes.IAttributeService, Attributes.EfAttributeService>();
+        services.AddScoped<Application.Evidence.IEvidencePackService, Evidence.EfEvidencePackService>();
 
         // PR-26: identity verification through DigiLocker (off unless Sangam:DigiLocker:Enabled).
         services.AddSingleton(Verification.DigiLockerSettings.From(configuration));
@@ -237,6 +243,11 @@ public static class DependencyInjection
         services.AddSingleton(AuditArchiveOptions.From(configuration));
         services.AddSingleton<AuditArchiver>();
         services.AddHostedService<AccountPurgeService>();
+
+        // PR-32: the audit log streamed to a SIEM (off unless Sangam:Siem:Enabled; one host at a time).
+        services.AddSingleton(Siem.SiemOptions.From(configuration));
+        services.AddSingleton<Siem.SiemForwarder>();
+        services.AddHostedService<Siem.SiemStreamingService>();
 
         // D-K: support resets of two-step sign-in wait out a cooling-off period; D-H/D-K: alerts to the founder.
         services.AddScoped<EfMfaResetService>();

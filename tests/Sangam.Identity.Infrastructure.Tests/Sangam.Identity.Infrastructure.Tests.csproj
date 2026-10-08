@@ -6,6 +6,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sangam.Identity.Infrastructure\Sangam.Identity.Infrastructure.csproj" />
+    <!-- R7: the shared audit schema validator, to check identity events streamed to a SIEM in that schema. -->
+    <ProjectReference Include="..\..\src\Sangam.Client\Sangam.Client.csproj" />
   </ItemGroup>
 
 </Project>

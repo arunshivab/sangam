@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Web;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Sangam.Identity.Infrastructure.Seeding;
 using Sangam.Identity.Infrastructure.Services;
@@ -166,6 +167,48 @@ public sealed class AuthorizationCodeFlowTests
         // The session is gone: /account challenges back to sign-in (absolute URL from the cookie handler).
         (_, string afterSignOut, _) = await s.FollowAsync("/account");
         Assert.Contains("/login", afterSignOut, StringComparison.Ordinal);
+
+        // R7: and the refresh token died with it.
+        JsonElement afterLogout = await PostTokenAsync(api, new Dictionary<string, string>
+        {
+            ["grant_type"] = "refresh_token",
+            ["refresh_token"] = refreshed.GetProperty("refresh_token").GetString()!,
+            ["client_id"] = DevelopmentSeeder.SampleClientId,
+            ["client_secret"] = DevelopmentSeeder.SampleClientSecret,
+        }, expectSuccess: false);
+        Assert.Equal("invalid_grant", afterLogout.GetProperty("error").GetString());
+    }
+
+    [PostgresFact]
+    public async Task ARefreshToken_StopsWorking_WhenThePersonSignsOutEverywhere_OrTheirSecurityChanges()
+    {
+        // R7 (ASVS V3.3.1, V3.3.3): before, refresh tokens kept working for up to 90 days after either.
+        using BrowserSession s = new(_factory);
+        await RegisterAndVerifyAsync(s);
+        using HttpClient api = _factory.CreateClient();
+
+        (Guid userId, string first) = await RefreshTokenAsync(s, api);
+        using (IServiceScope scope = _factory.Services.CreateScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<Sangam.Identity.Application.Portal.IPortalService>().RevokeAllSessionsAsync(userId, "203.0.113.5");
+        }
+
+        Assert.Equal("invalid_grant", (await RefreshAsync(api, first, expectSuccess: false)).GetProperty("error").GetString());
+
+        // A new sign-in, then a change to the person's security stamp (as a password reset makes).
+        using BrowserSession again = new(_factory);
+        string email = await EmailOfAsync(userId);
+        await SignInAsync(again, email);
+        (_, string second) = await RefreshTokenAsync(again, api);
+        Assert.Equal(JsonValueKind.String, (await RefreshAsync(api, second)).GetProperty("access_token").ValueKind);
+        using (IServiceScope scope = _factory.Services.CreateScope())
+        {
+            UserManager<Sangam.Identity.Domain.Entities.SangamUser> users = scope.ServiceProvider.GetRequiredService<UserManager<Sangam.Identity.Domain.Entities.SangamUser>>();
+            await users.UpdateSecurityStampAsync((await users.FindByIdAsync(userId.ToString("D")))!);
+        }
+
+        JsonElement refused = await RefreshAsync(api, second, expectSuccess: false);
+        Assert.Equal("invalid_grant", refused.GetProperty("error").GetString());
     }
 
     [PostgresFact]
@@ -221,6 +264,82 @@ public sealed class AuthorizationCodeFlowTests
         string? metadata = db.AuditEvents.Where(e => e.Action == Sangam.Identity.Domain.AuditActions.ConsentGrant).OrderByDescending(e => e.Id).Select(e => e.Metadata).FirstOrDefault();
         Assert.NotNull(metadata);
         Assert.Contains("first_party_implicit", metadata, StringComparison.Ordinal);
+    }
+
+    [PostgresFact]
+    public async Task AFormPostAnswer_UsesOnlyTheScriptTheContentSecurityPolicyAllows()
+    {
+        // R7: ASP.NET Core's OpenID Connect handler asks for response_mode=form_post. OpenIddict answers with a page whose
+        // inline script submits the form; the identity server's policy allows exactly that script by its hash. Should an
+        // OpenIddict upgrade change the script, this fails before a person is left on a blank page.
+        using BrowserSession s = new(_factory);
+        (_, string challenge) = Pkce();
+        await RegisterAndVerifyAsync(s);
+        string redirect = DevelopmentSeeder.PortalRedirectUris[0];
+        string authorize = "/connect/authorize?client_id=" + DevelopmentSeeder.PortalClientId
+            + "&redirect_uri=" + Uri.EscapeDataString(redirect)
+            + "&response_type=code&response_mode=form_post&scope=" + Uri.EscapeDataString("openid profile email")
+            + "&state=xyz&code_challenge=" + challenge + "&code_challenge_method=S256";
+
+        (HttpStatusCode status, _, string html) = await s.FollowAsync(authorize);
+
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.Contains("action=\"" + redirect + "\"", html, StringComparison.Ordinal);
+        string[] scripts = [.. System.Text.RegularExpressions.Regex.Matches(html, "<script>(.*?)</script>", System.Text.RegularExpressions.RegexOptions.Singleline).Select(m => m.Groups[1].Value)];
+        string script = Assert.Single(scripts);
+        string source = "'sha256-" + Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(script))) + "'";
+        Assert.Equal(Sangam.Web.Shared.Hosting.SecurityHeaders.FormPostScriptSource, source);
+    }
+
+    private static async Task<(Guid UserId, string RefreshToken)> RefreshTokenAsync(BrowserSession s, HttpClient api)
+    {
+        (string verifier, string challenge) = Pkce();
+        (_, string location, _) = await s.FollowAsync(Authorize(challenge));
+        if (location.StartsWith("/consent", StringComparison.Ordinal))
+        {
+            (_, string? allowed, _) = await s.PostFormAsync(location, [], handler: "Allow");
+            location = await FollowToPartnerAsync(s, allowed!);
+        }
+
+        string code = HttpUtility.ParseQueryString(new Uri(location).Query)["code"]!;
+        JsonElement tokens = await PostTokenAsync(api, new Dictionary<string, string>
+        {
+            ["grant_type"] = "authorization_code",
+            ["code"] = code,
+            ["redirect_uri"] = DevelopmentSeeder.SampleRedirectUri,
+            ["client_id"] = DevelopmentSeeder.SampleClientId,
+            ["client_secret"] = DevelopmentSeeder.SampleClientSecret,
+            ["code_verifier"] = verifier,
+        });
+        Guid userId = Guid.Parse(Payload(tokens.GetProperty("id_token").GetString()!).GetProperty("sub").GetString()!);
+        return (userId, tokens.GetProperty("refresh_token").GetString()!);
+    }
+
+    private static Task<JsonElement> RefreshAsync(HttpClient api, string refreshToken, bool expectSuccess = true)
+        => PostTokenAsync(api, new Dictionary<string, string>
+        {
+            ["grant_type"] = "refresh_token",
+            ["refresh_token"] = refreshToken,
+            ["client_id"] = DevelopmentSeeder.SampleClientId,
+            ["client_secret"] = DevelopmentSeeder.SampleClientSecret,
+        }, expectSuccess);
+
+    private async Task<string> EmailOfAsync(Guid userId)
+    {
+        using IServiceScope scope = _factory.Services.CreateScope();
+        UserManager<Sangam.Identity.Domain.Entities.SangamUser> users = scope.ServiceProvider.GetRequiredService<UserManager<Sangam.Identity.Domain.Entities.SangamUser>>();
+        return (await users.FindByIdAsync(userId.ToString("D")))!.Email!;
+    }
+
+    private static async Task SignInAsync(BrowserSession s, string email)
+    {
+        (HttpStatusCode status, string? location, string html) = await s.PostFormAsync("/login", new Dictionary<string, string>
+        {
+            ["Email"] = email,
+            ["Password"] = "Kaveri-River-2026!",
+        });
+        Assert.True(status == HttpStatusCode.Found, html[..Math.Min(400, html.Length)]);
+        Assert.NotNull(location);
     }
 
     private static string Authorize(string challenge)

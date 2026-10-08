@@ -22,6 +22,7 @@ public sealed class PostgresFixture : IAsyncLifetime
         "metric_points",
         "monitoring_alerts",
         "host_reports",
+        "unknown_address_attempts",
         "dev_outbox",
         "grievance_entries",
         "grievances",

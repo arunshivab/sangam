@@ -20,8 +20,10 @@ RUN dotnet ef migrations bundle --project src/Sangam.Identity.Infrastructure --s
 # Runs once per release with the schema owner's connection string, then exits:
 #   docker run --rm -e CONNECTION="..." sangam/migrator
 FROM mcr.microsoft.com/dotnet/aspnet:${DOTNET_VERSION} AS runtime-base
-# Npgsql loads libgssapi_krb5 at start-up and logs an error when it is missing (V-03).
+# Npgsql loads libgssapi_krb5 at start-up and logs an error when it is missing (V-03). R7: every build also takes the
+# Ubuntu security updates published since the base image (docs/security/dependency-scan.md).
 RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
     && apt-get install -y --no-install-recommends libgssapi-krb5-2 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -41,4 +43,8 @@ WORKDIR /app
 COPY --from=build /out/app .
 USER $APP_UID
 EXPOSE 8080
+# R7: Docker (and Compose) mark the container unhealthy when /health/live stops answering 200. bash's /dev/tcp makes
+# the request, so no curl is added to the image; the port is the first of ASPNETCORE_HTTP_PORTS.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD ["bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/${ASPNETCORE_HTTP_PORTS%%[;,]*} && printf 'GET /health/live HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && head -n 1 <&3 | grep -q ' 200 '"]
 ENTRYPOINT ["sh", "-c", "exec dotnet \"$SANGAM_PROJECT.dll\""]

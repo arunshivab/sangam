@@ -425,7 +425,9 @@ public sealed class EfPortalService : IPortalService
 
         user.FirstName = update.FirstName.Trim();
         user.LastName = update.LastName.Trim();
-        user.Locale = string.IsNullOrWhiteSpace(update.Locale) ? user.Locale : update.Locale.Trim();
+        // R7 (ASVS V5.1.3): only a language Sangam offers is kept; anything else posted leaves the stored one alone.
+        string? locale = WebHosting.SupportedCultures.FirstOrDefault(c => string.Equals(c, update.Locale?.Trim(), StringComparison.OrdinalIgnoreCase));
+        user.Locale = locale ?? user.Locale;
         user.Gender = update.Gender;
         if (mobileChanged)
         {

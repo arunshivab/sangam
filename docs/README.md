@@ -5,6 +5,7 @@
 | `design/` | The approved design handoff: brand system, `sangam-tokens.css`, twelve product screens, screenshots. `design/README.md` is the **authoritative** visual/UX specification. | Current |
 | `decisions/` | Architecture decision records made during the build. Each supersedes the planning documents where they differ. | Current |
 | `planning/` | The strategic, technical, legal and UX planning documents written before the build started. | Historical reference — superseded where noted below |
+| `security/` | R7: the ASVS Level 2 self-assessment, the ZAP scans, dependency and image scanning, and the penetration-test scope and rules of engagement. `security/README.md` is the index. | Current |
 
 ## Precedence when documents disagree
 

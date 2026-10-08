@@ -194,5 +194,75 @@
       "subject": "{{application}}: {{integration}} പ്രവർത്തനം നിർത്തി",
       "body": "നമസ്കാരം {{name}},\n\nഏകദേശം ഒരു ദിവസം {{application}}-നായി {{integration}}-ലേക്ക് Sangam-ന് ഡെലിവർ ചെയ്യാനായില്ല, ഇപ്പോൾ ശ്രമം നിർത്തിയിരിക്കുന്നു.\n\nഅവസാനത്തെ പിശക്:\n\n    {{error}}\n\nഡെലിവറി ലോഗ് ഓരോ ശ്രമവും കാണിക്കുന്നു. ശരിയാക്കിയ ശേഷം അവിടെ \"വീണ്ടും ശ്രമിക്കുക\" ഉപയോഗിക്കുക:\n\n{{link}}\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
     }
+  },
+  "password_changed_notice": {
+    "en-IN": {
+      "subject": "Your Sangam password was changed",
+      "body": "Hello {{name}},\n\nThe password of your Sangam account was just changed. Every device that was signed in has been\nsigned out, and applications must ask you to sign in again.\n\nIf this was you, there is nothing to do. If it was not, reset your password from the sign-in page at once\nand write to help@sangamid.in, so we can secure your account.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "आपका Sangam पासवर्ड बदल दिया गया",
+      "body": "नमस्ते {{name}},\n\nआपके Sangam खाते का पासवर्ड अभी बदला गया है। जिन डिवाइस पर साइन इन था, उन सभी से साइन आउट कर दिया गया है,\nऔर एप्लिकेशन आपसे दोबारा साइन इन करने को कहेंगे।\n\nयदि यह आपने किया है, तो कुछ करने की आवश्यकता नहीं है। यदि नहीं, तो तुरंत साइन-इन पेज से अपना पासवर्ड रीसेट करें\nऔर help@sangamid.in पर लिखें, ताकि हम आपका खाता सुरक्षित कर सकें।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "നിങ്ങളുടെ Sangam പാസ്‌വേഡ് മാറ്റി",
+      "body": "നമസ്കാരം {{name}},\n\nനിങ്ങളുടെ Sangam അക്കൗണ്ടിന്റെ പാസ്‌വേഡ് ഇപ്പോൾ മാറ്റി. സൈൻ ഇൻ ചെയ്തിരുന്ന എല്ലാ ഉപകരണങ്ങളിൽ നിന്നും\nസൈൻ ഔട്ട് ചെയ്തു, ആപ്ലിക്കേഷനുകൾ നിങ്ങളോട് വീണ്ടും സൈൻ ഇൻ ചെയ്യാൻ ആവശ്യപ്പെടും.\n\nഇത് നിങ്ങൾ ചെയ്തതാണെങ്കിൽ, ഒന്നും ചെയ്യേണ്ടതില്ല. അല്ലെങ്കിൽ, ഉടൻ തന്നെ സൈൻ-ഇൻ പേജിൽ നിന്ന് പാസ്‌വേഡ് റീസെറ്റ് ചെയ്ത്\nhelp@sangamid.in എന്ന വിലാസത്തിലേക്ക് എഴുതുക, അതുവഴി ഞങ്ങൾക്ക് നിങ്ങളുടെ അക്കൗണ്ട് സുരക്ഷിതമാക്കാം.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
+  "authenticator_added_notice": {
+    "en-IN": {
+      "subject": "An authenticator app was added to your Sangam account",
+      "body": "Hello {{name}},\n\nAn authenticator app was just set up on your Sangam account. From now on, signing in asks for a code\nfrom it as well as your password.\n\nIf this was you, there is nothing to do. If it was not, reset your password from the sign-in page at once\nand write to help@sangamid.in, so we can secure your account.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "आपके Sangam खाते में ऑथेंटिकेटर ऐप जोड़ा गया",
+      "body": "नमस्ते {{name}},\n\nआपके Sangam खाते पर अभी एक ऑथेंटिकेटर ऐप सेट किया गया है। अब से साइन इन करते समय आपके पासवर्ड के साथ\nउस ऐप का कोड भी माँगा जाएगा।\n\nयदि यह आपने किया है, तो कुछ करने की आवश्यकता नहीं है। यदि नहीं, तो तुरंत साइन-इन पेज से अपना पासवर्ड रीसेट करें\nऔर help@sangamid.in पर लिखें, ताकि हम आपका खाता सुरक्षित कर सकें।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "നിങ്ങളുടെ Sangam അക്കൗണ്ടിൽ ഒരു ഓതന്റിക്കേറ്റർ ആപ്പ് ചേർത്തു",
+      "body": "നമസ്കാരം {{name}},\n\nനിങ്ങളുടെ Sangam അക്കൗണ്ടിൽ ഇപ്പോൾ ഒരു ഓതന്റിക്കേറ്റർ ആപ്പ് സജ്ജമാക്കി. ഇനി മുതൽ സൈൻ ഇൻ ചെയ്യുമ്പോൾ\nപാസ്‌വേഡിനൊപ്പം അതിലെ ഒരു കോഡും ചോദിക്കും.\n\nഇത് നിങ്ങൾ ചെയ്തതാണെങ്കിൽ, ഒന്നും ചെയ്യേണ്ടതില്ല. അല്ലെങ്കിൽ, ഉടൻ തന്നെ സൈൻ-ഇൻ പേജിൽ നിന്ന് പാസ്‌വേഡ് റീസെറ്റ് ചെയ്ത്\nhelp@sangamid.in എന്ന വിലാസത്തിലേക്ക് എഴുതുക, അതുവഴി ഞങ്ങൾക്ക് നിങ്ങളുടെ അക്കൗണ്ട് സുരക്ഷിതമാക്കാം.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
+  "authenticator_removed_notice": {
+    "en-IN": {
+      "subject": "The authenticator app was removed from your Sangam account",
+      "body": "Hello {{name}},\n\nThe authenticator app was just removed from your Sangam account. Signing in no longer asks for a code\nfrom it, so your account is now protected by your password alone.\n\nIf this was you, there is nothing to do. If it was not, reset your password from the sign-in page at once\nand write to help@sangamid.in, so we can secure your account.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "आपके Sangam खाते से ऑथेंटिकेटर ऐप हटा दिया गया",
+      "body": "नमस्ते {{name}},\n\nआपके Sangam खाते से अभी ऑथेंटिकेटर ऐप हटा दिया गया है। अब साइन इन करते समय उसका कोड नहीं माँगा जाएगा,\nइसलिए आपका खाता अब केवल आपके पासवर्ड से सुरक्षित है।\n\nयदि यह आपने किया है, तो कुछ करने की आवश्यकता नहीं है। यदि नहीं, तो तुरंत साइन-इन पेज से अपना पासवर्ड रीसेट करें\nऔर help@sangamid.in पर लिखें, ताकि हम आपका खाता सुरक्षित कर सकें।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "നിങ്ങളുടെ Sangam അക്കൗണ്ടിൽ നിന്ന് ഓതന്റിക്കേറ്റർ ആപ്പ് നീക്കം ചെയ്തു",
+      "body": "നമസ്കാരം {{name}},\n\nനിങ്ങളുടെ Sangam അക്കൗണ്ടിൽ നിന്ന് ഓതന്റിക്കേറ്റർ ആപ്പ് ഇപ്പോൾ നീക്കം ചെയ്തു. ഇനി സൈൻ ഇൻ ചെയ്യുമ്പോൾ അതിലെ കോഡ്\nചോദിക്കില്ല, അതിനാൽ നിങ്ങളുടെ അക്കൗണ്ട് ഇപ്പോൾ പാസ്‌വേഡ് കൊണ്ട് മാത്രമാണ് സംരക്ഷിച്ചിരിക്കുന്നത്.\n\nഇത് നിങ്ങൾ ചെയ്തതാണെങ്കിൽ, ഒന്നും ചെയ്യേണ്ടതില്ല. അല്ലെങ്കിൽ, ഉടൻ തന്നെ സൈൻ-ഇൻ പേജിൽ നിന്ന് പാസ്‌വേഡ് റീസെറ്റ് ചെയ്ത്\nhelp@sangamid.in എന്ന വിലാസത്തിലേക്ക് എഴുതുക, അതുവഴി ഞങ്ങൾക്ക് നിങ്ങളുടെ അക്കൗണ്ട് സുരക്ഷിതമാക്കാം.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
+  "passkey_added_notice": {
+    "en-IN": {
+      "subject": "A passkey was added to your Sangam account",
+      "body": "Hello {{name}},\n\nA passkey was just added to your Sangam account. The device or password manager that holds it can now\nsign you in.\n\nIf this was you, there is nothing to do. If it was not, reset your password from the sign-in page at once\nand write to help@sangamid.in, so we can secure your account.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "आपके Sangam खाते में एक पासकी जोड़ी गई",
+      "body": "नमस्ते {{name}},\n\nआपके Sangam खाते में अभी एक पासकी जोड़ी गई है। जिस डिवाइस या पासवर्ड मैनेजर में यह रखी है, वह अब\nआपको साइन इन करा सकता है।\n\nयदि यह आपने किया है, तो कुछ करने की आवश्यकता नहीं है। यदि नहीं, तो तुरंत साइन-इन पेज से अपना पासवर्ड रीसेट करें\nऔर help@sangamid.in पर लिखें, ताकि हम आपका खाता सुरक्षित कर सकें।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "നിങ്ങളുടെ Sangam അക്കൗണ്ടിൽ ഒരു പാസ്‌കീ ചേർത്തു",
+      "body": "നമസ്കാരം {{name}},\n\nനിങ്ങളുടെ Sangam അക്കൗണ്ടിൽ ഇപ്പോൾ ഒരു പാസ്‌കീ ചേർത്തു. അത് സൂക്ഷിക്കുന്ന ഉപകരണത്തിനോ പാസ്‌വേഡ് മാനേജർക്കോ\nഇനി നിങ്ങളെ സൈൻ ഇൻ ചെയ്യിക്കാം.\n\nഇത് നിങ്ങൾ ചെയ്തതാണെങ്കിൽ, ഒന്നും ചെയ്യേണ്ടതില്ല. അല്ലെങ്കിൽ, ഉടൻ തന്നെ സൈൻ-ഇൻ പേജിൽ നിന്ന് പാസ്‌വേഡ് റീസെറ്റ് ചെയ്ത്\nhelp@sangamid.in എന്ന വിലാസത്തിലേക്ക് എഴുതുക, അതുവഴി ഞങ്ങൾക്ക് നിങ്ങളുടെ അക്കൗണ്ട് സുരക്ഷിതമാക്കാം.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
+  "passkey_removed_notice": {
+    "en-IN": {
+      "subject": "A passkey was removed from your Sangam account",
+      "body": "Hello {{name}},\n\nA passkey was just removed from your Sangam account. The device or password manager that held it can no\nlonger sign you in.\n\nIf this was you, there is nothing to do. If it was not, reset your password from the sign-in page at once\nand write to help@sangamid.in, so we can secure your account.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "आपके Sangam खाते से एक पासकी हटाई गई",
+      "body": "नमस्ते {{name}},\n\nआपके Sangam खाते से अभी एक पासकी हटाई गई है। जिस डिवाइस या पासवर्ड मैनेजर में यह रखी थी, वह अब\nआपको साइन इन नहीं करा सकता।\n\nयदि यह आपने किया है, तो कुछ करने की आवश्यकता नहीं है। यदि नहीं, तो तुरंत साइन-इन पेज से अपना पासवर्ड रीसेट करें\nऔर help@sangamid.in पर लिखें, ताकि हम आपका खाता सुरक्षित कर सकें।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "നിങ്ങളുടെ Sangam അക്കൗണ്ടിൽ നിന്ന് ഒരു പാസ്‌കീ നീക്കം ചെയ്തു",
+      "body": "നമസ്കാരം {{name}},\n\nനിങ്ങളുടെ Sangam അക്കൗണ്ടിൽ നിന്ന് ഇപ്പോൾ ഒരു പാസ്‌കീ നീക്കം ചെയ്തു. അത് സൂക്ഷിച്ചിരുന്ന ഉപകരണത്തിനോ പാസ്‌വേഡ് മാനേജർക്കോ\nഇനി നിങ്ങളെ സൈൻ ഇൻ ചെയ്യിക്കാൻ കഴിയില്ല.\n\nഇത് നിങ്ങൾ ചെയ്തതാണെങ്കിൽ, ഒന്നും ചെയ്യേണ്ടതില്ല. അല്ലെങ്കിൽ, ഉടൻ തന്നെ സൈൻ-ഇൻ പേജിൽ നിന്ന് പാസ്‌വേഡ് റീസെറ്റ് ചെയ്ത്\nhelp@sangamid.in എന്ന വിലാസത്തിലേക്ക് എഴുതുക, അതുവഴി ഞങ്ങൾക്ക് നിങ്ങളുടെ അക്കൗണ്ട് സുരക്ഷിതമാക്കാം.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
   }
 }

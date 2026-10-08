@@ -62,7 +62,7 @@ else
         </label>
       </div>
       <div class="sg-field-group">
-        <span class="sg-label">@L["Mobile"]</span>
+        <label class="sg-label" for="profile-mobile">@L["Mobile"]</label>
         <div class="sg-phone">
           <InputSelect class="sg-field sg-field--dial" @bind-Value="_form.CountryIso" aria-label="@L["Country dialling code"]">
             @foreach (var country in CountryCodes.All)
@@ -70,7 +70,7 @@ else
               <option value="@country.Iso">@CountryCodes.OptionLabel(country)</option>
             }
           </InputSelect>
-          <InputText class="sg-field" @bind-Value="_form.MobileNumber" type="tel" inputmode="numeric" />
+          <InputText id="profile-mobile" class="sg-field" @bind-Value="_form.MobileNumber" type="tel" inputmode="numeric" autocomplete="tel-national" />
         </div>
         @if (_user?.MobileVerified == true)
         {
@@ -164,9 +164,9 @@ else
   }
 
   <section class="sg-panel">
-    <h2 class="sg-panel-title">@L["How you sign in"]</h2>
+    <h2 class="sg-panel-title" id="sign-in-mode-title">@L["How you sign in"]</h2>
     <div class="sg-field-group">
-      <InputSelect class="sg-field" Value="_mode" ValueChanged="@((string v) => _mode = v)" ValueExpression="() => _mode">
+      <InputSelect class="sg-field" aria-labelledby="sign-in-mode-title" Value="_mode" ValueChanged="@((string v) => _mode = v)" ValueExpression="() => _mode">
         <option value="password">@L["Email and password"]</option>
         <option value="password_and_otp">@L["Password, then an emailed code"]</option>
         <option value="otp_only">@L["An emailed code only (no password)"]</option>
@@ -174,6 +174,12 @@ else
       <p class="sg-note">@L["An application can require a stronger method than the one you choose here."]</p>
     </div>
     <button type="button" class="sg-btn sg-btn--secondary" @onclick="SaveModeAsync">@L["Save preference"]</button>
+  </section>
+
+  <section class="sg-panel" data-panel="password">
+    <h2 class="sg-panel-title">@L["Password"]</h2>
+    <p class="sg-panel-body">@L["Change your password on the Sangam sign-in site. You will be asked for the current one first, and your other devices will be signed out."]</p>
+    <a class="sg-btn sg-btn--secondary" href="@PasswordUrl">@L["Change your password"]</a>
   </section>
 
   @if (Passkeys.Enabled)
@@ -329,6 +335,8 @@ else
     private string MobileUrl => (Configuration["Sangam:Authority"] ?? "https://id.sangamid.in").TrimEnd('/') + "/account/mobile";
 
     private string PasskeysUrl => (Configuration["Sangam:Authority"] ?? "https://id.sangamid.in").TrimEnd('/') + "/account/passkeys";
+
+    private string PasswordUrl => (Configuration["Sangam:Authority"] ?? "https://id.sangamid.in").TrimEnd('/') + "/account/password";
 
     protected override async Task OnInitializedAsync()
     {

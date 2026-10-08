@@ -19,6 +19,16 @@ public static partial class TemplateText
     /// <summary>The longest body accepted.</summary>
     public const int MaxBody = 8000;
 
+    /// <summary>
+    /// R7 (ASVS V5.2.3): a filled-in subject on one line. A value placed in it (a person's name, an application's name)
+    /// could carry a line break, which a mail system could read as a new header; line breaks and other control characters
+    /// become spaces.
+    /// </summary>
+    /// <param name="template">The subject template.</param>
+    /// <param name="values">Variable values.</param>
+    public static string FillSubject(string template, IReadOnlyDictionary<string, string> values)
+        => new([.. Fill(template, values).Select(c => char.IsControl(c) ? ' ' : c)]);
+
     /// <summary>Fills <paramref name="template"/> with <paramref name="values"/>; an unknown variable is left empty.</summary>
     /// <param name="template">The template.</param>
     /// <param name="values">Variable values.</param>
@@ -46,7 +56,7 @@ public static partial class TemplateText
             return "Enter both a subject and a message.";
         }
 
-        if (subject.Length > MaxSubject || subject.Contains('\n', StringComparison.Ordinal))
+        if (subject.Length > MaxSubject || subject.Any(char.IsControl))
         {
             return $"The subject must be one line of at most {MaxSubject} characters.";
         }

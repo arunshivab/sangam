@@ -137,6 +137,7 @@ public sealed class EfMonitoringService : IMonitoringService
                 BreachListReports = reports,
                 BreachListSource = source,
                 AuditArchive = await AuditArchiveAsync(db, cancellationToken).ConfigureAwait(false),
+                Siem = await SiemAsync(db, cancellationToken).ConfigureAwait(false),
                 Grievances = new GrievanceCounts(
                     await db.Grievances.CountAsync(g => g.ClosedAt == null, cancellationToken).ConfigureAwait(false),
                     await db.Grievances.CountAsync(g => g.ClosedAt == null && g.AcknowledgedAt == null && g.AcknowledgeBy < now, cancellationToken).ConfigureAwait(false),
@@ -155,6 +156,18 @@ public sealed class EfMonitoringService : IMonitoringService
         try
         {
             return payload is null ? null : JsonSerializer.Deserialize<AuditArchiveStatus>(payload);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static async Task<SiemStatus?> SiemAsync(SangamDbContext db, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await Siem.SiemForwarder.ReadStatusAsync(db, cancellationToken).ConfigureAwait(false);
         }
         catch (JsonException)
         {

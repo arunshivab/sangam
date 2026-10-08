@@ -60,6 +60,27 @@ WebApplication app = builder.Build();
 
 app.UseForwardedHeaders();
 
+// R7 (SGM-503): the same security headers as Sangam's own hosts. Scripts only from this origin; forms may lead here
+// and to Sangam (joining the demo hospital signs in again); no page may be framed.
+string sangamOrigin = Uri.TryCreate(app.Configuration["Sangam:Authority"], UriKind.Absolute, out Uri? authorityUri) ? authorityUri.GetLeftPart(UriPartial.Authority) : string.Empty;
+string policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; "
+    + "connect-src 'self'; frame-src 'none'; frame-ancestors 'none'; form-action 'self' " + sangamOrigin + "; base-uri 'self'; object-src 'none'";
+app.Use((context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        IHeaderDictionary headers = context.Response.Headers;
+        headers["Content-Security-Policy"] = policy;
+        headers["X-Content-Type-Options"] = "nosniff";
+        headers["X-Frame-Options"] = "DENY";
+        headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+        headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=()";
+        headers["Cross-Origin-Opener-Policy"] = "same-origin";
+        return Task.CompletedTask;
+    });
+    return next(context);
+});
+
 // Development, and the demo (its own database, no real patient data), create their tables on start.
 if (app.Configuration.GetValue("Imagiqa:MigrateOnStartup", false))
 {
@@ -117,7 +138,12 @@ app.MapPost("/demo/join", async (HttpContext context, Microsoft.AspNetCore.Antif
     await context.SignOutAsync(SangamDefaults.CookieScheme).ConfigureAwait(false);
     return Results.Challenge(new AuthenticationProperties { RedirectUri = "/" });
 }).RequireAuthorization();
-app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
+app.MapRazorComponents<App>().AddInteractiveServerRenderMode(o =>
+{
+    // R7: Blazor would send its own Content-Security-Policy (frame-ancestors 'self') on every page, in place of the
+    // full policy the security headers set; that one already forbids all framing.
+    o.ContentSecurityFrameAncestorsPolicy = null;
+});
 
 await app.RunAsync().ConfigureAwait(false);
 

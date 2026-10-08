@@ -101,6 +101,10 @@ public sealed class MfaAndBootstrapTests : IAsyncLifetime
         Assert.Equal(10, ok.RecoveryCodes.Count);
         Assert.True(await mfa.IsEnrolledAsync(_userId));
 
+        // R7 (ASVS V2.5.5): the person is told an authenticator app now protects their account.
+        InMemoryEmailOutbox outbox = scope.ServiceProvider.GetRequiredService<InMemoryEmailOutbox>();
+        Assert.Contains("authenticator app was added", outbox.LatestFor("arun@example.in")!.Message.Subject, StringComparison.Ordinal);
+
         using IServiceScope check = _provider.CreateScope();
         Assert.True((await check.ServiceProvider.GetRequiredService<IAccountService>().FindByIdAsync(_userId))!.MfaEnrolled);
     }
@@ -111,9 +115,12 @@ public sealed class MfaAndBootstrapTests : IAsyncLifetime
         using IServiceScope scope = _provider.CreateScope();
         IMfaService mfa = scope.ServiceProvider.GetRequiredService<IMfaService>();
         await mfa.BeginEnrolmentAsync(_userId);
-        MfaConfirmation confirmation = await mfa.ConfirmEnrolmentAsync(_userId, await CurrentCodeAsync(), null);
+        string first = await CurrentCodeAsync();
+        MfaConfirmation confirmation = await mfa.ConfirmEnrolmentAsync(_userId, first, null);
 
-        Assert.Equal(MfaResult.Valid, await mfa.VerifyAsync(_userId, await CurrentCodeAsync(), null));
+        // R7 (ASVS V2.8.4): a code works once — the one that confirmed the app is refused; the next one is accepted.
+        Assert.NotEqual(MfaResult.Valid, await mfa.VerifyAsync(_userId, first, null));
+        Assert.Equal(MfaResult.Valid, await mfa.VerifyAsync(_userId, await CurrentCodeAsync(TimeSpan.FromSeconds(30)), null));
 
         // Recovery codes keep their dash; a person reading one off paper may add spaces.
         string recovery = confirmation.RecoveryCodes[0];
@@ -157,6 +164,7 @@ public sealed class MfaAndBootstrapTests : IAsyncLifetime
 
         Assert.True(await mfa.DisableAsync(_userId, null));
         Assert.False(await mfa.IsEnrolledAsync(_userId));
+        Assert.Contains("authenticator app was removed", scope.ServiceProvider.GetRequiredService<InMemoryEmailOutbox>().LatestFor("arun@example.in")!.Message.Subject, StringComparison.Ordinal);
     }
 
     [PostgresFact]
@@ -202,14 +210,54 @@ public sealed class MfaAndBootstrapTests : IAsyncLifetime
         Assert.Equal(["app_manager", "owner", "support", "viewer"], stored);
     }
 
+    [PostgresFact]
+    public async Task TheAuthenticatorSecret_IsStoredEncrypted_AndRecoveryCodesHashed_AndAPlainSecretStillWorks()
+    {
+        // R7 (ASVS V2.8.2, V2.6.2).
+        using (IServiceScope scope = _provider.CreateScope())
+        {
+            IMfaService mfa = scope.ServiceProvider.GetRequiredService<IMfaService>();
+            MfaEnrolment enrolment = await mfa.BeginEnrolmentAsync(_userId);
+            MfaConfirmation confirmation = await mfa.ConfirmEnrolmentAsync(_userId, await CurrentCodeAsync(), null);
+
+            await using SangamDbContext db = _pg.CreateContext();
+            string stored = await db.Database.SqlQueryRaw<string>("SELECT value AS \"Value\" FROM user_tokens WHERE user_id = {0} AND name = 'AuthenticatorKey'", _userId).SingleAsync();
+            Assert.StartsWith(Sangam.Identity.Infrastructure.Accounts.SangamUserStore.ProtectedPrefix, stored, StringComparison.Ordinal);
+            Assert.DoesNotContain(enrolment.SharedKey.Replace(" ", string.Empty, StringComparison.Ordinal), stored, StringComparison.OrdinalIgnoreCase);
+            string codes = await db.Database.SqlQueryRaw<string>("SELECT value AS \"Value\" FROM user_tokens WHERE user_id = {0} AND name = 'RecoveryCodes'", _userId).SingleAsync();
+            Assert.All(codes.Split(';'), c => Assert.StartsWith(Sangam.Identity.Infrastructure.Accounts.SangamUserStore.HashedPrefix, c, StringComparison.Ordinal));
+            Assert.DoesNotContain(confirmation.RecoveryCodes[0], codes, StringComparison.Ordinal);
+            Assert.Equal(MfaResult.Valid, await mfa.VerifyAsync(_userId, confirmation.RecoveryCodes[0], null));
+        }
+
+        // A secret written before R7, in the clear, is still read.
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            await db.Database.ExecuteSqlRawAsync("UPDATE user_tokens SET value = 'JBSWY3DPEHPK3PXP' WHERE user_id = {0} AND name = 'AuthenticatorKey'", _userId);
+            await db.Database.ExecuteSqlRawAsync("DELETE FROM user_tokens WHERE user_id = {0} AND name = 'LastTotpStep'", _userId);
+        }
+
+        using IServiceScope after = _provider.CreateScope();
+        string code = Totp(Base32("JBSWY3DPEHPK3PXP"), DateTimeOffset.UtcNow);
+        Assert.Equal(MfaResult.Valid, await after.ServiceProvider.GetRequiredService<IMfaService>().VerifyAsync(_userId, code, null));
+    }
+
+    [Theory]
+    [InlineData(59L, "287082")]
+    [InlineData(1111111109L, "081804")]
+    [InlineData(1234567890L, "005924")]
+    [InlineData(20000000000L, "353130")]
+    public void TheCode_MatchesTheRfc6238TestVectors(long unixSeconds, string expected)
+        => Assert.Equal(expected, Sangam.Identity.Infrastructure.Accounts.SangamAuthenticatorTokenProvider.Code(System.Text.Encoding.ASCII.GetBytes("12345678901234567890"), unixSeconds / 30));
+
     /// <summary>Computes the current TOTP from the user's stored key, the way an authenticator app would.</summary>
-    private async Task<string> CurrentCodeAsync()
+    private async Task<string> CurrentCodeAsync(TimeSpan ahead = default)
     {
         using IServiceScope scope = _provider.CreateScope();
         UserManager<SangamUser> users = scope.ServiceProvider.GetRequiredService<UserManager<SangamUser>>();
         SangamUser user = (await users.FindByIdAsync(_userId.ToString("D")))!;
         string key = (await users.GetAuthenticatorKeyAsync(user))!;
-        return Totp(Base32(key), DateTimeOffset.UtcNow);
+        return Totp(Base32(key), DateTimeOffset.UtcNow + ahead);
     }
 
     private static string Totp(byte[] secret, DateTimeOffset at)

@@ -88,10 +88,13 @@ public static class SangamAuthentication
 
     /// <summary>Registers the session and pending cookie schemes.</summary>
     /// <param name="services">Service collection.</param>
+    /// <param name="environmentName">The host environment: cookies are always Secure outside Development and Testing (R7).</param>
     /// <returns>The same collection.</returns>
-    public static IServiceCollection AddSangamCookies(this IServiceCollection services)
+    public static IServiceCollection AddSangamCookies(this IServiceCollection services, string environmentName)
     {
         ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(environmentName);
+        CookieSecurePolicy secure = Sangam.Web.Shared.Hosting.SecurityHeaders.CookiePolicy(environmentName);
 
         services.AddAuthentication(IdentityConstants.ApplicationScheme)
             .AddCookie(IdentityConstants.ApplicationScheme, o =>
@@ -99,7 +102,7 @@ public static class SangamAuthentication
                 o.Cookie.Name = SessionCookieName;
                 o.Cookie.HttpOnly = true;
                 o.Cookie.SameSite = SameSiteMode.Lax;
-                o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+                o.Cookie.SecurePolicy = secure;
                 o.LoginPath = "/login";
                 o.LogoutPath = "/logout";
                 o.AccessDeniedPath = "/login";
@@ -112,7 +115,7 @@ public static class SangamAuthentication
                 o.Cookie.Name = PendingCookieName;
                 o.Cookie.HttpOnly = true;
                 o.Cookie.SameSite = SameSiteMode.Lax;
-                o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+                o.Cookie.SecurePolicy = secure;
                 o.SlidingExpiration = false;
                 o.ExpireTimeSpan = TimeSpan.FromMinutes(15);
                 // Never redirect: a stale pending cookie just means "start again".
@@ -176,6 +179,33 @@ public static class SangamAuthentication
     }
 
     /// <summary>
+    /// Keeps this device signed in after the person changed their own password (R7): the cookie is issued again with
+    /// the new security stamp, the same session and the same sign-in methods. Every other device still carries the old
+    /// stamp and is signed out at its next check.
+    /// </summary>
+    /// <param name="httpContext">Current request.</param>
+    /// <param name="securityStamp">The person's new security stamp.</param>
+    public static async Task RenewStampAsync(HttpContext httpContext, string securityStamp)
+    {
+        ArgumentNullException.ThrowIfNull(httpContext);
+        ArgumentNullException.ThrowIfNull(securityStamp);
+        AuthenticateResult current = await httpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme).ConfigureAwait(false);
+        if (current.Principal?.Identity is not ClaimsIdentity identity)
+        {
+            return;
+        }
+
+        foreach (Claim old in identity.FindAll(c => c.Type is SessionStampClaim or SessionValidatedClaim).ToList())
+        {
+            identity.RemoveClaim(old);
+        }
+
+        identity.AddClaim(new Claim(SessionStampClaim, securityStamp));
+        identity.AddClaim(new Claim(SessionValidatedClaim, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture)));
+        await httpContext.SignInAsync(IdentityConstants.ApplicationScheme, current.Principal, current.Properties).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Every <see cref="ValidationInterval"/>, compares the session's stamp with the database.
     /// A password reset or a forced sign-out rotates the stamp, so every other device's session
     /// ends within the interval — the "signs you out everywhere" promise.
@@ -188,6 +218,15 @@ public static class SangamAuthentication
         long validated = long.TryParse(principal?.FindFirstValue(SessionValidatedClaim), NumberStyles.None, CultureInfo.InvariantCulture, out long v) ? v : 0;
 
         if (principal is null || userId is null || stamp is null)
+        {
+            context.RejectPrincipal();
+            await context.HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme).ConfigureAwait(false);
+            return;
+        }
+
+        // R7 (ASVS V3.3.2): however busy, a session ends a fixed time after the person signed in.
+        long signedIn = long.TryParse(principal.FindFirstValue(Claims.AuthenticationTime), NumberStyles.None, CultureInfo.InvariantCulture, out long t) ? t : 0;
+        if (DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeSeconds(signedIn) > Sangam.Web.Shared.Hosting.SessionLifetime.Absolute)
         {
             context.RejectPrincipal();
             await context.HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme).ConfigureAwait(false);

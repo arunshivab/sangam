@@ -135,6 +135,16 @@ public sealed class PartnerFactory : WebApplicationFactory<Program>
         await db.SaveChangesAsync();
     }
 
+    /// <summary>Turns two-step sign-in on or off for a user (R7).</summary>
+    public async Task SetTwoFactorAsync(Guid userId, bool enabled)
+    {
+        using IServiceScope scope = Services.CreateScope();
+        SangamDbContext db = scope.ServiceProvider.GetRequiredService<SangamDbContext>();
+        SangamUser user = await db.Users.SingleAsync(u => u.Id == userId);
+        user.TwoFactorEnabled = enabled;
+        await db.SaveChangesAsync();
+    }
+
     /// <summary>A client that is signed in as <paramref name="userId"/>.</summary>
     public HttpClient ClientFor(Guid userId)
     {

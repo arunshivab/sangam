@@ -71,6 +71,21 @@ public static class MessageTemplateKinds
     /// <summary>To an application's owners: its SCIM provisioning or a webhook endpoint stopped working (PR-23, PR-24).</summary>
     public const string IntegrationFailing = "integration_failing";
 
+    /// <summary>To the person: their password was changed or reset (R7, ASVS V2.5.5).</summary>
+    public const string PasswordChangedNotice = "password_changed_notice";
+
+    /// <summary>To the person: an authenticator app was added to their account (R7, ASVS V2.5.5).</summary>
+    public const string AuthenticatorAddedNotice = "authenticator_added_notice";
+
+    /// <summary>To the person: the authenticator app was removed from their account (R7, ASVS V2.5.5).</summary>
+    public const string AuthenticatorRemovedNotice = "authenticator_removed_notice";
+
+    /// <summary>To the person: a passkey was added to their account (R7, ASVS V2.5.5).</summary>
+    public const string PasskeyAddedNotice = "passkey_added_notice";
+
+    /// <summary>To the person: a passkey was removed from their account (R7, ASVS V2.5.5).</summary>
+    public const string PasskeyRemovedNotice = "passkey_removed_notice";
+
     /// <summary>Every kind, in the order the consoles list them.</summary>
     public static IReadOnlyList<MessageTemplateKind> All { get; } =
     [
@@ -81,6 +96,11 @@ public static class MessageTemplateKinds
         new(EmailChangeCode, false, false, ["name", "code", "minutes"], ["code"]),
         new(EmailChangedNotice, false, false, ["name", "new_email"], []),
         new(TwoStepResetNotice, false, false, ["name"], []),
+        new(PasswordChangedNotice, false, false, ["name"], []),
+        new(AuthenticatorAddedNotice, false, false, ["name"], []),
+        new(AuthenticatorRemovedNotice, false, false, ["name"], []),
+        new(PasskeyAddedNotice, false, false, ["name"], []),
+        new(PasskeyRemovedNotice, false, false, ["name"], []),
         new(TwoStepResetRequested, false, false, ["name", "hours", "effective", "link"], ["link"]),
         new(OperatorAlert, false, false, ["summary", "details"], ["summary"]),
         new(GrievanceAcknowledgement, false, false, ["name", "reference", "received", "resolve_by"], ["reference"]),

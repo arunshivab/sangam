@@ -250,6 +250,7 @@ public static class ConnectEndpoints
         IOpenIddictApplicationManager applications,
         IOpenIddictAuthorizationManager authorizations,
         IOpenIddictScopeManager scopes,
+        ISessionService sessions,
         CancellationToken cancellationToken)
     {
         OpenIddictRequest request = httpContext.GetOpenIddictServerRequest()
@@ -273,9 +274,27 @@ public static class ConnectEndpoints
             ClaimsPrincipal? stored = result.Principal;
             Guid? userId = stored is null ? null : (Guid.TryParse(stored.GetClaim(Claims.Subject), out Guid id) ? id : null);
             UserSummary? user = userId is null ? null : await accounts.FindByIdAsync(userId.Value, cancellationToken).ConfigureAwait(false);
-            if (user is null || !user.EmailVerified)
+            if (user is null || !user.EmailVerified || user.Status != UserStatus.Active)
             {
                 return Forbid(Errors.InvalidGrant, "The user no longer exists or cannot sign in.");
+            }
+
+            // R7 (ASVS V3.3.1, V3.3.3): a refresh token dies with the sign-in it came from. Signing out (here or
+            // everywhere), an operator ending the session, a password reset or a change to two-step sign-in all end it;
+            // before, refresh tokens went on working for up to 90 days.
+            if (request.IsRefreshTokenGrantType())
+            {
+                string? stamp = stored!.GetClaim(SangamClaims.SecurityStamp);
+                if (stamp is not null && !string.Equals(stamp, user.SecurityStamp, StringComparison.Ordinal))
+                {
+                    return Forbid(Errors.InvalidGrant, "The person's password, e-mail or two-step sign-in changed, or they signed out everywhere; they must sign in again.");
+                }
+
+                if (Guid.TryParse(stored!.GetClaim(SangamClaims.SessionId), out Guid sessionId)
+                    && !await sessions.TouchAsync(sessionId, user.Id, cancellationToken).ConfigureAwait(false))
+                {
+                    return Forbid(Errors.InvalidGrant, "The sign-in this refresh token came from has ended; the user must sign in again.");
+                }
             }
 
             AppSummary? app = request.ClientId is null ? null : await apps.FindByClientIdAsync(request.ClientId, cancellationToken).ConfigureAwait(false);

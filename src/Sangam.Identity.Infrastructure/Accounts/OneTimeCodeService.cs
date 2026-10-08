@@ -90,7 +90,7 @@ public sealed class OneTimeCodeService
         ArgumentNullException.ThrowIfNull(code);
         DateTimeOffset now = _clock.UtcNow;
 
-        OneTimeCode? live = await _db.OneTimeCodes
+        OneTimeCode? live = await _db.OneTimeCodes.AsNoTracking()
             .Where(c => c.UserId == userId && c.Purpose == purpose && c.ConsumedAt == null && c.ExpiresAt > now)
             .OrderByDescending(c => c.CreatedAt)
             .FirstOrDefaultAsync(cancellationToken)
@@ -105,21 +105,34 @@ public sealed class OneTimeCodeService
         byte[] expected = Encoding.ASCII.GetBytes(live.CodeHash);
         byte[] actual = Encoding.ASCII.GetBytes(Hash(userId, purpose, normalised));
 
+        // R7 (ASVS V11.1.6): both outcomes are single conditional UPDATEs, so guesses sent in parallel cannot each see the
+        // same attempt count. Before, every request read the count, added one and saved: n parallel guesses counted as
+        // one, so the limit of MaxAttempts per code did not hold.
+        int max = _options.MaxAttempts;
+        Guid id = live.Id;
         if (!CryptographicOperations.FixedTimeEquals(expected, actual))
         {
-            live.FailedAttempts++;
-            if (live.FailedAttempts >= _options.MaxAttempts)
-            {
-                live.ExpiresAt = now;
-            }
-
-            await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            return live.ExpiresAt <= now ? OtpVerifyStatus.Expired : OtpVerifyStatus.Invalid;
+            await _db.OneTimeCodes
+                .Where(c => c.Id == id && c.ConsumedAt == null && c.ExpiresAt > now)
+                .ExecuteUpdateAsync(
+                    s => s
+                        .SetProperty(c => c.FailedAttempts, c => c.FailedAttempts + 1)
+                        .SetProperty(c => c.ExpiresAt, c => c.FailedAttempts + 1 >= max ? now : c.ExpiresAt),
+                    cancellationToken)
+                .ConfigureAwait(false);
+            bool spent = await _db.OneTimeCodes.AsNoTracking()
+                .AnyAsync(c => c.Id == id && (c.ExpiresAt <= now || c.ConsumedAt != null), cancellationToken)
+                .ConfigureAwait(false);
+            return spent ? OtpVerifyStatus.Expired : OtpVerifyStatus.Invalid;
         }
 
-        live.ConsumedAt = now;
-        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        return OtpVerifyStatus.Valid;
+        // The right code counts only while the code is live and its attempts are not used up: a correct guess racing the
+        // last wrong ones loses.
+        int consumed = await _db.OneTimeCodes
+            .Where(c => c.Id == id && c.ConsumedAt == null && c.ExpiresAt > now && c.FailedAttempts < max)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.ConsumedAt, now), cancellationToken)
+            .ConfigureAwait(false);
+        return consumed == 1 ? OtpVerifyStatus.Valid : OtpVerifyStatus.Expired;
     }
 
     /// <summary>When the user may next request a code for <paramref name="purpose"/>, or <see langword="null"/> when they may now.</summary>
