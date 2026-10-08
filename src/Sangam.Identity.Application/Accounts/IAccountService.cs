@@ -68,6 +68,15 @@ public interface IAccountService
     /// <param name="cancellationToken">Cancellation token.</param>
     Task RecordSignInAsync(Guid userId, SignInMode mode, string? ipAddress, string? userAgent, CancellationToken cancellationToken = default);
 
+    /// <summary>Records a successful sign-in (audit), noting when the one-time code came by SMS (PR-15).</summary>
+    /// <param name="userId">The user.</param>
+    /// <param name="mode">Mode used.</param>
+    /// <param name="codeBySms">Whether the code was texted rather than e-mailed.</param>
+    /// <param name="ipAddress">Client IP.</param>
+    /// <param name="userAgent">Client user agent.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task RecordSignInAsync(Guid userId, SignInMode mode, bool codeBySms, string? ipAddress, string? userAgent, CancellationToken cancellationToken = default);
+
     /// <summary>Emails a reset code when the address exists; always returns normally (no enumeration).</summary>
     /// <param name="email">Email address.</param>
     /// <param name="ipAddress">Client IP.</param>
@@ -82,6 +91,17 @@ public interface IAccountService
     /// <param name="ipAddress">Client IP.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     Task<AccountResult> ResetPasswordAsync(string email, string code, string newPassword, string? ipAddress, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Replaces a password the person has just proven at sign-in but which no longer meets a policy — too short,
+    /// or found in a breach (PR-16). The new one must differ and meet every policy; other sessions end.
+    /// </summary>
+    /// <param name="userId">The person.</param>
+    /// <param name="newPassword">The new password.</param>
+    /// <param name="reason">Why it had to change: <c>too_short</c> or <c>breached</c>.</param>
+    /// <param name="ipAddress">Client IP.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<AccountResult> ReplacePasswordAsync(Guid userId, string newPassword, string reason, string? ipAddress, CancellationToken cancellationToken = default);
 
     /// <summary>Changes the user's own sign-in preference.</summary>
     /// <param name="userId">The user.</param>

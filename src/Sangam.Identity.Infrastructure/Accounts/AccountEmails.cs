@@ -111,6 +111,26 @@ internal static class AccountEmails
         id.sangamid.in
         """);
 
+    /// <summary>Told to the person when support reset their two-step sign-in (PR-16), so a reset they did not ask for is noticed.</summary>
+    public static EmailMessage TwoStepResetNotice(string toEmail, string toName) => new(
+        toEmail,
+        toName,
+        "Your Sangam two-step sign-in was reset",
+        $"""
+        Hello {toName},
+
+        Sangam support has removed the authenticator app from your account, after confirming who you are,
+        because you told us you had lost it and your recovery codes. Every device has been signed out.
+
+        Sign in with your password, then set up an authenticator app again in your account. Keep the new
+        recovery codes somewhere safe, away from your phone.
+
+        If you did not ask for this, write to help@sangamid.in at once from this address.
+
+        Sangam - one identity, many homes
+        id.sangamid.in
+        """);
+
     /// <summary>An invitation to an organisation and role in an application (PR-13).</summary>
     public static EmailMessage Invitation(string toEmail, string appName, string orgName, string roleName, string link, int days) => new(
         toEmail,

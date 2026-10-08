@@ -16,6 +16,7 @@ namespace Sangam.Identity.Application.Apps;
 /// <param name="SignInPolicy">The app's sign-in rule.</param>
 /// <param name="ConsentVersion">Consent wording version in force.</param>
 /// <param name="Status">Lifecycle state.</param>
+/// <param name="IsPlatform">One of Sangam's own applications (portal, consoles): consent is implicit and recorded (V-06).</param>
 public sealed record AppSummary(
     Guid Id,
     string ClientId,
@@ -29,4 +30,5 @@ public sealed record AppSummary(
     string Glyph,
     SignInPolicy SignInPolicy,
     string ConsentVersion,
-    AppStatus Status);
+    AppStatus Status,
+    bool IsPlatform = false);

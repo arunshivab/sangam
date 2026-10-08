@@ -17,15 +17,23 @@ RUN dotnet ef migrations bundle --project src/Sangam.Identity.Infrastructure --s
 
 # Runs once per release with the schema owner's connection string, then exits:
 #   docker run --rm -e CONNECTION="..." sangam/migrator
-FROM mcr.microsoft.com/dotnet/aspnet:${DOTNET_VERSION} AS migrator
+FROM mcr.microsoft.com/dotnet/aspnet:${DOTNET_VERSION} AS runtime-base
+# Npgsql loads libgssapi_krb5 at start-up and logs an error when it is missing (V-03).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgssapi-krb5-2 \
+    && rm -rf /var/lib/apt/lists/*
+
+FROM runtime-base AS migrator
 COPY --from=bundle /out/efbundle /efbundle
 USER $APP_UID
 ENTRYPOINT ["sh", "-c", "exec /efbundle --connection \"$CONNECTION\""]
 
-FROM mcr.microsoft.com/dotnet/aspnet:${DOTNET_VERSION} AS app
+FROM runtime-base AS app
 ARG PROJECT=Sangam.Identity.Server
+# The base image already listens on 8080 through ASPNETCORE_HTTP_PORTS; setting ASPNETCORE_URLS too
+# only produced an "Overriding HTTP_PORTS" warning (V-04).
 ENV SANGAM_PROJECT=${PROJECT} \
-    ASPNETCORE_URLS=http://+:8080 \
+    ASPNETCORE_HTTP_PORTS=8080 \
     ASPNETCORE_ENVIRONMENT=Production
 WORKDIR /app
 COPY --from=build /out/app .

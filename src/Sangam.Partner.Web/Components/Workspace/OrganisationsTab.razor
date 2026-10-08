@@ -152,6 +152,13 @@ else
         <div class="sg-actions">
           <button type="button" class="sg-btn sg-btn--secondary" @onclick="InviteAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_inviteEmail) || string.IsNullOrEmpty(_inviteRole))">Send invitation</button>
         </div>
+
+        @if (_policy is not null)
+        {
+          <h3 class="sg-h3" data-panel="org-policy">Security policy for @_selected.Name</h3>
+          <PolicyEditor View="_policy" Key="@($"org-{_selected.Id:N}")" ShowSignIn="true" InheritLabel="@PolicyParent" Busy="_busy" OnSave="SavePolicyAsync"
+                        Explanation="@($"Applies to everyone with a role in {_selected.Name} and in every organisation under it, when they sign in to {Info.AppName}. It can only be stricter than what {_selected.Name} already has to follow.")" />
+        }
       }
     </section>
   </div>
@@ -181,6 +188,7 @@ else
     private string _inviteRole = string.Empty;
     private bool _inviteDescendants;
     private bool _busy;
+    private PolicyView? _policy;
     private bool _ok;
     private string? _message;
 
@@ -204,6 +212,19 @@ else
         _query = string.Empty;
         _message = null;
         _members = await Partners.ListMembersAsync(Info.UserId, Info.AppId, org.Id);
+        _policy = await Partners.GetOrganisationPolicyAsync(Info.UserId, Info.AppId, org.Id);
+    }
+
+    private string PolicyParent => _selected?.ParentId is null ? "the application" : "the organisations above";
+
+    private async Task SavePolicyAsync(PolicyInput input)
+    {
+        _busy = true;
+        PartnerResult result = await Partners.UpdateOrganisationPolicyAsync(Info.UserId, Info.AppId, _selected!.Id, input);
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = result.Message;
+        _policy = await Partners.GetOrganisationPolicyAsync(Info.UserId, Info.AppId, _selected.Id);
     }
 
     private async Task CreateOrgAsync()

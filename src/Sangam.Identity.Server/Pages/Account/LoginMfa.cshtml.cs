@@ -96,7 +96,7 @@ public sealed class LoginMfaModel : AuthPageModel
 
         SignInMode mode = pending.Mode ?? SignInMode.Password;
         await SangamAuthentication.ClearPendingAsync(HttpContext);
-        await SangamAuthentication.SignInSessionAsync(HttpContext, user, mode, Partner?.Id, PartnerContext.DeviceLabelFromReturnUrl(ReturnUrl));
+        await SangamAuthentication.SignInSessionAsync(HttpContext, user, mode, Partner?.Id, PartnerContext.DeviceLabelFromReturnUrl(ReturnUrl), secondFactor: true);
         await _accounts.RecordSignInAsync(user.Id, mode, ClientIp, ClientUserAgent, cancellationToken);
         return LocalRedirect(SafeReturnUrl(ReturnUrl));
     }

@@ -14,4 +14,7 @@ public enum SignInMode
 
     /// <summary>A one-time code sent by email instead of a password (passwordless).</summary>
     OtpOnly = 2,
+
+    /// <summary>A passkey with user verification (WebAuthn): phishing-resistant and counts as two factors (PR-14, SGM-205). Never a preference; only a session mode.</summary>
+    Passkey = 3,
 }

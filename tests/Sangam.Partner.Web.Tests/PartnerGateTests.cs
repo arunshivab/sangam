@@ -105,6 +105,13 @@ public sealed class PartnerGateTests : IClassFixture<PartnerFactory>
         Assert.Contains("Always two-step", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Password only", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Email code only", html, StringComparison.Ordinal);
+
+        // PR-16: passkey only, and the password and second-factor policy, with what is not yet available said plainly.
+        Assert.Contains("Passkey only", html, StringComparison.Ordinal);
+        Assert.Contains("Passwords and second factor", html, StringComparison.Ordinal);
+        Assert.Contains("Shortest password allowed", html, StringComparison.Ordinal);
+        Assert.Contains("Required for this application", html, StringComparison.Ordinal);
+        Assert.Contains("not yet switched on for Sangam", html, StringComparison.Ordinal);
     }
 
     [PostgresFact]

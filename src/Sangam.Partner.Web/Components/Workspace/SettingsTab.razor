@@ -53,13 +53,26 @@ else
         <input type="radio" name="policy" checked="@(_policy == SignInPolicy.PasswordAndOtp)" @onchange="() => _policy = SignInPolicy.PasswordAndOtp" />
         Always two-step <span class="sg-muted">— password, then a code by email, for everyone</span>
       </label>
+      <label class="sg-check">
+        <input type="radio" name="policy" checked="@(_policy == SignInPolicy.PasskeyOnly)" @onchange="() => _policy = SignInPolicy.PasskeyOnly" />
+        Passkey only <span class="sg-muted">— fingerprint, face or device PIN, for everyone; no passwords</span>
+      </label>
     </fieldset>
-    <p class="sg-muted">Partners can require two-step sign-in or leave it to each person. Rules that would weaken sign-in for people who chose two-step are set only by imagiQa.</p>
+    <p class="sg-muted">Partners can require two-step sign-in or passkeys, or leave it to each person. Rules that would weaken sign-in for people who chose two-step are set only by imagiQa. Organisations can tighten this rule for their own people.</p>
   </div>
 
   <div class="sg-actions">
     <button type="button" class="sg-btn sg-btn--primary" @onclick="SaveAsync" disabled="@_busy">Save settings</button>
   </div>
+
+  @if (_security is not null)
+  {
+    <div class="sg-panel" data-panel="security-policy">
+      <h2 class="sg-h3">Passwords and second factor</h2>
+      <PolicyEditor View="_security" Key="app" InheritLabel="Sangam" Busy="_busy" OnSave="SavePolicyAsync"
+                    Explanation="@($"Rules for everyone who signs in to {Info.AppName}. They can only be stricter than Sangam's own, and each organisation can tighten them further.")" />
+    </div>
+  }
 }
 
 <StatusLine Ok="_ok" Message="@_message" />
@@ -71,6 +84,7 @@ else
     public WorkspaceInfo Info { get; set; } = null!;
 
     private PartnerAppSettings? _settings;
+    private PolicyView? _security;
     private string? _description;
     private string _colour = "#000000";
     private string _glyph = string.Empty;
@@ -84,6 +98,7 @@ else
     private async Task LoadAsync()
     {
         _settings = await Partners.GetSettingsAsync(Info.UserId, Info.AppId);
+        _security = await Partners.GetAppPolicyAsync(Info.UserId, Info.AppId);
         if (_settings is not null)
         {
             _description = _settings.Description;
@@ -98,6 +113,7 @@ else
         SignInPolicy.Password => "Password only",
         SignInPolicy.OtpOnly => "Email code only, no password",
         SignInPolicy.PasswordAndOtp => "Always two-step",
+        SignInPolicy.PasskeyOnly => "Passkey only",
         _ => "Each person's own choice",
     };
 
@@ -105,6 +121,19 @@ else
     {
         _busy = true;
         PartnerResult result = await Partners.UpdateSettingsAsync(Info.UserId, Info.AppId, _description, _colour, _glyph, _policy);
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = result.Message;
+        if (result.Succeeded)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task SavePolicyAsync(PolicyInput input)
+    {
+        _busy = true;
+        PartnerResult result = await Partners.UpdateAppPolicyAsync(Info.UserId, Info.AppId, input);
         _busy = false;
         _ok = result.Succeeded;
         _message = result.Message;

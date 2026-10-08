@@ -404,6 +404,12 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(9)")
                         .HasColumnName("brand_colour");
 
+                    b.Property<bool>("BreachedPasswordCheck")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("breached_password_check");
+
                     b.Property<string>("ClientId")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -451,6 +457,18 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false)
                         .HasColumnName("is_platform");
+
+                    b.Property<string>("MfaRequirement")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasDefaultValue("optional")
+                        .HasColumnName("mfa_requirement");
+
+                    b.Property<int?>("MinPasswordLength")
+                        .HasColumnType("integer")
+                        .HasColumnName("min_password_length");
 
                     b.Property<string>("OwnerCompanyName")
                         .IsRequired()
@@ -507,7 +525,11 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
 
                     b.ToTable("apps", null, t =>
                         {
-                            t.HasCheckConstraint("chk_apps_sign_in_policy", "sign_in_policy IN ('default','password','password_and_otp','otp_only')");
+                            t.HasCheckConstraint("chk_apps_mfa_requirement", "mfa_requirement IN ('optional','required_for_administrators','required')");
+
+                            t.HasCheckConstraint("chk_apps_min_password_length", "min_password_length IS NULL OR min_password_length BETWEEN 8 AND 64");
+
+                            t.HasCheckConstraint("chk_apps_sign_in_policy", "sign_in_policy IN ('default','password','password_and_otp','otp_only','passkey_only')");
 
                             t.HasCheckConstraint("chk_apps_status", "status IN ('active','disabled')");
                         });
@@ -1103,6 +1125,10 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<bool?>("BreachedPasswordCheck")
+                        .HasColumnType("boolean")
+                        .HasColumnName("breached_password_check");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -1119,6 +1145,15 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("jsonb")
                         .HasColumnName("metadata");
+
+                    b.Property<string>("MfaRequirement")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("mfa_requirement");
+
+                    b.Property<int?>("MinPasswordLength")
+                        .HasColumnType("integer")
+                        .HasColumnName("min_password_length");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -1145,6 +1180,11 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("RegisteredViaAppId")
                         .HasColumnType("uuid")
                         .HasColumnName("registered_via_app_id");
+
+                    b.Property<string>("SignInPolicy")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("sign_in_policy");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -1175,8 +1215,131 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("chk_organisations_depth", "(parent_org_id IS NULL AND depth = 0) OR (parent_org_id IS NOT NULL AND depth > 0)");
 
+                            t.HasCheckConstraint("chk_organisations_mfa_requirement", "mfa_requirement IS NULL OR mfa_requirement IN ('optional','required_for_administrators','required')");
+
+                            t.HasCheckConstraint("chk_organisations_min_password_length", "min_password_length IS NULL OR min_password_length BETWEEN 8 AND 64");
+
+                            t.HasCheckConstraint("chk_organisations_sign_in_policy", "sign_in_policy IS NULL OR sign_in_policy IN ('password_and_otp','passkey_only')");
+
                             t.HasCheckConstraint("chk_organisations_status", "status IN ('active','suspended','deleted_soft','deleted_hard')");
                         });
+                });
+
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.PasskeyChallenge", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("OptionsJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("options_json");
+
+                    b.Property<DateTimeOffset?>("UsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("used_at");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_passkey_challenges");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("idx_passkey_challenges_expires");
+
+                    b.ToTable("passkey_challenges", (string)null);
+                });
+
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.PasskeyCredential", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AaGuid")
+                        .HasColumnType("uuid")
+                        .HasColumnName("aa_guid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<byte[]>("CredentialId")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("credential_id");
+
+                    b.Property<bool>("IsBackedUp")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_backed_up");
+
+                    b.Property<bool>("IsBackupEligible")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_backup_eligible");
+
+                    b.Property<DateTimeOffset?>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_used_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("name");
+
+                    b.Property<byte[]>("PublicKey")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("public_key");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<long>("SignCount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("sign_count");
+
+                    b.Property<string>("Transports")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("transports");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_passkey_credentials");
+
+                    b.HasIndex("CredentialId")
+                        .IsUnique()
+                        .HasDatabaseName("idx_passkey_credentials_credential_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("idx_passkey_credentials_user");
+
+                    b.ToTable("passkey_credentials", (string)null);
                 });
 
             modelBuilder.Entity("Sangam.Identity.Domain.Entities.PlatformOperator", b =>
@@ -1460,10 +1623,89 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("chk_users_gender", "gender IN ('female','male','other','prefer_not_to_say')");
 
-                            t.HasCheckConstraint("chk_users_sign_in_preference", "sign_in_preference IN ('password','password_and_otp','otp_only')");
+                            t.HasCheckConstraint("chk_users_sign_in_preference", "sign_in_preference IN ('password','password_and_otp','otp_only','passkey')");
 
                             t.HasCheckConstraint("chk_users_status", "status IN ('active','suspended','deleted_soft','deleted_hard')");
                         });
+                });
+
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.SmsMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DeliveredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("delivered_at");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("error");
+
+                    b.Property<string>("IpHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("ip_hash");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("ProviderMessageId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("provider_message_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Template")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("template");
+
+                    b.Property<string>("ToHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("to_hash");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sms_messages");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("idx_sms_messages_created");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_sms_messages_user_id");
+
+                    b.HasIndex("IpHash", "CreatedAt")
+                        .HasDatabaseName("idx_sms_messages_ip_created");
+
+                    b.HasIndex("Provider", "ProviderMessageId")
+                        .HasDatabaseName("idx_sms_messages_provider_message");
+
+                    b.HasIndex("ToHash", "CreatedAt")
+                        .HasDatabaseName("idx_sms_messages_to_created");
+
+                    b.ToTable("sms_messages", (string)null);
                 });
 
             modelBuilder.Entity("Sangam.Identity.Domain.Entities.UserSession", b =>
@@ -1763,6 +2005,16 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                     b.Navigation("RegisteredViaApp");
                 });
 
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.PasskeyCredential", b =>
+                {
+                    b.HasOne("Sangam.Identity.Domain.Entities.SangamUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_passkey_credentials_asp_net_users_user_id");
+                });
+
             modelBuilder.Entity("Sangam.Identity.Domain.Entities.PlatformOperator", b =>
                 {
                     b.HasOne("Sangam.Identity.Domain.Entities.SangamUser", "User")
@@ -1793,6 +2045,15 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                     b.Navigation("App");
 
                     b.Navigation("Org");
+                });
+
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.SmsMessage", b =>
+                {
+                    b.HasOne("Sangam.Identity.Domain.Entities.SangamUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_sms_messages_users_user_id");
                 });
 
             modelBuilder.Entity("Sangam.Identity.Domain.Entities.UserSession", b =>

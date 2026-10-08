@@ -53,6 +53,11 @@ internal static class AuditNarrator
             AuditActions.UserEmailVerify => "You verified your email address.",
             AuditActions.UserEmailChangeRequest => "You asked to change your email address; a code went to the new address.",
             AuditActions.UserEmailChange => "You changed your email address. The old address was told.",
+            AuditActions.UserPasskeyAdd => "You added a passkey.",
+            AuditActions.UserPasskeyRemove => "You removed a passkey.",
+            AuditActions.UserPasskeyFail => "A passkey sign-in was refused.",
+            AuditActions.UserSmsSend => SmsSentence(e.Metadata),
+            AuditActions.UserMobileVerify => "You verified your mobile number.",
             AuditActions.AppInvitationAccept => "You accepted an invitation and joined an organisation in an application.",
             AuditActions.UserLoginSuccess => "You signed in" + ModeSuffix(e.Metadata) + ".",
             AuditActions.UserLoginFail => "A sign-in attempt failed" + ReasonSuffix(e.Metadata) + ".",
@@ -70,7 +75,9 @@ internal static class AuditNarrator
             AuditActions.UserDataExport => "You downloaded a copy of your data.",
             AuditActions.UserAccountDeletionRequest => "You asked for your account to be deleted.",
             AuditActions.UserAccountDeletionCancel => "The deletion of your account was cancelled.",
-            AuditActions.ConsentGrant => $"You allowed {app} to use your Sangam account.",
+            AuditActions.ConsentGrant => Read(e.Metadata, "basis") == "first_party_implicit"
+                ? $"You signed in to {app}, part of Sangam itself, so no separate permission was asked."
+                : $"You allowed {app} to use your Sangam account.",
             AuditActions.ConsentDeny => $"You declined to share your account with {app}.",
             AuditActions.ConsentRevoke => $"Your consent for {app} was withdrawn.",
             AuditActions.AppAccessRevoke => $"You revoked {app}'s access to your account.",
@@ -100,13 +107,32 @@ internal static class AuditNarrator
     private static string AppName(Guid? appId, IReadOnlyDictionary<Guid, string> names)
         => appId is Guid id && names.TryGetValue(id, out string? name) ? name : "An application";
 
-    private static string ModeSuffix(string metadata) => Read(metadata, "mode") switch
+    private static string ModeSuffix(string metadata) => (Read(metadata, "mode"), Read(metadata, "channel")) switch
     {
-        "password_and_otp" => " with your password and an emailed code",
-        "otp_only" => " with an emailed code",
-        "password" => " with your password",
+        ("password_and_otp", "sms") => " with your password and a texted code",
+        ("otp_only", "sms") => " with a texted code",
+        ("password_and_otp", _) => " with your password and an emailed code",
+        ("otp_only", _) => " with an emailed code",
+        ("password", _) => " with your password",
+        ("passkey", _) => " with a passkey",
         _ => string.Empty,
     };
+
+    private static string SmsSentence(string metadata)
+    {
+        string what = Read(metadata, "template") switch
+        {
+            "mobile_verification" => "to verify your mobile",
+            "sign_in" => "to sign in",
+            _ => "to confirm an action",
+        };
+        return Read(metadata, "outcome") switch
+        {
+            "sent" => $"A code was texted to your mobile {what}.",
+            "limited" => $"A code {what} was not texted: too many were asked for in the last hour.",
+            _ => $"A code {what} could not be texted to your mobile.",
+        };
+    }
 
     private static string ReasonSuffix(string metadata) => Read(metadata, "reason") switch
     {
@@ -124,6 +150,7 @@ internal static class AuditNarrator
         "email_verification" => " to verify your email",
         "password_reset" => " to reset your password",
         "sign_in" => " to sign in",
+        "email_change" => " to confirm your new address",
         _ => string.Empty,
     };
 

@@ -7,8 +7,24 @@
 
 <section class="sg-card">
   <div class="sg-circle sg-circle--pending" aria-hidden="true"><span class="sg-cord-dot sg-cord-dot--solo"></span></div>
-  <h1 class="sg-card-title sg-card-title--centre">Check your email</h1>
-  <p class="sg-card-body sg-card-body--centre">We sent a 6-digit sign-in code. It is valid for 10 minutes and can be used once.</p>
+  @if (Model.ViaSms)
+  {
+    <h1 class="sg-card-title sg-card-title--centre">Check your phone</h1>
+    @if (Model.MaskedMobile is not null)
+    {
+      <p class="sg-card-body sg-card-body--centre">We texted a 6-digit sign-in code to <span class="sg-mono sg-nowrap">@Model.MaskedMobile</span>. It is valid for 10 minutes and can be used once.</p>
+    }
+    else
+    {
+      <p class="sg-card-body sg-card-body--centre">If your account has a verified mobile number, we have texted a 6-digit sign-in code to it. It is valid for 10 minutes and can be used once.</p>
+    }
+  }
+  else
+  {
+    <h1 class="sg-card-title sg-card-title--centre">Check your email</h1>
+    <p class="sg-card-body sg-card-body--centre">We sent a 6-digit sign-in code. It is valid for 10 minutes and can be used once.</p>
+  }
+  <partial name="_Banner" model="@(("info", Model.Notice ?? string.Empty))" />
   <partial name="_Banner" model="@(("danger", Model.Error ?? string.Empty))" />
 
   <form method="post" novalidate>
@@ -32,6 +48,14 @@
       <button type="submit" class="sg-btn sg-btn--secondary sg-btn--block">Resend sign-in code</button>
     }
   </form>
+
+  @if (Model.SmsOffered)
+  {
+    <form method="post" asp-page-handler="@(Model.ViaSms ? "Email" : "Sms")" class="sg-switch-channel">
+      <input type="hidden" asp-for="ReturnUrl" />
+      <button type="submit" class="sg-link-button">@(Model.ViaSms ? "Email me the code instead" : "Text the code to my mobile instead")</button>
+    </form>
+  }
 
   <div class="sg-cord-rule" role="presentation"></div>
   <p class="sg-alt"><a href="/login">Use a different account</a> · Stuck? <a href="mailto:help@sangamid.in">help@sangamid.in</a></p>

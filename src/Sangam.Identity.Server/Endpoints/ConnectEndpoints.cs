@@ -10,6 +10,7 @@ using Sangam.Identity.Application.Abstractions;
 using Sangam.Identity.Application.Accounts;
 using Sangam.Identity.Application.Apps;
 using Sangam.Identity.Application.Consents;
+using Sangam.Identity.Application.Security;
 using Sangam.Identity.Application.Tenancy;
 using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Enums;
@@ -52,6 +53,7 @@ public static class ConnectEndpoints
         IOpenIddictApplicationManager applications,
         IOpenIddictAuthorizationManager authorizations,
         IOpenIddictScopeManager scopes,
+        ISecurityPolicyService policies,
         CancellationToken cancellationToken)
     {
         OpenIddictRequest request = httpContext.GetOpenIddictServerRequest()
@@ -81,8 +83,9 @@ public static class ConnectEndpoints
             return Results.Redirect("/login?returnUrl=" + Uri.EscapeDataString(StripPrompt(returnUrl)));
         }
 
-        // 2. Does the session satisfy the app's sign-in policy?
-        SignInMode required = SignInModes.Resolve(app.SignInPolicy, user.SignInPreference);
+        // 2. Does the session satisfy the sign-in policy — the application's, tightened by the person's organisations (PR-16)?
+        PersonPolicy person = await policies.ForPersonAsync(user.Id, app.Id, cancellationToken).ConfigureAwait(false);
+        SignInMode required = SignInModes.Resolve(person.Policy.SignIn, user.SignInPreference);
         SignInMode sessionMode = SignInModes.TryParse(session.Principal!.FindFirstValue(SangamAuthentication.SessionModeClaim), out SignInMode m) ? m : SignInMode.Password;
         if (!PartnerContext.Satisfies(required, sessionMode))
         {
@@ -95,7 +98,26 @@ public static class ConnectEndpoints
             return Results.Redirect("/login?returnUrl=" + Uri.EscapeDataString(returnUrl));
         }
 
-        // 3. Consent — every app is third-party; a denial parked in the pending cookie ends the request.
+        // 2b. A second factor, where the policy requires one: an authenticator step in this session, or a passkey (PR-16).
+        if (person.RequiresSecondFactor && !SangamAuthentication.HasSecondFactor(session.Principal!))
+        {
+            if (request.HasPromptValue(PromptValues.None))
+            {
+                return Forbid(Errors.LoginRequired, "This application requires two-step sign-in.");
+            }
+
+            if (user.MfaEnrolled)
+            {
+                // Enrolled, but this session predates it: signing in again asks for the authenticator.
+                await httpContext.SignOutAsync(IdentityConstants.ApplicationScheme).ConfigureAwait(false);
+                return Results.Redirect("/login?returnUrl=" + Uri.EscapeDataString(returnUrl));
+            }
+
+            return Results.Redirect("/login/two-step-required?returnUrl=" + Uri.EscapeDataString(returnUrl));
+        }
+
+        // 3. Consent — partner applications ask; Sangam's own (portal, consoles) are first-party and
+        //    consent is implicit, but still recorded (V-06). A denial parked in the pending cookie ends the request.
         System.Collections.Immutable.ImmutableArray<string> requested = request.GetScopes();
         PendingFlow? denied = await SangamAuthentication.ReadPendingAsync(httpContext, SangamAuthentication.Pending.ConsentDenied).ConfigureAwait(false);
         if (denied is not null && string.Equals(denied.Email, app.ClientId, StringComparison.Ordinal))
@@ -105,6 +127,14 @@ public static class ConnectEndpoints
         }
 
         bool consented = await consents.HasValidConsentAsync(user.Id, app.Id, requested, cancellationToken).ConfigureAwait(false);
+        if (!consented && app.IsPlatform)
+        {
+            string? ip = httpContext.Connection.RemoteIpAddress?.ToString();
+            string userAgent = httpContext.Request.Headers.UserAgent.ToString();
+            await consents.GrantAsync(user.Id, app.Id, requested, ip, userAgent, firstPartyImplicit: true, cancellationToken: cancellationToken).ConfigureAwait(false);
+            consented = true;
+        }
+
         if (!consented)
         {
             if (request.HasPromptValue(PromptValues.None))

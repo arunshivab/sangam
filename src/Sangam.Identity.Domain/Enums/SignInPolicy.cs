@@ -14,4 +14,7 @@ public enum SignInPolicy
 
     /// <summary>Email code instead of a password, regardless of the user's preference.</summary>
     OtpOnly = 3,
+
+    /// <summary>A passkey only: no password or code sign-in for this application (PR-16, SGM-209 §7).</summary>
+    PasskeyOnly = 4,
 }

@@ -1,24 +1,38 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sangam.Identity.Application.Accounts;
+using Sangam.Identity.Application.Passkeys;
+using Sangam.Identity.Application.Sms;
 using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Enums;
 using Sangam.Identity.Server.Authentication;
 
 namespace Sangam.Identity.Server.Pages.Account;
 
-/// <summary>A minimal signed-in page: proves the session and lets the user set their sign-in preference.</summary>
+/// <summary>The signed-in page on the identity server: the essentials, the sign-in preference, and the settings that must live here (mobile verification, passkeys).</summary>
 [Authorize]
 public sealed class HomeModel : AuthPageModel
 {
     private readonly IAccountService _accounts;
+    private readonly ISmsCodeService _sms;
+    private readonly IPasskeyService _passkeys;
 
     /// <summary>Initialises the page.</summary>
     /// <param name="accounts">Account service.</param>
-    public HomeModel(IAccountService accounts)
+    /// <param name="sms">SMS codes, to offer mobile verification.</param>
+    /// <param name="passkeys">Passkeys, to offer managing them.</param>
+    public HomeModel(IAccountService accounts, ISmsCodeService sms, IPasskeyService passkeys)
     {
         _accounts = accounts ?? throw new ArgumentNullException(nameof(accounts));
+        _sms = sms ?? throw new ArgumentNullException(nameof(sms));
+        _passkeys = passkeys ?? throw new ArgumentNullException(nameof(passkeys));
     }
+
+    /// <summary>Whether the mobile can be verified by SMS here.</summary>
+    public bool OfferMobileVerification => _sms.Enabled && !User.MobileVerified && _sms.IsCountryAllowed(User.Mobile);
+
+    /// <summary>Whether passkeys are offered.</summary>
+    public bool OfferPasskeys => _passkeys.Enabled;
 
     /// <summary>The signed-in user.</summary>
     public new UserSummary User { get; private set; } = null!;
