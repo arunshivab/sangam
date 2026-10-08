@@ -6,6 +6,42 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added — R1 go-live (PR-09 e-mail through Anjal, PR-10 production, PR-13 account and tenancy)
+- **E-mail through Anjal (PR-09).** `SmtpEmailSender` submits mail over SMTP (MailKit) with settings under
+  `Sangam:Email:Smtp` — host, port, TLS mode, account, sender and an optional recipient allowlist so a
+  staging system can never reach real people. Logs show a masked recipient and the message id only.
+  Anjal's values are the founder's to supply (OI-027). `scripts/check-mail-dns.ps1` checks SPF, DKIM
+  and DMARC before go-live.
+- **Production can start (PR-10).** The identity server loads its signing and encryption certificates
+  from PFX files (`Sangam:Certificates:Signing:n`, `:Encryption:n`, current first, previous ones kept
+  published for rotation) and refuses to start with a clear message if one is missing or keyless.
+  Every host reads Docker secrets from `/run/secrets` (file name = key; `.pfx` files are skipped).
+  OpenTelemetry traces and metrics are exported over OTLP when `Sangam:Telemetry:OtlpEndpoint` is set.
+- **Deployment set (PR-10).** `Dockerfile` (one recipe for every host, plus a `migrator` target that runs
+  the EF migrations bundle once per release as the schema owner, using the repository's pinned
+  `dotnet-ef`), `deploy/production/` (Compose stacks for Sangam and PostgreSQL, the production Caddyfile
+  with TLS, security headers and health-checked upstreams, the procedure and the list of secrets),
+  `scripts/backup-db.sh` and `scripts/restore-drill.sh`.
+- **Change of e-mail (PR-13, OI-022).** In the portal: the current password (wrong ones count towards
+  lockout), a code sent only to the new address under its own purpose, and on confirmation a notice to
+  the old address so a hijack cannot pass unnoticed. `updated_at` moves; the security stamp rotates.
+- **Invitations by e-mail (PR-13).** From the partner console's People tab, an administrator invites an
+  address to an organisation and role. The link works once, for 7 days; only a hash of its token is
+  stored. Accepting requires signing in with the invited, verified address — a forwarded link does not
+  work for anyone else — and only then is the application linked and the role given (D-093 holds).
+- **Public documents and grievances (PR-13, REQ-089, DEF-025).** `/terms`, `/privacy` and `/help` existed
+  only as links — the footer since PR-01 and the registration form's "I agree" since PR-03 pointed at
+  pages that returned 404. They now exist: terms and privacy notice from files the founder supplies
+  after counsel's review (`Sangam:Legal:TermsPath`, `PrivacyPath`; until then the page says the document
+  is pending), and `/privacy/grievance` with the grievance officer and response time from
+  `Sangam:Grievance:*` — showing only what has been decided — and the route to the Data Protection Board.
+- Migrations: `EmailChangeRequests`, `Invitations`. Tests: 289 (20 new).
+- Founder decisions still open, built configurable: Anjal's SMTP settings and DKIM selector, the legal
+  texts, the grievance officer and response time, the PostgreSQL version (18 pinned), the telemetry
+  collector, the off-site backup target, MailKit and OpenTelemetry as dependencies.
+
+## [0.9.0] - R0 stabilisation
+
 ### Fixed — R0 stabilisation (PR-11 logs and audit, PR-12 abuse protection and host hardening)
 - **One-time codes never reach a log (OI-038).** The logging e-mail sender, which wrote whole messages —
   codes included — to the log outside Development, is removed. Without a real sender, sends are refused

@@ -1,0 +1,16 @@
+@page "/help"
+@model HelpModel
+@{
+    ViewData["Title"] = "Help";
+}
+
+<section class="sg-card sg-doc">
+  <h1 class="sg-card-title">Help</h1>
+  <p class="sg-card-body">Most things you can do yourself:</p>
+  <ul class="sg-card-body">
+    <li><a href="/forgot">Forgotten your password</a></li>
+    <li><a href="/account">Your account</a>: your details, your email, how you sign in, connected apps, devices and activity</li>
+    <li><a href="/privacy">Privacy notice</a> and <a href="/terms">terms of use</a></li>
+  </ul>
+  <p class="sg-card-body">Anything else: <a href="mailto:@Model.SupportEmail">@Model.SupportEmail</a>. For a privacy complaint, <a href="/privacy/grievance">raise a grievance</a>.</p>
+</section>

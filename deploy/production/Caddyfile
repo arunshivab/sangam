@@ -1,0 +1,35 @@
+# Sangam - production edge (PR-10). Caddy obtains and renews TLS certificates automatically.
+{
+  email ops@sangamid.in
+}
+
+(sangam) {
+  encode zstd gzip
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    X-Frame-Options "DENY"
+    -Server
+  }
+  reverse_proxy {args[0]}:8080 {
+    health_uri /health/ready
+    health_interval 30s
+  }
+}
+
+id.sangamid.in {
+  import sangam identity
+}
+
+account.sangamid.in {
+  import sangam portal
+}
+
+admin.sangamid.in {
+  import sangam admin
+}
+
+partners.sangamid.in {
+  import sangam partner
+}

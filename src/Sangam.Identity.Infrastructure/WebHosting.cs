@@ -7,6 +7,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Sangam.Identity.Infrastructure.Persistence;
 
 namespace Sangam.Identity.Infrastructure;
@@ -22,6 +25,12 @@ public static class WebHosting
 
     /// <summary>Configuration key: comma-separated networks (CIDR) whose forwarded headers are trusted.</summary>
     public const string KnownNetworksKey = "Sangam:ForwardedHeaders:KnownNetworks";
+
+    /// <summary>Configuration key: OTLP collector endpoint. Unset means no telemetry is exported.</summary>
+    public const string OtlpEndpointKey = "Sangam:Telemetry:OtlpEndpoint";
+
+    /// <summary>Environment variable naming the secrets directory (default <c>/run/secrets</c>).</summary>
+    public const string SecretsDirectoryVariable = "SANGAM_SECRETS_DIR";
 
     /// <summary>Health endpoint: the process is up.</summary>
     public const string LivePath = "/health/live";
@@ -53,7 +62,45 @@ public static class WebHosting
             }
         });
         services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
+
+        // Observability (PR-10, SGM-307): traces and metrics over OTLP to any collector, only when
+        // an endpoint is configured. The collector and dashboards are the founder's choice.
+        string? otlp = configuration[OtlpEndpointKey];
+        if (!string.IsNullOrWhiteSpace(otlp))
+        {
+            Uri endpoint = new(otlp, UriKind.Absolute);
+            string serviceName = configuration["Sangam:Telemetry:ServiceName"] ?? System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name ?? "sangam";
+            services.AddOpenTelemetry()
+                .ConfigureResource(r => r.AddService(serviceName))
+                .WithTracing(t => t.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddOtlpExporter(o => o.Endpoint = endpoint))
+                .WithMetrics(m => m.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddOtlpExporter(o => o.Endpoint = endpoint));
+        }
+
         return services;
+    }
+
+    /// <summary>
+    /// Adds Docker secrets as configuration: each file in the secrets directory is one key, with
+    /// <c>__</c> for <c>:</c> (for example <c>ConnectionStrings__Sangam</c>). Secrets never sit in a
+    /// settings file or an image (PR-10).
+    /// </summary>
+    /// <param name="configuration">The configuration builder.</param>
+    public static IConfigurationBuilder AddSangamSecretFiles(this IConfigurationBuilder configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        string directory = Environment.GetEnvironmentVariable(SecretsDirectoryVariable) ?? "/run/secrets";
+        if (!Directory.Exists(directory))
+        {
+            return configuration;
+        }
+
+        // Certificates (.pfx) live alongside the secrets but are files, not settings.
+        return configuration.AddKeyPerFile(source =>
+        {
+            source.FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(directory);
+            source.Optional = true;
+            source.IgnoreCondition = name => name.StartsWith("ignore.", StringComparison.Ordinal) || name.EndsWith(".pfx", StringComparison.OrdinalIgnoreCase);
+        });
     }
 
     /// <summary>Maps the anonymous health endpoints.</summary>

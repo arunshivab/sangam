@@ -13,6 +13,8 @@ public sealed class PostgresFixture : IAsyncLifetime
     [
         "audit_events",
         "data_protection_keys",
+        "email_change_requests",
+        "invitations",
         "org_memberships",
         "app_grants",
         "consents",
