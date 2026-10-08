@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -52,6 +52,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Imagiqa.Web", "samples\Imagiqa.Web\Imagiqa.Web.csproj", "{CD93D9DE-EA8E-44BF-A6A0-7933233711BA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Imagiqa.Web.Tests", "tests\Imagiqa.Web.Tests\Imagiqa.Web.Tests.csproj", "{E3110E4D-2950-451E-B37E-5F715E31DEAF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sangam.Sample.AspNetCore", "samples\Sangam.Sample.AspNetCore\Sangam.Sample.AspNetCore.csproj", "{FEC6CC56-09AC-40CB-8FBA-B8A34BC1EFA3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -327,6 +329,18 @@ Global
 		{E3110E4D-2950-451E-B37E-5F715E31DEAF}.Release|x64.Build.0 = Release|Any CPU
 		{E3110E4D-2950-451E-B37E-5F715E31DEAF}.Release|x86.ActiveCfg = Release|Any CPU
 		{E3110E4D-2950-451E-B37E-5F715E31DEAF}.Release|x86.Build.0 = Release|Any CPU
+		{FEC6CC56-09AC-40CB-8FBA-B8A34BC1EFA3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FEC6CC56-09AC-40CB-8FBA-B8A34BC1EFA3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FEC6CC56-09AC-40CB-8FBA-B8A34BC1EFA3}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{FEC6CC56-09AC-40CB-8FBA-B8A34BC1EFA3}.Debug|x64.Build.0 = Debug|Any CPU
+		{FEC6CC56-09AC-40CB-8FBA-B8A34BC1EFA3}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{FEC6CC56-09AC-40CB-8FBA-B8A34BC1EFA3}.Debug|x86.Build.0 = Debug|Any CPU
+		{FEC6CC56-09AC-40CB-8FBA-B8A34BC1EFA3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FEC6CC56-09AC-40CB-8FBA-B8A34BC1EFA3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FEC6CC56-09AC-40CB-8FBA-B8A34BC1EFA3}.Release|x64.ActiveCfg = Release|Any CPU
+		{FEC6CC56-09AC-40CB-8FBA-B8A34BC1EFA3}.Release|x64.Build.0 = Release|Any CPU
+		{FEC6CC56-09AC-40CB-8FBA-B8A34BC1EFA3}.Release|x86.ActiveCfg = Release|Any CPU
+		{FEC6CC56-09AC-40CB-8FBA-B8A34BC1EFA3}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -354,5 +368,6 @@ Global
 		{3CCCF2E3-2E67-4530-A149-CE6C9F96755D} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{CD93D9DE-EA8E-44BF-A6A0-7933233711BA} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
 		{E3110E4D-2950-451E-B37E-5F715E31DEAF} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{FEC6CC56-09AC-40CB-8FBA-B8A34BC1EFA3} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
 	EndGlobalSection
 EndGlobal

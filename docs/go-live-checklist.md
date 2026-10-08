@@ -164,6 +164,15 @@ Checks:
 - [ ] R5: the delivery worker (SCIM, webhooks, expiry) runs in the one identity container; do not scale the identity
       service to two replicas until it is made to share the work (OI-047).
 
+### Added by R6
+
+- [ ] V-16: every application's back-channel logout address is public https (the console now refuses private ones);
+      one sign-out seen to reach an application.
+- [ ] SDKs: before a partner uses an SDK from npm, PyPI or Maven Central, the `@sangam` scope, the `sangam-client`
+      name and the `in.sangamid` namespace are registered to the founder and the packages published (OI-048); until
+      then partners build them from the repository.
+- [ ] Add the `sdks` CI job to the branch ruleset once it has passed on main.
+
 ## Bootstrapping the first owner — a deliberate, one-time act
 
 Nothing created on a developer's machine reaches production: migrations carry schema, never rows.

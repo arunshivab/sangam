@@ -86,7 +86,7 @@ h1[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 }
 
 /* ---- Panels ---- */
-.sg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.sg-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
 .sg-panel { padding: 20px 22px; background: var(--c-panel); border: 1px solid var(--c-line); border-radius: 10px; margin-bottom: 16px; }
 .sg-grid .sg-panel { margin-bottom: 0; }
 .sg-facts { margin: 0; display: grid; gap: 7px; }
@@ -187,15 +187,19 @@ h1[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 .sg-shut .sg-btn { margin-right: 8px; }
 
 @media (max-width: 900px) {
-  .sg-grid { grid-template-columns: 1fr; }
-  .sg-bar { gap: 16px; padding: 0 16px; }
+  /* minmax(0, …): a wide table scrolls inside its panel instead of widening the column past the screen. */
+  .sg-grid { grid-template-columns: minmax(0, 1fr); }
+  /* The bar wraps: brand and who on the first row, the sections on a row of their own that scrolls sideways. */
+  .sg-bar { gap: 8px 16px; padding: 10px 16px 0; height: auto; flex-wrap: wrap; }
+  .sg-bar-nav { order: 3; flex: 1 0 100%; min-width: 0; overflow-x: auto; height: 42px; }
+  .sg-bar-link { white-space: nowrap; }
   .sg-main { padding: 24px 16px 48px; }
 }
 
 .sg-warn-text { color: var(--c-warn); }
 
 /* A heading straight after a table or a confirmation box must not sit flush against it. */
-.sg-table + .sg-h2, .sg-confirm + .sg-h2 { margin-top: 28px; }
+.sg-table + .sg-h2, .sg-table-wrap + .sg-h2, .sg-confirm + .sg-h2 { margin-top: 28px; }
 .sg-pill--platform { color: var(--c-muted); border-color: var(--c-line); }
 
 /* PR-19 branding and message editors (shared components). */

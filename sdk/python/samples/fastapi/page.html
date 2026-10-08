@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sangam sample · Python (FastAPI)</title>
+<style>
+  :root { --teal: #0f3b38; --ink: #1f2a2e; --muted: #5b6b6e; --line: #d9e0df; --cream: #f6f3ec; --ok: #1d6b45; --no: #9c3b24; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--cream); }
+  header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 24px; background: #fff; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header b { color: var(--teal); }
+  main { max-width: 860px; margin: 24px auto; padding: 0 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  section { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; }
+  h1 { font-size: 22px; margin: 0 0 6px; color: var(--teal); } h2 { font-size: 17px; margin: 0 0 10px; color: var(--teal); }
+  button, .button { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--teal); background: var(--teal); color: #fff; cursor: pointer; text-decoration: none; display: inline-block; }
+  .ghost { background: #fff; color: var(--teal); }
+  input, select { font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; min-width: 0; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .ok { color: var(--ok); font-weight: 600; } .no { color: var(--no); font-weight: 600; }
+  .muted { color: var(--muted); } code, pre { font: 12.5px/1.5 ui-monospace, monospace; }
+  pre { background: #f3f5f5; padding: 12px; border-radius: 8px; overflow-x: auto; margin: 10px 0 0; }
+  ul { margin: 0; padding-left: 18px; }
+</style>
+</head>
+<body>
+<header><span><b>Sangam sample</b> · Python (FastAPI)</span>{{user}}</header>
+<main>{{body}}</main>
+<script>
+  // The page asks the server; a step-up answer (401 with "login") is followed to Sangam.
+  async function call(url, init) {
+    const r = await fetch(url, { ...(init || {}), headers: { accept: "application/json", "x-requested-with": "fetch" } });
+    const body = await r.json();
+    if (r.status === 401 && body.login) { location.assign(body.login); return null; }
+    return body;
+  }
+  const ask = document.getElementById("ask");
+  if (ask) ask.onclick = async () => {
+    const org = document.getElementById("org").value, perm = document.getElementById("permission").value;
+    const b = await call(`/api/check?org=${encodeURIComponent(org)}&permission=${encodeURIComponent(perm)}`);
+    if (b) document.getElementById("answer").innerHTML = `On the server: <span data-result="server" class="${b.allowed ? "ok" : "no"}">${b.allowed ? "allowed" : "denied"}</span>`;
+  };
+  async function sign() {
+    const b = await call("/api/records/SOP-114/sign", { method: "POST" });
+    if (!b) return;
+    const out = document.getElementById("signed");
+    out.innerHTML = '<p class="ok" data-result="signed">Signed. The shared audit event (SGM-208), as buffered for the audit service:</p><pre></pre>';
+    out.querySelector("pre").textContent = JSON.stringify(b.event, null, 2);
+  }
+  const s = document.getElementById("sign");
+  if (s) s.onclick = sign;
+  if (new URLSearchParams(location.search).get("resume") === "sign") { history.replaceState(null, "", "/"); sign(); }
+</script>
+</body>
+</html>
