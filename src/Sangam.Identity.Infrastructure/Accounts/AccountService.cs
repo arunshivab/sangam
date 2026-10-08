@@ -294,9 +294,16 @@ public sealed class AccountService : IAccountService
 
     /// <inheritdoc />
     public Task RecordSignInAsync(Guid userId, SignInMode mode, string? ipAddress, string? userAgent, CancellationToken cancellationToken = default)
+        => RecordSignInAsync(userId, mode, codeBySms: false, ipAddress, userAgent, cancellationToken);
+
+    /// <inheritdoc />
+    public Task RecordSignInAsync(Guid userId, SignInMode mode, bool codeBySms, string? ipAddress, string? userAgent, CancellationToken cancellationToken = default)
         => _audit.WriteAsync(
             new AuditEntry(AuditActions.UserLoginSuccess, AuditActorType.User, userId, TargetType: "user", TargetId: userId,
-                Metadata: $"{{\"mode\":\"{SignInModes.ToCode(mode)}\"}}", IpAddress: ipAddress, UserAgent: userAgent),
+                Metadata: codeBySms
+                    ? $"{{\"mode\":\"{SignInModes.ToCode(mode)}\",\"channel\":\"sms\"}}"
+                    : $"{{\"mode\":\"{SignInModes.ToCode(mode)}\"}}",
+                IpAddress: ipAddress, UserAgent: userAgent),
             cancellationToken);
 
     /// <inheritdoc />
@@ -318,6 +325,46 @@ public sealed class AccountService : IAccountService
             cancellationToken).ConfigureAwait(false);
         await IssueCodeAsync(user.Id, OneTimeCodePurpose.PasswordReset, cancellationToken).ConfigureAwait(false);
         return user.Id;
+    }
+
+    /// <inheritdoc />
+    public async Task<AccountResult> ReplacePasswordAsync(Guid userId, string newPassword, string reason, string? ipAddress, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(newPassword);
+        ArgumentNullException.ThrowIfNull(reason);
+        if (!PasswordStrength.Evaluate(newPassword).MeetsPolicy)
+        {
+            return AccountResult.Failed(new AccountError("NewPassword", PasswordPolicyMessage));
+        }
+
+        SangamUser? user = await _users.FindByIdAsync(userId.ToString("D")).ConfigureAwait(false);
+        if (user is null || user.Status != UserStatus.Active)
+        {
+            return AccountResult.Failed(new AccountError("NewPassword", "This account cannot sign in."));
+        }
+
+        if (await _users.CheckPasswordAsync(user, newPassword).ConfigureAwait(false))
+        {
+            return AccountResult.Failed(new AccountError("NewPassword", "Choose a password different from the one you have now."));
+        }
+
+        string token = await _users.GeneratePasswordResetTokenAsync(user).ConfigureAwait(false);
+        IdentityResult reset = await _users.ResetPasswordAsync(user, token, newPassword).ConfigureAwait(false);
+        if (!reset.Succeeded)
+        {
+            return AccountResult.Failed([.. reset.Errors.Select(e => new AccountError("NewPassword", e.Description))]);
+        }
+
+        user.LastPasswordChangeAt = _clock.UtcNow;
+        user.UpdatedAt = user.LastPasswordChangeAt;
+        await _users.UpdateAsync(user).ConfigureAwait(false);
+        await _users.UpdateSecurityStampAsync(user).ConfigureAwait(false);
+
+        await _audit.WriteAsync(
+            new AuditEntry(AuditActions.UserPasswordChange, AuditActorType.User, user.Id, TargetType: "user", TargetId: user.Id,
+                Metadata: reason is "too_short" or "breached" ? $"{{\"reason\":\"{reason}\"}}" : "{}", IpAddress: ipAddress),
+            cancellationToken).ConfigureAwait(false);
+        return AccountResult.Success;
     }
 
     /// <inheritdoc />
@@ -398,8 +445,12 @@ public sealed class AccountService : IAccountService
 
     private static string PurposeJson(OneTimeCodePurpose purpose, string? reason = null)
         => reason is null
-            ? $"{{\"purpose\":\"{purpose.ToString().ToLowerInvariant()}\"}}"
-            : $"{{\"purpose\":\"{purpose.ToString().ToLowerInvariant()}\",\"reason\":\"{reason}\"}}";
+            ? $"{{\"purpose\":\"{SnakeCase(purpose)}\"}}"
+            : $"{{\"purpose\":\"{SnakeCase(purpose)}\",\"reason\":\"{reason}\"}}";
+
+    // "EmailVerification" → "email_verification", the form the activity history reads.
+    private static string SnakeCase(OneTimeCodePurpose purpose)
+        => string.Concat(purpose.ToString().Select((c, i) => i > 0 && char.IsUpper(c) ? "_" + char.ToLowerInvariant(c) : char.ToLowerInvariant(c).ToString()));
 
     private static string? MapIdentityField(string code) => code switch
     {

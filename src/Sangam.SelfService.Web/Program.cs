@@ -15,6 +15,13 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddSangamApplication();
 builder.Services.AddSangamInfrastructure(builder.Configuration);
+
+string? keyRingProblem = KeyRingProtection.Validate(builder.Environment.EnvironmentName, builder.Configuration);
+if (keyRingProblem is not null)
+{
+    throw new InvalidOperationException(keyRingProblem);
+}
+
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddCascadingAuthenticationState();
 
@@ -76,6 +83,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseSangamClientContext();
+app.UseSangamRequestCulture();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();

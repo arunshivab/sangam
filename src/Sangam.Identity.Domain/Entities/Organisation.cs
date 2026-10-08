@@ -42,6 +42,21 @@ public sealed class Organisation
     /// <summary>Free-form JSON the registering app may attach (address, registration number). Opaque to Sangam.</summary>
     public string Metadata { get; set; } = "{}";
 
+    /// <summary>
+    /// The organisation's sign-in rule for its members, inherited by everything below it; <see langword="null"/>
+    /// inherits. Only stricter than the application's (PR-16, SGM-209 §7).
+    /// </summary>
+    public SignInPolicy? SignInPolicy { get; set; }
+
+    /// <summary>Shortest password for its members; <see langword="null"/> inherits.</summary>
+    public int? MinPasswordLength { get; set; }
+
+    /// <summary>Second-factor rule for its members; <see langword="null"/> inherits.</summary>
+    public MfaRequirement? MfaRequirement { get; set; }
+
+    /// <summary>Breached-password check for its members; <see langword="null"/> inherits, and only <see langword="true"/> is stricter.</summary>
+    public bool? BreachedPasswordCheck { get; set; }
+
     /// <summary>Lifecycle state.</summary>
     public OrganisationStatus Status { get; set; } = OrganisationStatus.Active;
 

@@ -7,6 +7,21 @@
 <section class="sg-card sg-card--wide">
   <h1 class="sg-card-title">Development outbox</h1>
   <p class="sg-card-body">The last @Sangam.Identity.Infrastructure.Services.InMemoryEmailOutbox.Capacity emails this server would have sent. Development only; nothing here leaves the machine.</p>
+  @if (Model.TextMessages.Count > 0)
+  {
+    <h2 class="sg-card-title">Text messages</h2>
+    @foreach (var t in Model.TextMessages)
+    {
+      <article class="sg-mail">
+        <div class="sg-mail-head">
+          <span class="sg-mono">@t.SentAt.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) UTC</span>
+          <span>to <span class="sg-mono">@t.Message.ToE164</span> from <span class="sg-mono">@t.Message.SenderHeader</span> · template <span class="sg-mono">@t.Message.TemplateKey</span></span>
+        </div>
+        <pre class="sg-mail-body">@t.Message.Text</pre>
+      </article>
+    }
+    <h2 class="sg-card-title">Emails</h2>
+  }
   @if (Model.Messages.Count == 0)
   {
     <p class="sg-note">No messages yet. Register an account or request a password reset and come back.</p>

@@ -46,6 +46,8 @@ public sealed class SangamServerFactory : WebApplicationFactory<Program>
         builder.UseSetting("Sangam:Database:MigrateOnStartup", HasDatabase ? "true" : "false");
         builder.UseSetting("Sangam:Seed:DevelopmentSample", HasDatabase ? "true" : "false");
         builder.UseSetting("Sangam:Email:UseOutbox", "true");
+        builder.UseSetting("Sangam:Sms:Enabled", "true");
+        builder.UseSetting("Sangam:Sms:Provider", "outbox");
         builder.UseSetting("Sangam:RateLimit:PostsPerMinute", "1000");
         builder.UseSetting("Sangam:RateLimit:TokenPerMinute", "1000");
         builder.UseSetting("Sangam:RateLimit:UserInfoPerMinute", "1000");

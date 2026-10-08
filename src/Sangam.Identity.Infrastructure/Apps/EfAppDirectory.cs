@@ -34,5 +34,5 @@ public sealed class EfAppDirectory : IAppDirectory
 
     internal static AppSummary ToSummary(App a) => new(
         a.Id, a.ClientId, a.Slug, a.DisplayName, a.OwnerCompanyName, a.Description, a.PrivacyUrl, a.TermsUrl,
-        a.BrandColour, a.Glyph, a.SignInPolicy, a.ConsentVersion, a.Status);
+        a.BrandColour, a.Glyph, a.SignInPolicy, a.ConsentVersion, a.Status, a.IsPlatform);
 }

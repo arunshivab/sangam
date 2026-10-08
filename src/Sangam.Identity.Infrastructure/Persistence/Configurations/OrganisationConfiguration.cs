@@ -17,6 +17,8 @@ internal sealed class OrganisationConfiguration : IEntityTypeConfiguration<Organ
         b.Property(o => o.Path).HasMaxLength(2000).IsRequired();
         b.Property(o => o.Metadata).HasColumnType("jsonb").IsRequired();
         b.Property(o => o.Status).HasConversion(new SnakeCaseEnumConverter<OrganisationStatus>()).HasMaxLength(20).IsRequired();
+        b.Property(o => o.SignInPolicy).HasConversion(new SnakeCaseEnumConverter<SignInPolicy>()).HasMaxLength(20);
+        b.Property(o => o.MfaRequirement).HasConversion(new SnakeCaseEnumConverter<MfaRequirement>()).HasMaxLength(40);
 
         b.HasOne(o => o.OrgType).WithMany().HasForeignKey(o => o.OrgTypeCode).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(o => o.Parent).WithMany().HasForeignKey(o => o.ParentOrgId).OnDelete(DeleteBehavior.Restrict);
@@ -32,6 +34,10 @@ internal sealed class OrganisationConfiguration : IEntityTypeConfiguration<Organ
             t.HasCheckConstraint(
                 "chk_organisations_status",
                 $"status IN ({SnakeCaseEnumConverter<OrganisationStatus>.SqlList()})");
+            // An organisation may only tighten its application's rule (PR-16): two-step always, or passkey only.
+            t.HasCheckConstraint("chk_organisations_sign_in_policy", "sign_in_policy IS NULL OR sign_in_policy IN ('password_and_otp','passkey_only')");
+            t.HasCheckConstraint("chk_organisations_mfa_requirement", $"mfa_requirement IS NULL OR mfa_requirement IN ({SnakeCaseEnumConverter<MfaRequirement>.SqlList()})");
+            t.HasCheckConstraint("chk_organisations_min_password_length", $"min_password_length IS NULL OR min_password_length BETWEEN 8 AND {Domain.SecurityPolicy.MaxMinPasswordLength}");
             t.HasCheckConstraint("chk_organisations_depth", "(parent_org_id IS NULL AND depth = 0) OR (parent_org_id IS NOT NULL AND depth > 0)");
         });
     }

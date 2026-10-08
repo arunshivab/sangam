@@ -69,7 +69,7 @@ public sealed class ConsentModel : AuthPageModel
             return RedirectToPage("/Account/Home");
         }
 
-        await _consents.GrantAsync(User.Id, App.Id, Scopes, ClientIp, ClientUserAgent, cancellationToken);
+        await _consents.GrantAsync(User.Id, App.Id, Scopes, ClientIp, ClientUserAgent, cancellationToken: cancellationToken);
         return LocalRedirect(ReturnUrl);
     }
 

@@ -20,8 +20,9 @@ public interface IConsentService
     /// <param name="scopes">Scopes granted.</param>
     /// <param name="ipAddress">Client IP.</param>
     /// <param name="userAgent">Client user agent.</param>
+    /// <param name="firstPartyImplicit">True when Sangam grants consent itself for one of its own applications (V-06); recorded as such.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    Task GrantAsync(Guid userId, Guid appId, IReadOnlyCollection<string> scopes, string? ipAddress, string? userAgent, CancellationToken cancellationToken = default);
+    Task GrantAsync(Guid userId, Guid appId, IReadOnlyCollection<string> scopes, string? ipAddress, string? userAgent, bool firstPartyImplicit = false, CancellationToken cancellationToken = default);
 
     /// <summary>Audits a denial; nothing is stored beyond the audit row.</summary>
     /// <param name="userId">The user.</param>

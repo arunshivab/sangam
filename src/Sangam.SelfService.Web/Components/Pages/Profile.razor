@@ -6,6 +6,9 @@
 @inject IMfaService Mfa
 @inject IAdminService Admin
 @inject IEmailChangeService EmailChanges
+@inject Sangam.Identity.Application.Passkeys.IPasskeyService Passkeys
+@inject Sangam.Identity.Application.Sms.ISmsCodeService Sms
+@inject IConfiguration Configuration
 
 <PageTitle>Personal details · sangam</PageTitle>
 
@@ -55,7 +58,18 @@ else
           </InputSelect>
           <InputText class="sg-field" @bind-Value="_form.MobileNumber" type="tel" inputmode="numeric" />
         </div>
-        <p class="sg-note">Changing this marks the number unverified until we can send it a code.</p>
+        @if (_user?.MobileVerified == true)
+        {
+          <p class="sg-note" data-mobile="verified">Verified. Changing it makes the new number unverified until you confirm it with a texted code.</p>
+        }
+        else if (Sms.Enabled && Sms.IsCountryAllowed(_user?.Mobile))
+        {
+          <p class="sg-note" data-mobile="unverified">Not yet verified. <a href="@MobileUrl">Verify it with a texted code</a> so sign-in codes can be sent to it.</p>
+        }
+        else
+        {
+          <p class="sg-note" data-mobile="unverified">Not yet verified. Changing it keeps it unverified until it can be confirmed with a code.</p>
+        }
       </div>
       @if (_error is not null)
       {
@@ -114,6 +128,23 @@ else
     </div>
     <button type="button" class="sg-btn sg-btn--secondary" @onclick="SaveModeAsync">Save preference</button>
   </section>
+
+  @if (Passkeys.Enabled)
+  {
+    <section class="sg-panel" data-panel="passkeys">
+      <h2 class="sg-panel-title">Passkeys</h2>
+      @if (_passkeys.Count == 0)
+      {
+        <p class="sg-panel-body">Sign in with your fingerprint, face or device PIN instead of a password. A passkey only works on Sangam's own site, so a fake site cannot steal it.</p>
+      }
+      else
+      {
+        <p class="sg-panel-body">@(_passkeys.Count == 1 ? "1 passkey is" : $"{_passkeys.Count} passkeys are") set up: @string.Join(", ", _passkeys.Select(p => p.Name)).</p>
+      }
+      <p class="sg-note">Passkeys are added and removed on the Sangam sign-in site, which is the only place they work.</p>
+      <a class="sg-btn sg-btn--secondary" href="@PasskeysUrl">@(_passkeys.Count == 0 ? "Add a passkey" : "Manage passkeys")</a>
+    </section>
+  }
 
   <section class="sg-panel">
     <h2 class="sg-panel-title">Two-step sign-in</h2>
@@ -243,6 +274,11 @@ else
     private string _changeCode = string.Empty;
     private string? _changeMessage;
     private string? _changeError;
+    private IReadOnlyList<Sangam.Identity.Application.Passkeys.PasskeyRow> _passkeys = [];
+
+    private string MobileUrl => (Configuration["Sangam:Authority"] ?? "https://id.sangamid.in").TrimEnd('/') + "/account/mobile";
+
+    private string PasskeysUrl => (Configuration["Sangam:Authority"] ?? "https://id.sangamid.in").TrimEnd('/') + "/account/passkeys";
 
     protected override async Task OnInitializedAsync()
     {
@@ -263,6 +299,7 @@ else
         _isOperator = await Admin.GetRoleAsync(_userId) is not null;
         _deletion = await Portal.GetDeletionStateAsync(_userId);
         _pendingChange = await EmailChanges.GetPendingAsync(_userId);
+        _passkeys = Passkeys.Enabled ? await Passkeys.ListAsync(_userId) : [];
         if (_user is not null)
         {
             _form.FirstName = _user.FirstName;

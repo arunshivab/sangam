@@ -51,7 +51,7 @@ public sealed class EfConsentService : IConsentService
     }
 
     /// <inheritdoc />
-    public async Task GrantAsync(Guid userId, Guid appId, IReadOnlyCollection<string> scopes, string? ipAddress, string? userAgent, CancellationToken cancellationToken = default)
+    public async Task GrantAsync(Guid userId, Guid appId, IReadOnlyCollection<string> scopes, string? ipAddress, string? userAgent, bool firstPartyImplicit = false, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(scopes);
         DateTimeOffset now = _clock.UtcNow;
@@ -85,7 +85,7 @@ public sealed class EfConsentService : IConsentService
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await _audit.WriteAsync(
             new AuditEntry(AuditActions.ConsentGrant, AuditActorType.User, userId, appId, "app", appId,
-                Metadata: $"{{\"scope\":\"{scope}\",\"version\":\"{version}\"}}", IpAddress: ipAddress, UserAgent: userAgent),
+                Metadata: $"{{\"scope\":\"{scope}\",\"version\":\"{version}\",\"basis\":\"{(firstPartyImplicit ? "first_party_implicit" : "explicit")}\"}}", IpAddress: ipAddress, UserAgent: userAgent),
             cancellationToken).ConfigureAwait(false);
     }
 

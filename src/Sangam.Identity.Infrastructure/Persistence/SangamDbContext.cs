@@ -50,6 +50,15 @@ public sealed class SangamDbContext : IdentityUserContext<SangamUser, Guid>, IDa
     /// <summary>Audit events (append-only).</summary>
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
+    /// <summary>SMS sent by Sangam, without numbers or codes (PR-15).</summary>
+    public DbSet<SmsMessage> SmsMessages => Set<SmsMessage>();
+
+    /// <summary>Passkeys registered to accounts (PR-14).</summary>
+    public DbSet<PasskeyCredential> PasskeyCredentials => Set<PasskeyCredential>();
+
+    /// <summary>Pending passkey ceremonies, single use (PR-14).</summary>
+    public DbSet<PasskeyChallenge> PasskeyChallenges => Set<PasskeyChallenge>();
+
     /// <summary>Invitations by e-mail to an organisation and role (PR-13).</summary>
     public DbSet<Invitation> Invitations => Set<Invitation>();
 

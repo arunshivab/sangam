@@ -17,15 +17,17 @@ public static class SignInModes
         SignInPolicy.Password => SignInMode.Password,
         SignInPolicy.PasswordAndOtp => SignInMode.PasswordAndOtp,
         SignInPolicy.OtpOnly => SignInMode.OtpOnly,
+        SignInPolicy.PasskeyOnly => SignInMode.Passkey,
         _ => userPreference,
     };
 
-    /// <summary>The wire/storage code for a mode: <c>password</c>, <c>password_and_otp</c>, <c>otp_only</c>.</summary>
+    /// <summary>The wire/storage code for a mode: <c>password</c>, <c>password_and_otp</c>, <c>otp_only</c>, <c>passkey</c>.</summary>
     /// <param name="mode">The mode.</param>
     public static string ToCode(SignInMode mode) => mode switch
     {
         SignInMode.PasswordAndOtp => "password_and_otp",
         SignInMode.OtpOnly => "otp_only",
+        SignInMode.Passkey => "passkey",
         _ => "password",
     };
 
@@ -45,6 +47,9 @@ public static class SignInModes
                 return true;
             case "otp_only":
                 mode = SignInMode.OtpOnly;
+                return true;
+            case "passkey":
+                mode = SignInMode.Passkey;
                 return true;
             default:
                 mode = SignInMode.Password;
