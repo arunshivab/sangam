@@ -3,6 +3,7 @@ using Sangam.Identity.Application;
 using Sangam.Identity.Infrastructure;
 using Sangam.Identity.Infrastructure.Persistence;
 using Sangam.Identity.Infrastructure.Seeding;
+using Sangam.Identity.Infrastructure.Services;
 using Sangam.Identity.Server.Api;
 using Sangam.Identity.Server.Authentication;
 using Sangam.Identity.Server.Endpoints;
@@ -38,6 +39,12 @@ builder.Services.AddAuthorization(o => o.AddManagementPolicy());
 
 string? issuer = builder.Configuration["Sangam:Issuer"];
 bool developmentCertificates = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing");
+
+string? emailProblem = EmailSenderGuard.Validate(builder.Environment.EnvironmentName, builder.Configuration);
+if (emailProblem is not null)
+{
+    throw new InvalidOperationException(emailProblem);
+}
 
 builder.Services.AddOpenIddict()
     .AddServer(o =>
@@ -98,7 +105,12 @@ builder.Services.AddOpenIddict()
         o.UseAspNetCore();
     });
 
+builder.Services.AddSangamWebHosting(builder.Configuration);
+
 WebApplication app = builder.Build();
+
+// Behind Caddy: take the client address from trusted proxies only, before anything reads it (OI-037).
+app.UseForwardedHeaders();
 
 if (app.Configuration.GetValue<bool>("Sangam:Database:MigrateOnStartup"))
 {
@@ -120,6 +132,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseSangamClientContext();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -127,5 +140,7 @@ app.MapStaticAssets();
 app.MapRazorPages().WithStaticAssets().RequireRateLimiting(AuthRateLimiting.PolicyName);
 app.MapConnectEndpoints();
 app.MapManagementEndpoints();
+
+app.MapSangamHealth();
 
 await app.RunAsync().ConfigureAwait(false);

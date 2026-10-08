@@ -60,7 +60,12 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization(o => o.FallbackPolicy = o.DefaultPolicy);
 
+builder.Services.AddSangamWebHosting(builder.Configuration);
+
 WebApplication app = builder.Build();
+
+// Behind Caddy: take the client address from trusted proxies only, before anything reads it (OI-037).
+app.UseForwardedHeaders();
 
 if (!app.Environment.IsDevelopment())
 {
@@ -69,6 +74,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseSangamClientContext();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
@@ -83,5 +89,7 @@ app.MapGet("/signout", (HttpContext context) =>
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+app.MapSangamHealth();
 
 await app.RunAsync().ConfigureAwait(false);

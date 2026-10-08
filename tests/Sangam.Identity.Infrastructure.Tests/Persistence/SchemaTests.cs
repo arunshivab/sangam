@@ -10,6 +10,8 @@ namespace Sangam.Identity.Infrastructure.Tests.Persistence;
 [Collection("postgres")]
 public sealed class SchemaTests : IAsyncLifetime
 {
+    private static readonly string[] TamperStatements = ["UPDATE audit_events SET action = 'tampered'", "DELETE FROM audit_events", "TRUNCATE audit_events"];
+
     private readonly PostgresFixture _pg;
 
     public SchemaTests(PostgresFixture pg)
@@ -34,18 +36,19 @@ public sealed class SchemaTests : IAsyncLifetime
     }
 
     [PostgresFact]
-    public async Task AuditEvents_CannotBeUpdatedOrDeleted()
+    public async Task AuditEvents_RefuseUpdateDeleteAndTruncate_WithAnError()
     {
         await using SangamDbContext db = _pg.CreateContext();
         db.AuditEvents.Add(new AuditEvent { Action = "user.login.success", ActorType = AuditActorType.User, OccurredAt = DateTimeOffset.UtcNow });
         await db.SaveChangesAsync();
 
-        int updated = await db.Database.ExecuteSqlRawAsync("UPDATE audit_events SET action = 'tampered'");
-        int deleted = await db.Database.ExecuteSqlRawAsync("DELETE FROM audit_events");
-        List<string> actions = await db.AuditEvents.AsNoTracking().Select(e => e.Action).ToListAsync();
+        foreach (string sql in TamperStatements)
+        {
+            Npgsql.PostgresException refused = await Assert.ThrowsAsync<Npgsql.PostgresException>(() => db.Database.ExecuteSqlRawAsync(sql));
+            Assert.Equal("42501", refused.SqlState);
+        }
 
-        Assert.Equal(0, updated);
-        Assert.Equal(0, deleted);
+        List<string> actions = await db.AuditEvents.AsNoTracking().Select(e => e.Action).ToListAsync();
         Assert.Equal(["user.login.success"], actions);
     }
 

@@ -38,12 +38,19 @@ public sealed class SangamServerFactory : WebApplicationFactory<Program>
     {
         ArgumentNullException.ThrowIfNull(builder);
         builder.UseEnvironment("Testing");
+        builder.UseSetting("Sangam:DataProtection:PersistKeys", "false");
+        // OI-015: TestServer has no HTTPS port; the redirection middleware’s warning is expected here.
+        builder.UseSetting("Logging:LogLevel:Microsoft.AspNetCore.HttpsPolicy", "Error");
         builder.UseSetting("ConnectionStrings:Sangam", HasDatabase ? ServerTestConnection : SangamDbContextFactory.DevelopmentConnectionString);
         builder.UseSetting("Sangam:Issuer", string.Empty);
         builder.UseSetting("Sangam:Database:MigrateOnStartup", HasDatabase ? "true" : "false");
         builder.UseSetting("Sangam:Seed:DevelopmentSample", HasDatabase ? "true" : "false");
         builder.UseSetting("Sangam:Email:UseOutbox", "true");
         builder.UseSetting("Sangam:RateLimit:PostsPerMinute", "1000");
+        builder.UseSetting("Sangam:RateLimit:TokenPerMinute", "1000");
+        builder.UseSetting("Sangam:RateLimit:UserInfoPerMinute", "1000");
+        builder.UseSetting("Sangam:RateLimit:ApiPerMinute", "1000");
+        builder.UseSetting("Sangam:Antibot:MinimumSeconds", "0");
         builder.UseSetting("Sangam:Otp:ResendCooldown", "00:00:00");
         builder.UseSetting("Sangam:PasswordHashing:MemoryKiB", "8192");
         builder.UseSetting("Sangam:PasswordHashing:Iterations", "2");

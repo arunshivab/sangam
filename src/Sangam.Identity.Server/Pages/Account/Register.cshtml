@@ -10,6 +10,7 @@
   <partial name="_Banner" model="@(("danger", Model.Error ?? string.Empty))" />
 
   <form method="post" novalidate>
+    <partial name="_Antibot" />
     <input type="hidden" asp-for="ReturnUrl" />
     <div class="sg-two">
       <div class="sg-field-group">

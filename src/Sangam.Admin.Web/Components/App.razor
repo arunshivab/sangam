@@ -14,7 +14,18 @@
 </head>
 <body>
   @* Interactive: without this every page is static HTML and no @onclick ever runs. *@
-  <Routes @rendermode="InteractiveServer" />
+  <Routes @rendermode="InteractiveServer" ClientIp="@ClientIp" ClientUserAgent="@ClientUserAgent" />
   <script src="_framework/blazor.web.js"></script>
 </body>
 </html>
+
+@code {
+    // The client is known only here, while rendering on the server; it is handed to the
+    // interactive root so audit entries carry it (OI-039).
+    [CascadingParameter]
+    private Microsoft.AspNetCore.Http.HttpContext? HttpContext { get; set; }
+
+    private string? ClientIp => HttpContext?.Connection.RemoteIpAddress?.ToString();
+
+    private string? ClientUserAgent => HttpContext?.Request.Headers.UserAgent.ToString();
+}

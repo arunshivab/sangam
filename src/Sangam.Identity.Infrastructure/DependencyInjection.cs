@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -29,6 +30,9 @@ namespace Sangam.Identity.Infrastructure;
 /// <summary>Registers persistence, Identity, OpenIddict core and the infrastructure services.</summary>
 public static class DependencyInjection
 {
+    /// <summary>Configuration key: persist the data-protection key ring in the database (default true).</summary>
+    public const string PersistKeysKey = "Sangam:DataProtection:PersistKeys";
+
     /// <summary>Connection string name in <c>ConnectionStrings</c>.</summary>
     public const string ConnectionStringName = "Sangam";
 
@@ -90,6 +94,15 @@ public static class DependencyInjection
         services.AddSingleton<ISessionService, EfSessionService>();
 
         services.AddSingleton<IClock, SystemClock>();
+
+        // Persist the data-protection key ring in the database so cookies and form tokens survive a
+        // container replacement and every instance shares one ring (OI-037). Hosts started without a
+        // database (some tests) switch this off.
+        if (configuration.GetValue(PersistKeysKey, true))
+        {
+            services.AddDataProtection().SetApplicationName("Sangam").PersistKeysToDbContext<SangamDbContext>();
+        }
+
         if (configuration.GetValue<bool>("Sangam:Email:UseOutbox"))
         {
             // Development/Testing: capture messages for /dev/outbox and the tests.
@@ -98,10 +111,15 @@ public static class DependencyInjection
         }
         else
         {
-            services.AddSingleton<IEmailSender, LoggingEmailSender>();
+            // No real sender until PR-09: refuse to send, and never log content (OI-038).
+            services.AddSingleton<IEmailSender, UnavailableEmailSender>();
         }
 
-        services.AddSingleton<IAuditWriter, EfAuditWriter>();
+        // The chained writer is a singleton; the scoped decorator adds the current client (OI-039).
+        services.AddSingleton<EfAuditWriter>();
+        services.AddScoped<ClientContext>();
+        services.AddScoped<IClientContext>(sp => sp.GetRequiredService<ClientContext>());
+        services.AddScoped<IAuditWriter>(sp => new ClientAwareAuditWriter(sp.GetRequiredService<EfAuditWriter>(), sp.GetRequiredService<IClientContext>()));
         services.AddScoped<DevelopmentSeeder>();
         services.AddHostedService<AccountPurgeService>();
 

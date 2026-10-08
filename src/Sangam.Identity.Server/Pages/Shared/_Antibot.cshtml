@@ -1,0 +1,15 @@
+@using Microsoft.AspNetCore.DataProtection
+@using Sangam.Identity.Application.Abstractions
+@using Sangam.Identity.Server.Authentication
+@inject IDataProtectionProvider Protection
+@inject IClock Clock
+@* Bot friction (OI-034): a honeypot people never see, and a signed timestamp. No JavaScript needed. *@
+@if (ViewData[Antibot.RefusalKey] is string refusal)
+{
+  <partial name="_Banner" model="@(("danger", refusal))" />
+}
+<div aria-hidden="true" style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden">
+  <label for="@Antibot.HoneypotField">Leave this field empty</label>
+  <input id="@Antibot.HoneypotField" name="@Antibot.HoneypotField" type="text" tabindex="-1" autocomplete="off" value="" />
+</div>
+<input type="hidden" name="@Antibot.TimestampField" value="@Antibot.CreateToken(Protection, Clock.UtcNow)" />

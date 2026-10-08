@@ -11,6 +11,7 @@ using Sangam.Shared.Constants;
 namespace Sangam.Identity.Server.Pages.Account;
 
 /// <summary>Screen 2 — registration. All fields required; the strength meter renders server-side.</summary>
+[Antibot]
 public sealed class RegisterModel : AuthPageModel
 {
     private readonly IAccountService _accounts;

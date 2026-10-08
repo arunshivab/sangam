@@ -49,6 +49,9 @@ public sealed class PortalFactory : WebApplicationFactory<Program>
     {
         ArgumentNullException.ThrowIfNull(builder);
         builder.UseEnvironment("Testing");
+        builder.UseSetting("Sangam:DataProtection:PersistKeys", "false");
+        // OI-015: TestServer has no HTTPS port; the redirection middleware’s warning is expected here.
+        builder.UseSetting("Logging:LogLevel:Microsoft.AspNetCore.HttpsPolicy", "Error");
         builder.UseSetting("ConnectionStrings:Sangam", HasDatabase ? PortalTestConnection : SangamDbContextFactory.DevelopmentConnectionString);
         builder.UseSetting("Sangam:Authority", "https://id.example.invalid");
         builder.UseSetting("Sangam:Portal:ClientId", "sangam-portal");

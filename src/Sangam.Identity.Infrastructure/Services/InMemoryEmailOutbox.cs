@@ -50,7 +50,12 @@ public sealed partial class InMemoryEmailOutbox : IEmailSender
             }
         }
 
-        LogEmail(message.ToEmail, message.Subject);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            string masked = LogRedaction.MaskEmail(message.ToEmail);
+            LogEmail(masked);
+        }
+
         return Task.CompletedTask;
     }
 
@@ -65,8 +70,10 @@ public sealed partial class InMemoryEmailOutbox : IEmailSender
         }
     }
 
-    [LoggerMessage(EventId = 1001, Level = LogLevel.Information, Message = "EMAIL (outbox, not sent) to {To}: {Subject}")]
-    private partial void LogEmail(string to, string subject);
+    // Subjects carry the one-time code ("123456 is your Sangam … code"), so only a masked
+    // recipient is logged — never the subject or body (OI-038).
+    [LoggerMessage(EventId = 1001, Level = LogLevel.Information, Message = "EMAIL captured in the development outbox for {To}; subject and body are not logged")]
+    private partial void LogEmail(string to);
 }
 
 /// <summary>A message captured by the outbox.</summary>

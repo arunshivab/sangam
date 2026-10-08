@@ -9,6 +9,7 @@
   <p class="sg-card-body">If your account is set to sign in with an emailed code, we will send one to this address.</p>
 
   <form method="post" novalidate>
+    <partial name="_Antibot" />
     <input type="hidden" asp-for="ReturnUrl" />
     <div class="sg-field-group">
       <label class="sg-label" asp-for="Email">Email</label>

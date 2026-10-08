@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using OpenIddict.EntityFrameworkCore.Models;
@@ -10,7 +11,7 @@ namespace Sangam.Identity.Infrastructure.Persistence;
 /// platform operators and app admins have their own tables), Sangam's tenancy tables, and
 /// OpenIddict's application / authorization / scope / token tables. All names snake_case.
 /// </summary>
-public sealed class SangamDbContext : IdentityUserContext<SangamUser, Guid>
+public sealed class SangamDbContext : IdentityUserContext<SangamUser, Guid>, IDataProtectionKeyContext
 {
     /// <summary>Initialises the context.</summary>
     /// <param name="options">EF Core options.</param>
@@ -48,6 +49,9 @@ public sealed class SangamDbContext : IdentityUserContext<SangamUser, Guid>
 
     /// <summary>Audit events (append-only).</summary>
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
+
+    /// <summary>The ASP.NET Core data-protection key ring, shared by every host (OI-037).</summary>
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     /// <summary>One-time codes (email verification, password reset, sign-in).</summary>
     public DbSet<OneTimeCode> OneTimeCodes => Set<OneTimeCode>();

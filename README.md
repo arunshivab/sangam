@@ -77,7 +77,7 @@ console's Applications page (**Assign owner**); owners add the rest from the par
 In Development the server captures outgoing email instead of sending it; open
 `http://localhost:5100/dev/outbox` to read verification and reset codes.
 
-Docker is not required for local development. `deploy/docker-compose.dev.yml` (PostgreSQL 16 +
+Docker is not required for local development. `deploy/docker-compose.dev.yml` (PostgreSQL 16 or later, pinned to 16 there, +
 Caddy) is the server stack and an opt-in alternative: `.\scripts\bootstrap-dev.ps1 -WithDocker`.
 
 ## Repository layout

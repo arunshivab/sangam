@@ -8,6 +8,7 @@ using Sangam.Identity.Server.Authentication;
 namespace Sangam.Identity.Server.Pages.Account;
 
 /// <summary>Passwordless entry: ask for the address, send a code when the account uses <c>otp_only</c>.</summary>
+[Antibot]
 public sealed class LoginCodeModel : AuthPageModel
 {
     private readonly IAccountService _accounts;

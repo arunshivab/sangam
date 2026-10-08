@@ -1,7 +1,7 @@
-# Sangam — container stack: PostgreSQL 16 + Caddy.
+# Sangam — container stack: PostgreSQL (16 or later; this file pins 16) + Caddy.
 #
 # This is NOT required for local development on a laptop. The default local
-# setup is a native PostgreSQL 16 install (scripts/bootstrap-dev.ps1). This file
+# setup is a native PostgreSQL 16-or-later install (scripts/bootstrap-dev.ps1). This file
 # serves two purposes:
 #   1. the E2E Networks VM, where Caddy is the TLS-terminating front door for
 #      id./account./admin.sangamid.in (and Anjal on the same box) — PR-08;

@@ -15,6 +15,15 @@ public static class AuthRateLimiting
     /// <summary>Configuration section.</summary>
     public const string SectionName = "Sangam:RateLimit";
 
+    /// <summary>Policy for <c>/connect/token</c>: guessing client secrets or codes (OI-035).</summary>
+    public const string TokenPolicy = "token";
+
+    /// <summary>Policy for <c>/connect/userinfo</c> (OI-035).</summary>
+    public const string UserInfoPolicy = "userinfo";
+
+    /// <summary>Policy for the management API, <c>/api/v1</c> (OI-035).</summary>
+    public const string ApiPolicy = "api";
+
     /// <summary>Registers the limiter. <c>Sangam:RateLimit:PostsPerMinute</c> (default 20) and <c>Sangam:RateLimit:Enabled</c> (default true).</summary>
     /// <param name="services">Service collection.</param>
     /// <param name="configuration">Configuration.</param>
@@ -26,6 +35,9 @@ public static class AuthRateLimiting
 
         bool enabled = configuration.GetValue("Sangam:RateLimit:Enabled", true);
         int postsPerMinute = configuration.GetValue("Sangam:RateLimit:PostsPerMinute", 20);
+        int tokenPerMinute = configuration.GetValue("Sangam:RateLimit:TokenPerMinute", 60);
+        int userInfoPerMinute = configuration.GetValue("Sangam:RateLimit:UserInfoPerMinute", 120);
+        int apiPerMinute = configuration.GetValue("Sangam:RateLimit:ApiPerMinute", 300);
 
         services.AddRateLimiter(o =>
         {
@@ -51,8 +63,27 @@ public static class AuthRateLimiting
                     QueueLimit = 0,
                 });
             });
+            o.AddPolicy(TokenPolicy, ctx => PerIp(ctx, enabled, tokenPerMinute));
+            o.AddPolicy(UserInfoPolicy, ctx => PerIp(ctx, enabled, userInfoPerMinute));
+            o.AddPolicy(ApiPolicy, ctx => PerIp(ctx, enabled, apiPerMinute));
         });
 
         return services;
+    }
+
+    private static RateLimitPartition<string> PerIp(HttpContext ctx, bool enabled, int perMinute)
+    {
+        if (!enabled)
+        {
+            return RateLimitPartition.GetNoLimiter("none");
+        }
+
+        string key = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = perMinute,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+        });
     }
 }
