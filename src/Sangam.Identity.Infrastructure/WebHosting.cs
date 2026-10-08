@@ -1,7 +1,9 @@
+using System.Globalization;
 using System.Net;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -100,6 +102,31 @@ public static class WebHosting
             source.FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(directory);
             source.Optional = true;
             source.IgnoreCondition = name => name.StartsWith("ignore.", StringComparison.Ordinal) || name.EndsWith(".pfx", StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    /// <summary>The culture used when the request names none Sangam supports: English (India), so dates read dd/mm/yyyy (V-05).</summary>
+    public const string DefaultCulture = "en-IN";
+
+    /// <summary>Cultures a request may select (by culture cookie, query string or Accept-Language). Translations arrive in R3 (SGM-209).</summary>
+    public static readonly IReadOnlyList<string> SupportedCultures = ["en-IN", "hi-IN", "ta-IN"];
+
+    /// <summary>
+    /// Sets each request's culture: one Sangam supports if the request asks for it, otherwise
+    /// <see cref="DefaultCulture"/>. A browser sending only en-US therefore gets en-IN, not US dates.
+    /// </summary>
+    /// <param name="app">The application.</param>
+    public static IApplicationBuilder UseSangamRequestCulture(this IApplicationBuilder app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+        CultureInfo[] cultures = [.. SupportedCultures.Select(c => new CultureInfo(c))];
+        return app.UseRequestLocalization(new RequestLocalizationOptions
+        {
+            DefaultRequestCulture = new RequestCulture(DefaultCulture),
+            SupportedCultures = cultures,
+            SupportedUICultures = cultures,
+            FallBackToParentCultures = false,
+            FallBackToParentUICultures = false,
         });
     }
 

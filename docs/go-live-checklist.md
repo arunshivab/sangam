@@ -56,6 +56,26 @@ exist, so there is no production database to act on yet.
 - [ ] Grievance officer named and configured (`Sangam:Grievance:OfficerName`, `Email`, `Address`,
       `ResponseDays`); `/privacy/grievance` shows them.
 
+## Added by R2
+
+- [ ] A key-ring certificate created (separate from the token certificates), stored as
+      `keyring_current.pfx` with its password secret; every host starts (they refuse without it).
+      On rotation, the new certificate goes first and the old one stays listed until its keys expire.
+- [ ] `Sangam__Passkeys__RpId` is the identity server's host (`id.sangamid.in`) and
+      `Sangam__Passkeys__Origins` its exact origin (`https://id.sangamid.in`). **The RP ID cannot be
+      changed later without every passkey stopping working.**
+- [ ] A passkey added and used once on a phone and on a laptop, on the production host.
+- [ ] SMS left **off** (`Sangam__Sms__Enabled=false`) until all of these exist: imagiQa registered as
+      principal entity on a DLT platform; the header registered; the three templates (`sign_in`,
+      `mobile_verification`, `step_up`) registered with the exact texts in SGM-206 §3 and their ids in
+      `Sangam__Sms__Templates__<key>__Id`; the provider chosen and its adapter in the build;
+      `Sangam__Sms__HashKey` (32+ random characters) as a secret. Then switch it on for every host together.
+- [ ] With SMS on: `Sangam__Sms__DailyAlertThreshold` set, and a test text received on a real phone.
+- [ ] Breached-password check decided: either left off knowingly, or `Sangam__Passwords__BreachCheck__Enabled`
+      set and outbound HTTPS to the range endpoint allowed from the identity server.
+- [ ] Support procedure for a lost authenticator written into SGM-805 and SGM-813 (who may do it, the
+      proofing methods, the reference format), and the operators told never to record ID numbers.
+
 ## Bootstrapping the first owner — a deliberate, one-time act
 
 Nothing created on a developer's machine reaches production: migrations carry schema, never rows.

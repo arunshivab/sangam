@@ -200,6 +200,29 @@ public sealed class AuthorizationCodeFlowTests
 
     // ---------------------------------------------------------------- helpers
 
+    [PostgresFact]
+    public async Task SangamsOwnPortal_SkipsTheConsentScreen_AndTheImplicitConsentIsAudited()
+    {
+        using BrowserSession s = new(_factory);
+        (_, string challenge) = Pkce();
+        await RegisterAndVerifyAsync(s);
+        string redirect = DevelopmentSeeder.PortalRedirectUris[0];
+        string authorize = "/connect/authorize?client_id=" + DevelopmentSeeder.PortalClientId
+            + "&redirect_uri=" + Uri.EscapeDataString(redirect)
+            + "&response_type=code&scope=" + Uri.EscapeDataString("openid profile email")
+            + "&state=xyz&code_challenge=" + challenge + "&code_challenge_method=S256";
+
+        (_, string? location, _) = (HttpStatusCode.Found, (await s.FollowAsync(authorize)).Location, string.Empty);
+
+        Assert.StartsWith(redirect, location, StringComparison.Ordinal);
+        Assert.Contains("code=", location, StringComparison.Ordinal);
+        using IServiceScope scope = _factory.Services.CreateScope();
+        Sangam.Identity.Infrastructure.Persistence.SangamDbContext db = scope.ServiceProvider.GetRequiredService<Sangam.Identity.Infrastructure.Persistence.SangamDbContext>();
+        string? metadata = db.AuditEvents.Where(e => e.Action == Sangam.Identity.Domain.AuditActions.ConsentGrant).OrderByDescending(e => e.Id).Select(e => e.Metadata).FirstOrDefault();
+        Assert.NotNull(metadata);
+        Assert.Contains("first_party_implicit", metadata, StringComparison.Ordinal);
+    }
+
     private static string Authorize(string challenge)
         => "/connect/authorize?client_id=" + DevelopmentSeeder.SampleClientId
         + "&redirect_uri=" + Uri.EscapeDataString(DevelopmentSeeder.SampleRedirectUri)

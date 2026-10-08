@@ -4,6 +4,7 @@ using Sangam.Identity.Infrastructure;
 using Sangam.Identity.Infrastructure.Persistence;
 using Sangam.Identity.Infrastructure.Seeding;
 using Sangam.Identity.Infrastructure.Services;
+using Sangam.Identity.Infrastructure.Sms;
 using Sangam.Identity.Server.Api;
 using Sangam.Identity.Server.Authentication;
 using Sangam.Identity.Server.Endpoints;
@@ -34,6 +35,13 @@ builder.Services.AddHttpClient();
 
 builder.Services.AddSangamApplication();
 builder.Services.AddSangamInfrastructure(builder.Configuration);
+
+string? keyRingProblem = KeyRingProtection.Validate(builder.Environment.EnvironmentName, builder.Configuration);
+if (keyRingProblem is not null)
+{
+    throw new InvalidOperationException(keyRingProblem);
+}
+
 builder.Services.AddSangamCookies();
 builder.Services.AddAuthRateLimiting(builder.Configuration);
 builder.Services.AddAuthorization(o => o.AddManagementPolicy());
@@ -45,6 +53,12 @@ string? emailProblem = EmailSenderGuard.Validate(builder.Environment.Environment
 if (emailProblem is not null)
 {
     throw new InvalidOperationException(emailProblem);
+}
+
+string? smsProblem = SmsGuard.Validate(builder.Environment.EnvironmentName, builder.Configuration);
+if (smsProblem is not null)
+{
+    throw new InvalidOperationException(smsProblem);
 }
 
 builder.Services.AddOpenIddict()
@@ -143,6 +157,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseSangamClientContext();
+app.UseSangamRequestCulture();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -150,6 +165,7 @@ app.MapStaticAssets();
 app.MapRazorPages().WithStaticAssets().RequireRateLimiting(AuthRateLimiting.PolicyName);
 app.MapConnectEndpoints();
 app.MapManagementEndpoints();
+app.MapSmsEndpoints();
 
 app.MapSangamHealth();
 

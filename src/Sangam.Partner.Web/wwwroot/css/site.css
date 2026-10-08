@@ -148,6 +148,7 @@ h1[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 .sg-grant select.sg-input { flex: 0 0 160px; }
 .sg-form-row { margin-bottom: 14px; }
 .sg-form-row .sg-input { width: 100%; }
+.sg-form-row .sg-input.sg-input--short { width: 7rem; margin-right: 0.5rem; }
 .sg-label { display: block; margin-bottom: 6px; font-size: 13px; color: var(--c-muted); }
 
 .sg-btn {
@@ -173,6 +174,8 @@ h1[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 .sg-btn--danger:hover { background: rgba(240, 160, 142, 0.12); }
 .sg-btn:disabled { opacity: 0.4; cursor: default; }
 .sg-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.sg-actions + .sg-panel { margin-top: 16px; }
+.sg-h3[data-panel="org-policy"] { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--c-line); }
 
 .sg-confirm { margin-top: 16px; padding: 16px 18px; border: 1px solid rgba(240, 160, 142, 0.45); border-radius: 8px; background: rgba(240, 160, 142, 0.06); }
 .sg-confirm p { margin: 0 0 12px; font-size: 14px; }

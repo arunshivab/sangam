@@ -14,4 +14,10 @@ public enum OneTimeCodePurpose
 
     /// <summary>Confirming ownership of a new e-mail address before it replaces the current one (OI-022).</summary>
     EmailChange = 3,
+
+    /// <summary>Proves control of the mobile number on the account; sent by SMS (PR-15, SGM-206).</summary>
+    MobileVerification = 4,
+
+    /// <summary>A sign-in code sent by SMS to the verified mobile, kept apart from e-mailed codes so each channel has its own limits (PR-15).</summary>
+    SmsSignIn = 5,
 }

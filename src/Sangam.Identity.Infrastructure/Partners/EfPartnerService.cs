@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Sangam.Identity.Application.Abstractions;
 using Sangam.Identity.Application.Partners;
+using Sangam.Identity.Application.Security;
 using Sangam.Identity.Application.Tenancy;
 using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Entities;
@@ -22,18 +23,21 @@ public sealed class EfPartnerService : IPartnerService
     private readonly IManagementService _management;
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
+    private readonly ISecurityPolicyService _policies;
 
     /// <summary>Initialises the service.</summary>
     /// <param name="db">Database.</param>
     /// <param name="management">The shared tenancy rules.</param>
     /// <param name="audit">Audit writer.</param>
     /// <param name="clock">Clock.</param>
-    public EfPartnerService(SangamDbContext db, IManagementService management, IAuditWriter audit, IClock clock)
+    /// <param name="policies">Security policies (PR-16).</param>
+    public EfPartnerService(SangamDbContext db, IManagementService management, IAuditWriter audit, IClock clock, ISecurityPolicyService policies)
     {
         _db = db ?? throw new ArgumentNullException(nameof(db));
         _management = management ?? throw new ArgumentNullException(nameof(management));
         _audit = audit ?? throw new ArgumentNullException(nameof(audit));
         _clock = clock ?? throw new ArgumentNullException(nameof(clock));
+        _policies = policies ?? throw new ArgumentNullException(nameof(policies));
     }
 
     /// <inheritdoc />
@@ -376,12 +380,181 @@ public sealed class EfPartnerService : IPartnerService
     /// require two-step, or return to the floor; never below it. <see cref="SignInPolicy.Password"/>
     /// would override people who chose two-step, and <see cref="SignInPolicy.OtpOnly"/> makes the
     /// mailbox the whole account; both are imagiQa's decision. A platform-set value of either can
-    /// only be tightened to two-step from here.
+    /// only be tightened from here: to two-step, or to passkey only (PR-16).
     /// </summary>
     internal static bool MayMoveTo(SignInPolicy from, SignInPolicy to)
         => from == to
-        || to == SignInPolicy.PasswordAndOtp
-        || (to == SignInPolicy.Default && from is SignInPolicy.Default or SignInPolicy.PasswordAndOtp);
+        || to is SignInPolicy.PasswordAndOtp or SignInPolicy.PasskeyOnly
+        || (to == SignInPolicy.Default && from is SignInPolicy.Default or SignInPolicy.PasswordAndOtp or SignInPolicy.PasskeyOnly);
+
+    // ------------------------------------------------------------------------------ security policy (PR-16)
+
+    /// <inheritdoc />
+    public async Task<PolicyView?> GetAppPolicyAsync(Guid userId, Guid appId, CancellationToken cancellationToken = default)
+    {
+        if (await GetRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
+        {
+            return null;
+        }
+
+        App? app = await _db.Apps.AsNoTracking().FirstOrDefaultAsync(a => a.Id == appId, cancellationToken).ConfigureAwait(false);
+        return app is null
+            ? null
+            : new PolicyView(
+                _policies.Platform,
+                app.SignInPolicy,
+                app.MinPasswordLength,
+                app.MfaRequirement == MfaRequirement.Optional ? null : app.MfaRequirement,
+                app.BreachedPasswordCheck ? true : null,
+                _policies.BreachCheckAvailable);
+    }
+
+    /// <inheritdoc />
+    public async Task<PartnerResult> UpdateAppPolicyAsync(Guid userId, Guid appId, PolicyInput input, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        if (await GetRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
+        {
+            return NotYours;
+        }
+
+        App? app = await _db.Apps.FirstOrDefaultAsync(a => a.Id == appId, cancellationToken).ConfigureAwait(false);
+        if (app is null)
+        {
+            return NotYours;
+        }
+
+        string? weaker = _policies.Platform.WhyWeaker(null, input.MinPasswordLength, input.Mfa, input.BreachedPasswordCheck);
+        if (weaker is not null)
+        {
+            return PartnerResult.Refused(weaker);
+        }
+
+        if (input.BreachedPasswordCheck == true && !_policies.BreachCheckAvailable)
+        {
+            return PartnerResult.Refused("The breached-password check is not switched on for Sangam yet, so it cannot be required.");
+        }
+
+        string before = PolicyJson(null, app.MinPasswordLength, app.MfaRequirement, app.BreachedPasswordCheck);
+        app.MinPasswordLength = input.MinPasswordLength;
+        app.MfaRequirement = input.Mfa ?? MfaRequirement.Optional;
+        app.BreachedPasswordCheck = input.BreachedPasswordCheck == true;
+        app.UpdatedAt = _clock.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        await _audit.WriteAsync(
+            new AuditEntry(AuditActions.AppPolicyUpdate, AuditActorType.Admin, userId, appId, "app", appId,
+                Metadata: $"{{\"before\":{before},\"after\":{PolicyJson(null, app.MinPasswordLength, app.MfaRequirement, app.BreachedPasswordCheck)}}}"),
+            cancellationToken).ConfigureAwait(false);
+        return PartnerResult.Ok("Security policy saved. It applies from each person's next sign-in.");
+    }
+
+    /// <inheritdoc />
+    public async Task<PolicyView?> GetOrganisationPolicyAsync(Guid userId, Guid appId, Guid orgId, CancellationToken cancellationToken = default)
+    {
+        if (await GetRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
+        {
+            return null;
+        }
+
+        Organisation? org = await FindOrganisationAsync(appId, orgId, tracked: false, cancellationToken).ConfigureAwait(false);
+        return org is null
+            ? null
+            : new PolicyView(
+                await InheritedAsync(appId, org, cancellationToken).ConfigureAwait(false),
+                org.SignInPolicy,
+                org.MinPasswordLength,
+                org.MfaRequirement,
+                org.BreachedPasswordCheck,
+                _policies.BreachCheckAvailable);
+    }
+
+    /// <inheritdoc />
+    public async Task<PartnerResult> UpdateOrganisationPolicyAsync(Guid userId, Guid appId, Guid orgId, PolicyInput input, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        if (await GetRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
+        {
+            return NotYours;
+        }
+
+        Organisation? org = await FindOrganisationAsync(appId, orgId, tracked: true, cancellationToken).ConfigureAwait(false);
+        if (org is null)
+        {
+            return PartnerResult.Refused("That organisation is not in this application.");
+        }
+
+        if (input.SignIn is not (null or SignInPolicy.PasswordAndOtp or SignInPolicy.PasskeyOnly))
+        {
+            return PartnerResult.Refused("An organisation can require two-step sign-in or a passkey, or follow the application's rule.");
+        }
+
+        SecurityPolicy inherited = await InheritedAsync(appId, org, cancellationToken).ConfigureAwait(false);
+        string? weaker = inherited.WhyWeaker(input.SignIn, input.MinPasswordLength, input.Mfa, input.BreachedPasswordCheck);
+        if (weaker is not null)
+        {
+            return PartnerResult.Refused(weaker);
+        }
+
+        if (input.BreachedPasswordCheck == true && !_policies.BreachCheckAvailable)
+        {
+            return PartnerResult.Refused("The breached-password check is not switched on for Sangam yet, so it cannot be required.");
+        }
+
+        string before = PolicyJson(org.SignInPolicy, org.MinPasswordLength, org.MfaRequirement, org.BreachedPasswordCheck);
+        org.SignInPolicy = input.SignIn;
+        org.MinPasswordLength = input.MinPasswordLength;
+        org.MfaRequirement = input.Mfa;
+        org.BreachedPasswordCheck = input.BreachedPasswordCheck == true ? true : null;
+        org.UpdatedAt = _clock.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        await _audit.WriteAsync(
+            new AuditEntry(AuditActions.OrgPolicyUpdate, AuditActorType.Admin, userId, appId, "organisation", orgId,
+                Metadata: $"{{\"before\":{before},\"after\":{PolicyJson(org.SignInPolicy, org.MinPasswordLength, org.MfaRequirement, org.BreachedPasswordCheck)}}}"),
+            cancellationToken).ConfigureAwait(false);
+        return PartnerResult.Ok($"Security policy for {org.Name} saved. It applies to everyone in it and below it from their next sign-in.");
+    }
+
+    private Task<Organisation?> FindOrganisationAsync(Guid appId, Guid orgId, bool tracked, CancellationToken cancellationToken)
+    {
+        IQueryable<Organisation> orgs = tracked ? _db.Organisations : _db.Organisations.AsNoTracking();
+        return orgs.FirstOrDefaultAsync(o => o.Id == orgId && o.RegisteredViaAppId == appId && o.DeletedAt == null, cancellationToken);
+    }
+
+    /// <summary>The application's policy tightened by every ancestor of <paramref name="org"/> (not the organisation itself).</summary>
+    private async Task<SecurityPolicy> InheritedAsync(Guid appId, Organisation org, CancellationToken cancellationToken)
+    {
+        SecurityPolicy policy = await _policies.ForAppAsync(appId, cancellationToken).ConfigureAwait(false);
+        List<Guid> ancestors = [.. OrganisationPath.Ids(org.Path).Where(id => id != org.Id)];
+        if (ancestors.Count == 0)
+        {
+            return policy;
+        }
+
+        Dictionary<Guid, Organisation> rows = await _db.Organisations.AsNoTracking()
+            .Where(o => ancestors.Contains(o.Id))
+            .ToDictionaryAsync(o => o.Id, cancellationToken)
+            .ConfigureAwait(false);
+        foreach (Guid id in ancestors)
+        {
+            if (rows.TryGetValue(id, out Organisation? parent))
+            {
+                policy = policy.Tighten(parent.SignInPolicy, parent.MinPasswordLength, parent.MfaRequirement, parent.BreachedPasswordCheck);
+            }
+        }
+
+        return policy;
+    }
+
+    private static string PolicyJson(SignInPolicy? signIn, int? minLength, MfaRequirement? mfa, bool? breach)
+        => JsonSerializer.Serialize(new Dictionary<string, string?>
+        {
+            ["sign_in"] = signIn?.ToString(),
+            ["min_password_length"] = minLength?.ToString(CultureInfo.InvariantCulture),
+            ["mfa"] = mfa?.ToString(),
+            ["breach_check"] = breach?.ToString(),
+        });
 
     private static PartnerResult NotYours { get; } = PartnerResult.Refused("You do not administer this application.");
 

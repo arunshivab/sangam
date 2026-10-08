@@ -9,6 +9,13 @@
   <partial name="_Banner" model="@(("danger", Model.Error ?? string.Empty))" />
   <partial name="_Banner" model="@(("success", Model.Notice ?? string.Empty))" />
 
+  @if (Model.PasskeyOnly)
+  {
+    <p class="sg-card-body">@Model.Partner!.DisplayName accepts only passkeys — your fingerprint, face or device PIN — so a stolen password is never enough.</p>
+    <p class="sg-note">No passkey yet? <a href="/login">Sign in to your Sangam account</a> without @Model.Partner!.DisplayName, add one under “manage your passkeys”, then come back.</p>
+  }
+  else
+  {
   <form method="post" novalidate>
     <partial name="_Antibot" />
     <input type="hidden" asp-for="ReturnUrl" />
@@ -27,8 +34,18 @@
     </div>
     <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">Sign in</button>
   </form>
+  }
 
-  @if (Model.Partner?.SignInPolicy != Sangam.Identity.Domain.Enums.SignInPolicy.Password)
+  @if (Model.PasskeysEnabled)
+  {
+    <button type="button" class="sg-btn @(Model.PasskeyOnly ? "sg-btn--primary" : "sg-btn--secondary") sg-btn--block sg-passkey-signin" hidden data-passkey-signin
+            data-options-url="/login/passkey?handler=Options" data-verify-url="/login/passkey?handler=Verify@(string.IsNullOrEmpty(Model.ReturnUrl) ? "" : "&returnUrl=" + Uri.EscapeDataString(Model.ReturnUrl))"
+            data-message="passkey-message">Sign in with a passkey</button>
+    <p class="sg-field-error" id="passkey-message" hidden></p>
+    <script src="/js/passkeys.js" defer></script>
+  }
+
+  @if (Model.Partner?.SignInPolicy is not (Sangam.Identity.Domain.Enums.SignInPolicy.Password or Sangam.Identity.Domain.Enums.SignInPolicy.PasskeyOnly))
   {
     <a class="sg-tertiary" href="/login/code@(string.IsNullOrEmpty(Model.ReturnUrl) ? "" : "?returnUrl=" + Uri.EscapeDataString(Model.ReturnUrl))">Email me a sign-in code instead</a>
   }

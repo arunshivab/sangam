@@ -42,6 +42,15 @@ public sealed class App
     /// <summary>The app's sign-in rule. <see cref="SignInPolicy.Default"/> lets each user's own preference apply.</summary>
     public SignInPolicy SignInPolicy { get; set; } = SignInPolicy.Default;
 
+    /// <summary>Shortest password allowed for people using this application; <see langword="null"/> keeps the platform's (PR-16).</summary>
+    public int? MinPasswordLength { get; set; }
+
+    /// <summary>Whether this application's people must use a second factor (PR-16).</summary>
+    public MfaRequirement MfaRequirement { get; set; } = MfaRequirement.Optional;
+
+    /// <summary>Whether passwords of this application's people are checked against known breaches (PR-16).</summary>
+    public bool BreachedPasswordCheck { get; set; }
+
     /// <summary>Brand colour (hex, "#1D4E89") used on the partner chip and consent tile. Never touches layout.</summary>
     public string BrandColour { get; set; } = "#0F3B38";
 

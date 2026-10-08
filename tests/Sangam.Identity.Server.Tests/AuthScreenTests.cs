@@ -366,6 +366,56 @@ public sealed partial class AuthScreenTests
         Assert.DoesNotContain("authenticator code", html, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task Register_AsksForDayMonthYear_NotABrowserLocaleDatePicker()
+    {
+        using BrowserSession s = new(_factory);
+        (HttpStatusCode status, string html) = await s.GetAsync("/register");
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.DoesNotContain("type=\"date\"", html, StringComparison.Ordinal);
+        int day = html.IndexOf("name=\"BirthDay\"", StringComparison.Ordinal);
+        int month = html.IndexOf("name=\"BirthMonth\"", StringComparison.Ordinal);
+        int year = html.IndexOf("name=\"BirthYear\"", StringComparison.Ordinal);
+        Assert.True(day > 0 && day < month && month < year, "Day, then month, then year.");
+        Assert.Contains("For example, 17 May 1990", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Register_RefusesADateThatDoesNotExist()
+    {
+        using BrowserSession s = new(_factory);
+        Dictionary<string, string> form = Form("IN", "9876501234");
+        form.Remove("DateOfBirth");
+        form["BirthDay"] = "31";
+        form["BirthMonth"] = "2";
+        form["BirthYear"] = "1990";
+        (HttpStatusCode status, _, string html) = await s.PostFormAsync("/register", form);
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.Contains("Enter a real date of birth", html, StringComparison.Ordinal);
+        Assert.Contains("value=\"31\"", html, StringComparison.Ordinal);
+    }
+
+    [PostgresFact]
+    public async Task Register_StoresTheDayMonthYearExactlyAsEntered()
+    {
+        using BrowserSession s = new(_factory);
+        string email = $"dob-{Guid.NewGuid():N}@example.in";
+        string mobile = Random.Shared.NextInt64(7000000000, 9999999999).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        Dictionary<string, string> form = Form("IN", mobile);
+        form.Remove("DateOfBirth");
+        form["Email"] = email;
+        form["BirthDay"] = "5";
+        form["BirthMonth"] = "11";
+        form["BirthYear"] = "1991";
+        (HttpStatusCode status, string? location, string html) = await s.PostFormAsync("/register", form);
+        Assert.True(status == HttpStatusCode.Found && location == "/verify", html);
+
+        using IServiceScope scope = _factory.Services.CreateScope();
+        UserManager<SangamUser> users = scope.ServiceProvider.GetRequiredService<UserManager<SangamUser>>();
+        SangamUser user = (await users.FindByEmailAsync(email))!;
+        Assert.Equal(new DateOnly(1991, 11, 5), user.DateOfBirth);
+    }
+
     private static async Task RegisterAndVerifyAsync(BrowserSession s, InMemoryEmailOutbox outbox, string email, string mobile)
     {
         (HttpStatusCode st, string? loc, string html) = await s.PostFormAsync("/register", new Dictionary<string, string>

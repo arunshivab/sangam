@@ -66,4 +66,35 @@ public interface IPartnerService
 
     /// <summary>Updates branding and sign-in policy. The policy may only be made stricter, never weaker.</summary>
     Task<PartnerResult> UpdateSettingsAsync(Guid userId, Guid appId, string? description, string brandColour, string glyph, SignInPolicy signInPolicy, CancellationToken cancellationToken = default);
+
+    /// <summary>The application's password and second-factor policy, against the platform's (PR-16).</summary>
+    /// <param name="userId">The administrator.</param>
+    /// <param name="appId">The application.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<PolicyView?> GetAppPolicyAsync(Guid userId, Guid appId, CancellationToken cancellationToken = default);
+
+    /// <summary>Sets the application's password and second-factor policy; never weaker than the platform's (PR-16).</summary>
+    /// <param name="userId">The administrator.</param>
+    /// <param name="appId">The application.</param>
+    /// <param name="input">The settings; the sign-in rule here is ignored (it is set with the other settings).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<PartnerResult> UpdateAppPolicyAsync(Guid userId, Guid appId, PolicyInput input, CancellationToken cancellationToken = default);
+
+    /// <summary>An organisation's security policy, against what it inherits (PR-16).</summary>
+    /// <param name="userId">The administrator.</param>
+    /// <param name="appId">The application.</param>
+    /// <param name="orgId">The organisation.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<PolicyView?> GetOrganisationPolicyAsync(Guid userId, Guid appId, Guid orgId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sets an organisation's security policy, which also applies to every organisation below it; never weaker
+    /// than what it inherits from the application and its parents (PR-16, SGM-209 §7).
+    /// </summary>
+    /// <param name="userId">The administrator.</param>
+    /// <param name="appId">The application.</param>
+    /// <param name="orgId">The organisation.</param>
+    /// <param name="input">The settings.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<PartnerResult> UpdateOrganisationPolicyAsync(Guid userId, Guid appId, Guid orgId, PolicyInput input, CancellationToken cancellationToken = default);
 }

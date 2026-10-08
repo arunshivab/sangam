@@ -18,6 +18,24 @@ public static class AuditActions
     /// <summary>The person confirmed the new address with its code; the old address was told (OI-022).</summary>
     public const string UserEmailChange = "user.email.change";
 
+    /// <summary>A passkey was added to the account (PR-14).</summary>
+    public const string UserPasskeyAdd = "user.passkey.add";
+
+    /// <summary>A passkey was removed from the account (PR-14).</summary>
+    public const string UserPasskeyRemove = "user.passkey.remove";
+
+    /// <summary>A passkey sign-in was refused: unknown credential, bad signature or a counter that went backwards (PR-14).</summary>
+    public const string UserPasskeyFail = "user.passkey.fail";
+
+    /// <summary>An SMS was handed to the provider, or refused by it (template and outcome in metadata; never the number or the code) (PR-15).</summary>
+    public const string UserSmsSend = "user.sms.send";
+
+    /// <summary>The person proved control of their mobile number with an SMS code (PR-15).</summary>
+    public const string UserMobileVerify = "user.mobile.verify";
+
+    /// <summary>The day's SMS volume reached the configured alert threshold (PR-15, cost and SMS-pumping watch).</summary>
+    public const string SmsVolumeAlert = "sms.volume.alert";
+
     /// <summary>Successful sign-in.</summary>
     public const string UserLoginSuccess = "user.login.success";
 
@@ -114,6 +132,12 @@ public static class AuditActions
     /// <summary>A platform operator cleared a hold.</summary>
     public const string AdminUserHoldClear = "admin.user.hold.clear";
 
+    /// <summary>
+    /// Support reset a person's two-step sign-in after proving who they are, because they lost their authenticator
+    /// and recovery codes (PR-16, CAP-019). Method and reference in metadata; never an identity-document number.
+    /// </summary>
+    public const string AdminUserMfaReset = "admin.user.mfa.reset";
+
     /// <summary>A platform operator deleted an account immediately, without waiting for the grace period.</summary>
     public const string AdminUserDeleteNow = "admin.user.delete_now";
 
@@ -122,6 +146,12 @@ public static class AuditActions
 
     /// <summary>Organisation updated.</summary>
     public const string OrgUpdate = "org.update";
+
+    /// <summary>An application administrator changed an organisation's security policy (PR-16; before and after in metadata).</summary>
+    public const string OrgPolicyUpdate = "org.policy.update";
+
+    /// <summary>An application administrator changed the application's password or second-factor policy (PR-16).</summary>
+    public const string AppPolicyUpdate = "app.policy.update";
 
     /// <summary>Membership granted.</summary>
     public const string OrgMembershipGrant = "org_membership.grant";

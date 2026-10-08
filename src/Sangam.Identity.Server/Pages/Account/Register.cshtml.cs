@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Sangam.Identity.Application.Accounts;
 using Sangam.Identity.Application.Apps;
 using Sangam.Identity.Application.Security;
@@ -62,10 +64,31 @@ public sealed class RegisterModel : AuthPageModel
     [StringLength(20)]
     public string MobileNumber { get; set; } = string.Empty;
 
-    /// <summary>Date of birth.</summary>
+    /// <summary>
+    /// Date of birth. Browsers post it as three parts (<see cref="BirthDay"/>, <see cref="BirthMonth"/>,
+    /// <see cref="BirthYear"/>) so the order never depends on the browser's locale; a single ISO value is still accepted.
+    /// </summary>
     [BindProperty]
-    [Required(ErrorMessage = "Enter your date of birth.")]
     public DateOnly? DateOfBirth { get; set; }
+
+    /// <summary>Day of the month of the date of birth (1–31).</summary>
+    [BindProperty]
+    public string? BirthDay { get; set; }
+
+    /// <summary>Month of the date of birth (1–12, from the month list).</summary>
+    [BindProperty]
+    public string? BirthMonth { get; set; }
+
+    /// <summary>Four-digit year of the date of birth.</summary>
+    [BindProperty]
+    public string? BirthYear { get; set; }
+
+    /// <summary>The months offered in the date-of-birth list, by number and name.</summary>
+    public static IReadOnlyList<(int Number, string Name)> Months { get; } =
+    [
+        (1, "January"), (2, "February"), (3, "March"), (4, "April"), (5, "May"), (6, "June"),
+        (7, "July"), (8, "August"), (9, "September"), (10, "October"), (11, "November"), (12, "December"),
+    ];
 
     /// <summary>Gender, as the snake_case value from the select.</summary>
     [BindProperty]
@@ -80,10 +103,6 @@ public sealed class RegisterModel : AuthPageModel
     /// <summary>Terms acceptance.</summary>
     [BindProperty]
     public bool AcceptTerms { get; set; }
-
-    /// <summary>The latest date of birth that may register, so the picker stops at it.</summary>
-    public string LatestEligibleBirthDate
-        => AgePolicy.LatestEligibleBirthDate(DateOnly.FromDateTime(DateTime.UtcNow)).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
 
     /// <summary>Version of the terms shown.</summary>
     public string TermsVersion => _configuration["Sangam:TermsVersion"] ?? "v1";
@@ -118,6 +137,8 @@ public sealed class RegisterModel : AuthPageModel
         {
             ModelState.AddModelError(nameof(AcceptTerms), "You need to accept the terms to create an account.");
         }
+
+        ResolveDateOfBirth();
 
         if (!Genders.TryParse(Gender, out Gender gender))
         {
@@ -161,5 +182,38 @@ public sealed class RegisterModel : AuthPageModel
 
         await SangamAuthentication.StorePendingAsync(HttpContext, SangamAuthentication.Pending.EmailVerification, outcome.UserId.Value);
         return RedirectToPage("/Account/Verify", new { returnUrl = ReturnUrl });
+    }
+
+    /// <summary>
+    /// Builds <see cref="DateOfBirth"/> from the day, month and year fields when any of them was posted,
+    /// and records a field error when the result is missing or not a real date.
+    /// </summary>
+    private void ResolveDateOfBirth()
+    {
+        bool partsPosted = !string.IsNullOrWhiteSpace(BirthDay) || !string.IsNullOrWhiteSpace(BirthMonth) || !string.IsNullOrWhiteSpace(BirthYear);
+        if (partsPosted)
+        {
+            ModelState.Remove(nameof(DateOfBirth));
+            DateOfBirth = null;
+            CultureInfo invariant = CultureInfo.InvariantCulture;
+            if (int.TryParse(BirthDay?.Trim(), NumberStyles.None, invariant, out int day)
+                && int.TryParse(BirthMonth?.Trim(), NumberStyles.None, invariant, out int month)
+                && int.TryParse(BirthYear?.Trim(), NumberStyles.None, invariant, out int year)
+                && year is >= 1900 and <= 9999
+                && month is >= 1 and <= 12
+                && day >= 1 && day <= DateTime.DaysInMonth(year, month))
+            {
+                DateOfBirth = new DateOnly(year, month, day);
+                return;
+            }
+
+            ModelState.AddModelError(nameof(DateOfBirth), "Enter a real date of birth: day, month and four-digit year.");
+            return;
+        }
+
+        if (DateOfBirth is null && ModelState.GetFieldValidationState(nameof(DateOfBirth)) != ModelValidationState.Invalid)
+        {
+            ModelState.AddModelError(nameof(DateOfBirth), "Enter your date of birth.");
+        }
     }
 }

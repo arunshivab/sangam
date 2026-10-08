@@ -101,6 +101,9 @@ public sealed class PortalScreenTests : IClassFixture<PortalFactory>, IAsyncLife
         Assert.Contains("Delete your account", html, StringComparison.Ordinal);
         Assert.Contains("30 days", html, StringComparison.Ordinal);
         Assert.Contains("How you sign in", html, StringComparison.Ordinal);
+        Assert.Contains("href=\"https://id.example.invalid/account/passkeys\"", html, StringComparison.Ordinal);
+        Assert.Contains("Add a passkey", html, StringComparison.Ordinal);
+        Assert.Contains("href=\"https://id.example.invalid/account/mobile\"", html, StringComparison.Ordinal);
         Assert.DoesNotContain("argon2", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("SecurityStamp", html, StringComparison.OrdinalIgnoreCase);
     }

@@ -144,6 +144,15 @@ dotnet format Sangam.sln --verify-no-changes
 Warnings are errors, code style is enforced in the build, and every public member needs
 XML documentation. CI runs the same three steps on Ubuntu and Windows.
 
+### Building the container images behind a TLS-intercepting proxy
+
+The images (`Dockerfile`, see `deploy/production/README.md`) restore NuGet packages and install
+`libgssapi-krb5-2` during the build. On a network whose proxy re-signs HTTPS traffic — some corporate
+networks and build sandboxes — those downloads fail certificate validation inside the build container.
+That is the network, not a defect in Sangam: add the proxy's CA certificate to the build (or to the base
+image's trust store) and build with `--network host` so the build uses the host's proxy settings. On an
+ordinary network neither is needed.
+
 ## Contributing and security
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) and

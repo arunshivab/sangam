@@ -44,23 +44,43 @@
       <span class="sg-field-error sg-field-error--hidden" asp-validation-for="Country"></span>
     </div>
 
-    <div class="sg-two">
-      <div class="sg-field-group">
-        <label class="sg-label" asp-for="DateOfBirth">Date of birth</label>
-        <input class="sg-field" asp-for="DateOfBirth" type="date" autocomplete="bday" max="@Model.LatestEligibleBirthDate" required />
-        <span class="sg-field-error" asp-validation-for="DateOfBirth"></span>
+    <fieldset class="sg-field-group sg-dob" aria-describedby="dob-hint">
+      <legend class="sg-label">Date of birth</legend>
+      <span class="sg-hint" id="dob-hint">For example, 17 May 1990</span>
+      <div class="sg-dob__parts">
+        <div class="sg-dob__part sg-dob__part--day">
+          <label class="sg-dob__label" for="BirthDay">Day</label>
+          <input class="sg-field" id="BirthDay" name="BirthDay" value="@Model.BirthDay" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="bday-day" required />
+        </div>
+        <div class="sg-dob__part sg-dob__part--month">
+          <label class="sg-dob__label" for="BirthMonth">Month</label>
+          <select class="sg-field" id="BirthMonth" name="BirthMonth" autocomplete="bday-month" required>
+            <option value="">Month…</option>
+            @foreach ((int number, string name) in RegisterModel.Months)
+            {
+              string value = number.ToString(System.Globalization.CultureInfo.InvariantCulture);
+              <option value="@value" selected="@(Model.BirthMonth == value)">@name</option>
+            }
+          </select>
+        </div>
+        <div class="sg-dob__part sg-dob__part--year">
+          <label class="sg-dob__label" for="BirthYear">Year</label>
+          <input class="sg-field" id="BirthYear" name="BirthYear" value="@Model.BirthYear" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="bday-year" required />
+        </div>
       </div>
-      <div class="sg-field-group">
-        <label class="sg-label" asp-for="Gender">Gender</label>
-        <select class="sg-field" asp-for="Gender" required>
-          <option value="">Select…</option>
-          <option value="female">Female</option>
-          <option value="male">Male</option>
-          <option value="other">Other</option>
-          <option value="prefer_not_to_say">Prefer not to say</option>
-        </select>
-        <span class="sg-field-error" asp-validation-for="Gender"></span>
-      </div>
+      <span class="sg-field-error" asp-validation-for="DateOfBirth"></span>
+    </fieldset>
+
+    <div class="sg-field-group">
+      <label class="sg-label" asp-for="Gender">Gender</label>
+      <select class="sg-field" asp-for="Gender" required>
+        <option value="">Select…</option>
+        <option value="female">Female</option>
+        <option value="male">Male</option>
+        <option value="other">Other</option>
+        <option value="prefer_not_to_say">Prefer not to say</option>
+      </select>
+      <span class="sg-field-error" asp-validation-for="Gender"></span>
     </div>
     <div class="sg-field-group">
       <label class="sg-label" asp-for="Password">Password</label>

@@ -37,6 +37,12 @@ public static class SangamAuthentication
     /// <summary>Claim carrying the email address of a pending password reset.</summary>
     public const string PendingEmailClaim = "sangam:email";
 
+    /// <summary>Claim on the session: the person passed an authenticator step (PR-16); a passkey session needs none.</summary>
+    public const string SessionSecondFactorClaim = "sangam:second_factor";
+
+    /// <summary>Claim marking a pending code sign-in whose code was texted rather than e-mailed (PR-15).</summary>
+    public const string PendingChannelClaim = "sangam:channel";
+
     /// <summary>Claim on the session cookie: the mode the session was established with.</summary>
     public const string SessionModeClaim = "sangam:signin_mode";
 
@@ -69,6 +75,9 @@ public static class SangamAuthentication
 
         /// <summary>The user declined consent for an app (the app's client id travels in the email slot).</summary>
         public const string ConsentDenied = "consent-denied";
+
+        /// <summary>The password was right but a policy requires a new one before the sign-in continues (PR-16).</summary>
+        public const string PasswordUpgrade = "password-upgrade";
     }
 
     /// <summary>Registers the session and pending cookie schemes.</summary>
@@ -117,7 +126,8 @@ public static class SangamAuthentication
     /// <param name="mode">Mode the sign-in used.</param>
     /// <param name="appId">The app that started the flow, if any.</param>
     /// <param name="deviceLabel">Label the app supplied on the authorization request, if any.</param>
-    public static async Task SignInSessionAsync(HttpContext httpContext, UserSummary user, SignInMode mode, Guid? appId = null, string? deviceLabel = null)
+    /// <param name="secondFactor">Whether the person passed an authenticator step (PR-16).</param>
+    public static async Task SignInSessionAsync(HttpContext httpContext, UserSummary user, SignInMode mode, Guid? appId = null, string? deviceLabel = null, bool secondFactor = false)
     {
         ArgumentNullException.ThrowIfNull(httpContext);
         ArgumentNullException.ThrowIfNull(user);
@@ -145,6 +155,10 @@ public static class SangamAuthentication
         identity.AddClaim(new Claim(SessionIdClaim, sessionId.ToString("D")));
         identity.AddClaim(new Claim(SessionValidatedClaim, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture)));
         identity.AddClaim(new Claim(Claims.AuthenticationTime, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture)));
+        if (secondFactor)
+        {
+            identity.AddClaim(new Claim(SessionSecondFactorClaim, "totp"));
+        }
 
         await httpContext.SignOutAsync(PendingScheme).ConfigureAwait(false);
         await httpContext.SignInAsync(IdentityConstants.ApplicationScheme, new ClaimsPrincipal(identity)).ConfigureAwait(false);
@@ -212,7 +226,8 @@ public static class SangamAuthentication
     /// <param name="purpose">One of <see cref="Pending"/>.</param>
     /// <param name="userId">The user.</param>
     /// <param name="mode">Sign-in mode, for <see cref="Pending.SignInOtp"/>.</param>
-    public static Task StorePendingAsync(HttpContext httpContext, string purpose, Guid userId, SignInMode? mode = null)
+    /// <param name="viaSms">For <see cref="Pending.SignInOtp"/>: the code was texted, not e-mailed.</param>
+    public static Task StorePendingAsync(HttpContext httpContext, string purpose, Guid userId, SignInMode? mode = null, bool viaSms = false)
     {
         ArgumentNullException.ThrowIfNull(httpContext);
         ClaimsIdentity identity = new(PendingScheme);
@@ -221,6 +236,11 @@ public static class SangamAuthentication
         if (mode is not null)
         {
             identity.AddClaim(new Claim(PendingModeClaim, SignInModes.ToCode(mode.Value)));
+        }
+
+        if (viaSms)
+        {
+            identity.AddClaim(new Claim(PendingChannelClaim, "sms"));
         }
 
         return httpContext.SignInAsync(PendingScheme, new ClaimsPrincipal(identity));
@@ -270,7 +290,8 @@ public static class SangamAuthentication
         Guid? userId = Guid.TryParse(result.Principal.FindFirstValue(Claims.Subject), out Guid id) ? id : null;
         string? email = result.Principal.FindFirstValue(PendingEmailClaim);
         SignInMode? mode = SignInModes.TryParse(result.Principal.FindFirstValue(PendingModeClaim), out SignInMode m) ? m : null;
-        return new PendingFlow(purpose, userId, email, mode);
+        bool viaSms = result.Principal.FindFirstValue(PendingChannelClaim) == "sms";
+        return new PendingFlow(purpose, userId, email, mode, viaSms);
     }
 
     /// <summary>Clears the pending flow cookie.</summary>
@@ -279,6 +300,15 @@ public static class SangamAuthentication
     {
         ArgumentNullException.ThrowIfNull(httpContext);
         return httpContext.SignOutAsync(PendingScheme);
+    }
+
+    /// <summary>Whether the session meets a second-factor requirement: an authenticator step, or a passkey (PR-16).</summary>
+    /// <param name="principal">The session principal.</param>
+    public static bool HasSecondFactor(ClaimsPrincipal principal)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        return principal.HasClaim(c => c.Type == SessionSecondFactorClaim)
+            || principal.FindFirstValue(SessionModeClaim) == SignInModes.ToCode(SignInMode.Passkey);
     }
 
     /// <summary>The session row id from the cookie, or <see langword="null"/>.</summary>
@@ -303,4 +333,5 @@ public static class SangamAuthentication
 /// <param name="UserId">The user, when known.</param>
 /// <param name="Email">The typed email, for password reset.</param>
 /// <param name="Mode">Sign-in mode, for a pending sign-in.</param>
-public sealed record PendingFlow(string Purpose, Guid? UserId, string? Email, SignInMode? Mode);
+/// <param name="ViaSms">For a pending code sign-in: the code was texted rather than e-mailed.</param>
+public sealed record PendingFlow(string Purpose, Guid? UserId, string? Email, SignInMode? Mode, bool ViaSms = false);

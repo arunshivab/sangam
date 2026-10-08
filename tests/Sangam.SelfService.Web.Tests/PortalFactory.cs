@@ -54,6 +54,7 @@ public sealed class PortalFactory : WebApplicationFactory<Program>
         builder.UseSetting("Logging:LogLevel:Microsoft.AspNetCore.HttpsPolicy", "Error");
         builder.UseSetting("ConnectionStrings:Sangam", HasDatabase ? PortalTestConnection : SangamDbContextFactory.DevelopmentConnectionString);
         builder.UseSetting("Sangam:Authority", "https://id.example.invalid");
+        builder.UseSetting("Sangam:Sms:Enabled", "true");
         builder.UseSetting("Sangam:Portal:ClientId", "sangam-portal");
         builder.UseSetting("Sangam:Maintenance:Enabled", "false");
         builder.UseSetting("Logging:LogLevel:Microsoft.EntityFrameworkCore", "Warning");

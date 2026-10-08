@@ -1,0 +1,131 @@
+@* PR-16: one level's security policy (an application, or an organisation), shown against what it inherits. *@
+
+<p class="sg-muted">@Explanation</p>
+
+@if (ShowSignIn)
+{
+  <fieldset class="sg-choices">
+    <legend class="sg-label">Sign-in rule</legend>
+    <label class="sg-check">
+      <input type="radio" name="@($"{Key}-signin")" checked="@(_signIn is null)" @onchange="() => _signIn = null" />
+      Follow @InheritLabel <span class="sg-muted">— @SignInName(View.Inherited.SignIn)</span>
+    </label>
+    @if (SecurityRank(View.Inherited.SignIn) <= 2)
+    {
+      <label class="sg-check">
+        <input type="radio" name="@($"{Key}-signin")" checked="@(_signIn == SignInPolicy.PasswordAndOtp)" @onchange="() => _signIn = SignInPolicy.PasswordAndOtp" />
+        Always two-step <span class="sg-muted">— password, then a code</span>
+      </label>
+    }
+    <label class="sg-check">
+      <input type="radio" name="@($"{Key}-signin")" checked="@(_signIn == SignInPolicy.PasskeyOnly)" @onchange="() => _signIn = SignInPolicy.PasskeyOnly" />
+      Passkey only <span class="sg-muted">— fingerprint, face or device PIN; no password</span>
+    </label>
+  </fieldset>
+}
+
+<div class="sg-form-row">
+  <label class="sg-label" for="@($"{Key}-minlen")">Shortest password allowed</label>
+  <input id="@($"{Key}-minlen")" class="sg-input sg-input--short" type="number" min="@View.Inherited.MinPasswordLength" max="64" placeholder="@View.Inherited.MinPasswordLength"
+         value="@_minLength" @onchange="e => _minLength = int.TryParse(e.Value?.ToString(), out int n) ? n : null" />
+  <span class="sg-muted">characters — leave empty to follow @InheritLabel (@View.Inherited.MinPasswordLength). People whose password is shorter choose a new one at their next sign-in.</span>
+</div>
+
+<fieldset class="sg-choices">
+  <legend class="sg-label">Second factor (an authenticator app or a passkey)</legend>
+  @foreach (MfaRequirement option in Enum.GetValues<MfaRequirement>())
+  {
+    @if (option >= View.Inherited.Mfa)
+    {
+      MfaRequirement? value = option == View.Inherited.Mfa ? null : option;
+      <label class="sg-check">
+        <input type="radio" name="@($"{Key}-mfa")" checked="@(_mfa == value)" @onchange="() => _mfa = value" />
+        <span>@MfaName(option)@if (value is null) { <span class="sg-muted"> — as @InheritLabel</span> }</span>
+      </label>
+    }
+  }
+</fieldset>
+
+<label class="sg-check">
+  <input type="checkbox" checked="@(_breach == true || View.Inherited.BreachedPasswordCheck)" disabled="@(View.Inherited.BreachedPasswordCheck || !View.BreachCheckAvailable)"
+         @onchange="e => _breach = e.Value is true ? true : null" />
+  <span>
+    Refuse passwords found in known data breaches
+    @if (View.Inherited.BreachedPasswordCheck)
+    {
+      <span class="sg-muted">— already required by @InheritLabel</span>
+    }
+    else if (!View.BreachCheckAvailable)
+    {
+      <span class="sg-muted">— not yet switched on for Sangam (imagiQa's decision)</span>
+    }
+  </span>
+</label>
+
+<div class="sg-actions">
+  <button type="button" class="sg-btn sg-btn--primary" @onclick="SaveAsync" disabled="@Busy">Save security policy</button>
+</div>
+
+@code {
+    /// <summary>The policy being edited.</summary>
+    [Parameter]
+    [EditorRequired]
+    public PolicyView View { get; set; } = null!;
+
+    /// <summary>A prefix for element ids, unique on the page.</summary>
+    [Parameter]
+    public string Key { get; set; } = "policy";
+
+    /// <summary>Whether the sign-in rule is edited here (organisations); an application's is edited with its settings.</summary>
+    [Parameter]
+    public bool ShowSignIn { get; set; }
+
+    /// <summary>How the level above is named in the labels, for example "the application".</summary>
+    [Parameter]
+    public string InheritLabel { get; set; } = "Sangam";
+
+    /// <summary>The sentence above the editor.</summary>
+    [Parameter]
+    public string Explanation { get; set; } = string.Empty;
+
+    /// <summary>Whether a save is in progress.</summary>
+    [Parameter]
+    public bool Busy { get; set; }
+
+    /// <summary>Called with the settings to save.</summary>
+    [Parameter]
+    public EventCallback<PolicyInput> OnSave { get; set; }
+
+    private SignInPolicy? _signIn;
+    private int? _minLength;
+    private MfaRequirement? _mfa;
+    private bool? _breach;
+
+    protected override void OnParametersSet()
+    {
+        _signIn = ShowSignIn ? View.SignIn : null;
+        _minLength = View.MinPasswordLength;
+        _mfa = View.Mfa is MfaRequirement m && m > View.Inherited.Mfa ? m : null;
+        _breach = View.BreachedPasswordCheck == true ? true : null;
+    }
+
+    private Task SaveAsync() => OnSave.InvokeAsync(new PolicyInput(_signIn, _minLength, _mfa, _breach));
+
+    private static int SecurityRank(SignInPolicy policy) => Sangam.Identity.Domain.SecurityPolicy.Rank(policy);
+
+    private static string SignInName(SignInPolicy policy) => policy switch
+    {
+        SignInPolicy.Password => "password only",
+        SignInPolicy.OtpOnly => "an e-mailed code, no password",
+        SignInPolicy.PasswordAndOtp => "always two-step",
+        SignInPolicy.PasskeyOnly => "passkey only",
+        _ => "each person's own choice",
+    };
+
+    private static string MfaName(MfaRequirement mfa) => mfa switch
+    {
+        MfaRequirement.Required => "Required for everyone",
+        MfaRequirement.RequiredForAdministrators => "Required for this application's administrators",
+        _ => "Each person decides",
+    };
+}

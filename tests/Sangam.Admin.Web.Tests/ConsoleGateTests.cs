@@ -75,6 +75,13 @@ public sealed class ConsoleGateTests : IClassFixture<ConsoleFactory>
         Assert.Contains(">Suspend<", detail, StringComparison.Ordinal);
         Assert.Contains("Sign out everywhere", detail, StringComparison.Ordinal);
         Assert.DoesNotContain(">Delete now<", detail, StringComparison.Ordinal);
+
+        // PR-16: the lost-authenticator reset appears only for someone who has an authenticator.
+        Assert.DoesNotContain("Reset two-step sign-in", detail, StringComparison.Ordinal);
+        Guid enrolled = await _factory.SeedAsync(role: null, mfa: true, "Enrolled");
+        string enrolledDetail = await GetAsync(support, $"/users/{enrolled:D}");
+        Assert.Contains("Reset two-step sign-in", enrolledDetail, StringComparison.Ordinal);
+        Assert.Contains("Never record identity-document numbers", enrolledDetail, StringComparison.Ordinal);
     }
 
     [PostgresFact]

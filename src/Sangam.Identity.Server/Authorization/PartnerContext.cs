@@ -88,8 +88,11 @@ public static class PartnerContext
     public static bool Satisfies(SignInMode required, SignInMode sessionMode) => required switch
     {
         SignInMode.Password => true,
-        SignInMode.PasswordAndOtp => sessionMode == SignInMode.PasswordAndOtp,
-        SignInMode.OtpOnly => sessionMode is SignInMode.OtpOnly or SignInMode.PasswordAndOtp,
+        // A user-verified passkey is two factors in one and phishing-resistant: it meets every rule (SGM-205 §4.2).
+        SignInMode.PasswordAndOtp => sessionMode is SignInMode.PasswordAndOtp or SignInMode.Passkey,
+        SignInMode.OtpOnly => sessionMode is SignInMode.OtpOnly or SignInMode.PasswordAndOtp or SignInMode.Passkey,
+        // Passkey-only applications (PR-16) accept nothing else.
+        SignInMode.Passkey => sessionMode is SignInMode.Passkey,
         _ => true,
     };
 }

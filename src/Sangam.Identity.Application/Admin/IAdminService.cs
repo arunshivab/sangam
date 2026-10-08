@@ -72,4 +72,18 @@ public interface IAdminService
 
     /// <summary>Revokes console access. Owners only, and never the last owner.</summary>
     Task<AdminResult> RevokeOperatorAsync(Guid operatorUserId, Guid userId, string? ipAddress, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Resets a person's two-step sign-in after support has proven who they are (PR-16, CAP-019): the authenticator
+    /// is removed, every session ends, and the person is told by e-mail. Support or above; an operator's own
+    /// second factor only by an Owner, and never your own. The reference is a ticket number or note — never an
+    /// identity-document number.
+    /// </summary>
+    /// <param name="operatorUserId">The operator.</param>
+    /// <param name="userId">The person.</param>
+    /// <param name="method">How their identity was proven.</param>
+    /// <param name="reference">The support ticket or note.</param>
+    /// <param name="ipAddress">Operator's IP.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<AdminResult> ResetTwoStepAsync(Guid operatorUserId, Guid userId, IdentityProofingMethod method, string reference, string? ipAddress, CancellationToken cancellationToken = default);
 }

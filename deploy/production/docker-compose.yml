@@ -11,6 +11,11 @@ x-host: &host
     Sangam__ForwardedHeaders__KnownNetworks: 172.30.0.0/24
     Sangam__Authority: https://id.sangamid.in
     Sangam__PortalUrl: https://account.sangamid.in
+    # Every host encrypts the shared data-protection key ring with this certificate (V-01).
+    Sangam__DataProtection__Certificates__0__Path: /run/secrets/keyring_current.pfx
+    # SMS stays off until the founder picks a DLT provider, header and templates (SGM-206); the identity
+    # server and the portal must agree, so it is set here for every host (PR-15).
+    Sangam__Sms__Enabled: "false"
     # Optional: Sangam__Telemetry__OtlpEndpoint: http://otel-collector:4317 (collector is the founder's choice)
 
 services:
@@ -20,6 +25,9 @@ services:
     environment:
       <<: *env
       Sangam__Issuer: https://id.sangamid.in
+      # Passkeys are bound to this host for good: changing the RP ID later breaks every passkey (PR-14).
+      Sangam__Passkeys__RpId: id.sangamid.in
+      Sangam__Passkeys__Origins: https://id.sangamid.in
       # Anjal's SMTP submission settings are the founder's to supply (OI-027).
       Sangam__Email__Smtp__Host: "SET-ANJAL-SMTP-HOST"
       Sangam__Email__Smtp__Port: "587"
@@ -36,21 +44,23 @@ services:
       - source: Sangam__Certificates__Encryption__0__Password
       - source: signing_current.pfx
       - source: encryption_current.pfx
+      - source: keyring_current.pfx
+      - source: Sangam__DataProtection__Certificates__0__Password
 
   portal:
     <<: *host
     build: { context: ../.., target: app, args: { PROJECT: Sangam.SelfService.Web } }
-    secrets: [ConnectionStrings__Sangam, Sangam__Portal__ClientSecret]
+    secrets: [ConnectionStrings__Sangam, Sangam__Portal__ClientSecret, keyring_current.pfx, Sangam__DataProtection__Certificates__0__Password]
 
   admin:
     <<: *host
     build: { context: ../.., target: app, args: { PROJECT: Sangam.Admin.Web } }
-    secrets: [ConnectionStrings__Sangam, Sangam__Admin__ClientSecret]
+    secrets: [ConnectionStrings__Sangam, Sangam__Admin__ClientSecret, keyring_current.pfx, Sangam__DataProtection__Certificates__0__Password]
 
   partner:
     <<: *host
     build: { context: ../.., target: app, args: { PROJECT: Sangam.Partner.Web } }
-    secrets: [ConnectionStrings__Sangam, Sangam__Partner__ClientSecret]
+    secrets: [ConnectionStrings__Sangam, Sangam__Partner__ClientSecret, keyring_current.pfx, Sangam__DataProtection__Certificates__0__Password]
 
   caddy:
     image: caddy:2
@@ -70,6 +80,8 @@ secrets:
   Sangam__Certificates__Encryption__0__Password: { file: ./secrets/Sangam__Certificates__Encryption__0__Password }
   signing_current.pfx: { file: ./secrets/signing_current.pfx }
   encryption_current.pfx: { file: ./secrets/encryption_current.pfx }
+  keyring_current.pfx: { file: ./secrets/keyring_current.pfx }
+  Sangam__DataProtection__Certificates__0__Password: { file: ./secrets/Sangam__DataProtection__Certificates__0__Password }
   Sangam__Portal__ClientSecret: { file: ./secrets/Sangam__Portal__ClientSecret }
   Sangam__Admin__ClientSecret: { file: ./secrets/Sangam__Admin__ClientSecret }
   Sangam__Partner__ClientSecret: { file: ./secrets/Sangam__Partner__ClientSecret }

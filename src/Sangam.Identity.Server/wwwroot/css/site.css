@@ -154,7 +154,15 @@
 
 .sg-field { display: block; width: 100%; font-family: var(--sg-font-body); }
 select.sg-field { appearance: auto; padding-right: 36px; }
-input[type="date"].sg-field { min-height: var(--sg-control-height); }
+/* Date of birth: day, month and year fields, so the order is the same in every
+   browser and never follows the browser's locale (a native date picker does). */
+.sg-dob { border: 0; padding: 0; margin: 0; min-width: 0; }
+.sg-dob legend { padding: 0; }
+.sg-hint { display: block; font: 400 13px/1.5 var(--sg-font-body); color: var(--sg-slate); margin-bottom: 6px; }
+.sg-dob__parts { display: grid; grid-template-columns: 60px minmax(0, 1fr) 84px; column-gap: var(--sg-space-2); }
+.sg-dob__parts select.sg-field { padding-right: 28px; }
+.sg-dob__label { display: block; font: 400 13px/1.5 var(--sg-font-body); color: var(--sg-slate); margin-bottom: 4px; }
+.sg-dob__parts .sg-field { margin: 0; }
 /* Mobile: the dialling-code select IS the prefix, so the code shown can never
    disagree with the country chosen — no JavaScript needed to keep them in step. */
 .sg-phone { display: grid; grid-template-columns: 132px 1fr; column-gap: var(--sg-space-2); }
@@ -193,6 +201,13 @@ input[type="date"].sg-field { min-height: var(--sg-control-height); }
 .sg-tertiary { display: block; margin-top: var(--sg-space-3); font: 400 14px/1.5 var(--sg-font-body); color: var(--sg-palm-shade); text-align: center; }
 .sg-tertiary:hover { color: var(--sg-ochre); }
 .sg-resend { margin-top: var(--sg-space-3); }
+/* A text-styled button for switching between an e-mailed and a texted code: a form post, so it works without JavaScript. */
+.sg-steps { padding-left: 1.2em; }
+.sg-steps li + li { margin-top: var(--sg-space-2); }
+.sg-switch-channel { margin-top: var(--sg-space-3); text-align: center; }
+.sg-link-button { background: none; border: 0; padding: 4px 0; font: 400 14px/1.5 var(--sg-font-body); color: var(--sg-palm-shade); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.sg-link-button:hover { color: var(--sg-ochre); }
+.sg-link-button:focus-visible { outline: 2px solid var(--sg-ochre); outline-offset: 2px; }
 .sg-alt { margin-bottom: 0; font: 400 14px/1.5 var(--sg-font-body); color: var(--sg-slate); text-align: center; }
 .sg-alt a { color: var(--sg-palm-shade); }
 .sg-note { margin-bottom: 0; font: 400 13px/1.5 var(--sg-font-body); color: var(--sg-slate); }
@@ -206,6 +221,10 @@ input[type="date"].sg-field { min-height: var(--sg-control-height); }
   color: var(--sg-ink);
 }
 .sg-banner--success { border-left-color: var(--sg-success); background: var(--sg-success-bg); }
+.sg-banner--info { border-left-color: var(--sg-info); background: var(--sg-info-bg); }
+.sg-banner + .sg-card-body, .sg-banner + p { margin-top: var(--sg-space-3); }
+/* A masked phone number is one unit: never split "+91" from its digits. */
+.sg-nowrap { white-space: nowrap; }
 
 .sg-check { display: grid; grid-template-columns: 18px 1fr; column-gap: var(--sg-space-2); align-items: start; }
 .sg-check input[type="checkbox"] { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--sg-teal); }
@@ -344,3 +363,11 @@ input[type="date"].sg-field { min-height: var(--sg-control-height); }
 .sg-doc dl.sg-card-body dt { font-weight: 600; }
 .sg-doc dl.sg-card-body dd { margin: 0; }
 .sg-doc .sg-tertiary { display: inline-block; margin-top: 16px; }
+
+/* Passkeys (PR-14). */
+.sg-passkey-signin { margin-top: 12px; }
+.sg-passkeys { list-style: none; padding: 0; display: grid; gap: 12px; }
+.sg-passkeys li { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center; }
+.sg-passkeys li .sg-muted { grid-column: 1; font-size: 13px; }
+.sg-passkeys li .sg-inline-form { grid-column: 2; grid-row: 1 / span 2; margin: 0; }
+.sg-passkey-add { margin-top: 16px; }

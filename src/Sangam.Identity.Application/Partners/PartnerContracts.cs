@@ -1,3 +1,4 @@
+using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Enums;
 
 namespace Sangam.Identity.Application.Partners;
@@ -69,3 +70,26 @@ public sealed record PartnerResult(bool Succeeded, string? Message)
 /// <param name="CanBeRoot">Whether it may be a top-level organisation.</param>
 /// <param name="CanHaveChildren">Whether other organisations may sit under it.</param>
 public sealed record OrgTypeRow(string Code, string DisplayName, bool CanBeRoot, bool CanHaveChildren);
+
+/// <summary>A security policy as the partner console shows it (PR-16): what is inherited, and this level's own settings.</summary>
+/// <param name="Inherited">The policy from the levels above (platform, application, parent organisations).</param>
+/// <param name="SignIn">This level's sign-in rule, or <see langword="null"/> to inherit.</param>
+/// <param name="MinPasswordLength">This level's minimum password length, or <see langword="null"/>.</param>
+/// <param name="Mfa">This level's second-factor rule, or <see langword="null"/>.</param>
+/// <param name="BreachedPasswordCheck">This level's breach check, or <see langword="null"/>.</param>
+/// <param name="BreachCheckAvailable">Whether the breach-check service is on for the platform (the founder's decision).</param>
+public sealed record PolicyView(
+    SecurityPolicy Inherited,
+    SignInPolicy? SignIn,
+    int? MinPasswordLength,
+    MfaRequirement? Mfa,
+    bool? BreachedPasswordCheck,
+    bool BreachCheckAvailable);
+
+/// <summary>Security settings proposed for one level; <see langword="null"/> means inherit (PR-16).</summary>
+/// <param name="SignIn">Sign-in rule (organisations only; an application's is set with its other settings).</param>
+/// <param name="MinPasswordLength">Minimum password length.</param>
+/// <param name="Mfa">Second-factor rule.</param>
+/// <param name="BreachedPasswordCheck">Breach check.</param>
+public sealed record PolicyInput(SignInPolicy? SignIn, int? MinPasswordLength, MfaRequirement? Mfa, bool? BreachedPasswordCheck);
+

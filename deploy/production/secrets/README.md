@@ -11,5 +11,6 @@ secret files are never committed: `.gitignore` excludes everything here except t
 | `Sangam__Email__Smtp__Username`, `Sangam__Email__Smtp__Password` | Anjal submission account (OI-027) |
 | `signing_current.pfx`, `encryption_current.pfx` | Token certificates (SGM-803) |
 | `Sangam__Certificates__Signing__0__Password`, `Sangam__Certificates__Encryption__0__Password` | Their passwords |
+| `keyring_current.pfx`, `Sangam__DataProtection__Certificates__0__Password` | Certificate that encrypts the data-protection key ring, and its password (V-01). Every host needs it. |
 
 Files ending in `.pfx`, and files named `ignore.*`, are not read as settings.

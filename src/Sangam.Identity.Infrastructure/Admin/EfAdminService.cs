@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Sangam.Identity.Application.Abstractions;
 using Sangam.Identity.Application.Admin;
@@ -5,26 +7,31 @@ using Sangam.Identity.Application.Portal;
 using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Entities;
 using Sangam.Identity.Domain.Enums;
+using Sangam.Identity.Infrastructure.Accounts;
 using Sangam.Identity.Infrastructure.Maintenance;
 using Sangam.Identity.Infrastructure.Persistence;
 
 namespace Sangam.Identity.Infrastructure.Admin;
 
 /// <summary><see cref="IAdminService"/> over the identity database.</summary>
-public sealed class EfAdminService : IAdminService
+public sealed partial class EfAdminService : IAdminService
 {
     private readonly SangamDbContext _db;
     private readonly IPortalService _portal;
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
+    private readonly UserManager<SangamUser> _users;
+    private readonly IEmailSender _email;
 
     /// <summary>Initialises the service.</summary>
-    public EfAdminService(SangamDbContext db, IPortalService portal, IAuditWriter audit, IClock clock)
+    public EfAdminService(SangamDbContext db, IPortalService portal, IAuditWriter audit, IClock clock, UserManager<SangamUser> users, IEmailSender email)
     {
         _db = db ?? throw new ArgumentNullException(nameof(db));
         _portal = portal ?? throw new ArgumentNullException(nameof(portal));
         _audit = audit ?? throw new ArgumentNullException(nameof(audit));
         _clock = clock ?? throw new ArgumentNullException(nameof(clock));
+        _users = users ?? throw new ArgumentNullException(nameof(users));
+        _email = email ?? throw new ArgumentNullException(nameof(email));
     }
 
     /// <inheritdoc />
@@ -557,6 +564,70 @@ public sealed class EfAdminService : IAdminService
             ? AdminResult.Refused("You do not have console access.")
             : role < minimum ? AdminResult.Refused($"That needs {PlatformRanks.Label(minimum)} access.") : null;
     }
+
+    /// <inheritdoc />
+    public async Task<AdminResult> ResetTwoStepAsync(Guid operatorUserId, Guid userId, IdentityProofingMethod method, string reference, string? ipAddress, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reference);
+        AdminResult? refusal = await RequireAsync(operatorUserId, PlatformRole.Support, cancellationToken).ConfigureAwait(false);
+        if (refusal is not null)
+        {
+            return refusal;
+        }
+
+        if (operatorUserId == userId)
+        {
+            return AdminResult.Refused("You cannot reset your own two-step sign-in. Ask another operator.");
+        }
+
+        if (LongNumberRegex().IsMatch(reference))
+        {
+            return AdminResult.Refused("The reference looks like it contains an identity-document number. Record the ticket number or a short note only — never Aadhaar, PAN or passport numbers.");
+        }
+
+        bool targetIsOperator = await _db.PlatformOperators.AnyAsync(o => o.UserId == userId && o.RevokedAt == null, cancellationToken).ConfigureAwait(false);
+        if (targetIsOperator && await GetRoleAsync(operatorUserId, cancellationToken).ConfigureAwait(false) != PlatformRole.Owner)
+        {
+            return AdminResult.Refused("Only an Owner can reset an operator's two-step sign-in.");
+        }
+
+        SangamUser? user = await _users.FindByIdAsync(userId.ToString("D")).ConfigureAwait(false);
+        if (user is null || user.Status == UserStatus.DeletedHard)
+        {
+            return AdminResult.Refused("That user does not exist.");
+        }
+
+        if (!await _users.GetTwoFactorEnabledAsync(user).ConfigureAwait(false))
+        {
+            return AdminResult.Refused("This person has no authenticator to reset.");
+        }
+
+        await _users.SetTwoFactorEnabledAsync(user, false).ConfigureAwait(false);
+        await _users.ResetAuthenticatorKeyAsync(user).ConfigureAwait(false);
+        await _users.UpdateSecurityStampAsync(user).ConfigureAwait(false);
+        await _portal.RevokeAllSessionsAsync(userId, ipAddress, cancellationToken).ConfigureAwait(false);
+        await _email.SendAsync(AccountEmails.TwoStepResetNotice(user.Email!, user.DisplayName), cancellationToken).ConfigureAwait(false);
+
+        await _audit.WriteAsync(
+            new AuditEntry(AuditActions.AdminUserMfaReset, AuditActorType.Admin, operatorUserId, TargetType: "user", TargetId: userId,
+                Metadata: System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string>
+                {
+                    ["method"] = method switch
+                    {
+                        IdentityProofingMethod.VideoCall => "video_call",
+                        IdentityProofingMethod.InPerson => "in_person",
+                        _ => "verified_mobile_callback",
+                    },
+                    ["reference"] = reference.Trim(),
+                }),
+                IpAddress: ipAddress),
+            cancellationToken).ConfigureAwait(false);
+        return AdminResult.Ok("Two-step sign-in reset. The authenticator is removed, every session has ended, and the person has been told by e-mail.");
+    }
+
+    // Eight or more digits in a row look like an identity-document number, which must never be recorded.
+    [GeneratedRegex("[0-9]{8,}")]
+    private static partial Regex LongNumberRegex();
 
     private static string Reason(string reason)
         => System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string> { ["reason"] = reason.Trim() });

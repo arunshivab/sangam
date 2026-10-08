@@ -101,6 +101,28 @@ else
       {
         <p class="sg-muted">Suspending, holding and deleting need a reason.</p>
       }
+      @if (_detail.Row.MfaEnrolled)
+      {
+        <div class="sg-panel sg-panel--inset" data-panel="mfa-reset">
+          <h3 class="sg-h3">Lost authenticator: reset two-step sign-in</h3>
+          <p class="sg-muted">Only after you have proven who this is — they lost their phone <em>and</em> their recovery codes. The authenticator is removed, every session ends, and they are told by e-mail. Never record identity-document numbers.</p>
+          <div class="sg-form-row">
+            <label class="sg-label" for="proof-method">How you confirmed their identity</label>
+            <select id="proof-method" class="sg-input" @bind="_proofMethod">
+              <option value="@IdentityProofingMethod.VideoCall">Video call, photo identification matching name and date of birth</option>
+              <option value="@IdentityProofingMethod.InPerson">In person, with photo identification</option>
+              <option value="@IdentityProofingMethod.VerifiedMobileCallback">Call back to their verified mobile</option>
+            </select>
+          </div>
+          <div class="sg-form-row">
+            <label class="sg-label" for="proof-ref">Support ticket or note</label>
+            <input id="proof-ref" class="sg-input" @bind="_proofReference" @bind:event="oninput" maxlength="200" placeholder="e.g. HELP-1042, video call 7 Oct" />
+          </div>
+          <div class="sg-actions">
+            <button type="button" class="sg-btn sg-btn--warn" @onclick="ResetTwoStepAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_proofReference))">Reset two-step sign-in</button>
+          </div>
+        </div>
+      }
       @if (_confirmDelete)
       {
         <div class="sg-confirm">
@@ -200,6 +222,18 @@ else
     private Task SuspendAsync() => RunAsync(() => Admin.SuspendUserAsync(Context!.UserId, UserId, _reason, null));
 
     private Task ReinstateAsync() => RunAsync(() => Admin.ReinstateUserAsync(Context!.UserId, UserId, null));
+
+    private IdentityProofingMethod _proofMethod = IdentityProofingMethod.VideoCall;
+    private string _proofReference = string.Empty;
+
+    private async Task ResetTwoStepAsync()
+    {
+        await RunAsync(() => Admin.ResetTwoStepAsync(Context!.UserId, UserId, _proofMethod, _proofReference, null));
+        if (_ok)
+        {
+            _proofReference = string.Empty;
+        }
+    }
 
     private Task SignOutAsync() => RunAsync(() => Admin.ForceSignOutAsync(Context!.UserId, UserId, null));
 

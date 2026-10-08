@@ -9,7 +9,10 @@ using Sangam.Identity.Application.Admin;
 using Sangam.Identity.Application.Apps;
 using Sangam.Identity.Application.Consents;
 using Sangam.Identity.Application.Partners;
+using Sangam.Identity.Application.Passkeys;
 using Sangam.Identity.Application.Portal;
+using Sangam.Identity.Application.Security;
+using Sangam.Identity.Application.Sms;
 using Sangam.Identity.Application.Tenancy;
 using Sangam.Identity.Domain.Entities;
 using Sangam.Identity.Infrastructure.Accounts;
@@ -18,11 +21,14 @@ using Sangam.Identity.Infrastructure.Apps;
 using Sangam.Identity.Infrastructure.Consents;
 using Sangam.Identity.Infrastructure.Maintenance;
 using Sangam.Identity.Infrastructure.Partners;
+using Sangam.Identity.Infrastructure.Passkeys;
 using Sangam.Identity.Infrastructure.Persistence;
+using Sangam.Identity.Infrastructure.Policies;
 using Sangam.Identity.Infrastructure.Portal;
 using Sangam.Identity.Infrastructure.Security;
 using Sangam.Identity.Infrastructure.Seeding;
 using Sangam.Identity.Infrastructure.Services;
+using Sangam.Identity.Infrastructure.Sms;
 using Sangam.Identity.Infrastructure.Tenancy;
 
 namespace Sangam.Identity.Infrastructure;
@@ -73,7 +79,21 @@ public static class DependencyInjection
                 o.Lockout.AllowedForNewUsers = true;
             })
             .AddEntityFrameworkStores<SangamDbContext>()
-            .AddDefaultTokenProviders();
+            .AddDefaultTokenProviders()
+            .AddPasswordValidator<PolicyPasswordValidator>();
+
+        // PR-16: platform → application → organisation security policies, and the breached-password check.
+        PolicySettings policies = PolicySettings.From(configuration);
+        services.AddSingleton(policies);
+        services.AddScoped<ISecurityPolicyService, EfSecurityPolicyService>();
+        if (policies.BreachCheckEnabled)
+        {
+            services.AddHttpClient<IBreachedPasswordChecker, RangeBreachedPasswordChecker>();
+        }
+        else
+        {
+            services.AddSingleton<IBreachedPasswordChecker, NoBreachedPasswordChecker>();
+        }
 
         services.AddOpenIddict()
             .AddCore(o => o.UseEntityFrameworkCore().UseDbContext<SangamDbContext>());
@@ -89,6 +109,8 @@ public static class DependencyInjection
         services.AddScoped<IManagementService, EfManagementService>();
         services.AddScoped<IPortalService, EfPortalService>();
         services.AddScoped<IEmailChangeService, EfEmailChangeService>();
+        services.AddScoped<IPasskeyService, EfPasskeyService>();
+        AddSms(services, configuration);
         services.AddScoped<IAdminService, EfAdminService>();
         services.AddScoped<IPartnerService, EfPartnerService>();
         services.AddScoped<IInvitationService, EfInvitationService>();
@@ -102,7 +124,8 @@ public static class DependencyInjection
         // database (some tests) switch this off.
         if (configuration.GetValue(PersistKeysKey, true))
         {
-            services.AddDataProtection().SetApplicationName("Sangam").PersistKeysToDbContext<SangamDbContext>();
+            IDataProtectionBuilder keyRing = services.AddDataProtection().SetApplicationName("Sangam").PersistKeysToDbContext<SangamDbContext>();
+            KeyRingProtection.Apply(keyRing, configuration);
         }
 
         if (configuration.GetValue<bool>("Sangam:Email:UseOutbox"))
@@ -132,5 +155,30 @@ public static class DependencyInjection
         services.AddHostedService<AccountPurgeService>();
 
         return services;
+    }
+
+    /// <summary>
+    /// SMS (PR-15): the settings, the code service and the provider chain. Providers without an adapter in
+    /// this build resolve to a sender that refuses every message; the start-up guard stops production first.
+    /// </summary>
+    private static void AddSms(IServiceCollection services, IConfiguration configuration)
+    {
+        SmsSettings sms = SmsSettings.From(configuration);
+        services.AddSingleton(sms);
+        services.AddScoped<ISmsCodeService, EfSmsCodeService>();
+
+        List<string> names = [.. new[] { sms.Provider, sms.FailoverProvider ?? string.Empty }.Where(n => n.Length > 0)];
+        if (names.Exists(n => string.Equals(n, SmsSettings.OutboxProvider, StringComparison.OrdinalIgnoreCase)))
+        {
+            services.AddSingleton<InMemorySmsOutbox>();
+        }
+
+        services.AddSingleton<ISmsSender>(sp =>
+        {
+            List<ISmsSender> providers = [.. names.Select(n => string.Equals(n, SmsSettings.OutboxProvider, StringComparison.OrdinalIgnoreCase)
+                ? (ISmsSender)sp.GetRequiredService<InMemorySmsOutbox>()
+                : new UnavailableSmsSender())];
+            return providers.Count == 0 ? new UnavailableSmsSender() : new FailoverSmsSender(providers);
+        });
     }
 }

@@ -57,6 +57,7 @@ public sealed class ProductionStartTests : IDisposable
     {
         string signing = Pfx("prod-signing", withKey: true);
         string encryption = Pfx("prod-encryption", withKey: true);
+        string keyRing = Pfx("prod-keyring", withKey: true);
         WebApplicationFactory<Program> production = _factory.WithWebHostBuilder(b =>
         {
             b.UseEnvironment("Production");
@@ -66,12 +67,60 @@ public sealed class ProductionStartTests : IDisposable
             b.UseSetting("Sangam:Certificates:Signing:0:Password", Password);
             b.UseSetting("Sangam:Certificates:Encryption:0:Path", encryption);
             b.UseSetting("Sangam:Certificates:Encryption:0:Password", Password);
+            b.UseSetting("Sangam:DataProtection:PersistKeys", "true");
+            b.UseSetting("Sangam:DataProtection:Certificates:0:Path", keyRing);
+            b.UseSetting("Sangam:DataProtection:Certificates:0:Password", Password);
+            b.UseSetting("Sangam:Sms:Enabled", "false");
         });
         using HttpClient client = production.CreateClient();
 
         using HttpResponseMessage response = await client.GetAsync(new Uri(WebHosting.LivePath, UriKind.Relative));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public void TheServer_RefusesProduction_WithTheDevelopmentSmsOutbox()
+    {
+        string signing = Pfx("sms-signing", withKey: true);
+        string encryption = Pfx("sms-encryption", withKey: true);
+        string keyRing = Pfx("sms-keyring", withKey: true);
+        WebApplicationFactory<Program> production = _factory.WithWebHostBuilder(b =>
+        {
+            b.UseEnvironment("Production");
+            b.UseSetting("Sangam:Email:UseOutbox", "false");
+            b.UseSetting("Sangam:Email:Smtp:Host", "smtp.example.invalid");
+            b.UseSetting("Sangam:Certificates:Signing:0:Path", signing);
+            b.UseSetting("Sangam:Certificates:Signing:0:Password", Password);
+            b.UseSetting("Sangam:Certificates:Encryption:0:Path", encryption);
+            b.UseSetting("Sangam:Certificates:Encryption:0:Password", Password);
+            b.UseSetting("Sangam:DataProtection:PersistKeys", "true");
+            b.UseSetting("Sangam:DataProtection:Certificates:0:Path", keyRing);
+            b.UseSetting("Sangam:DataProtection:Certificates:0:Password", Password);
+            b.UseSetting("Sangam:Sms:Enabled", "true");
+            b.UseSetting("Sangam:Sms:Provider", "outbox");
+        });
+
+        InvalidOperationException refused = Assert.Throws<InvalidOperationException>(() => production.CreateClient().Dispose());
+        Assert.Contains("development SMS outbox", refused.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("false", false, "not persisted")]
+    [InlineData("true", false, "unencrypted")]
+    public void KeyRing_RefusesProduction_WhenNotPersistedOrNotEncrypted(string persist, bool withCertificate, string expected)
+    {
+        List<(string, string)> settings = [("Sangam:DataProtection:PersistKeys", persist)];
+        if (withCertificate)
+        {
+            settings.Add(("Sangam:DataProtection:Certificates:0:Path", Pfx("keyring", withKey: true)));
+        }
+
+        string? problem = KeyRingProtection.Validate("Production", Config([.. settings]));
+
+        Assert.NotNull(problem);
+        Assert.Contains(expected, problem, StringComparison.Ordinal);
+        Assert.Null(KeyRingProtection.Validate("Development", Config([.. settings])));
     }
 
     private static IConfiguration Config(params (string Key, string Value)[] values)

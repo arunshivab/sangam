@@ -6,6 +6,128 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.11.0] - R2 strong authentication
+
+### Fixed — R1 verification findings (V-01 to V-06)
+- **The data-protection key ring is encrypted at rest (V-01, security).** The keys that protect cookies,
+  antiforgery tokens and pending sign-ins were stored in PostgreSQL in clear. They are now encrypted with
+  a certificate (`Sangam:DataProtection:Certificates:n`, current first; older ones stay listed so keys
+  written under them can still be read after rotation). Outside Development and Testing every host
+  refuses to start if keys are not persisted or no certificate is configured. Compose passes
+  `keyring_current.pfx` and its password as secrets.
+- **No SQL in production logs (V-02).** `Microsoft.EntityFrameworkCore.Database.Command` logs at Warning
+  in every host's base settings; a test keeps it so.
+- **The container image is complete and has one port setting (V-03, V-04).** The runtime stages install
+  `libgssapi-krb5-2`, which Npgsql loads; the app stage sets only `ASPNETCORE_HTTP_PORTS=8080`.
+- **Dates read day-first (V-05).** Pages carry the request's culture (`lang="en-IN"` by default; hi-IN and
+  ta-IN supported; no fallback to en-US). The cause of the mm/dd/yyyy date of birth was the browser's
+  native date picker, which follows the browser's own locale whatever the page says, so registration
+  now asks for **Day, Month (by name) and Year** as separate fields — the same in every browser — and
+  refuses dates that do not exist ("31 February"). A single ISO value is still accepted from scripts.
+- **Sangam's own applications do not ask for consent (V-06).** The portal and the consoles are marked
+  first-party (`IsPlatform`); the authorisation step records an implicit consent instead of showing the
+  consent screen, audited with `basis: first_party_implicit` and narrated as "part of Sangam itself".
+
+### Added — R2 (PR-14 passkeys, PR-15 SMS codes, PR-16 policies and recovery)
+- **Passkeys (PR-14, SGM-205).** Add a passkey on the identity server at `/account/passkeys` and sign in
+  with it from the sign-in page ("Sign in with a passkey", shown only where the browser supports it).
+  WebAuthn through Fido2NetLib 4.2.0 (MIT): user verification required, no attestation collected,
+  discoverable credentials preferred, single-use challenges that expire after 5 minutes, and a signature
+  counter that may never go backwards — a cloned authenticator is refused and audited
+  (`user.passkey.fail`, reason `counter_regression`). A passkey satisfies an application's
+  password-and-code or code-only rule. Settings: `Sangam:Passkeys:Enabled`, `RpId` (defaults to the
+  issuer's host), `Origins`, `RpName`. Audit: `user.passkey.add`, `user.passkey.remove`,
+  `user.passkey.fail`; sign-ins record mode `passkey`.
+- **Deviation from SGM-205:** passkeys are managed on the identity server, not inside the portal, because
+  a passkey is bound to one site and the identity server is the only site that uses it. The portal's
+  profile shows the passkeys set up and links to that page.
+- Migration: `Passkeys` (`passkey_credentials`, `passkey_challenges`; `passkey` added to the sign-in
+  preference check).
+- Founder decision flagged: Fido2NetLib as a dependency (stable 4.2.0; 5.0 is in preview).
+- **SMS codes and mobile verification (PR-15, SGM-206, D-118).** A person verifies their mobile at
+  `/account/mobile` with a texted code (linked from the account page and the portal's profile); until
+  then it stays "not yet verified" (D-048). On the code step of a sign-in — after the password, or for
+  code-only accounts — "Text the code to my mobile instead" sends it to the verified mobile, and "Email me
+  the code instead" switches back. Before the password is proven, the texted-code screen says the same
+  thing for every address, so it reveals neither whether an account exists nor its number; after the
+  password it shows the number's last two digits and says plainly when no text can be sent. Sign-ins
+  record `channel: sms`; the activity history says "with a texted code".
+- **The rules for SMS codes.** The e-mail rules per account (6 digits, 10 minutes, 5 tries, 60-second
+  resend, 5 an hour; SMS and e-mail sign-in codes have separate allowances), plus at most 5 texts an hour
+  to one number and 10 from one IP address, and a country allowlist (`+91` only by default) against SMS
+  pumping. A day's volume reaching `Sangam:Sms:DailyAlertThreshold` logs a warning and audits
+  `sms.volume.alert`. A verification code proves only the number it was sent to.
+- **What is stored.** `sms_messages` keeps the template, provider, provider message id, status and times;
+  the number and the requesting IP only as HMAC-SHA256 hashes under `Sangam:Sms:HashKey` (a plain hash of
+  a ten-digit number can be reversed by trying them all), and never the code or the text. Audit:
+  `user.sms.send` (template and outcome only), `user.mobile.verify`.
+- **Provider abstraction.** `ISmsSender` takes the number, the DLT template id, the header and the text
+  rendered exactly as registered (`{#var#}` placeholders filled in order); `FailoverSmsSender` tries an
+  optional second provider. The development outbox keeps texts in memory for `/dev/outbox` and logs only
+  the template and a masked number. Delivery reports arrive at `POST /sms/delivery-report` in Sangam's
+  provider-neutral form, with a shared token (`Sangam:Sms:DeliveryReportToken`; unset, the webhook is off).
+- **SMS stays off in production until the founder decides.** No provider adapter is in this build: the
+  provider, the failover provider, the six-letter header and the DLT template ids are SGM-206's open
+  questions 1–3. The identity server refuses to start outside Development and Testing if SMS is on with
+  the development outbox, a provider without an adapter, a hash key shorter than 32 characters, a header
+  that is not six capital letters, or a template without its DLT id. Compose sets `Sangam__Sms__Enabled`
+  to false for every host. Offering SMS outside India is likewise the founder's (`AllowedCountryCodes`).
+- Migration: `SmsMessages`.
+- **Security policies per application and per organisation (PR-16, SGM-209 §7, REQ-052).** Each level can set
+  the sign-in rule, the shortest password, a second factor (each person decides / required for the
+  application's administrators / required for everyone) and the breached-password check. They combine
+  platform → application → the person's organisations in that application, each with all its ancestors, and
+  every level can only be stricter than what it inherits (the application's sign-in rule stays imagiQa's to
+  weaken, D-092). Partners edit them in the partner console: the application's under Settings, an
+  organisation's on its panel under Organisations & people. Changes are audited (`app.policy.update`,
+  `org.policy.update`, before and after).
+- **Passkey only.** A new sign-in rule for an application or an organisation. The sign-in page of a
+  passkey-only application offers only the passkey; a password that is right is still refused, and a
+  password session is sent back to sign in.
+- **How the policies take effect.** At sign-in: an organisation that requires two-step adds the code step;
+  a password shorter than the policy, or found in a breach, must be replaced at `/login/new-password` before
+  the sign-in goes on (other devices are signed out). At every authorization request: the person's policy is
+  enforced again, and where a second factor is required a session without one — no authenticator step and no
+  passkey — goes to `/login/two-step-required`, which links to setting up an authenticator or a passkey;
+  `prompt=none` gets `login_required`. Whenever a password is set (registration, reset, replacement), it
+  must meet the longest minimum over every application and organisation the person belongs to.
+- **Breached-password check (CAP-024, REQ-058).** A k-anonymity range lookup: only the first five hex
+  characters of the password's SHA-1 leave Sangam, with padding requested; the match is made here. An outage
+  never blocks anyone — the password is then simply not checked, and a warning is logged. **Off until the
+  founder decides** (`Sangam:Passwords:BreachCheck:Enabled`; the endpoint defaults to Pwned Passwords and is
+  configurable; `RequiredForEveryone` makes it a platform-wide sign-in rule). While it is off, the partner
+  console shows the option as not yet available and refuses to require it.
+- **Recovery without an authenticator (CAP-019, REQ-055).** When someone has lost both their authenticator
+  and their recovery codes, support (Support rank or above) resets two-step sign-in from the operator
+  console after proving who they are — video call with photo identification, in person, or a call back to
+  the verified mobile — and records a ticket or note. The authenticator is removed, the security stamp
+  rotates, every session ends, the person is told by e-mail, and `admin.user.mfa.reset` records the method
+  and reference. Never your own; an operator's only by an Owner; a reference with eight or more digits in a
+  row is refused, so identity-document numbers are never recorded. The authenticator step tells people
+  how to ask for this.
+- Platform settings: `Sangam:Policy:MinPasswordLength` (not below 8) and `Sangam:Policy:Mfa`.
+- Migration: `SecurityPolicies` (policy columns on `apps` and `organisations`, `passkey_only` added to the
+  sign-in rule check).
+
+### Fixed — found while building R2
+- The activity history never said what a code was for ("to verify your email", "to reset your
+  password"): the audit wrote the purpose as `emailverification` while the history read
+  `email_verification`. Purposes are now written in snake_case.
+- A forged or unreadable passkey answer produced a server error page; it is now refused with a 400 and a
+  plain message.
+- The identity server's account page still said the portal "arrives in PR-05"; it now points to the portal,
+  to mobile verification and to passkeys.
+
+### Founder decisions still open for R2 (built configurable, off or defaulted)
+- The SMS provider, a failover provider, the header and the DLT template ids; whether to offer SMS outside
+  India (SGM-206 questions 1–3). SMS is off in production until then.
+- The breached-password service, given that a five-character hash prefix leaves Sangam (off until decided).
+- Fido2NetLib as a dependency.
+- Whether a support reset of two-step sign-in should wait a cooling-off period, with the e-mail notice
+  giving the person time to object, rather than take effect at once.
+
+## [0.10.0] - R1 go-live
+
 ### Added — R1 go-live (PR-09 e-mail through Anjal, PR-10 production, PR-13 account and tenancy)
 - **E-mail through Anjal (PR-09).** `SmtpEmailSender` submits mail over SMTP (MailKit) with settings under
   `Sangam:Email:Smtp` — host, port, TLS mode, account, sender and an optional recipient allowlist so a
