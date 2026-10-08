@@ -1,0 +1,30 @@
+@page "/account/reset-notice"
+@model ResetNoticeModel
+@{
+    ViewData["Title"] = L["A reset of your two-step sign-in is waiting"].Value;
+}
+
+<section class="sg-card">
+  <div class="sg-circle sg-circle--pending" aria-hidden="true"><span class="sg-cord-dot sg-cord-dot--solo"></span></div>
+  <h1 class="sg-card-title sg-card-title--centre">@L["A reset of your two-step sign-in is waiting"]</h1>
+  @if (Model.Pending is not null)
+  {
+    <p class="sg-card-body">@L["Sangam support was asked to remove the authenticator app from your account, because someone said you had lost it. Unless you stop it, this happens on {0}.", Model.EffectiveText]</p>
+    <p class="sg-card-body">@L["If you did not ask for this, someone may be trying to take over your account. Cancel it now."]</p>
+    <form method="post" asp-page-handler="Cancel">
+      <input type="hidden" asp-for="ReturnUrl" />
+      <button type="submit" class="sg-btn sg-btn--danger sg-btn--block">@L["This wasn't me — cancel the reset"]</button>
+    </form>
+    <form method="post" asp-page-handler="Continue">
+      <input type="hidden" asp-for="ReturnUrl" />
+      <button type="submit" class="sg-btn sg-btn--ghost sg-btn--block">@L["It was me — continue"]</button>
+    </form>
+  }
+  else
+  {
+    <p class="sg-card-body">@(Model.Cancelled ? L["The reset is cancelled. Nothing about your account has changed."] : L["There is no reset waiting on your account."])</p>
+    <a class="sg-btn sg-btn--primary sg-btn--block" href="@Model.ContinueUrl">@L["Continue"]</a>
+  }
+  <div class="sg-cord-rule" role="presentation"></div>
+  <p class="sg-alt">@L["Questions?"] <a href="mailto:help@sangamid.in">help@sangamid.in</a></p>
+</section>

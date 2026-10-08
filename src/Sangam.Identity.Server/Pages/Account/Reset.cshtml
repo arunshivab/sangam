@@ -1,39 +1,39 @@
 @page
 @model ResetModel
 @{
-    ViewData["Title"] = "Set a new password";
+    ViewData["Title"] = L["Set a new password"].Value;
 }
 
 <section class="sg-card">
-  <h1 class="sg-card-title">Set a new password</h1>
-  <p class="sg-card-body">If <span class="sg-mono">@Model.Email</span> has a Sangam account, a 6-digit reset code is on its way. Enter it below with your new password.</p>
+  <h1 class="sg-card-title">@L["Set a new password"]</h1>
+  <p class="sg-card-body">@L.Html("If {0} has a Sangam account, a 6-digit reset code is on its way. Enter it below with your new password.", LocalizedMarkup.Tag("span", Model.Email, "sg-mono"))</p>
   <partial name="_Banner" model="@(("danger", Model.Error ?? string.Empty))" />
 
   <form method="post" novalidate>
     <input type="hidden" asp-for="Email" />
     <div class="sg-field-group">
-      <label class="sg-label" asp-for="Code">Reset code</label>
+      <label class="sg-label" asp-for="Code">@L["Reset code"]</label>
       <input class="sg-field sg-field--code" asp-for="Code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]*" maxlength="7" autofocus required />
       <span class="sg-field-error" asp-validation-for="Code"></span>
     </div>
     <div class="sg-field-group">
-      <label class="sg-label" asp-for="NewPassword">New password</label>
+      <label class="sg-label" asp-for="NewPassword">@L["New password"]</label>
       <input class="sg-field" asp-for="NewPassword" type="password" autocomplete="new-password" required data-sg-password />
       <partial name="_StrengthMeter" model="Model.Strength" />
       <span class="sg-field-error" asp-validation-for="NewPassword"></span>
     </div>
     <div class="sg-field-group">
-      <label class="sg-label" asp-for="ConfirmPassword">Confirm password</label>
+      <label class="sg-label" asp-for="ConfirmPassword">@L["Confirm password"]</label>
       <input class="sg-field" asp-for="ConfirmPassword" type="password" autocomplete="new-password" required />
       <span class="sg-field-error" asp-validation-for="ConfirmPassword"></span>
     </div>
-    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">Set new password</button>
+    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Set new password"]</button>
   </form>
 
   <script src="/js/password-meter.js" defer></script>
 
-  <p class="sg-note">Setting a new password signs you out of Sangam on all devices.</p>
+  <p class="sg-note">@L["Setting a new password signs you out of Sangam on all devices."]</p>
 
   <div class="sg-cord-rule" role="presentation"></div>
-  <p class="sg-alt">No code? <a href="/forgot">Request another</a> · <a href="/login">Back to sign in</a></p>
+  <p class="sg-alt">@L["No code?"] <a href="/forgot">@L["Request another"]</a> · <a href="/login">@L["Back to sign in"]</a></p>
 </section>

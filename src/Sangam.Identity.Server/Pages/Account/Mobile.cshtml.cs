@@ -84,10 +84,10 @@ public sealed class MobileModel : AuthPageModel
         SmsIssueResult result = await _sms.SendMobileVerificationAsync(CurrentUserId(), ClientIp, cancellationToken);
         Notice = result.Status switch
         {
-            SmsIssueStatus.Sent => "We texted a 6-digit code to your mobile. It is valid for 10 minutes.",
-            SmsIssueStatus.TooSoon => "A code was texted less than a minute ago. Use that one, or wait to ask again.",
-            SmsIssueStatus.RateLimited => "Too many codes were asked for in the last hour. Try again later.",
-            SmsIssueStatus.ProviderFailed => "The code could not be texted just now. Try again in a few minutes.",
+            SmsIssueStatus.Sent => L["We texted a 6-digit code to your mobile. It is valid for 10 minutes."].Value,
+            SmsIssueStatus.TooSoon => L["A code was texted less than a minute ago. Use that one, or wait to ask again."].Value,
+            SmsIssueStatus.RateLimited => L["Too many codes were asked for in the last hour. Try again later."].Value,
+            SmsIssueStatus.ProviderFailed => L["The code could not be texted just now. Try again in a few minutes."].Value,
             _ => null,
         };
         return RedirectToPage();
@@ -115,13 +115,13 @@ public sealed class MobileModel : AuthPageModel
         OtpVerifyStatus status = await _sms.VerifyMobileAsync(CurrentUserId(), Code, ClientIp, cancellationToken);
         if (status == OtpVerifyStatus.Valid)
         {
-            Notice = "Your mobile number is verified. You can now have sign-in codes texted to it.";
+            Notice = L["Your mobile number is verified. You can now have sign-in codes texted to it."];
             return RedirectToPage();
         }
 
         Error = status == OtpVerifyStatus.Invalid
-            ? "That code is not correct. Check the text message and try again."
-            : "That code has expired or was for another number. Ask for a new one.";
+            ? L["That code is not correct. Check the text message and try again."]
+            : L["That code has expired or was for another number. Ask for a new one."];
         return Page();
     }
 
@@ -139,11 +139,11 @@ public sealed class MobileModel : AuthPageModel
         Verified = user.MobileVerified;
         if (string.IsNullOrEmpty(user.Mobile))
         {
-            Unavailable = "Your account has no mobile number. Add one in your account portal first.";
+            Unavailable = L["Your account has no mobile number. Add one in your account portal first."];
         }
         else if (!_sms.IsCountryAllowed(user.Mobile))
         {
-            Unavailable = "Codes cannot be texted to numbers in your country yet.";
+            Unavailable = L["Codes cannot be texted to numbers in your country yet."];
         }
 
         DateTimeOffset? next = await _sms.NextSendAllowedAtAsync(user.Id, OneTimeCodePurpose.MobileVerification, cancellationToken);

@@ -302,6 +302,10 @@ dotnet_diagnostic.CA2007.severity = none
 [src/Sangam.SelfService.Web/**.cs]
 dotnet_diagnostic.CA2007.severity = none
 
+# PR-19: the shared console components (branding and message editors) are components too.
+[src/Sangam.Web.Shared/Components/**.cs]
+dotnet_diagnostic.CA2007.severity = none
+
 # ---------------------------------------------------------------------------
 # tests/ — same style, looser on var and docs; xUnit analyzers stay strict.
 # ---------------------------------------------------------------------------

@@ -58,9 +58,16 @@ public interface IAdminService
     Task<AdminResult> SetAppStatusAsync(Guid operatorUserId, Guid appId, AppStatus status, string? ipAddress, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Sets where an application is told that a person's Sangam session has ended (PR-20): a back-channel address
+    /// that receives a signed logout token, and a front-channel page loaded in a hidden frame. Either may be blank
+    /// for none. AppManager and above; each must be an absolute https address (http only for localhost).
+    /// </summary>
+    Task<AdminResult> SetAppLogoutUrisAsync(Guid operatorUserId, Guid appId, string? backChannelLogoutUri, string? frontChannelLogoutUri, string? ipAddress, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Makes someone an owner of an application, so its partner can manage it on the partner console.
     /// AppManager and above. Unlike an owner adding an administrator, the person need not have linked
-    /// the application yet: this is imagiQa's own act, done when a partner is onboarded.
+    /// the application yet: this is the platform operators' own act, done when a partner is onboarded.
     /// </summary>
     Task<AdminResult> AssignAppOwnerAsync(Guid operatorUserId, Guid appId, string email, string? ipAddress, CancellationToken cancellationToken = default);
 
@@ -74,16 +81,43 @@ public interface IAdminService
     Task<AdminResult> RevokeOperatorAsync(Guid operatorUserId, Guid userId, string? ipAddress, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Resets a person's two-step sign-in after support has proven who they are (PR-16, CAP-019): the authenticator
-    /// is removed, every session ends, and the person is told by e-mail. Support or above; an operator's own
-    /// second factor only by an Owner, and never your own. The reference is a ticket number or note — never an
+    /// Asks to reset a person's two-step sign-in after support has verified who they are (PR-16, CAP-019, D-K). Nothing
+    /// happens at once: the owner is alerted on every channel with a one-click cancel link, and the reset is applied
+    /// only after the cooling-off period (24 hours; 72 for operators and application or organisation administrators)
+    /// if nobody cancelled it. Support or above; an operator's own second factor only by an Owner, and never your own.
+    /// The verification method is required and audited; the reference is a ticket number or note — never an
     /// identity-document number.
     /// </summary>
     /// <param name="operatorUserId">The operator.</param>
     /// <param name="userId">The person.</param>
-    /// <param name="method">How their identity was proven.</param>
+    /// <param name="method">How their identity was verified.</param>
     /// <param name="reference">The support ticket or note.</param>
     /// <param name="ipAddress">Operator's IP.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    Task<AdminResult> ResetTwoStepAsync(Guid operatorUserId, Guid userId, IdentityProofingMethod method, string reference, string? ipAddress, CancellationToken cancellationToken = default);
+    Task<AdminResult> RequestTwoStepResetAsync(Guid operatorUserId, Guid userId, IdentityProofingMethod method, string reference, string? ipAddress, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Urgent override (D-K): applies a two-step reset at once, skipping the cooling-off period. Support or Owner rank,
+    /// a written reason, its own audit event, and an immediate alert to the platform's owner.
+    /// </summary>
+    /// <param name="operatorUserId">The operator.</param>
+    /// <param name="userId">The person.</param>
+    /// <param name="method">How their identity was verified (used when no request is pending yet).</param>
+    /// <param name="reference">The support ticket or note (used when no request is pending yet).</param>
+    /// <param name="reason">Why it cannot wait.</param>
+    /// <param name="ipAddress">Operator's IP.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<AdminResult> ApplyTwoStepResetNowAsync(Guid operatorUserId, Guid userId, IdentityProofingMethod method, string reference, string reason, string? ipAddress, CancellationToken cancellationToken = default);
+
+    /// <summary>Withdraws a pending two-step reset (Support or above).</summary>
+    /// <param name="operatorUserId">The operator.</param>
+    /// <param name="userId">The person.</param>
+    /// <param name="ipAddress">Operator's IP.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<AdminResult> WithdrawTwoStepResetAsync(Guid operatorUserId, Guid userId, string? ipAddress, CancellationToken cancellationToken = default);
+
+    /// <summary>The pending two-step reset on an account, if any, for the console.</summary>
+    /// <param name="userId">The person.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<Accounts.PendingTwoStepReset?> PendingTwoStepResetAsync(Guid userId, CancellationToken cancellationToken = default);
 }

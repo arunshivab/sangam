@@ -20,6 +20,27 @@ public static class PartnerContext
     /// </summary>
     public const string DeviceParameter = "sangam_device";
 
+    /// <summary>
+    /// Optional authorization-request parameter by which an app names the organisation (tenant) a sign-in is for,
+    /// by its Sangam id, so the sign-in screens show that organisation's branding (PR-19). An organisation of
+    /// another application is ignored.
+    /// </summary>
+    public const string OrganisationParameter = "sangam_org";
+
+    /// <summary>The organisation named by <see cref="OrganisationParameter"/> in a local return URL, or null.</summary>
+    /// <param name="returnUrl">Local return URL.</param>
+    public static Guid? OrganisationFromReturnUrl(string? returnUrl)
+    {
+        int q = returnUrl?.IndexOf('?', StringComparison.Ordinal) ?? -1;
+        if (q < 0)
+        {
+            return null;
+        }
+
+        Dictionary<string, Microsoft.Extensions.Primitives.StringValues> query = QueryHelpers.ParseQuery(returnUrl![q..]);
+        return query.TryGetValue(OrganisationParameter, out Microsoft.Extensions.Primitives.StringValues value) && Guid.TryParse(value.ToString(), out Guid id) ? id : null;
+    }
+
     /// <summary>Extracts <c>client_id</c> from a local return URL that points at the authorization endpoint.</summary>
     /// <param name="returnUrl">Local return URL.</param>
     /// <returns>The client id, or <see langword="null"/>.</returns>

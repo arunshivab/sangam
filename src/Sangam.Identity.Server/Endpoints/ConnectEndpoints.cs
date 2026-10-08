@@ -10,6 +10,7 @@ using Sangam.Identity.Application.Abstractions;
 using Sangam.Identity.Application.Accounts;
 using Sangam.Identity.Application.Apps;
 using Sangam.Identity.Application.Consents;
+using Sangam.Identity.Application.Portal;
 using Sangam.Identity.Application.Security;
 using Sangam.Identity.Application.Tenancy;
 using Sangam.Identity.Domain;
@@ -54,6 +55,7 @@ public static class ConnectEndpoints
         IOpenIddictAuthorizationManager authorizations,
         IOpenIddictScopeManager scopes,
         ISecurityPolicyService policies,
+        ISessionService sessions,
         CancellationToken cancellationToken)
     {
         OpenIddictRequest request = httpContext.GetOpenIddictServerRequest()
@@ -116,6 +118,42 @@ public static class ConnectEndpoints
             return Results.Redirect("/login/two-step-required?returnUrl=" + Uri.EscapeDataString(returnUrl));
         }
 
+        // 2c. Step-up (PR-17, SGM-207): the level the application asked for with acr_values, and how recent the
+        //     authentication must be (max_age; a signature-grade request is never older than five minutes).
+        (int requiredLevel, bool signature) = AuthenticationAssurance.Required(request.GetAcrValues());
+        long? maxAge = request.MaxAge;
+        if (signature)
+        {
+            maxAge = Math.Min(maxAge ?? long.MaxValue, (long)AuthenticationAssurance.SignatureFreshness.TotalSeconds);
+        }
+
+        AuthenticationProof proof = AuthenticationProof.FromSession(session.Principal!);
+        bool tooWeak = AuthenticationAssurance.Level(proof.Acr) < requiredLevel;
+        bool tooOld = maxAge is long limit && (proof.AuthenticatedAt is not DateTimeOffset at || DateTimeOffset.UtcNow - at > TimeSpan.FromSeconds(limit));
+        if (tooWeak || tooOld)
+        {
+            await audit.WriteAsync(
+                new AuditEntry(AuditActions.UserStepUpRequired, AuditActorType.User, user.Id, app.Id, "app", app.Id,
+                    Metadata: $"{{\"reason\":\"{(tooWeak ? "level" : "age")}\",\"had\":\"{proof.Acr}\",\"required_level\":{requiredLevel}}}"),
+                cancellationToken).ConfigureAwait(false);
+            if (request.HasPromptValue(PromptValues.None))
+            {
+                return Forbid(Errors.LoginRequired, "This application requires a stronger or more recent sign-in.");
+            }
+
+            // Re-authenticate even though a session exists; the sign-in page reads the level from the return URL.
+            await httpContext.SignOutAsync(IdentityConstants.ApplicationScheme).ConfigureAwait(false);
+            return Results.Redirect("/login?returnUrl=" + Uri.EscapeDataString(StripPrompt(returnUrl)));
+        }
+
+        if (requiredLevel > 0 || maxAge is not null)
+        {
+            await audit.WriteAsync(
+                new AuditEntry(AuditActions.UserStepUpSuccess, AuditActorType.User, user.Id, app.Id, "app", app.Id,
+                    Metadata: $"{{\"acr\":\"{proof.Acr}\",\"required_level\":{requiredLevel}}}"),
+                cancellationToken).ConfigureAwait(false);
+        }
+
         // 3. Consent — partner applications ask; Sangam's own (portal, consoles) are first-party and
         //    consent is implicit, but still recorded (V-06). A denial parked in the pending cookie ends the request.
         System.Collections.Immutable.ImmutableArray<string> requested = request.GetScopes();
@@ -153,7 +191,12 @@ public static class ConnectEndpoints
         IReadOnlyList<OrgClaim> orgs = await tenancy.GetOrgClaimsAsync(user.Id, app.Id, cancellationToken).ConfigureAwait(false);
         // Standard OIDC `sid`: lets a client (the portal, for one) tell which session is its own.
         string? browserSession = SangamAuthentication.SessionId(session.Principal!)?.ToString("D");
-        ClaimsIdentity identity = SangamClaimsBuilder.Build(user, requested, orgs, TokenValidationParameters.DefaultAuthenticationType, browserSession);
+        ClaimsIdentity identity = SangamClaimsBuilder.Build(user, requested, orgs, TokenValidationParameters.DefaultAuthenticationType, browserSession, proof);
+        if (SangamAuthentication.SessionId(session.Principal!) is Guid sid)
+        {
+            // PR-20: this application now takes part in the session and is told when it ends.
+            await sessions.RecordAppAsync(sid, app.Id, user.Id, cancellationToken).ConfigureAwait(false);
+        }
 
         List<string> resources = [];
         await foreach (string resource in scopes.ListResourcesAsync(identity.GetScopes(), cancellationToken).ConfigureAwait(false))
@@ -235,7 +278,7 @@ public static class ConnectEndpoints
             // Re-read the user so profile and membership changes reach the new tokens.
             IReadOnlyList<OrgClaim> orgs = await tenancy.GetOrgClaimsAsync(user.Id, app.Id, cancellationToken).ConfigureAwait(false);
             ClaimsPrincipal principal = stored!;
-            ClaimsIdentity identity = SangamClaimsBuilder.Build(user, [.. principal.GetScopes()], orgs, TokenValidationParameters.DefaultAuthenticationType, principal.GetClaim(SangamClaims.SessionId));
+            ClaimsIdentity identity = SangamClaimsBuilder.Build(user, [.. principal.GetScopes()], orgs, TokenValidationParameters.DefaultAuthenticationType, principal.GetClaim(SangamClaims.SessionId), AuthenticationProof.FromToken(principal));
             identity.SetAuthorizationId(authorizationId);
 
             List<string> resources = [];
@@ -359,7 +402,11 @@ public static class ConnectEndpoints
             [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = description,
         }));
 
-    /// <summary>Removes <c>prompt=login</c> from the return URL so the round-trip after sign-in does not loop.</summary>
+    /// <summary>
+    /// Removes <c>prompt</c> and <c>max_age</c> from the return URL: once the person has just authenticated, the
+    /// round-trip must not ask again and loop (<c>max_age=0</c> would otherwise never be met). <c>acr_values</c>
+    /// stays, so the sign-in page knows the level to reach (PR-17).
+    /// </summary>
     private static string StripPrompt(string url)
     {
         int q = url.IndexOf('?', StringComparison.Ordinal);
@@ -368,7 +415,8 @@ public static class ConnectEndpoints
             return url;
         }
 
-        IEnumerable<string> kept = url[(q + 1)..].Split('&', StringSplitOptions.RemoveEmptyEntries).Where(p => !p.StartsWith("prompt=", StringComparison.OrdinalIgnoreCase));
+        IEnumerable<string> kept = url[(q + 1)..].Split('&', StringSplitOptions.RemoveEmptyEntries)
+            .Where(p => !p.StartsWith("prompt=", StringComparison.OrdinalIgnoreCase) && !p.StartsWith("max_age=", StringComparison.OrdinalIgnoreCase));
         return url[..q] + "?" + string.Join('&', kept);
     }
 }

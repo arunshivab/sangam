@@ -109,7 +109,7 @@ public sealed class LoginVerifyModel : AuthPageModel
 
         if (pending.UserId is null || pending.UserId == Guid.Empty)
         {
-            Error = "That code is not valid. Request a new one.";
+            Error = L["That code is not valid. Request a new one."];
             return Page();
         }
 
@@ -118,8 +118,8 @@ public sealed class LoginVerifyModel : AuthPageModel
         if (status != OtpVerifyStatus.Valid)
         {
             Error = status == OtpVerifyStatus.Invalid
-                ? (pending.ViaSms ? "That code is not correct. Check the text message and try again." : "That code is not correct. Check the email and try again.")
-                : "That code has expired. Request a new one.";
+                ? (pending.ViaSms ? L["That code is not correct. Check the text message and try again."] : L["That code is not correct. Check the email and try again."])
+                : L["That code has expired. Request a new one."];
             return Page();
         }
 
@@ -136,9 +136,9 @@ public sealed class LoginVerifyModel : AuthPageModel
             return RedirectToPage("/Account/LoginMfa", new { returnUrl = ReturnUrl });
         }
 
-        await SangamAuthentication.SignInSessionAsync(HttpContext, user, mode, Partner?.Id, PartnerContext.DeviceLabelFromReturnUrl(ReturnUrl));
+        await SangamAuthentication.SignInSessionAsync(HttpContext, user, mode, Partner?.Id, PartnerContext.DeviceLabelFromReturnUrl(ReturnUrl), codeBySms: pending.ViaSms);
         await _accounts.RecordSignInAsync(user.Id, mode, pending.ViaSms, ClientIp, ClientUserAgent, cancellationToken);
-        return LocalRedirect(SafeReturnUrl(ReturnUrl));
+        return LocalRedirect(await AfterSignInAsync(user.Id, ReturnUrl, cancellationToken));
     }
 
     /// <summary>Sends a fresh code by the current channel (subject to the cooldown).</summary>
@@ -187,10 +187,10 @@ public sealed class LoginVerifyModel : AuthPageModel
             // The person has proven their password, so the page may say plainly why no text is coming.
             Notice = result.Status switch
             {
-                SmsIssueStatus.NoMobile or SmsIssueStatus.MobileNotVerified => "Your account has no verified mobile number yet, so the code stays in your email. You can verify your mobile from your account page.",
-                SmsIssueStatus.CountryNotAllowed => "Codes cannot be texted to your mobile's country yet, so the code stays in your email.",
-                SmsIssueStatus.RateLimited => "Too many texts were asked for in the last hour. Use the code in your email.",
-                _ => "The code could not be texted just now. Use the code in your email.",
+                SmsIssueStatus.NoMobile or SmsIssueStatus.MobileNotVerified => L["Your account has no verified mobile number yet, so the code stays in your email. You can verify your mobile from your account page."],
+                SmsIssueStatus.CountryNotAllowed => L["Codes cannot be texted to your mobile's country yet, so the code stays in your email."],
+                SmsIssueStatus.RateLimited => L["Too many texts were asked for in the last hour. Use the code in your email."],
+                _ => L["The code could not be texted just now. Use the code in your email."],
             };
             return RedirectToPage("/Account/LoginVerify", new { returnUrl = ReturnUrl });
         }

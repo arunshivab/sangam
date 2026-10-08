@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using OpenIddict.Abstractions;
 using OpenIddict.Validation.AspNetCore;
 using Sangam.Identity.Application.Apps;
+using Sangam.Identity.Application.Signatures;
 using Sangam.Identity.Application.Tenancy;
 using Sangam.Identity.Domain.Enums;
 using Sangam.Identity.Server.Authentication;
@@ -94,6 +95,41 @@ public static class ManagementEndpoints
             AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
             return app is null ? Results.Forbid() : ToResult(await mgmt.RevokeMembershipAsync(app.Id, orgId, userId, ManagementActor.Api, ct).ConfigureAwait(false));
         }).WithName("RevokeMembership");
+
+        // PR-17 (SGM-207 §5.1): electronic-signature requests. The person signs in Sangam's ceremony at /sign/{id}.
+        api.MapPost("/signatures", async (SignatureRequestInput input, ClaimsPrincipal caller, IAppDirectory apps, IOpenIddictApplicationManager clients, ISignatureService signatures, CancellationToken ct) =>
+        {
+            AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
+            if (app is null)
+            {
+                return Results.Forbid();
+            }
+
+            // The person is sent back only to an address the application registered, never one the request invents.
+            object? client = await clients.FindByClientIdAsync(app.ClientId, ct).ConfigureAwait(false);
+            System.Collections.Immutable.ImmutableArray<string> redirects = client is null ? [] : await clients.GetRedirectUrisAsync(client, ct).ConfigureAwait(false);
+            if (input?.ReturnUrl is null || !redirects.Contains(input.ReturnUrl, StringComparer.Ordinal))
+            {
+                return Results.Problem(title: "returnUrl must be one of the application's registered redirect URIs.", statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            (SignatureRequestCreated? created, string? error) = await signatures.CreateAsync(app.Id, input, ct).ConfigureAwait(false);
+            return created is null
+                ? Results.Problem(title: error, statusCode: StatusCodes.Status400BadRequest)
+                : Results.Created("/api/v1/signatures/" + created.RequestId.ToString("D"), created);
+        }).WithName("CreateSignatureRequest");
+
+        api.MapGet("/signatures/{requestId:guid}", async (Guid requestId, ClaimsPrincipal caller, IAppDirectory apps, ISignatureService signatures, CancellationToken ct) =>
+        {
+            AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
+            if (app is null)
+            {
+                return Results.Forbid();
+            }
+
+            SignatureView? view = await signatures.GetForAppAsync(app.Id, requestId, ct).ConfigureAwait(false);
+            return view is null ? Results.NotFound() : Results.Ok(view);
+        }).WithName("GetSignatureRequest");
 
         return endpoints;
     }

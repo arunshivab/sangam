@@ -1,22 +1,22 @@
 @page
 @model VerifiedModel
 @{
-    ViewData["Title"] = "Email verified";
+    ViewData["Title"] = L["Email verified"].Value;
 }
 
 <section class="sg-card">
   <div class="sg-circle sg-circle--ok" aria-hidden="true">
     <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#276B4E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
   </div>
-  <h1 class="sg-card-title sg-card-title--centre">Email verified</h1>
-  <p class="sg-card-body sg-card-body--centre">Your Sangam account is ready. You are signed in on this device.</p>
+  <h1 class="sg-card-title sg-card-title--centre">@L["Email verified"]</h1>
+  <p class="sg-card-body sg-card-body--centre">@L["Your Sangam account is ready. You are signed in on this device."]</p>
   @if (Model.Partner is not null)
   {
-    <a class="sg-btn sg-btn--primary sg-btn--block" href="@Model.ContinueUrl"><span class="sg-glyph-inline sg-glyph-inline--20" style="background:@Model.Partner.BrandColour" aria-hidden="true">@Model.Partner.Glyph</span>Continue to @Model.Partner.DisplayName</a>
-    <a class="sg-tertiary" href="/account">Go to your Sangam account instead</a>
+    <a class="sg-btn sg-btn--primary sg-btn--block" href="@Model.ContinueUrl"><span class="sg-glyph-inline sg-glyph-inline--20" style="background:@Model.Partner.BrandColour" aria-hidden="true">@Model.Partner.Glyph</span>@L["Continue to {0}", Model.Partner.DisplayName]</a>
+    <a class="sg-tertiary" href="/account">@L["Go to your Sangam account instead"]</a>
   }
   else
   {
-    <a class="sg-btn sg-btn--primary sg-btn--block" href="/account">Go to your Sangam account</a>
+    <a class="sg-btn sg-btn--primary sg-btn--block" href="/account">@L["Go to your Sangam account"]</a>
   }
 </section>

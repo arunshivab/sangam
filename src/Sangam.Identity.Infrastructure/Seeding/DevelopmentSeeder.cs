@@ -216,6 +216,8 @@ public sealed partial class DevelopmentSeeder
             Permissions.Endpoints.Authorization,
             Permissions.Endpoints.Token,
             Permissions.Endpoints.EndSession,
+            Permissions.Endpoints.Introspection,
+            Permissions.Endpoints.Revocation,
             Permissions.GrantTypes.AuthorizationCode,
             Permissions.GrantTypes.RefreshToken,
             Permissions.GrantTypes.ClientCredentials,
@@ -267,7 +269,7 @@ public sealed partial class DevelopmentSeeder
         // Branding and consent settings are refreshed on every run, so a database seeded by an
         // earlier release picks up columns added since.
         app.DisplayName = "Sangam development sample";
-        app.OwnerCompanyName = "imagiQa Healthcare Services Pvt Ltd";
+        app.OwnerCompanyName = PlatformOwner.Name;
         app.Description = "Local-only partner app used to exercise the sign-in, consent and token flows.";
         app.HomepageUrl = "http://localhost:5900/";
         app.PrivacyUrl = "http://localhost:5900/privacy";
@@ -331,6 +333,8 @@ public sealed partial class DevelopmentSeeder
             Permissions.Endpoints.Authorization,
             Permissions.Endpoints.Token,
             Permissions.Endpoints.EndSession,
+            Permissions.Endpoints.Introspection,
+            Permissions.Endpoints.Revocation,
             Permissions.GrantTypes.AuthorizationCode,
             Permissions.GrantTypes.RefreshToken,
             Permissions.ResponseTypes.Code,
@@ -388,7 +392,7 @@ public sealed partial class DevelopmentSeeder
                 ClientId = ImagiqaClientId,
                 Slug = "imagiqa",
                 DisplayName = "imagiQa",
-                OwnerCompanyName = "imagiQa Healthcare Services Pvt Ltd",
+                OwnerCompanyName = PlatformOwner.Name,
                 Description = "A small hospital information system that shows how an application signs people in with Sangam.",
                 HomepageUrl = "http://localhost:5500/",
                 BrandColour = "#2A3F8F",
@@ -443,7 +447,7 @@ public sealed partial class DevelopmentSeeder
         }
 
         portal.DisplayName = "Sangam account portal";
-        portal.OwnerCompanyName = "imagiQa Healthcare Services Pvt Ltd";
+        portal.OwnerCompanyName = PlatformOwner.Name;
         portal.Description = "The account portal where you manage your Sangam account.";
         portal.HomepageUrl = "http://localhost:5200/";
         portal.BrandColour = "#0F3B38";
@@ -476,6 +480,8 @@ public sealed partial class DevelopmentSeeder
             Permissions.Endpoints.Authorization,
             Permissions.Endpoints.Token,
             Permissions.Endpoints.EndSession,
+            Permissions.Endpoints.Introspection,
+            Permissions.Endpoints.Revocation,
             Permissions.GrantTypes.AuthorizationCode,
             Permissions.GrantTypes.RefreshToken,
             Permissions.ResponseTypes.Code,
@@ -532,7 +538,7 @@ public sealed partial class DevelopmentSeeder
         }
 
         console.DisplayName = client.DisplayName;
-        console.OwnerCompanyName = "imagiQa Healthcare Services Pvt Ltd";
+        console.OwnerCompanyName = PlatformOwner.Name;
         console.Description = client.Description;
         console.HomepageUrl = client.HomepageUrl;
         console.BrandColour = "#15302E";
@@ -565,6 +571,8 @@ public sealed partial class DevelopmentSeeder
             Permissions.Endpoints.Authorization,
             Permissions.Endpoints.Token,
             Permissions.Endpoints.EndSession,
+            Permissions.Endpoints.Introspection,
+            Permissions.Endpoints.Revocation,
             Permissions.GrantTypes.AuthorizationCode,
             Permissions.GrantTypes.RefreshToken,
             Permissions.ResponseTypes.Code,

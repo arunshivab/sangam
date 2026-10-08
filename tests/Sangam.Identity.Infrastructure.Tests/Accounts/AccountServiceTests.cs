@@ -82,7 +82,7 @@ public sealed class AccountServiceTests : IAsyncLifetime
     }
 
     [PostgresFact]
-    public async Task Register_RejectsWeakPassword_BadMobile_AndDuplicates()
+    public async Task Register_RejectsWeakPassword_AndBadMobile_AndConcealsDuplicates()
     {
         using IServiceScope scope = _provider.CreateScope();
         IAccountService accounts = scope.ServiceProvider.GetRequiredService<IAccountService>();
@@ -93,12 +93,16 @@ public sealed class AccountServiceTests : IAsyncLifetime
         Assert.Contains(weak.Result.Errors, e => e.Field == "Mobile");
 
         Assert.True((await accounts.RegisterAsync(Rajesh)).Result.Succeeded);
+        // D-L: a taken address or mobile looks like a success to the caller, but nothing is created.
         RegistrationOutcome dupEmail = await accounts.RegisterAsync(Rajesh with { Mobile = "+919000000001" });
         RegistrationOutcome dupMobile = await accounts.RegisterAsync(Rajesh with { Email = "other@example.in" });
-        Assert.False(dupEmail.Result.Succeeded);
-        Assert.False(dupMobile.Result.Succeeded);
-        Assert.Equal(dupEmail.Result.Errors[0].Message, dupMobile.Result.Errors[0].Message);
-        Assert.Null(dupEmail.Result.Errors[0].Field);
+        Assert.True(dupEmail.Result.Succeeded);
+        Assert.True(dupMobile.Result.Succeeded);
+        Assert.True(dupEmail.Concealed);
+        Assert.True(dupMobile.Concealed);
+        Assert.Null(dupEmail.UserId);
+        Assert.Null(dupMobile.UserId);
+        Assert.Null(await accounts.FindByEmailAsync("other@example.in"));
     }
 
     [PostgresFact]

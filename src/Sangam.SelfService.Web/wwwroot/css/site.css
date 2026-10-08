@@ -173,9 +173,9 @@ h1[tabindex="-1"]:focus { outline: none; }
 .sg-panel-title { margin: 0 0 12px; font: 400 22px/1.2 var(--sg-font-display); color: var(--sg-teal); }
 .sg-panel-body { margin: 0 0 16px; font: 400 14px/1.7 var(--sg-font-body); color: var(--sg-slate); max-width: 72ch; }
 .sg-panel .sg-facts { margin: 20px 0 12px; display: grid; gap: 8px; }
-.sg-facts div { display: grid; grid-template-columns: 140px 1fr; gap: 16px; font: 400 14px/1.5 var(--sg-font-body); }
+.sg-facts div { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 16px; font: 400 14px/1.5 var(--sg-font-body); }
 .sg-facts dt { color: var(--sg-slate); }
-.sg-facts dd { margin: 0; }
+.sg-facts dd { margin: 0; overflow-wrap: anywhere; }
 
 .sg-field-group { display: block; margin-bottom: var(--sg-space-3); }
 .sg-label { display: block; margin-bottom: 6px; font: 500 var(--sg-body-14) var(--sg-font-body); }

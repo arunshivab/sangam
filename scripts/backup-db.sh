@@ -3,6 +3,11 @@
 #   15 2 * * * /opt/sangam/scripts/backup-db.sh >> /var/log/sangam-backup.log 2>&1
 set -euo pipefail
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/sangam}"
+# D-H: the result goes to the monitoring page (mounted read-only into the hosts as /var/lib/sangam/status).
+STATUS_DIR="${STATUS_DIR:-/srv/sangam/status}"
+mkdir -p "$STATUS_DIR"
+status() { printf '{"at":"%s","ok":%s,"detail":"%s"}\n' "$(date -u +%FT%TZ)" "$1" "$2" > "$STATUS_DIR/backup.json.tmp" && mv "$STATUS_DIR/backup.json.tmp" "$STATUS_DIR/backup.json"; }
+trap 'status false "backup-db.sh failed at line $LINENO"' ERR
 KEEP_DAYS="${KEEP_DAYS:-14}"
 CONTAINER="${CONTAINER:-sangam-db-postgres-1}"
 DATABASE="${DATABASE:-sangam_identity}"
@@ -13,5 +18,6 @@ docker exec "$CONTAINER" pg_dump -U postgres -Fc "$DATABASE" > "$file"
 sha256sum "$file" > "$file.sha256"
 find "$BACKUP_DIR" -name "${DATABASE}_*.dump*" -mtime +"$KEEP_DAYS" -delete
 echo "$(date -u +%FT%TZ) backup written: $file ($(stat -c %s "$file") bytes)"
+status true "$(basename "$file"), $(stat -c %s "$file") bytes"
 # Off-site copy: the target is the founder's choice (vendor). Add it here, for example:
 #   rclone copy "$file" remote:sangam-backups/

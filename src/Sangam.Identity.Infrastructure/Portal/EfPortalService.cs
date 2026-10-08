@@ -186,6 +186,7 @@ public sealed class EfPortalService : IPortalService
             return false;
         }
 
+        await LogoutQueue.EnqueueAsync(_db, [sessionId], now, cancellationToken).ConfigureAwait(false);
         await _audit.WriteAsync(new AuditEntry(AuditActions.UserSessionRevoke, AuditActorType.User, userId, TargetType: "session", TargetId: sessionId, IpAddress: ipAddress), cancellationToken).ConfigureAwait(false);
         return true;
     }
@@ -194,10 +195,12 @@ public sealed class EfPortalService : IPortalService
     public async Task RevokeAllSessionsAsync(Guid userId, string? ipAddress, CancellationToken cancellationToken = default)
     {
         DateTimeOffset now = _clock.UtcNow;
+        List<Guid> live = await _db.UserSessions.Where(s => s.UserId == userId && s.RevokedAt == null).Select(s => s.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
         await _db.UserSessions
             .Where(s => s.UserId == userId && s.RevokedAt == null)
             .ExecuteUpdateAsync(u => u.SetProperty(s => s.RevokedAt, now).SetProperty(s => s.RevokedReason, "user_all"), cancellationToken)
             .ConfigureAwait(false);
+        await LogoutQueue.EnqueueAsync(_db, live, now, cancellationToken).ConfigureAwait(false);
 
         // Rotating the stamp ends every cookie within the validation interval, even on other nodes.
         SangamUser? user = await _users.FindByIdAsync(userId.ToString("D")).ConfigureAwait(false);

@@ -1,15 +1,16 @@
 @page "/terms"
 @model TermsModel
 @{
-    ViewData["Title"] = "Terms of use";
+    ViewData["Title"] = L["Terms of use"].Value;
 }
 
 <section class="sg-card sg-doc">
-  <h1 class="sg-card-title">Terms of use</h1>
+  <h1 class="sg-card-title">@L["Terms of use"]</h1>
   @if (Model.Paragraphs is null)
   {
-    <p class="sg-card-body">This document is being reviewed by counsel and will be published here before Sangam opens to the public.</p>
-    <p class="sg-card-body">Questions in the meantime: <a href="mailto:@Model.SupportEmail">@Model.SupportEmail</a>.</p>
+    <p class="sg-card-body">@L["This document is being reviewed by counsel and will be published here before Sangam opens to the public."]</p>
+    <p class="sg-card-body">@L["Owner and operator: {0}. Jurisdiction: {1}.", Model.Operator, Model.Jurisdiction]</p>
+    <p class="sg-card-body">@L["Questions in the meantime:"] <a href="mailto:@Model.SupportEmail">@Model.SupportEmail</a>.</p>
   }
   else
   {
@@ -18,5 +19,5 @@
       <p class="sg-card-body">@paragraph</p>
     }
   }
-  <a class="sg-tertiary" href="/privacy/grievance">Raise a grievance</a>
+  <a class="sg-tertiary" href="/privacy/grievance">@L["Raise a grievance"]</a>
 </section>

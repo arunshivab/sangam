@@ -6,12 +6,12 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Sangam.Identity.Application.Abstractions;
+using Sangam.Identity.Application.Customisation;
 using Sangam.Identity.Application.Partners;
 using Sangam.Identity.Application.Tenancy;
 using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Entities;
 using Sangam.Identity.Domain.Enums;
-using Sangam.Identity.Infrastructure.Accounts;
 using Sangam.Identity.Infrastructure.Persistence;
 using Sangam.Identity.Infrastructure.Services;
 
@@ -28,6 +28,7 @@ public sealed class EfInvitationService : IInvitationService
     private readonly UserManager<SangamUser> _users;
     private readonly IManagementService _management;
     private readonly IEmailSender _email;
+    private readonly IMessageTemplates _templates;
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
     private readonly string _origin;
@@ -40,13 +41,15 @@ public sealed class EfInvitationService : IInvitationService
     /// <param name="audit">Audit writer.</param>
     /// <param name="clock">Clock.</param>
     /// <param name="configuration">Configuration (<c>Sangam:Issuer</c> for the link).</param>
-    public EfInvitationService(SangamDbContext db, UserManager<SangamUser> users, IManagementService management, IEmailSender email, IAuditWriter audit, IClock clock, IConfiguration configuration)
+    /// <param name="templates">Message templates (PR-19).</param>
+    public EfInvitationService(SangamDbContext db, UserManager<SangamUser> users, IManagementService management, IEmailSender email, IAuditWriter audit, IClock clock, IConfiguration configuration, IMessageTemplates templates)
     {
         ArgumentNullException.ThrowIfNull(configuration);
         _db = db ?? throw new ArgumentNullException(nameof(db));
         _users = users ?? throw new ArgumentNullException(nameof(users));
         _management = management ?? throw new ArgumentNullException(nameof(management));
         _email = email ?? throw new ArgumentNullException(nameof(email));
+        _templates = templates ?? throw new ArgumentNullException(nameof(templates));
         _audit = audit ?? throw new ArgumentNullException(nameof(audit));
         _clock = clock ?? throw new ArgumentNullException(nameof(clock));
         string? issuer = configuration["Sangam:Issuer"];
@@ -97,7 +100,18 @@ public sealed class EfInvitationService : IInvitationService
         });
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        await _email.SendAsync(AccountEmails.Invitation(address, app.DisplayName, org.Name, role.DisplayName, $"{_origin}/invite/{token}", (int)Lifetime.TotalDays), cancellationToken).ConfigureAwait(false);
+        Dictionary<string, string> values = new(StringComparer.Ordinal)
+        {
+            ["application"] = app.DisplayName,
+            ["organisation"] = org.Name,
+            ["role"] = role.DisplayName,
+            ["link"] = $"{_origin}/invite/{token}",
+            ["days"] = ((int)Lifetime.TotalDays).ToString(System.Globalization.CultureInfo.InvariantCulture),
+        };
+
+        // In the inviter's language (the invitee may not have an account yet), with the organisation's and application's own wording if set.
+        EmailMessage invitation = await _templates.EmailAsync(MessageTemplateKinds.Invitation, System.Globalization.CultureInfo.CurrentUICulture.Name, appId, orgId, values, address, address, cancellationToken).ConfigureAwait(false);
+        await _email.SendAsync(invitation, cancellationToken).ConfigureAwait(false);
         await _audit.WriteAsync(new AuditEntry(AuditActions.AppInvitationCreate, AuditActorType.Admin, inviterUserId, appId, "organisation", orgId,
             Metadata: JsonSerializer.Serialize(new Dictionary<string, string> { ["email"] = LogRedaction.MaskEmail(address), ["role"] = role.Code })), cancellationToken).ConfigureAwait(false);
         return PartnerResult.Ok($"Invitation sent to {address}. It works for {(int)Lifetime.TotalDays} days.");

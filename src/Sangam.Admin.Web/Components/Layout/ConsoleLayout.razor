@@ -3,17 +3,20 @@
 <OperatorGate PortalUrl="@PortalUrl">
     <div class="sg-console">
       <header class="sg-bar">
-        <span class="sg-bar-brand">sangam <span class="sg-bar-scope">console</span></span>
+        <span class="sg-bar-brand">sangam <span class="sg-bar-scope">@L["console"]</span></span>
         <nav class="sg-bar-nav">
-          <NavLink class="sg-bar-link" ActiveClass="sg-bar-link--on" href="/" Match="NavLinkMatch.All">Users</NavLink>
-          <NavLink class="sg-bar-link" ActiveClass="sg-bar-link--on" href="/apps">Applications</NavLink>
-          <NavLink class="sg-bar-link" ActiveClass="sg-bar-link--on" href="/operators">Operators</NavLink>
+          <NavLink class="sg-bar-link" ActiveClass="sg-bar-link--on" href="/" Match="NavLinkMatch.All">@L["Users"]</NavLink>
+          <NavLink class="sg-bar-link" ActiveClass="sg-bar-link--on" href="/apps">@L["Applications"]</NavLink>
+          <NavLink class="sg-bar-link" ActiveClass="sg-bar-link--on" href="/operators">@L["Operators"]</NavLink>
+          <NavLink class="sg-bar-link" ActiveClass="sg-bar-link--on" href="/customisation">@L["Defaults"]</NavLink>
+          <NavLink class="sg-bar-link" ActiveClass="sg-bar-link--on" href="/monitoring">@L["Monitoring"]</NavLink>
         </nav>
         <ConsoleWho />
       </header>
       <main class="sg-main">@Body</main>
     </div>
 </OperatorGate>
+<footer class="sg-lang-footer"><LanguagePicker /></footer>
 
 @code {
     [Inject]

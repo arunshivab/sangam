@@ -44,11 +44,12 @@ public interface ISecurityPolicyService
 }
 
 /// <summary>
-/// Checks a password against known breaches (PR-16, CAP-024). The service it uses is the founder's decision.
+/// Checks a password against known breaches (PR-16, CAP-024). D-J: offline only — a local copy of the Pwned
+/// Passwords list; nothing about a password leaves the server.
 /// </summary>
 public interface IBreachedPasswordChecker
 {
-    /// <summary>Whether a checking service is configured.</summary>
+    /// <summary>Whether the check is switched on and its list is loaded.</summary>
     bool Available { get; }
 
     /// <summary>
@@ -58,4 +59,19 @@ public interface IBreachedPasswordChecker
     /// <param name="password">The password.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     Task<bool?> IsBreachedAsync(string password, CancellationToken cancellationToken = default);
+}
+
+/// <summary>The state of the offline breached-password list, for the monitoring page (D-J).</summary>
+/// <param name="Enabled">Whether the check is switched on in settings.</param>
+/// <param name="Loaded">Whether a usable list is in place (the check runs only when both are true).</param>
+/// <param name="ListDate">The date the list was downloaded.</param>
+/// <param name="Entries">How many hashes the list holds.</param>
+/// <param name="Problem">Why the list cannot be used, when it cannot.</param>
+public sealed record BreachListStatus(bool Enabled, bool Loaded, DateOnly? ListDate, long Entries, string? Problem);
+
+/// <summary>Reports the state of the offline breached-password list (D-J).</summary>
+public interface IBreachListStatus
+{
+    /// <summary>The list's state now.</summary>
+    BreachListStatus Status { get; }
 }

@@ -284,6 +284,88 @@ public sealed class AdminServiceTests : IAsyncLifetime
     }
 
     [PostgresFact]
+    public async Task LogoutAddresses_AreSetByAnAppManager_AndMustBeHttps()
+    {
+        IAdminService admin = Service();
+        Assert.False((await admin.SetAppLogoutUrisAsync(_viewer, _appId, "https://his.example.in/bc", null, null)).Succeeded);
+
+        AdminResult plainHttp = await admin.SetAppLogoutUrisAsync(_appManager, _appId, "http://his.example.in/bc", null, null);
+        Assert.False(plainHttp.Succeeded);
+        Assert.Contains("https", plainHttp.Message, StringComparison.Ordinal);
+
+        Assert.True((await admin.SetAppLogoutUrisAsync(_appManager, _appId, " https://his.example.in/bc ", "https://his.example.in/fc", null)).Succeeded);
+        AdminAppRow row = Assert.Single(await admin.ListAppsAsync(_viewer), a => a.Id == _appId);
+        Assert.Equal("https://his.example.in/bc", row.BackChannelLogoutUri);
+        Assert.Equal("https://his.example.in/fc", row.FrontChannelLogoutUri);
+
+        Assert.True((await admin.SetAppLogoutUrisAsync(_appManager, _appId, "", null, null)).Succeeded);
+        Assert.Null(Assert.Single(await admin.ListAppsAsync(_viewer), a => a.Id == _appId).BackChannelLogoutUri);
+    }
+
+    [Theory]
+    [InlineData(null, null, false)]
+    [InlineData("   ", null, false)]
+    [InlineData("https://app.example.in/logout", "https://app.example.in/logout", false)]
+    [InlineData("http://localhost:5900/logout", "http://localhost:5900/logout", false)]
+    [InlineData("http://app.example.in/logout", null, true)]
+    [InlineData("https://app.example.in/logout#x", null, true)]
+    [InlineData("/logout", null, true)]
+    [InlineData("ftp://app.example.in/logout", null, true)]
+    public void LogoutAddresses_AreChecked(string? input, string? expected, bool refused)
+    {
+        string? result = Infrastructure.Admin.EfAdminService.NormaliseLogoutUri(input, out string? error);
+        Assert.Equal(expected, result);
+        Assert.Equal(refused, error is not null);
+    }
+
+    [PostgresFact]
+    public async Task EndingSessionsFromThePortal_QueuesABackChannelLogout_ForEachApplicationThatAsked()
+    {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        Guid kept = Guid.NewGuid();
+        Guid ended = Guid.NewGuid();
+        Guid quietApp;
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            App app = await db.Apps.SingleAsync(a => a.Id == _appId);
+            app.BackChannelLogoutUri = "https://his.example.in/bc";
+            App quiet = new() { Id = Guid.NewGuid(), ClientId = "lab", Slug = "lab", DisplayName = "Lab", OwnerCompanyName = "imagiQa", CreatedAt = now, UpdatedAt = now };
+            db.Apps.Add(quiet);
+            quietApp = quiet.Id;
+            foreach (Guid id in new[] { kept, ended })
+            {
+                db.UserSessions.Add(new UserSession { Id = id, UserId = _patient, CreatedAt = now, LastSeenAt = now });
+                db.SessionApps.Add(new SessionApp { SessionId = id, AppId = _appId, UserId = _patient, FirstSeenAt = now });
+                db.SessionApps.Add(new SessionApp { SessionId = id, AppId = quietApp, UserId = _patient, FirstSeenAt = now });
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        using IServiceScope scope = _provider.CreateScope();
+        IPortalService portal = scope.ServiceProvider.GetRequiredService<IPortalService>();
+        Assert.True(await portal.RevokeSessionAsync(_patient, ended, null));
+
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            LogoutNotification n = Assert.Single(await db.LogoutNotifications.ToListAsync());
+            Assert.Equal(ended, n.SessionId);
+            Assert.Equal(_appId, n.AppId);
+            Assert.Null(n.SentAt);
+        }
+
+        await portal.RevokeAllSessionsAsync(_patient, null);
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            List<Guid> sessions = await db.LogoutNotifications.Select(n => n.SessionId).ToListAsync();
+            Assert.Equal(2, sessions.Count);
+            Assert.Contains(ended, sessions);
+            Assert.Contains(kept, sessions);
+            Assert.DoesNotContain(await db.LogoutNotifications.Select(n => n.AppId).ToListAsync(), id => id == quietApp);
+        }
+    }
+
+    [PostgresFact]
     public async Task AnAppManager_CanLookAtUsers_ButNeverActOnThem()
     {
         IAdminService admin = Service();

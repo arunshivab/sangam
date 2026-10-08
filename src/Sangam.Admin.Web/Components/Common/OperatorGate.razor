@@ -4,30 +4,27 @@
 
 @if (_state == GateState.Checking)
 {
-    <p class="sg-note">Checking your access…</p>
+    <p class="sg-note">@L["Checking your access…"]</p>
 }
 else if (_state == GateState.NotAnOperator)
 {
     <section class="sg-shut">
-        <h1 class="sg-shut-title">This console is not for you</h1>
+        <h1 class="sg-shut-title">@L["This console is not for you"]</h1>
         <p class="sg-shut-body">
-            Your Sangam account is fine — it simply does not hold platform operator access.
-            If that is wrong, ask an owner to grant it. Nothing about this page is logged against you
-            beyond the sign-in itself.
+            @L["Your Sangam account is fine — it simply does not hold platform operator access. If that is wrong, ask an owner to grant it. Nothing about this page is logged against you beyond the sign-in itself."]
         </p>
-        <a class="sg-btn sg-btn--secondary" href="/signout">Sign out</a>
+        <a class="sg-btn sg-btn--secondary" href="/signout">@L["Sign out"]</a>
     </section>
 }
 else if (_state == GateState.MfaRequired)
 {
     <section class="sg-shut">
-        <h1 class="sg-shut-title">Set up two-step sign-in first</h1>
+        <h1 class="sg-shut-title">@L["Set up two-step sign-in first"]</h1>
         <p class="sg-shut-body">
-            Operators must have an authenticator app. Open your Sangam account portal, turn on
-            two-step sign-in under Personal details, then sign in here again.
+            @L["Operators must have an authenticator app. Open your Sangam account portal, turn on two-step sign-in under Personal details, then sign in here again."]
         </p>
-        <a class="sg-btn sg-btn--primary" href="@PortalUrl">Go to your account portal</a>
-        <a class="sg-btn sg-btn--secondary" href="/signout">Sign out</a>
+        <a class="sg-btn sg-btn--primary" href="@PortalUrl">@L["Go to your account portal"]</a>
+        <a class="sg-btn sg-btn--secondary" href="/signout">@L["Sign out"]</a>
     </section>
 }
 else

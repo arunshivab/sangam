@@ -1,7 +1,7 @@
-# Sangam — container stack: PostgreSQL (16 or later; this file pins 16) + Caddy.
+# Sangam — container stack: PostgreSQL 18 (D-F) + Caddy.
 #
 # This is NOT required for local development on a laptop. The default local
-# setup is a native PostgreSQL 16-or-later install (scripts/bootstrap-dev.ps1). This file
+# setup is a native PostgreSQL install, 18 recommended (scripts/bootstrap-dev.ps1). This file
 # serves two purposes:
 #   1. the E2E Networks VM, where Caddy is the TLS-terminating front door for
 #      id./account./admin.sangamid.in (and Anjal on the same box) — PR-08;
@@ -20,7 +20,11 @@ name: sangam-dev
 
 services:
   postgres:
-    image: postgres:16
+    # D-F: PostgreSQL 18 everywhere (production, CI, local). The 18 image keeps its data under
+    # /var/lib/postgresql/18/docker, so the volume is mounted one level up. A volume made by the
+    # earlier postgres:16 service is not readable by 18: development data only, so recreate it with
+    # `docker compose -f deploy/docker-compose.dev.yml down -v` and start again.
+    image: postgres:18
     container_name: sangam-postgres
     restart: unless-stopped
     environment:
@@ -30,7 +34,7 @@ services:
     ports:
       - "127.0.0.1:${SANGAM_PG_PORT:-5432}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/10-sangam.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]

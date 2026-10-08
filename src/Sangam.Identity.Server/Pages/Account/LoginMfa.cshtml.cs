@@ -77,13 +77,13 @@ public sealed class LoginMfaModel : AuthPageModel
         if (result is MfaResult.LockedOut)
         {
             await SangamAuthentication.ClearPendingAsync(HttpContext);
-            Error = "Too many incorrect codes. Try again in 15 minutes.";
+            Error = L["Too many incorrect codes. Try again in 15 minutes."];
             return Page();
         }
 
         if (result is not MfaResult.Valid)
         {
-            Error = "That code is not correct. Check the app and try again.";
+            Error = L["That code is not correct. Check the app and try again."];
             return Page();
         }
 
@@ -98,6 +98,6 @@ public sealed class LoginMfaModel : AuthPageModel
         await SangamAuthentication.ClearPendingAsync(HttpContext);
         await SangamAuthentication.SignInSessionAsync(HttpContext, user, mode, Partner?.Id, PartnerContext.DeviceLabelFromReturnUrl(ReturnUrl), secondFactor: true);
         await _accounts.RecordSignInAsync(user.Id, mode, ClientIp, ClientUserAgent, cancellationToken);
-        return LocalRedirect(SafeReturnUrl(ReturnUrl));
+        return LocalRedirect(await AfterSignInAsync(user.Id, ReturnUrl, cancellationToken));
     }
 }

@@ -3,9 +3,9 @@ using Microsoft.Extensions.Configuration;
 namespace Sangam.Identity.Infrastructure.Sms;
 
 /// <summary>
-/// SMS settings under <c>Sangam:Sms</c> (PR-15, SGM-206). The provider, the header and the DLT template ids
-/// are the founder's decisions (SGM-206 open questions 1–3); until they are made SMS stays off outside
-/// Development and Testing.
+/// SMS settings under <c>Sangam:Sms</c> (PR-15, SGM-206, D-M). SMS goes through Anjal. The header and the DLT
+/// template ids are registered under the new company once it is formed (D-M); until then SMS stays off outside
+/// Development and Testing, while e-mail codes, passkeys and authenticator apps keep working.
 /// </summary>
 public sealed class SmsSettings
 {
@@ -24,16 +24,25 @@ public sealed class SmsSettings
     /// <summary>Template key: step-up confirmation of an action in an application.</summary>
     public const string StepUpTemplate = "step_up";
 
+    /// <summary>Template key: someone tried to register with this number (D-L). It carries no code.</summary>
+    public const string RegistrationNoticeTemplate = "registration_notice";
+
+    /// <summary>Template key: support was asked to reset this account's two-step sign-in (D-K). It carries no code.</summary>
+    public const string ResetNoticeTemplate = "reset_notice";
+
+    /// <summary>Template key: an alert to the platform's operators (D-H, D-K), with one short variable.</summary>
+    public const string OperatorAlertTemplate = "operator_alert";
+
     private const string DevelopmentHashKey = "sangam-development-sms-hash-key-not-for-production";
 
     /// <summary>Whether SMS is offered at all.</summary>
     public bool Enabled { get; set; }
 
-    /// <summary>The primary provider's name; it must have an adapter in this build.</summary>
+    /// <summary>
+    /// The gateway: <c>anjal</c> in production (D-M — Anjal reaches the aggregators and fails over between two of
+    /// them), or <c>outbox</c> in Development and Testing.
+    /// </summary>
     public string Provider { get; set; } = string.Empty;
-
-    /// <summary>An optional second provider tried when the first refuses a message.</summary>
-    public string? FailoverProvider { get; set; }
 
     /// <summary>The registered six-character header (sender id).</summary>
     public string SenderHeader { get; set; } = "SANGAM";
@@ -94,6 +103,17 @@ public sealed class SmsSettings
         [SignInTemplate] = "{#var#} is your SangamID sign-in code. It expires in 10 minutes. Do not share it. - SANGAM",
         [MobileVerificationTemplate] = "{#var#} is your code to verify this mobile for SangamID. - SANGAM",
         [StepUpTemplate] = "{#var#} is your SangamID code to confirm an action in {#var#}. - SANGAM",
+        [RegistrationNoticeTemplate] = "Someone tried to create a SangamID account with this mobile number. If it was you, sign in or reset your password; otherwise ignore this. - SANGAM",
+        [ResetNoticeTemplate] = "SangamID support was asked to reset two-step sign-in on your account. If this wasn't you, cancel it from the e-mail we sent or by signing in. - SANGAM",
+        [OperatorAlertTemplate] = "SangamID alert: {#var#}. Check the monitoring page. - SANGAM",
+    };
+
+    /// <summary>The template keys that carry a one-time code, and so need at least one variable.</summary>
+    public static IReadOnlySet<string> CodeTemplates { get; } = new HashSet<string>(StringComparer.Ordinal)
+    {
+        SignInTemplate,
+        MobileVerificationTemplate,
+        StepUpTemplate,
     };
 }
 

@@ -51,21 +51,35 @@ public sealed class PublicPagesTests
     }
 
     [Fact]
-    public async Task Grievance_ShowsOnlyWhatIsConfigured()
+    public async Task Grievance_NamesTheOfficerAndTheTimes_FromD_D_AndShowsOnlyWhatIsConfigured()
     {
-        using HttpClient unset = _factory.CreateClient();
+        using HttpClient decided = _factory.CreateClient();
+        string page = System.Net.WebUtility.HtmlDecode(await decided.GetStringAsync(new Uri("/privacy/grievance", UriKind.Relative)));
+        Assert.Contains("Arun Shiva Balasubramanian", page, StringComparison.Ordinal);
+        Assert.Contains("mailto:grievance@sangamid.in", page, StringComparison.Ordinal);
+        Assert.Contains("We acknowledge every grievance within 2 working days and resolve it within 30 days of receiving it. Every grievance is logged.", page, StringComparison.Ordinal);
+
+        using HttpClient unset = _factory.WithWebHostBuilder(b =>
+        {
+            b.UseSetting(LegalDocuments.OfficerNameKey, string.Empty);
+            b.UseSetting(LegalDocuments.AcknowledgeDaysKey, string.Empty);
+            b.UseSetting(LegalDocuments.ResponseDaysKey, string.Empty);
+        }).CreateClient();
         string before = await unset.GetStringAsync(new Uri("/privacy/grievance", UriKind.Relative));
         Assert.Contains("To be named before Sangam opens", before, StringComparison.Ordinal);
         Assert.DoesNotContain("We will answer within", before, StringComparison.Ordinal);
+        Assert.DoesNotContain("We acknowledge every grievance", before, StringComparison.Ordinal);
+    }
 
-        using HttpClient set = _factory.WithWebHostBuilder(b =>
-        {
-            b.UseSetting(LegalDocuments.OfficerNameKey, "Grievance Officer, imagiQa");
-            b.UseSetting(LegalDocuments.ResponseDaysKey, "15");
-        }).CreateClient();
-        string after = await set.GetStringAsync(new Uri("/privacy/grievance", UriKind.Relative));
-        Assert.Contains("Grievance Officer, imagiQa", after, StringComparison.Ordinal);
-        Assert.Contains("We will answer within 15 days.", after, StringComparison.Ordinal);
+    [Fact]
+    public async Task TheTermsAndPrivacyPlaceholders_NameTheOwnerAndJurisdiction()
+    {
+        using HttpClient client = _factory.CreateClient();
+        string terms = System.Net.WebUtility.HtmlDecode(await client.GetStringAsync(new Uri("/terms", UriKind.Relative)));
+        string privacy = System.Net.WebUtility.HtmlDecode(await client.GetStringAsync(new Uri("/privacy", UriKind.Relative)));
+        Assert.Contains("Owner and operator: Dr. Arun Shiva Balasubramanian. Jurisdiction: Ahmedabad.", terms, StringComparison.Ordinal);
+        Assert.Contains("data fiduciary under the Digital Personal Data Protection Act, 2023: Dr. Arun Shiva Balasubramanian.", privacy, StringComparison.Ordinal);
+        Assert.DoesNotContain("imagiQa Healthcare", terms + privacy, StringComparison.Ordinal);
     }
 
     [Fact]

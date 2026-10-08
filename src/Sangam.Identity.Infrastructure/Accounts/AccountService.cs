@@ -1,12 +1,16 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Sangam.Identity.Application.Abstractions;
 using Sangam.Identity.Application.Accounts;
+using Sangam.Identity.Application.Customisation;
 using Sangam.Identity.Application.Security;
 using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Entities;
 using Sangam.Identity.Domain.Enums;
+using Sangam.Identity.Infrastructure.Monitoring;
 using Sangam.Identity.Infrastructure.Persistence;
+using Sangam.Identity.Infrastructure.Sms;
 
 namespace Sangam.Identity.Infrastructure.Accounts;
 
@@ -25,6 +29,13 @@ public sealed class AccountService : IAccountService
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
     private readonly OtpOptions _otp;
+    private readonly RegistrationOptions _registration;
+    private readonly IMessageTemplates _templates;
+    private readonly CurrentApplication _current;
+    private readonly SmsNoticeSender _smsNotices;
+    private readonly UnknownAddressLockout _unknownLockout;
+    private static string? _dummyHash;
+    private static readonly Dictionary<string, string> NoValues = new(StringComparer.Ordinal);
 
     /// <summary>Initialises the service.</summary>
     /// <param name="users">Identity user manager.</param>
@@ -34,6 +45,11 @@ public sealed class AccountService : IAccountService
     /// <param name="audit">Audit writer.</param>
     /// <param name="clock">Clock.</param>
     /// <param name="otp">Code policy.</param>
+    /// <param name="registration">Registration settings (V-09).</param>
+    /// <param name="templates">Message templates (PR-19).</param>
+    /// <param name="current">The application this request acts for, if any (PR-19).</param>
+    /// <param name="smsNotices">Texts notices that carry no code (D-L).</param>
+    /// <param name="unknownLockout">Lockout for addresses with no account (D-L).</param>
     public AccountService(
         UserManager<SangamUser> users,
         SangamDbContext db,
@@ -41,8 +57,17 @@ public sealed class AccountService : IAccountService
         IEmailSender email,
         IAuditWriter audit,
         IClock clock,
-        OtpOptions otp)
+        OtpOptions otp,
+        RegistrationOptions registration,
+        IMessageTemplates templates,
+        CurrentApplication current,
+        SmsNoticeSender smsNotices,
+        UnknownAddressLockout unknownLockout)
     {
+        _unknownLockout = unknownLockout ?? throw new ArgumentNullException(nameof(unknownLockout));
+        _smsNotices = smsNotices ?? throw new ArgumentNullException(nameof(smsNotices));
+        _templates = templates ?? throw new ArgumentNullException(nameof(templates));
+        _current = current ?? throw new ArgumentNullException(nameof(current));
         _users = users ?? throw new ArgumentNullException(nameof(users));
         _db = db ?? throw new ArgumentNullException(nameof(db));
         _codes = codes ?? throw new ArgumentNullException(nameof(codes));
@@ -50,6 +75,7 @@ public sealed class AccountService : IAccountService
         _audit = audit ?? throw new ArgumentNullException(nameof(audit));
         _clock = clock ?? throw new ArgumentNullException(nameof(clock));
         _otp = otp ?? throw new ArgumentNullException(nameof(otp));
+        _registration = registration ?? throw new ArgumentNullException(nameof(registration));
     }
 
     /// <inheritdoc />
@@ -108,9 +134,31 @@ public sealed class AccountService : IAccountService
         }
 
         // Existing email or mobile: same generic message for both, so the form cannot be used to enumerate accounts.
-        bool emailTaken = await _users.FindByEmailAsync(email).ConfigureAwait(false) is not null;
-        bool mobileTaken = await _db.Users.AnyAsync(u => u.PhoneNumber == mobile && u.Status != UserStatus.DeletedHard, cancellationToken).ConfigureAwait(false);
-        if (emailTaken || mobileTaken)
+        SangamUser? existing = await _users.FindByEmailAsync(email).ConfigureAwait(false);
+
+        SangamUser? mobileOwner = existing is not null && existing.PhoneNumber == mobile
+            ? existing
+            : await _db.Users.FirstOrDefaultAsync(u => u.PhoneNumber == mobile && u.Status != UserStatus.DeletedHard, cancellationToken).ConfigureAwait(false);
+        if ((existing is not null || mobileOwner is not null) && _registration.ConcealExistingAccounts)
+        {
+            // D-L: reveal nothing. The page goes on exactly as for a real registration, nothing is created, and
+            // the real owner is told: by e-mail for an address, by SMS (or e-mail when it cannot be texted) for a
+            // mobile. The password is hashed all the same so the response takes as long as a real registration.
+            _ = _users.PasswordHasher.HashPassword(new SangamUser(), command.Password);
+            if (existing is not null && existing.Status != UserStatus.DeletedHard)
+            {
+                await NotifyAttemptAsync(existing, byMobile: false, command, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (mobileOwner is not null && mobileOwner.Id != existing?.Id)
+            {
+                await NotifyAttemptAsync(mobileOwner, byMobile: true, command, cancellationToken).ConfigureAwait(false);
+            }
+
+            return new RegistrationOutcome(AccountResult.Success, null, Concealed: true);
+        }
+
+        if (existing is not null || mobileOwner is not null)
         {
             return new RegistrationOutcome(
                 AccountResult.Failed(new AccountError(null, "An account already exists with this email or mobile. Sign in, or use 'Forgot password?' to recover it.")),
@@ -128,6 +176,8 @@ public sealed class AccountService : IAccountService
             LastName = command.LastName.Trim(),
             DateOfBirth = command.DateOfBirth,
             Gender = command.Gender,
+            // PR-18/19: the language the person registered in becomes their profile language (e-mails use it).
+            Locale = WebHosting.SupportedCultures.FirstOrDefault(c => string.Equals(c, CultureInfo.CurrentUICulture.Name, StringComparison.OrdinalIgnoreCase)) ?? WebHosting.DefaultCulture,
             CreatedAt = now,
             UpdatedAt = now,
             LastPasswordChangeAt = now,
@@ -148,6 +198,38 @@ public sealed class AccountService : IAccountService
 
         await IssueCodeAsync(user.Id, OneTimeCodePurpose.EmailVerification, cancellationToken).ConfigureAwait(false);
         return new RegistrationOutcome(AccountResult.Success, user.Id);
+    }
+
+    /// <summary>
+    /// Tells an account's owner that someone tried to register with its address or mobile (D-L), at most
+    /// <see cref="RegistrationOptions.AttemptNoticesPerDay"/> times in 24 hours; every attempt is audited.
+    /// </summary>
+    private async Task NotifyAttemptAsync(SangamUser owner, bool byMobile, RegisterUserCommand command, CancellationToken cancellationToken)
+    {
+        DateTimeOffset since = _clock.UtcNow.AddHours(-24);
+        int recent = await _db.AuditEvents.CountAsync(
+            e => e.Action == AuditActions.UserRegisterDuplicate && e.TargetId == owner.Id && e.OccurredAt > since, cancellationToken).ConfigureAwait(false);
+        string channel = "none";
+        if (recent < _registration.AttemptNoticesPerDay)
+        {
+            if (byMobile && await _smsNotices.TrySendRegistrationNoticeAsync(owner, command.IpAddress, cancellationToken).ConfigureAwait(false))
+            {
+                channel = "sms";
+            }
+            else if (!string.IsNullOrEmpty(owner.Email))
+            {
+                string kind = byMobile ? MessageTemplateKinds.MobileAttemptNotice : MessageTemplateKinds.RegistrationAttemptNotice;
+                EmailMessage notice = await _templates.EmailAsync(kind, owner.Locale, null, null, NoValues, owner.Email, owner.DisplayName, cancellationToken).ConfigureAwait(false);
+                await _email.SendAsync(notice, cancellationToken).ConfigureAwait(false);
+                channel = "email";
+            }
+        }
+
+        string reason = byMobile ? "mobile_taken" : "email_taken";
+        await _audit.WriteAsync(
+            new AuditEntry(AuditActions.UserRegisterDuplicate, AuditActorType.Anonymous, TargetType: "user", TargetId: owner.Id,
+                Metadata: $"{{\"reason\":\"{reason}\",\"notified\":\"{channel}\"}}", IpAddress: command.IpAddress, UserAgent: command.UserAgent),
+            cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -177,7 +259,14 @@ public sealed class AccountService : IAccountService
             return result;
         }
 
-        await _email.SendAsync(AccountEmails.ForCode(user.Email!, user.DisplayName, purpose, code, _otp.Lifetime), cancellationToken).ConfigureAwait(false);
+        Dictionary<string, string> values = new(StringComparer.Ordinal)
+        {
+            ["name"] = user.DisplayName,
+            ["code"] = code,
+            ["minutes"] = ((int)Math.Round(_otp.Lifetime.TotalMinutes)).ToString(CultureInfo.InvariantCulture),
+        };
+        EmailMessage message = await _templates.EmailAsync(CodeKind(purpose), user.Locale, _current.AppId, _current.OrgId, values, user.Email!, user.DisplayName, cancellationToken).ConfigureAwait(false);
+        await _email.SendAsync(message, cancellationToken).ConfigureAwait(false);
         await _audit.WriteAsync(
             new AuditEntry(AuditActions.UserOtpIssue, AuditActorType.User, userId, TargetType: "user", TargetId: userId, Metadata: PurposeJson(purpose)),
             cancellationToken).ConfigureAwait(false);
@@ -226,16 +315,33 @@ public sealed class AccountService : IAccountService
         SangamUser? user = await _users.FindByEmailAsync(email.Trim()).ConfigureAwait(false);
         if (user is null || user.Status == UserStatus.DeletedHard)
         {
+            // D-L: an address with no account behaves like one with a wrong password — the same hashing time, and
+            // the same lockout after the same number of tries — so neither reveals whether an account exists.
+            bool locked = _unknownLockout.IsLockedOut(email);
+            if (!locked)
+            {
+                _dummyHash ??= _users.PasswordHasher.HashPassword(new SangamUser(), "Sangam-timing-equaliser-1!");
+                _ = _users.PasswordHasher.VerifyHashedPassword(new SangamUser(), _dummyHash, password);
+                locked = _unknownLockout.RecordFailure(email);
+                if (locked)
+                {
+                    SangamMetrics.LockoutCount.Add(1);
+                }
+            }
+
+            SangamMetrics.SignInFailureCount.Add(1);
+
             await _audit.WriteAsync(
-                new AuditEntry(AuditActions.UserLoginFail, AuditActorType.Anonymous, Metadata: "{\"reason\":\"unknown_email\"}", IpAddress: ipAddress, UserAgent: userAgent),
+                new AuditEntry(AuditActions.UserLoginFail, AuditActorType.Anonymous, Metadata: locked ? "{\"reason\":\"unknown_email\",\"locked\":true}" : "{\"reason\":\"unknown_email\"}", IpAddress: ipAddress, UserAgent: userAgent),
                 cancellationToken).ConfigureAwait(false);
-            return new SignInCheck(SignInStatus.InvalidCredentials, null, SignInMode.Password);
+            return new SignInCheck(locked ? SignInStatus.LockedOut : SignInStatus.InvalidCredentials, null, SignInMode.Password);
         }
 
         SignInMode mode = SignInModes.Resolve(appPolicy, user.SignInPreference);
 
         if (await _users.IsLockedOutAsync(user).ConfigureAwait(false))
         {
+            SangamMetrics.SignInFailureCount.Add(1);
             await LogLoginFailAsync(user.Id, "locked_out", ipAddress, userAgent, cancellationToken).ConfigureAwait(false);
             return new SignInCheck(SignInStatus.LockedOut, null, mode);
         }
@@ -245,6 +351,12 @@ public sealed class AccountService : IAccountService
             await _users.AccessFailedAsync(user).ConfigureAwait(false);
             await LogLoginFailAsync(user.Id, "wrong_password", ipAddress, userAgent, cancellationToken).ConfigureAwait(false);
             bool nowLocked = await _users.IsLockedOutAsync(user).ConfigureAwait(false);
+            SangamMetrics.SignInFailureCount.Add(1);
+            if (nowLocked)
+            {
+                SangamMetrics.LockoutCount.Add(1);
+            }
+
             return new SignInCheck(nowLocked ? SignInStatus.LockedOut : SignInStatus.InvalidCredentials, null, mode);
         }
 
@@ -298,13 +410,16 @@ public sealed class AccountService : IAccountService
 
     /// <inheritdoc />
     public Task RecordSignInAsync(Guid userId, SignInMode mode, bool codeBySms, string? ipAddress, string? userAgent, CancellationToken cancellationToken = default)
-        => _audit.WriteAsync(
+    {
+        SangamMetrics.SignInCount.Add(1);
+        return _audit.WriteAsync(
             new AuditEntry(AuditActions.UserLoginSuccess, AuditActorType.User, userId, TargetType: "user", TargetId: userId,
                 Metadata: codeBySms
                     ? $"{{\"mode\":\"{SignInModes.ToCode(mode)}\",\"channel\":\"sms\"}}"
                     : $"{{\"mode\":\"{SignInModes.ToCode(mode)}\"}}",
                 IpAddress: ipAddress, UserAgent: userAgent),
             cancellationToken);
+    }
 
     /// <inheritdoc />
     public async Task<Guid?> RequestPasswordResetAsync(string email, string? ipAddress, CancellationToken cancellationToken = default)
@@ -488,4 +603,12 @@ public sealed class AccountService : IAccountService
 
         return digits;
     }
+
+    private static string CodeKind(OneTimeCodePurpose purpose) => purpose switch
+    {
+        OneTimeCodePurpose.EmailVerification => MessageTemplateKinds.EmailVerification,
+        OneTimeCodePurpose.EmailChange => MessageTemplateKinds.EmailChangeCode,
+        OneTimeCodePurpose.PasswordReset => MessageTemplateKinds.PasswordReset,
+        _ => MessageTemplateKinds.SignInCode,
+    };
 }

@@ -7,7 +7,7 @@ decides permission: every check below lives in a service and is proved by a test
 
 | Plane | Who | Stored in | Enforced in |
 |---|---|---|---|
-| **Platform** | imagiQa staff running Sangam | `platform_operators.role` | `IAdminService` |
+| **Platform** | the Sangam team running Sangam | `platform_operators.role` | `IAdminService` |
 | **Application** — human | A partner's own administrators | `app_admins.role` | `IPartnerService` |
 | **Application** — machine | A partner's own code | OAuth client + `sangam.manage` | `/api/v1`, app id taken from the token |
 | **Organisation** | Clinical and admin staff inside one application | `org_memberships` → `roles` | The application, from the `sangam_orgs` claim |
@@ -53,7 +53,7 @@ See ADR-0006.
 | Sign-in policy: each person's choice, or always two-step | ✓ | ✓ | — |
 | Add, promote, demote, remove administrators | — | ✓ | — |
 | Remove or demote the last owner | refused | refused | — |
-| Password-only or email-code-only sign-in, redirect URIs, secrets, name | — | — | — *(imagiQa)* |
+| Password-only or email-code-only sign-in, redirect URIs, secrets, name | — | — | — *(Sangam team)* |
 | See a user's other applications, sessions or audit trail | **never** | **never** | **never** |
 
 Every application administrator must have an authenticator app, like every operator.
@@ -74,7 +74,7 @@ these in the token; the application enforces them.
 
 | Person | Plane | How |
 |---|---|---|
-| imagiQa's own support engineer | Platform | `Support` rank |
+| Sangam's own support engineer | Platform | `Support` rank |
 | LiPi's Super Admin and Admin | Application — human | `app_admins`: Owner and Admin |
 | The hospital administrator who creates users | Organisation | `org_admin` at the hospital |
 | A department head | Organisation | App role on the department, `applies_to_descendants` |

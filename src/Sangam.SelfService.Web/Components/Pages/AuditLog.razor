@@ -2,11 +2,11 @@
 @inject IPortalService Portal
 @inject AuthenticationStateProvider AuthProvider
 
-<PageTitle>Audit log · sangam</PageTitle>
+<PageTitle>@L["Audit log · sangam"]</PageTitle>
 
-<PageHeader Title="Audit log" Subtitle="Everything that has happened on your account, and who did it." />
+<PageHeader Title="@L["Audit log"].Value" Subtitle="@L["Everything that has happened on your account, and who did it."].Value" />
 
-<div class="sg-filters" role="group" aria-label="Time range">
+<div class="sg-filters" role="group" aria-label="@L["Time range"]">
   @foreach ((string label, int? days) in Ranges)
   {
     <button type="button" class="sg-filter @(_days == days ? "sg-filter--active" : "")" @onclick="() => SetRangeAsync(days)">@label</button>
@@ -15,11 +15,11 @@
 
 @if (_page is null)
 {
-  <p class="sg-note">Loading…</p>
+  <p class="sg-note">@L["Loading…"]</p>
 }
 else if (_page.Total == 0)
 {
-  <p class="sg-note">Nothing recorded in this period.</p>
+  <p class="sg-note">@L["Nothing recorded in this period."]</p>
 }
 else
 {
@@ -29,27 +29,27 @@ else
       <li class="sg-audit-row @(line.IsSecuritySensitive ? "sg-audit-row--flagged" : "")">
         <span class="sg-audit-when" title="@Relative.Full(line.OccurredAt)">@Relative.Describe(line.OccurredAt, _now)</span>
         <span class="sg-audit-what">
-          <span class="sg-audit-summary">@line.Summary</span>
-          <span class="sg-audit-meta">@line.Actor@(line.IpAddress is null ? "" : " · ")<span class="sg-mono">@line.IpAddress</span></span>
+          <span class="sg-audit-summary">@L[line.Summary]</span>
+          <span class="sg-audit-meta">@L[line.Actor]@(line.IpAddress is null ? "" : " · ")<span class="sg-mono">@line.IpAddress</span></span>
         </span>
       </li>
     }
   </ol>
 
   <div class="sg-pager">
-    <button type="button" class="sg-btn sg-btn--secondary sg-btn--row" @onclick="() => GoAsync(_page.Page - 1)" disabled="@(_page.Page == 0)">Newer</button>
-    <span class="sg-pager-label">Page @(_page.Page + 1) of @_page.PageCount · @_page.Total events</span>
-    <button type="button" class="sg-btn sg-btn--secondary sg-btn--row" @onclick="() => GoAsync(_page.Page + 1)" disabled="@(_page.Page + 1 >= _page.PageCount)">Older</button>
+    <button type="button" class="sg-btn sg-btn--secondary sg-btn--row" @onclick="() => GoAsync(_page.Page - 1)" disabled="@(_page.Page == 0)">@L["Newer"]</button>
+    <span class="sg-pager-label">@L["Page {0} of {1} · {2} events", _page.Page + 1, _page.PageCount, _page.Total]</span>
+    <button type="button" class="sg-btn sg-btn--secondary sg-btn--row" @onclick="() => GoAsync(_page.Page + 1)" disabled="@(_page.Page + 1 >= _page.PageCount)">@L["Older"]</button>
   </div>
 }
 
 @code {
-    private static readonly (string Label, int? Days)[] Ranges =
+    private (string Label, int? Days)[] Ranges =>
     [
-        ("30 days", 30),
-        ("90 days", 90),
-        ("1 year", 365),
-        ("Everything", null),
+        (L["30 days"], 30),
+        (L["90 days"], 90),
+        (L["1 year"], 365),
+        (L["Everything"], null),
     ];
 
     private AuditPage? _page;

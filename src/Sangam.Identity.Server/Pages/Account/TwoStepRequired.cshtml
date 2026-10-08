@@ -1,27 +1,27 @@
 @page "/login/two-step-required"
 @model TwoStepRequiredModel
 @{
-    ViewData["Title"] = "Two-step sign-in required";
+    ViewData["Title"] = L["Two-step sign-in required"].Value;
 }
 
 <section class="sg-card">
   <div class="sg-circle sg-circle--pending" aria-hidden="true"><span class="sg-cord-dot sg-cord-dot--solo"></span></div>
-  <h1 class="sg-card-title sg-card-title--centre">Two-step sign-in required</h1>
-  <p class="sg-card-body sg-card-body--centre">@(Model.Partner?.DisplayName ?? "This application") asks everyone who uses it to sign in with a second step, so that a password alone is never enough. Set up one of these, then sign in again.</p>
+  <h1 class="sg-card-title sg-card-title--centre">@L["Two-step sign-in required"]</h1>
+  <p class="sg-card-body sg-card-body--centre">@L["{0} asks everyone who uses it to sign in with a second step, so that a password alone is never enough. Set up one of these, then sign in again.", Model.Partner?.DisplayName ?? L["This application"]]</p>
 
   <ul class="sg-card-body sg-steps">
-    <li><a href="@Model.AuthenticatorUrl">Set up an authenticator app</a> in your account — Google Authenticator, Aegis, 1Password or similar.</li>
+    <li><a href="@Model.AuthenticatorUrl">@L["Set up an authenticator app"]</a> @L["in your account — Google Authenticator, Aegis, 1Password or similar."]</li>
     @if (Model.OfferPasskeys)
     {
-      <li><a href="/account/passkeys">Add a passkey</a> — your fingerprint, face or device PIN. A passkey counts as both steps on its own.</li>
+      <li><a href="/account/passkeys">@L["Add a passkey"]</a> @L["— your fingerprint, face or device PIN. A passkey counts as both steps on its own."]</li>
     }
   </ul>
 
   <form method="post">
     <input type="hidden" asp-for="ReturnUrl" />
-    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">I have set it up — sign in again</button>
+    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["I have set it up — sign in again"]</button>
   </form>
 
   <div class="sg-cord-rule" role="presentation"></div>
-  <p class="sg-alt">Stuck? <a href="mailto:help@sangamid.in">help@sangamid.in</a></p>
+  <p class="sg-alt">@L["Stuck?"] <a href="mailto:help@sangamid.in">help@sangamid.in</a></p>
 </section>

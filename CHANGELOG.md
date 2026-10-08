@@ -4,7 +4,252 @@ All notable changes to Sangam are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.12.0] - R3 step-up and customisation, with founder decisions D-A to D-M
+
+### Fixed — R2 verification findings (V-07 to V-09)
+- **No HTTPS-port warning behind Caddy (V-07).** The hosts no longer run their own HTTP-to-HTTPS redirect
+  where it cannot work: in Development and Testing (plain HTTP on localhost), and behind a trusted reverse
+  proxy (`Sangam:ForwardedHeaders:KnownProxies` or `KnownNetworks` set, as Compose does), where Caddy
+  terminates TLS, redirects HTTP itself and health-checks the app over plain HTTP on 8080. A host exposed
+  directly still redirects. Setting port 443 instead would have redirected those health checks.
+- **A refused start exits cleanly (V-08).** Until a host has started, an unhandled exception — a start-up
+  rule refusing (no key-ring certificate, no mail server, unsafe SMS, missing token certificates) or anything
+  else — is logged once at Critical as `Sangam refused to start: <reason>` and the process exits with code 1,
+  instead of dying with exit code 139 and a stack dump. Inside a test runner the guard stands aside.
+- **Whether registration reveals an existing account is a setting (V-09).** *(Since decided — D-L: on by default,
+  and the owner of a taken mobile is told instead; see below.)* `Sangam:Registration:ConcealExistingAccounts`; off: the form says
+  an account already exists. On: a registration with an address or mobile that already has an account goes
+  on to the same "check your email" screen as a new one — identical, countdown included — no code ever
+  matches, and the address's owner is e-mailed instead (`user.register.duplicate` is audited). Limit: with a
+  new address and a taken mobile, the notice goes to that new address and says the number is taken, so
+  whoever controls an address can still learn that a number is registered, one e-mail at a time.
+
+### Added — R3 (PR-17 step-up and electronic signatures)
+- **Assurance levels and step-up (PR-17, SGM-207 §3–4).** Every sign-in records its RFC 8176 methods
+  (`pwd`, `otp`, `sms`, `pop` for a passkey, `mfa` for two distinct factors) and reaches a level:
+  `urn:sangam:acr:1` single factor, `:2` two factors, `:3` a passkey; `:sign` is level 2 or 3 within the
+  last five minutes. Every ID and access token now carries `acr`, `amr` and `auth_time` (kept across
+  refreshes), and discovery lists `acr_values_supported`. An application asks for a level with
+  `acr_values` and for freshness with `max_age`: a session that falls short is sent to sign in again — the
+  sign-in page adds the code step for level 2 (unless an authenticator will follow) and accepts only a
+  passkey for level 3 — and `prompt=none` gets `login_required`. Audited as `user.stepup.required` and
+  `user.stepup.success`, narrated in the activity history.
+- **Electronic-signature support (PR-17, SGM-207 §5; 21 CFR Part 11 style, to verify).** An application
+  registers a request with `POST /api/v1/signatures` (record id, record hash, meaning, display text, return
+  address — which must be one of its registered redirect URIs — and optionally the only person who may
+  sign). The person signs at `/sign/{id}`: a fresh two-factor sign-in, the record, its fingerprint and the
+  meaning shown, then Sign or Decline, once. The application reads the result with
+  `GET /api/v1/signatures/{id}`: a JWS (`typ` `sangam-signature+jwt`) signed with Sangam's published
+  token keys, binding signer, name, record id, record hash, meaning, time, `acr` and `amr`. Requests expire
+  after fifteen minutes. Audited as `user.signature.sign` / `user.signature.decline`.
+- **Client library.** `SangamStepUp`: `User.Satisfies(level, maxAge)`, `ChallengeAsync` (sends
+  `acr_values` and `max_age`), and the RFC 9470 `WWW-Authenticate` value for APIs; `AddSangam` now keeps
+  `acr`, `amr` and `auth_time` in the signed-in person's claims. `SangamAcr` holds the level names for both.
+- Deviations from SGM-207, recorded here: the signature endpoints sit in the management API
+  (`/api/v1/signatures`, `sangam.manage` scope) rather than a separate `/signatures/requests` route, and one
+  table `signature_requests` keeps the request, the outcome and the token itself (as evidence the
+  application can fetch again) instead of a separate `signature_events` table with a token hash.
+- Founder decisions flagged (SGM-207 open questions): whether a signature needs DigiLocker-verified
+  identity (R5) in every case; whether clinical orders use level 2 or signature grade. Both are the
+  application's choice of `acr_values` today.
+- Migration: `SignatureRequests`.
+
+### Added — R3 (PR-18 languages: Hindi and Malayalam)
+
+- **Every screen in Hindi and Malayalam** — sign-in and registration, the account portal, the operator console
+  and the partner console — with English as the source and the fallback. A language picker (each language in its
+  own script) sits in every footer.
+- **One shared text catalogue** (`Sangam.Web.Shared/Localization/hi-IN.json`, `ml-IN.json`): a flat map from the
+  English text to its translation, plain JSON so a translator can review it without tools. Pages and components
+  inject `IStringLocalizer<SangamText>` as `L` and write the English as the key. Sentences that hold a link or a name
+  are translated whole with `{0}` slots (`L.Html(...)` in Razor Pages, `L.Markup(...)` in Blazor), because Hindi
+  and Malayalam put the verb last. A service's finished sentence ("LiPi HIS can sign users in again.") is translated
+  by matching its template, so services did not change. The audit narrator now builds whole sentences instead of
+  joining English fragments; its English output is unchanged.
+- **How a language is chosen**, in order: `?culture=`, the picker (a year-long cookie), the person's profile
+  language (the existing `locale`, now applied to Sangam's own screens after sign-in), an application's
+  `ui_locales` on the authorization request, then the browser's Accept-Language. Malayalam (`ml-IN`) joins the
+  supported cultures and the profile's language list. Dates and month names follow the language.
+- **The i18n lint** (`Sangam.Web.Shared.Tests/Localization`): fails the build when visible text in a page,
+  component or UI code bypasses the catalogue, when a key a screen needs is missing in either language, when a
+  catalogue entry is no longer used, or when a translation drops a `{0}`. `SANGAM_I18N_DUMP=<path>` writes every key
+  with its translations for translators.
+- `sangam-i18n.css` (shared): no letter-spacing on Hindi and Malayalam (it breaks up letter clusters), and button
+  rows, choice lists and the portal's row-tables wrap or stack on a phone instead of overflowing. This also fixes two
+  phone layouts that overflowed in English (the Revoke button on Connected apps; the operator grant form).
+- The password meter's verdicts and the passkey scripts' messages come from the page in the reader's language.
+
+Notes for the review session (flagged, not decided):
+
+- **The translations need a native-speaker review before go-live.** They were written for this release and checked
+  mechanically (every key present, placeholders kept, brand names untouched), not by a fluent reviewer. The
+  translators' open questions are listed in `_evidence/i18n/REVIEW-NOTES.md`.
+- Tamil (`ta-IN`) stays a supported culture for dates and numbers and in the profile list, but has no catalogue
+  yet, so its screens show English. The picker offers only English, Hindi and Malayalam.
+- Not translated by design: data people or partners enter (application and role descriptions, organisation and
+  person names, the record being signed), OAuth `error_description` texts (for developers), the management API,
+  start-up refusals, the development-only pages, e-mails and SMS (PR-19), and the root page `/`, which is still the
+  PR-01 design-foundation check — it should be replaced with a redirect or a landing page before go-live.
+- ASP.NET Identity's own fallback messages (rare, behind Sangam's own checks) remain English.
+
+### Added — R3 (PR-19 branding, sign-in pages, e-mail and SMS templates)
+
+- **Customisation by level** (SGM-209): every setting resolves from the most specific level that sets it — the
+  organisation (and the organisations above it), then the application, then Sangam's platform defaults, then the
+  built-in default. New tables `customisations`, `message_templates` and `branding_assets` (migration
+  `Customisation`).
+- **Sign-in page branding** per application and per organisation: a logo, an accent colour (checked: white text on it
+  must reach 4.5:1), a welcome line in each language, and help, terms and privacy links. The accent recolours only
+  the primary button and links; structure never changes. An application names the organisation a sign-in is for
+  with the new authorization parameter `sangam_org` (its Sangam id; an organisation of another application is
+  ignored).
+- **Logos** are PNG, or SVG that is only a picture (no scripts, event handlers, embedded HTML, outside references or
+  DTDs), at most 200 KB, served at `/branding/logo/{id}` with `nosniff` and a sandboxing Content-Security-Policy so
+  even an SVG opened on its own cannot run anything in Sangam's origin.
+- **E-mail templates** for every message Sangam sends, per language, with `{{variables}}` checked on save (unknown
+  ones refused, required ones — the code, the invitation link — enforced). Built-in texts in English (word for word
+  the e-mails sent before), Hindi and Malayalam. Every e-mail now also has an HTML part, built from the text inside
+  Sangam's fixed layout (header in the application's accent, the code in a box, the link as a button); a template
+  changes words, never structure. Applications and organisations may set the verification, sign-in, password-reset
+  and invitation e-mails; security notices stay Sangam's own. The person's language comes first: a Hindi reader
+  gets Sangam's Hindi text rather than an application's English-only wording.
+- **Language of e-mails:** the account's profile language, which is now set at registration from the language the
+  person registered in. Invitations go in the inviter's language (the invitee may have no account yet).
+- **SMS templates** per language at platform level only, each with its DLT template id and exactly as many
+  `{#var#}` as the registered English text; a code is texted in the person's language when that version is
+  registered, otherwise in English.
+- **Screens:** partner console → Settings → *Sign-in page* and a new *Messages* tab; partner console → an
+  organisation → its own sign-in page and messages (tenant overrides); operator console → *Defaults* (AppManager
+  and above) for the platform's sign-in page and every message, including SMS. Each message editor previews the
+  e-mail with sample values; the sign-in page editor links to a live preview.
+- Audit actions `customisation.branding.update` and `customisation.template.update`.
+
+Fixed while building PR-19:
+
+- Two console components loading at once on one Blazor circuit shared its `DbContext` ("A second operation was
+  started on this context instance"). The customisation service now uses its own context per call.
+- A platform-rank check written as a SQL comparison compared the stored text ("viewer" > "app_manager"); it is now
+  compared in memory. (The new code only; the existing admin service already compared in memory.)
+
+Notes for the review session (flagged, not decided):
+
+- `sangam_org` is a new authorization-request parameter name; confirm it before partners build against it.
+- Templates are per language first, level second (above). The alternative — an application's English wording for
+  everyone — is a one-line change if preferred.
+- A custom domain for the sign-in page stays rejected (D-017, SGM-209 §3).
+- The SMS language variants still have to be registered on the DLT platform by imagiQa before use; until one is
+  saved with its id, texts go in English as today.
+
+### Added — R3 (PR-20 logout channels, introspection and revocation)
+
+- **Back-channel logout** (OpenID Connect Back-Channel Logout 1.0). Sangam now records which applications take part
+  in each browser session (`session_apps`). When a session ends — the person signs out, ends it from the portal, or
+  ends all sessions — a notification is queued (`logout_notifications`) for each of those applications that has a
+  back-channel address. The identity server posts a signed `logout_token` (`typ` `logout+jwt`; `iss`, `aud`, `iat`,
+  `exp`, `jti`, `sub`, `sid`, and the logout `events` claim; no `nonce`) every few seconds, retrying a failure with
+  growing pauses, six attempts in all. A slow or broken application never holds up a sign-out.
+- **Front-channel logout** (Front-Channel Logout 1.0). When an application used in the session has a front-channel
+  page, signing out shows "You're signed out of Sangam" with that page in a hidden frame (with `iss` and `sid`), then
+  carries on after the frames load or three seconds. For an application-initiated sign-out (`/connect/endsession`) the
+  page re-posts the request with `frames_done`, so the person still lands back at the application's
+  `post_logout_redirect_uri`. Without JavaScript, a Continue button does the same.
+- **Introspection** (`/connect/introspect`, RFC 7662) and **revocation** (`/connect/revoke`, RFC 7009), for
+  applications' own back ends. Both endpoints are in discovery; the seeded clients are permitted to use them.
+- Discovery advertises `frontchannel_logout_supported`, `frontchannel_logout_session_supported`,
+  `backchannel_logout_supported` and `backchannel_logout_session_supported`.
+- **Admin console:** Applications → *Logout* sets each application's back-channel address and front-channel page
+  (AppManager and above; https only, http accepted for localhost; no fragment). Changes are audited.
+- Migration `LogoutChannels`. New setting `Sangam:Logout:DeliverInBackground` (default `true`; the test host turns it
+  off and delivers explicitly).
+
+Notes for the review session:
+
+- Applications must allow Sangam to frame their front-channel page (their own `X-Frame-Options` / CSP
+  `frame-ancestors`). Browsers that block third-party cookies may not send the application's cookie inside the
+  frame; back-channel logout is the dependable channel and the one to recommend.
+- Sangam's own consoles (portal, admin, partner) do not yet register logout addresses; they keep their existing
+  short-lived sessions. Wiring them, and a logout-token validator in `Sangam.Client`, is a candidate for R4.
+- A notification that gives up after six attempts is kept (with its last error) for inspection; there is no
+  console view of failed deliveries yet.
+
+### Changed — founder decisions D-A to D-M (6–7 October 2026), folded into R3
+- **Existing accounts are concealed at registration (D-L, on by default).** A taken address or mobile gets exactly
+  the page a new registration gets; nothing is created. The real owner is told — by e-mail for an address; for a
+  mobile, by SMS when SMS is on, otherwise by e-mail to that account — at most three times a day
+  (`Sangam:Registration:AttemptNoticesPerDay`); every attempt is audited against the account. The person who typed
+  a new address with a taken mobile is no longer told anything (closing the leak V-09 noted). The password is
+  hashed on that path too, so the response takes as long as a real registration. Checked alongside: forgot-password
+  and code sign-in look identical for unknown addresses (now tested), and an address with no account now "locks
+  out" after the same five wrong passwords as a real one, with the same password-hashing time, so neither the
+  lockout message nor timing reveals an account.
+- **Anjal is Sangam's single messaging gateway, by its API (D-B, D-M).** The MailKit/SMTP sender and the
+  direct-aggregator failover are removed. `AnjalClient` posts JSON with an API key (header and scheme configurable),
+  an idempotency key that is the same on every retry, and retries with growing, jittered pauses on timeouts, 408,
+  429 and 5xx (honouring `Retry-After`); other 4xx are final. `AnjalEmailSender` (five attempts, in the background:
+  a page never waits for Anjal) and `AnjalSmsSender` (two attempts; provider name `anjal`) sit behind the existing
+  `IEmailSender` and `ISmsSender`. Staging allowlist `Sangam:Anjal:AllowedRecipients` (addresses, `@domains`,
+  numbers). Logs carry a masked recipient and the outcome only. Every host now checks at start that Anjal is
+  configured (https, or a private host name; a key of 20+ characters) — the portal, admin and partner consoles send
+  e-mail too, and previously had no sender configured in Compose. The proposed API contract is
+  `docs/anjal-messaging-contract.md`; `scripts/check-mail-dns.ps1` takes `-AnjalSpf`. SMS stays off until DLT is
+  registered under the new company (D-M); Sangam keeps the DLT ids and its per-number and per-IP limits.
+- **Ownership (D-C).** Sangam is owned personally by Dr. Arun Shiva Balasubramanian; jurisdiction Ahmedabad
+  (`PlatformOwner`, `Sangam:Operator`, `Sangam:Jurisdiction`). The terms and privacy placeholders name the owner (and
+  the data fiduciary), the seeded applications, README, SECURITY.md, package metadata and the docs follow; screens
+  that said "set by imagiQa" now say "set by Sangam" (or "the Sangam team").
+- **Grievances (D-D).** The page names Arun Shiva Balasubramanian and grievance@sangamid.in, and says every
+  grievance is acknowledged within 2 working days, resolved within 30 days, and logged.
+- **PostgreSQL 18 everywhere (D-F).** CI and the development Compose file run `postgres:18`.
+- **Invitation-only registration (D-I).** `Sangam:Registration:InvitationOnly` (off by default) closes the
+  register page except through an open invitation link (with the invited address only) or for addresses on
+  `Sangam:Registration:AllowedEmails` (full addresses or `@domains`), for the private pilot.
+- **Passkeys on ASP.NET Core Identity (D-G).** Fido2NetLib is removed. Identity's `PasskeyHandler` makes the options
+  and verifies every answer (origin, relying party, user verification, signature, counter); Identity's store keeps
+  the keys (`user_passkeys`, Identity schema version 3). Sangam keeps the ceremony state (a challenge works once),
+  its record of each passkey (name, last use, removal kept) and the audit events. Same screens, same refusals
+  (another site's answer, a counter going back, no user verification, a suspended account, a removed passkey), and
+  an unreadable answer is still a plain 400. Passkeys made before this release are not carried over (no production
+  data). Migration `IdentityPasskeys` (it also aligns two Identity key columns to 128 characters, which the
+  design-time model had missed).
+- **Self-hosted monitoring (D-H).** OpenTelemetry is removed. Every host records its own metrics with .NET's
+  `MeterListener` into `metric_points` (a minute per row and host): requests by status class and their times
+  (`UseSangamRequestMetrics`), sign-ins, refusals and lockouts, e-mail and SMS accepted or failed by Anjal, host
+  heartbeat, free disk space and certificate days left. The operator console's new *Monitoring* page shows hosts
+  and database, the last hour, the last 24 hours by hour, Anjal (its health check and delivery counts), the
+  breached-password list, disk, certificates (token, key ring, and the public sites' TLS), and the last backup and
+  restore drill (written by the scripts to `/srv/sangam/status`). The identity server evaluates configurable
+  thresholds every minute (`Sangam:Monitoring:Alerts:*`) and alerts the founder by e-mail and SMS through Anjal
+  (`Sangam:Alerts:Emails`/`Mobiles`, else every Owner), once per condition and again every six hours while it
+  stays open; conditions are kept in `monitoring_alerts`. Sangam watches Anjal (`AnjalHealthUrl`); the watchdog of
+  Sangam runs on Anjal's server (Anjal project). Logs use Docker's `local` driver with rotation. Migration
+  `Monitoring`.
+- **Breached-password check offline only (D-J).** The online range checker is removed. `PwnedPasswordList` stores
+  the downloadable Pwned Passwords SHA-1 list as a compact sorted file (first 8 bytes of each hash, a 65,536-bucket
+  index, binary search: a handful of reads per check) and `breach-list import|status` builds it from the official
+  downloader's single file or directory, running from the identity server's image. The check runs only when
+  switched on **and** the list is loaded; a refreshed list is picked up within a minute; the monitoring page shows
+  its state and date.
+- **Support recovery cooling-off (D-K).** A support reset of two-step sign-in is now a request: the verification
+  method is required and audited; the owner is alerted by e-mail with a one-click "this wasn't me, cancel" link, by
+  SMS when it is on, and by a notice at their next sign-in (cancel or continue); the reset is applied after 24 hours
+  (72 for operators, application administrators and organisation administrators) only if nobody cancelled, by a
+  background step that claims each request once. An urgent override (Support or Owner, a written reason) applies it
+  at once, is audited separately and alerts the platform owner immediately. Operators can withdraw a pending
+  request. Per-organisation periods are designed (a 24-hour minimum for privileged accounts) but deferred.
+  Migration `MfaResetRequests`.
+- Scheduled in SGM-108 rather than built here: D-A (audit archive and anonymisation), D-E (encrypted off-region
+  backups, the second provider), the demo application at `demo.sangamid.in` and the grievance log (D-I, D-D).
+
+### Founder decisions still open for R3 (built configurable or defaulted; nothing here blocks the release)
+- *(V-09 decided: D-L, conceal by default.)*
+- **PR-17:** whether a signature needs DigiLocker-verified identity (R5) in every case, and whether clinical
+  orders need level 2 or signature grade (each application asks with `acr_values` today).
+- **PR-18:** native-speaker review of the Hindi and Malayalam texts before go-live; when Tamil (and SGM-209's
+  other R3 languages — Marathi, Gujarati) get catalogues (SGM-108's exit criterion names Hindi and Malayalam,
+  SGM-209 §5 lists more); what replaces the root page `/`.
+- **PR-19:** the parameter name `sangam_org`; templates choose the reader's language before an application's
+  own wording; the Hindi and Malayalam SMS registrations on DLT.
+- **PR-20:** whether Sangam's own consoles register logout addresses (they keep short sessions today).
 
 ## [0.11.0] - R2 strong authentication
 

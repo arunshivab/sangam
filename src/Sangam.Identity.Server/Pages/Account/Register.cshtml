@@ -1,61 +1,67 @@
 @page
 @model RegisterModel
 @{
-    ViewData["Title"] = "Create your account";
+    ViewData["Title"] = L["Create your account"].Value;
 }
 
 <section class="sg-card">
-  <h1 class="sg-card-title">Create your Sangam account</h1>
-  <p class="sg-card-body">One account for every application that uses Sangam. You control what each one can see.</p>
+  <h1 class="sg-card-title">@L["Create your Sangam account"]</h1>
+  <p class="sg-card-body">@L["One account for every application that uses Sangam. You control what each one can see."]</p>
   <partial name="_Banner" model="@(("danger", Model.Error ?? string.Empty))" />
 
+  @if (Model.Closed)
+  {
+    <p class="sg-card-body">@L["Sangam is open by invitation only for now. Use the link in your invitation e-mail to create your account."]</p>
+  }
+  else
+  {
   <form method="post" novalidate>
     <partial name="_Antibot" />
     <input type="hidden" asp-for="ReturnUrl" />
     <div class="sg-two">
       <div class="sg-field-group">
-        <label class="sg-label" asp-for="FirstName">First name</label>
+        <label class="sg-label" asp-for="FirstName">@L["First name"]</label>
         <input class="sg-field" asp-for="FirstName" autocomplete="given-name" autofocus required />
         <span class="sg-field-error" asp-validation-for="FirstName"></span>
       </div>
       <div class="sg-field-group">
-        <label class="sg-label" asp-for="LastName">Last name</label>
+        <label class="sg-label" asp-for="LastName">@L["Last name"]</label>
         <input class="sg-field" asp-for="LastName" autocomplete="family-name" required />
         <span class="sg-field-error" asp-validation-for="LastName"></span>
       </div>
     </div>
     <div class="sg-field-group">
-      <label class="sg-label" asp-for="Email">Email</label>
+      <label class="sg-label" asp-for="Email">@L["Email"]</label>
       <input class="sg-field" asp-for="Email" type="email" autocomplete="email" inputmode="email" required />
       <span class="sg-field-error" asp-validation-for="Email"></span>
     </div>
     <div class="sg-field-group">
-      <label class="sg-label" asp-for="MobileNumber">Mobile</label>
+      <label class="sg-label" asp-for="MobileNumber">@L["Mobile"]</label>
       <div class="sg-phone">
-        <select class="sg-field sg-field--dial" asp-for="Country" autocomplete="country" aria-label="Country dialling code" required>
+        <select class="sg-field sg-field--dial" asp-for="Country" autocomplete="country" aria-label="@L["Country dialling code"]" required>
           @foreach (var country in Sangam.Shared.Constants.CountryCodes.All)
           {
             <option value="@country.Iso">@Sangam.Shared.Constants.CountryCodes.OptionLabel(country)</option>
           }
         </select>
-        <input class="sg-field" asp-for="MobileNumber" type="tel" autocomplete="tel-national" inputmode="numeric" placeholder="Mobile number" required />
+        <input class="sg-field" asp-for="MobileNumber" type="tel" autocomplete="tel-national" inputmode="numeric" placeholder="@L["Mobile number"]" required />
       </div>
       <span class="sg-field-error" asp-validation-for="MobileNumber"></span>
       <span class="sg-field-error sg-field-error--hidden" asp-validation-for="Country"></span>
     </div>
 
     <fieldset class="sg-field-group sg-dob" aria-describedby="dob-hint">
-      <legend class="sg-label">Date of birth</legend>
-      <span class="sg-hint" id="dob-hint">For example, 17 May 1990</span>
+      <legend class="sg-label">@L["Date of birth"]</legend>
+      <span class="sg-hint" id="dob-hint">@L["For example, 17 May 1990"]</span>
       <div class="sg-dob__parts">
         <div class="sg-dob__part sg-dob__part--day">
-          <label class="sg-dob__label" for="BirthDay">Day</label>
+          <label class="sg-dob__label" for="BirthDay">@L["Day"]</label>
           <input class="sg-field" id="BirthDay" name="BirthDay" value="@Model.BirthDay" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="bday-day" required />
         </div>
         <div class="sg-dob__part sg-dob__part--month">
-          <label class="sg-dob__label" for="BirthMonth">Month</label>
+          <label class="sg-dob__label" for="BirthMonth">@L["Month"]</label>
           <select class="sg-field" id="BirthMonth" name="BirthMonth" autocomplete="bday-month" required>
-            <option value="">Month…</option>
+            <option value="">@L["Month…"]</option>
             @foreach ((int number, string name) in RegisterModel.Months)
             {
               string value = number.ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -64,7 +70,7 @@
           </select>
         </div>
         <div class="sg-dob__part sg-dob__part--year">
-          <label class="sg-dob__label" for="BirthYear">Year</label>
+          <label class="sg-dob__label" for="BirthYear">@L["Year"]</label>
           <input class="sg-field" id="BirthYear" name="BirthYear" value="@Model.BirthYear" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="bday-year" required />
         </div>
       </div>
@@ -72,32 +78,33 @@
     </fieldset>
 
     <div class="sg-field-group">
-      <label class="sg-label" asp-for="Gender">Gender</label>
+      <label class="sg-label" asp-for="Gender">@L["Gender"]</label>
       <select class="sg-field" asp-for="Gender" required>
-        <option value="">Select…</option>
-        <option value="female">Female</option>
-        <option value="male">Male</option>
-        <option value="other">Other</option>
-        <option value="prefer_not_to_say">Prefer not to say</option>
+        <option value="">@L["Select…"]</option>
+        <option value="female">@L["Female"]</option>
+        <option value="male">@L["Male"]</option>
+        <option value="other">@L["Other"]</option>
+        <option value="prefer_not_to_say">@L["Prefer not to say"]</option>
       </select>
       <span class="sg-field-error" asp-validation-for="Gender"></span>
     </div>
     <div class="sg-field-group">
-      <label class="sg-label" asp-for="Password">Password</label>
+      <label class="sg-label" asp-for="Password">@L["Password"]</label>
       <input class="sg-field" asp-for="Password" type="password" autocomplete="new-password" required data-sg-password />
       <partial name="_StrengthMeter" model="Model.Strength" />
       <span class="sg-field-error" asp-validation-for="Password"></span>
     </div>
     <div class="sg-check">
       <input type="checkbox" asp-for="AcceptTerms" />
-      <label asp-for="AcceptTerms">I agree to the <a href="/terms">Terms</a> and the <a href="/privacy">Privacy Policy</a> (@Model.TermsVersion)</label>
+      <label asp-for="AcceptTerms">@L.Html("I agree to the {0} and the {1} ({2})", LocalizedMarkup.Link("/terms", L["Terms"]), LocalizedMarkup.Link("/privacy", L["Privacy Policy"]), Model.TermsVersion)</label>
       <span class="sg-field-error" asp-validation-for="AcceptTerms"></span>
     </div>
-    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">Create account</button>
+    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Create account"]</button>
   </form>
+  }
 
   <div class="sg-cord-rule" role="presentation"></div>
   <script src="/js/password-meter.js" defer></script>
 
-  <p class="sg-alt">Already registered? <a href="@(string.IsNullOrEmpty(Model.ReturnUrl) ? "/login" : "/login?returnUrl=" + Uri.EscapeDataString(Model.ReturnUrl))">Sign in</a></p>
+  <p class="sg-alt">@L["Already registered?"] <a href="@(string.IsNullOrEmpty(Model.ReturnUrl) ? "/login" : "/login?returnUrl=" + Uri.EscapeDataString(Model.ReturnUrl))">@L["Sign in"]</a></p>
 </section>

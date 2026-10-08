@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Sangam.Shared.Constants;
+using Sangam.Web.Shared.Localization;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace Sangam.SelfService.Web.Components.Common;
@@ -17,7 +18,7 @@ public static class PortalUser
     public static string Name(ClaimsPrincipal? principal)
         => principal?.FindFirst(Claims.Name)?.Value
         ?? principal?.FindFirst(Claims.Email)?.Value
-        ?? "Your account";
+        ?? CatalogueStringLocalizer.Shared["Your account"];
 
     /// <summary>Email address, when the scope was granted.</summary>
     /// <param name="principal">Current principal.</param>

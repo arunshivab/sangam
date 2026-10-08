@@ -2,12 +2,12 @@ using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Sangam.Identity.Application.Abstractions;
+using Sangam.Identity.Application.Accounts;
 using Sangam.Identity.Application.Admin;
 using Sangam.Identity.Application.Portal;
 using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Entities;
 using Sangam.Identity.Domain.Enums;
-using Sangam.Identity.Infrastructure.Accounts;
 using Sangam.Identity.Infrastructure.Maintenance;
 using Sangam.Identity.Infrastructure.Persistence;
 
@@ -21,17 +21,19 @@ public sealed partial class EfAdminService : IAdminService
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
     private readonly UserManager<SangamUser> _users;
-    private readonly IEmailSender _email;
+    private readonly EfMfaResetService _resets;
+    private readonly IPlatformAlerts _alerts;
 
     /// <summary>Initialises the service.</summary>
-    public EfAdminService(SangamDbContext db, IPortalService portal, IAuditWriter audit, IClock clock, UserManager<SangamUser> users, IEmailSender email)
+    public EfAdminService(SangamDbContext db, IPortalService portal, IAuditWriter audit, IClock clock, UserManager<SangamUser> users, EfMfaResetService resets, IPlatformAlerts alerts)
     {
+        _resets = resets ?? throw new ArgumentNullException(nameof(resets));
+        _alerts = alerts ?? throw new ArgumentNullException(nameof(alerts));
         _db = db ?? throw new ArgumentNullException(nameof(db));
         _portal = portal ?? throw new ArgumentNullException(nameof(portal));
         _audit = audit ?? throw new ArgumentNullException(nameof(audit));
         _clock = clock ?? throw new ArgumentNullException(nameof(clock));
         _users = users ?? throw new ArgumentNullException(nameof(users));
-        _email = email ?? throw new ArgumentNullException(nameof(email));
     }
 
     /// <inheritdoc />
@@ -342,10 +344,12 @@ public sealed partial class EfAdminService : IAdminService
                 Organisations = _db.Organisations.Count(o => o.RegisteredViaAppId == a.Id),
                 PartnerOwners = _db.AppAdmins.Count(x => x.AppId == a.Id && x.Role == AppAdminRole.Owner && x.RevokedAt == null),
                 a.IsPlatform,
+                a.BackChannelLogoutUri,
+                a.FrontChannelLogoutUri,
             })
             .ToListAsync(cancellationToken).ConfigureAwait(false);
 
-        return [.. rows.Select(r => new AdminAppRow(r.Id, r.ClientId, r.DisplayName, r.OwnerCompanyName, r.Status, r.SignInPolicy, r.Users, r.Organisations, r.PartnerOwners, r.IsPlatform))];
+        return [.. rows.Select(r => new AdminAppRow(r.Id, r.ClientId, r.DisplayName, r.OwnerCompanyName, r.Status, r.SignInPolicy, r.Users, r.Organisations, r.PartnerOwners, r.IsPlatform, r.BackChannelLogoutUri, r.FrontChannelLogoutUri))];
     }
 
     /// <inheritdoc />
@@ -379,6 +383,87 @@ public sealed partial class EfAdminService : IAdminService
         return AdminResult.Ok(status == AppStatus.Active
             ? $"{app.DisplayName} can sign users in again."
             : $"{app.DisplayName} can no longer sign anyone in.");
+    }
+
+    /// <inheritdoc />
+    public async Task<AdminResult> SetAppLogoutUrisAsync(Guid operatorUserId, Guid appId, string? backChannelLogoutUri, string? frontChannelLogoutUri, string? ipAddress, CancellationToken cancellationToken = default)
+    {
+        AdminResult? refusal = await RequireAsync(operatorUserId, PlatformRole.AppManager, cancellationToken).ConfigureAwait(false);
+        if (refusal is not null)
+        {
+            return refusal;
+        }
+
+        App? app = await _db.Apps.FirstOrDefaultAsync(a => a.Id == appId, cancellationToken).ConfigureAwait(false);
+        if (app is null)
+        {
+            return AdminResult.Refused("That application does not exist.");
+        }
+
+        string? back = NormaliseLogoutUri(backChannelLogoutUri, out string? backError);
+        if (backError is not null)
+        {
+            return AdminResult.Refused("Back-channel address: " + backError);
+        }
+
+        string? front = NormaliseLogoutUri(frontChannelLogoutUri, out string? frontError);
+        if (frontError is not null)
+        {
+            return AdminResult.Refused("Front-channel page: " + frontError);
+        }
+
+        app.BackChannelLogoutUri = back;
+        app.FrontChannelLogoutUri = front;
+        app.UpdatedAt = _clock.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await _audit.WriteAsync(
+            new AuditEntry(AuditActions.AdminAppUpdate, AuditActorType.Admin, operatorUserId, appId, "app", appId,
+                Metadata: System.Text.Json.JsonSerializer.Serialize(new { backchannel_logout_uri = back, frontchannel_logout_uri = front }), IpAddress: ipAddress),
+            cancellationToken).ConfigureAwait(false);
+
+        return AdminResult.Ok(back is null && front is null
+            ? $"{app.DisplayName} will no longer be told when a session ends."
+            : $"{app.DisplayName} will be told when a session ends.");
+    }
+
+    /// <summary>
+    /// Checks a logout address: blank means none; otherwise absolute, https (http only for localhost), at most 500
+    /// characters, with no fragment (OpenID Connect Front- and Back-Channel Logout 1.0, §2).
+    /// </summary>
+    internal static string? NormaliseLogoutUri(string? value, out string? error)
+    {
+        error = null;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        string trimmed = value.Trim();
+        if (trimmed.Length > 500)
+        {
+            error = "at most 500 characters.";
+            return null;
+        }
+
+        if (!Uri.TryCreate(trimmed, UriKind.Absolute, out Uri? uri) || (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
+        {
+            error = "enter a full web address, starting https://.";
+            return null;
+        }
+
+        if (uri.Scheme == Uri.UriSchemeHttp && !uri.IsLoopback)
+        {
+            error = "must use https (plain http is accepted only for localhost).";
+            return null;
+        }
+
+        if (!string.IsNullOrEmpty(uri.Fragment))
+        {
+            error = "must not contain a # fragment.";
+            return null;
+        }
+
+        return trimmed;
     }
 
     /// <inheritdoc />
@@ -566,64 +651,136 @@ public sealed partial class EfAdminService : IAdminService
     }
 
     /// <inheritdoc />
-    public async Task<AdminResult> ResetTwoStepAsync(Guid operatorUserId, Guid userId, IdentityProofingMethod method, string reference, string? ipAddress, CancellationToken cancellationToken = default)
+    public async Task<AdminResult> RequestTwoStepResetAsync(Guid operatorUserId, Guid userId, IdentityProofingMethod method, string reference, string? ipAddress, CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(reference);
+        (AdminResult? refusal, SangamUser? user, bool privileged) = await CheckTwoStepResetAsync(operatorUserId, userId, reference, cancellationToken).ConfigureAwait(false);
+        if (refusal is not null)
+        {
+            return refusal;
+        }
+
+        if (await _resets.PendingRowAsync(userId, cancellationToken).ConfigureAwait(false) is not null)
+        {
+            return AdminResult.Refused("A reset is already waiting for this person. Withdraw it, or apply it now with the urgent override.");
+        }
+
+        MfaResetRequest request = await _resets.CreateAsync(user!, operatorUserId, MethodCode(method), reference, privileged, ipAddress, cancellationToken).ConfigureAwait(false);
+        int hours = (int)(request.EffectiveAt - request.RequestedAt).TotalHours;
+        return AdminResult.Ok($"Reset requested. It takes effect in {hours} hours unless the person cancels it; they have been alerted by e-mail, by SMS where possible, and will see a notice when they next sign in.");
+    }
+
+    /// <inheritdoc />
+    public async Task<AdminResult> ApplyTwoStepResetNowAsync(Guid operatorUserId, Guid userId, IdentityProofingMethod method, string reference, string reason, string? ipAddress, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(reference);
+        ArgumentNullException.ThrowIfNull(reason);
+        if (reason.Trim().Length < 10)
+        {
+            return AdminResult.Refused("An urgent reset needs a written reason of at least a sentence.");
+        }
+
+        if (LongNumberRegex().IsMatch(reason))
+        {
+            return AdminResult.Refused("The reason looks like it contains an identity-document number. Never record Aadhaar, PAN or passport numbers.");
+        }
+
+        MfaResetRequest? request = await _resets.PendingRowAsync(userId, cancellationToken).ConfigureAwait(false);
+        (AdminResult? refusal, SangamUser? user, bool privileged) = await CheckTwoStepResetAsync(operatorUserId, userId, request?.Reference ?? reference, cancellationToken).ConfigureAwait(false);
+        if (refusal is not null)
+        {
+            return refusal;
+        }
+
+        request ??= await _resets.CreateAsync(user!, operatorUserId, MethodCode(method), reference, privileged, ipAddress, cancellationToken).ConfigureAwait(false);
+        if (!await _resets.ApplyAsync(request, operatorUserId, reason.Trim(), ipAddress, cancellationToken).ConfigureAwait(false))
+        {
+            return AdminResult.Refused("The reset was cancelled or applied a moment ago.");
+        }
+
+        await _audit.WriteAsync(
+            new AuditEntry(AuditActions.AdminUserMfaResetUrgent, AuditActorType.Admin, operatorUserId, TargetType: "user", TargetId: userId,
+                Metadata: System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, object> { ["request_id"] = request.Id, ["reason"] = reason.Trim(), ["privileged"] = privileged }),
+                IpAddress: ipAddress),
+            cancellationToken).ConfigureAwait(false);
+        await _alerts.SendAsync(
+            "urgent 2-step reset applied",
+            $"An operator applied a two-step reset at once, skipping the cooling-off period.\n\nOperator: {operatorUserId:D}\nAccount: {userId:D}{(privileged ? " (privileged)" : string.Empty)}\nReason: {reason.Trim()}\nRequest: {request.Id:D}",
+            cancellationToken).ConfigureAwait(false);
+        return AdminResult.Ok("Two-step sign-in reset now. The authenticator is removed, every session has ended, the person has been told, and the platform owner has been alerted.");
+    }
+
+    /// <inheritdoc />
+    public async Task<AdminResult> WithdrawTwoStepResetAsync(Guid operatorUserId, Guid userId, string? ipAddress, CancellationToken cancellationToken = default)
+    {
         AdminResult? refusal = await RequireAsync(operatorUserId, PlatformRole.Support, cancellationToken).ConfigureAwait(false);
         if (refusal is not null)
         {
             return refusal;
         }
 
+        MfaResetRequest? request = await _resets.PendingRowAsync(userId, cancellationToken).ConfigureAwait(false);
+        return request is not null && await _resets.CancelAsync(request, "operator", ipAddress, cancellationToken, operatorUserId).ConfigureAwait(false)
+            ? AdminResult.Ok("The pending reset is withdrawn.")
+            : AdminResult.Refused("There is no pending reset to withdraw.");
+    }
+
+    /// <inheritdoc />
+    public async Task<PendingTwoStepReset?> PendingTwoStepResetAsync(Guid userId, CancellationToken cancellationToken = default)
+        => await _resets.PendingAsync(userId, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>
+    /// The checks every two-step reset passes: Support or above, never your own, an operator's only by an Owner, no
+    /// identity-document number in the reference, an existing account with an authenticator. Also says whether the
+    /// account is privileged (an operator, an application administrator or an organisation administrator; D-K).
+    /// </summary>
+    private async Task<(AdminResult? Refusal, SangamUser? User, bool Privileged)> CheckTwoStepResetAsync(Guid operatorUserId, Guid userId, string reference, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reference);
+        AdminResult? refusal = await RequireAsync(operatorUserId, PlatformRole.Support, cancellationToken).ConfigureAwait(false);
+        if (refusal is not null)
+        {
+            return (refusal, null, false);
+        }
+
         if (operatorUserId == userId)
         {
-            return AdminResult.Refused("You cannot reset your own two-step sign-in. Ask another operator.");
+            return (AdminResult.Refused("You cannot reset your own two-step sign-in. Ask another operator."), null, false);
         }
 
         if (LongNumberRegex().IsMatch(reference))
         {
-            return AdminResult.Refused("The reference looks like it contains an identity-document number. Record the ticket number or a short note only — never Aadhaar, PAN or passport numbers.");
+            return (AdminResult.Refused("The reference looks like it contains an identity-document number. Record the ticket number or a short note only — never Aadhaar, PAN or passport numbers."), null, false);
         }
 
         bool targetIsOperator = await _db.PlatformOperators.AnyAsync(o => o.UserId == userId && o.RevokedAt == null, cancellationToken).ConfigureAwait(false);
         if (targetIsOperator && await GetRoleAsync(operatorUserId, cancellationToken).ConfigureAwait(false) != PlatformRole.Owner)
         {
-            return AdminResult.Refused("Only an Owner can reset an operator's two-step sign-in.");
+            return (AdminResult.Refused("Only an Owner can reset an operator's two-step sign-in."), null, false);
         }
 
         SangamUser? user = await _users.FindByIdAsync(userId.ToString("D")).ConfigureAwait(false);
         if (user is null || user.Status == UserStatus.DeletedHard)
         {
-            return AdminResult.Refused("That user does not exist.");
+            return (AdminResult.Refused("That user does not exist."), null, false);
         }
 
         if (!await _users.GetTwoFactorEnabledAsync(user).ConfigureAwait(false))
         {
-            return AdminResult.Refused("This person has no authenticator to reset.");
+            return (AdminResult.Refused("This person has no authenticator to reset."), null, false);
         }
 
-        await _users.SetTwoFactorEnabledAsync(user, false).ConfigureAwait(false);
-        await _users.ResetAuthenticatorKeyAsync(user).ConfigureAwait(false);
-        await _users.UpdateSecurityStampAsync(user).ConfigureAwait(false);
-        await _portal.RevokeAllSessionsAsync(userId, ipAddress, cancellationToken).ConfigureAwait(false);
-        await _email.SendAsync(AccountEmails.TwoStepResetNotice(user.Email!, user.DisplayName), cancellationToken).ConfigureAwait(false);
-
-        await _audit.WriteAsync(
-            new AuditEntry(AuditActions.AdminUserMfaReset, AuditActorType.Admin, operatorUserId, TargetType: "user", TargetId: userId,
-                Metadata: System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string>
-                {
-                    ["method"] = method switch
-                    {
-                        IdentityProofingMethod.VideoCall => "video_call",
-                        IdentityProofingMethod.InPerson => "in_person",
-                        _ => "verified_mobile_callback",
-                    },
-                    ["reference"] = reference.Trim(),
-                }),
-                IpAddress: ipAddress),
-            cancellationToken).ConfigureAwait(false);
-        return AdminResult.Ok("Two-step sign-in reset. The authenticator is removed, every session has ended, and the person has been told by e-mail.");
+        bool privileged = targetIsOperator
+            || await _db.AppAdmins.AnyAsync(a => a.UserId == userId && a.RevokedAt == null, cancellationToken).ConfigureAwait(false)
+            || await _db.OrgMemberships.AnyAsync(m => m.UserId == userId && m.RevokedAt == null && m.Role!.Code == "org_admin", cancellationToken).ConfigureAwait(false);
+        return (null, user, privileged);
     }
+
+    private static string MethodCode(IdentityProofingMethod method) => method switch
+    {
+        IdentityProofingMethod.VideoCall => "video_call",
+        IdentityProofingMethod.InPerson => "in_person",
+        _ => "verified_mobile_callback",
+    };
 
     // Eight or more digits in a row look like an identity-document number, which must never be recorded.
     [GeneratedRegex("[0-9]{8,}")]

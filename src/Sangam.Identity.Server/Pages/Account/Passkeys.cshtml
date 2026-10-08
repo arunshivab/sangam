@@ -1,17 +1,17 @@
 @page "/account/passkeys"
 @model PasskeysModel
 @{
-    ViewData["Title"] = "Passkeys";
+    ViewData["Title"] = L["Passkeys"].Value;
 }
 
 <section class="sg-card sg-doc">
-  <h1 class="sg-card-title">Passkeys</h1>
-  <p class="sg-card-body">A passkey signs you in with your phone, computer or security key — your fingerprint, face or PIN instead of a password. It only works on Sangam's own site, so it cannot be stolen by a fake one.</p>
+  <h1 class="sg-card-title">@L["Passkeys"]</h1>
+  <p class="sg-card-body">@L["A passkey signs you in with your phone, computer or security key — your fingerprint, face or PIN instead of a password. It only works on Sangam's own site, so it cannot be stolen by a fake one."]</p>
   <partial name="_Banner" model="@(("success", Model.Notice ?? string.Empty))" />
 
   @if (Model.Passkeys.Count == 0)
   {
-    <p class="sg-card-body">You have no passkeys yet.</p>
+    <p class="sg-card-body">@L["You have no passkeys yet."]</p>
   }
   else
   {
@@ -20,10 +20,10 @@
       {
         <li>
           <strong>@passkey.Name</strong>
-          <span class="sg-muted">added @passkey.CreatedAt.ToString("d MMM yyyy", System.Globalization.CultureInfo.CurrentCulture)@(passkey.LastUsedAt is DateTimeOffset used ? ", last used " + used.ToString("d MMM yyyy", System.Globalization.CultureInfo.CurrentCulture) : string.Empty)@(passkey.Synced ? " · synced" : string.Empty)</span>
+          <span class="sg-muted">@L["added {0}", passkey.CreatedAt.ToString("d MMM yyyy", System.Globalization.CultureInfo.CurrentCulture)]@(passkey.LastUsedAt is DateTimeOffset used ? ", " + L["last used {0}", used.ToString("d MMM yyyy", System.Globalization.CultureInfo.CurrentCulture)] : string.Empty)@(passkey.Synced ? " · " + L["synced"] : string.Empty)</span>
           <form method="post" asp-page-handler="Remove" class="sg-inline-form">
             <input type="hidden" name="id" value="@passkey.Id" />
-            <button type="submit" class="sg-btn sg-btn--secondary">Remove</button>
+            <button type="submit" class="sg-btn sg-btn--secondary">@L["Remove"]</button>
           </form>
         </li>
       }
@@ -32,14 +32,14 @@
 
   <form method="post" onsubmit="return false" class="sg-passkey-add">
     <div class="sg-field-group">
-      <label class="sg-label" for="passkey-name">Name for the new passkey</label>
-      <input class="sg-field" id="passkey-name" maxlength="60" placeholder="My phone" />
+      <label class="sg-label" for="passkey-name">@L["Name for the new passkey"]</label>
+      <input class="sg-field" id="passkey-name" maxlength="60" placeholder="@L["My phone"]" />
     </div>
-    <button type="button" class="sg-btn sg-btn--primary" hidden data-passkey-add data-name="passkey-name"
-            data-options-url="/account/passkeys?handler=AddOptions" data-verify-url="/account/passkeys?handler=AddVerify" data-message="passkey-message">Add a passkey</button>
-    <noscript><p class="sg-card-body">Adding a passkey needs JavaScript.</p></noscript>
+    <button type="button" class="sg-btn sg-btn--primary" hidden data-passkey-add data-name="passkey-name" data-text-failed="@L["This passkey could not be added."]" data-text-cancelled="@L["The passkey request was cancelled or is not available on this device."]"
+            data-options-url="/account/passkeys?handler=AddOptions" data-verify-url="/account/passkeys?handler=AddVerify" data-message="passkey-message">@L["Add a passkey"]</button>
+    <noscript><p class="sg-card-body">@L["Adding a passkey needs JavaScript."]</p></noscript>
   </form>
   <p class="sg-field-error" id="passkey-message" hidden></p>
-  <a class="sg-tertiary" href="/account">Back to your account</a>
+  <a class="sg-tertiary" href="/account">@L["Back to your account"]</a>
 </section>
 <script src="/js/passkeys.js" defer></script>

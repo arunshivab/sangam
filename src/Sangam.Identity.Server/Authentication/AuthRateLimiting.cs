@@ -46,7 +46,8 @@ public static class AuthRateLimiting
             {
                 ctx.HttpContext.Response.Headers.RetryAfter = "60";
                 ctx.HttpContext.Response.ContentType = "text/plain; charset=utf-8";
-                await ctx.HttpContext.Response.WriteAsync("Too many attempts. Please wait a minute and try again.", ct).ConfigureAwait(false);
+                string message = Pages.PageText.For(ctx.HttpContext)["Too many attempts. Please wait a minute and try again."];
+                await ctx.HttpContext.Response.WriteAsync(message, ct).ConfigureAwait(false);
             };
             o.AddPolicy(PolicyName, ctx =>
             {

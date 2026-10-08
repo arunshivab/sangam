@@ -113,4 +113,5 @@ public interface IAccountService
 /// <summary>Result of <see cref="IAccountService.RegisterAsync"/>.</summary>
 /// <param name="Result">Success or field errors.</param>
 /// <param name="UserId">The new user's id on success.</param>
-public sealed record RegistrationOutcome(AccountResult Result, Guid? UserId);
+/// <param name="Concealed">The address or mobile already had an account and <see cref="RegistrationOptions.ConcealExistingAccounts"/> is on: show the same next screen as a real registration (V-09).</param>
+public sealed record RegistrationOutcome(AccountResult Result, Guid? UserId, bool Concealed = false);
