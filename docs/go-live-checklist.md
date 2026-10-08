@@ -171,14 +171,14 @@ Checks:
 - [ ] SDKs: before a partner uses an SDK from npm, PyPI or Maven Central, the `@sangam` scope, the `sangam-client`
       name and the `in.sangamid` namespace are registered to the founder and the packages published (OI-048); until
       then partners build them from the repository.
-- [ ] Add the `sdks` CI job to the branch ruleset once it has passed on main.
+- [x] Add the `sdks` CI job to the branch ruleset once it has passed on main. (Done at the R7 merge.)
 
 ## Added by R7 (v1.0.0-rc.1, certification readiness)
 
 Security (docs/security/, SGM-503):
 
-- [ ] Add the `security` CI job to the branch ruleset, beside build, format and sdks. It already fails on any high or
-      critical finding.
+- [x] Add the `security` CI job to the branch ruleset, beside build, format and sdks. It already fails on any high or
+      critical finding. (Done at the R7 merge.)
 - [ ] Commission the external penetration test from `docs/security/pentest-scope.md`, on a staging copy built from
       this release. Record its findings in SGM-503 and SGM-701.
 - [ ] Decide the ASVS gaps that are yours to decide (SGM-908 lists the options):
@@ -255,3 +255,21 @@ named person, because the audit log records *who* acted.
       a backup.
 - [ ] Confirm the hourly maintenance sweep is running (`Sangam:Maintenance:Enabled`). Since R7 every host may run
       it: a database lock lets one host at a time sweep.
+
+## Added by rc.2 (v1.0.0-rc.2)
+
+Checks (docs/security/README.md, "Automated checks"):
+
+- [ ] Add the `migrations` CI job to the branch ruleset, beside the other five.
+- [ ] In the same ruleset, turn on **Require code scanning results** for CodeQL: security alerts "High or higher",
+      alerts "Errors". After the first CodeQL run on main, look through Security -> Code scanning and decide each
+      alert it found in the existing code.
+- [ ] Settings -> Code security: turn on Dependabot alerts and Dependabot security updates, so `dependabot.yml`'s
+      weekly pull requests are joined by immediate ones for advisories.
+- [ ] Watch the first nights of the `Nightly` workflow (accessibility and zap-baseline). GitHub e-mails you when a
+      scheduled run fails.
+
+Text:
+
+- [ ] Have a native speaker read the Hindi and Malayalam texts added in rc.2: the "your sign-in uses a password"
+      e-mail (`password_account_code_notice`), the two lines on the code screens, and the connection messages.

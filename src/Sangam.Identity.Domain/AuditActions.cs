@@ -78,6 +78,12 @@ public static class AuditActions
     /// <summary>A one-time code was refused (wrong, expired or exhausted; reason in metadata).</summary>
     public const string UserOtpFail = "user.otp.fail";
 
+    /// <summary>
+    /// rc.2: a sign-in code was asked for, but the account signs in with a password; the owner is reminded by e-mail
+    /// instead (<c>notified</c> in metadata), and the screen looks the same as for any other address.
+    /// </summary>
+    public const string UserOtpPasswordAccount = "user.otp.password_account";
+
     /// <summary>The user changed their sign-in preference.</summary>
     public const string UserSignInPreferenceChange = "user.signin.preference.change";
 

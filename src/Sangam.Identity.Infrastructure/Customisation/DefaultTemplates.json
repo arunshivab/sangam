@@ -264,5 +264,19 @@
       "subject": "നിങ്ങളുടെ Sangam അക്കൗണ്ടിൽ നിന്ന് ഒരു പാസ്‌കീ നീക്കം ചെയ്തു",
       "body": "നമസ്കാരം {{name}},\n\nനിങ്ങളുടെ Sangam അക്കൗണ്ടിൽ നിന്ന് ഇപ്പോൾ ഒരു പാസ്‌കീ നീക്കം ചെയ്തു. അത് സൂക്ഷിച്ചിരുന്ന ഉപകരണത്തിനോ പാസ്‌വേഡ് മാനേജർക്കോ\nഇനി നിങ്ങളെ സൈൻ ഇൻ ചെയ്യിക്കാൻ കഴിയില്ല.\n\nഇത് നിങ്ങൾ ചെയ്തതാണെങ്കിൽ, ഒന്നും ചെയ്യേണ്ടതില്ല. അല്ലെങ്കിൽ, ഉടൻ തന്നെ സൈൻ-ഇൻ പേജിൽ നിന്ന് പാസ്‌വേഡ് റീസെറ്റ് ചെയ്ത്\nhelp@sangamid.in എന്ന വിലാസത്തിലേക്ക് എഴുതുക, അതുവഴി ഞങ്ങൾക്ക് നിങ്ങളുടെ അക്കൗണ്ട് സുരക്ഷിതമാക്കാം.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
     }
+  },
+  "password_account_code_notice": {
+    "en-IN": {
+      "subject": "Sign in to Sangam with your password",
+      "body": "Hello {{name}},\n\nSomeone just asked for a sign-in code for your Sangam account. This sign-in uses your password, not an\nemailed code, so no code was sent and nothing about your account has changed.\n\nIf it was you: sign in with your password at id.sangamid.in, or use \"Forgot password?\" there if you cannot\nremember it.\nIf it was not you: there is nothing to do. Your account is safe.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "Sangam में अपने पासवर्ड से साइन इन करें",
+      "body": "नमस्ते {{name}},\n\nकिसी ने अभी आपके Sangam खाते के लिए साइन-इन कोड माँगा। यह साइन-इन ईमेल किए गए कोड से नहीं, आपके पासवर्ड से\nहोता है, इसलिए कोई कोड नहीं भेजा गया और आपके खाते में कुछ भी नहीं बदला है।\n\nयदि यह आप थे: id.sangamid.in पर अपने पासवर्ड से साइन इन करें, या पासवर्ड याद न होने पर वहाँ \"पासवर्ड भूल गए?\" का उपयोग करें।\nयदि यह आप नहीं थे: आपको कुछ करने की आवश्यकता नहीं है। आपका खाता सुरक्षित है।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "നിങ്ങളുടെ പാസ്‌വേഡ് ഉപയോഗിച്ച് Sangam-ൽ സൈൻ ഇൻ ചെയ്യുക",
+      "body": "നമസ്കാരം {{name}},\n\nനിങ്ങളുടെ Sangam അക്കൗണ്ടിനായി ആരോ ഇപ്പോൾ ഒരു സൈൻ-ഇൻ കോഡ് ആവശ്യപ്പെട്ടു. ഈ സൈൻ-ഇൻ ഇമെയിൽ ചെയ്യുന്ന കോഡ് ഉപയോഗിച്ചല്ല,\nനിങ്ങളുടെ പാസ്‌വേഡ് ഉപയോഗിച്ചാണ്, അതിനാൽ കോഡ് അയച്ചിട്ടില്ല, നിങ്ങളുടെ അക്കൗണ്ടിൽ ഒന്നും മാറിയിട്ടുമില്ല.\n\nഅത് നിങ്ങളാണെങ്കിൽ: id.sangamid.in എന്ന സൈറ്റിൽ പാസ്‌വേഡ് ഉപയോഗിച്ച് സൈൻ ഇൻ ചെയ്യുക, പാസ്‌വേഡ് ഓർമ്മയില്ലെങ്കിൽ അവിടെയുള്ള \"പാസ്‌വേഡ് മറന്നോ?\" ഉപയോഗിക്കുക.\nഅത് നിങ്ങളല്ലെങ്കിൽ: ഒന്നും ചെയ്യേണ്ടതില്ല. നിങ്ങളുടെ അക്കൗണ്ട് സുരക്ഷിതമാണ്.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
   }
 }

@@ -35,7 +35,12 @@ public sealed class SecurityHeaderTests : IClassFixture<ConsoleFactory>
         using HttpClient client = _factory.ClientFor(owner);
         using HttpResponseMessage response = await client.GetAsync(new Uri("/", UriKind.Relative));
         Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("_framework/blazor.web.js", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        string html = await response.Content.ReadAsStringAsync();
+        Assert.Contains("_framework/blazor.web.js", html, StringComparison.Ordinal);
+        // rc.2: every page carries the connection box, with its buttons wired by a script from this origin.
+        Assert.Contains("id=\"components-reconnect-modal\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"blazor-error-ui\"", html, StringComparison.Ordinal);
+        Assert.Contains("<script src=\"_content/Sangam.Web.Shared/js/connection.js\"></script>", html, StringComparison.Ordinal);
         AssertTheFullPolicy(response);
     }
 

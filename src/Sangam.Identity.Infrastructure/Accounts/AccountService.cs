@@ -20,6 +20,9 @@ namespace Sangam.Identity.Infrastructure.Accounts;
 /// </summary>
 public sealed class AccountService : IAccountService
 {
+    /// <summary>rc.2: how many "your sign-in uses a password" reminders one account can receive in 24 hours.</summary>
+    internal const int PasswordAccountRemindersPerDay = 3;
+
     private const string PasswordPolicyMessage = "Use at least 8 characters with an uppercase letter, a lowercase letter, a number and a symbol, and not a common password.";
 
     private readonly UserManager<SangamUser> _users;
@@ -401,11 +404,39 @@ public sealed class AccountService : IAccountService
         SignInMode mode = SignInModes.Resolve(appPolicy, user.SignInPreference);
         if (mode != SignInMode.OtpOnly)
         {
+            // rc.2: no code for a password sign-in, but the owner is told so by e-mail; the screen stays the same for every address.
+            await RemindPasswordAccountAsync(user, cancellationToken).ConfigureAwait(false);
             return new SignInCheck(SignInStatus.InvalidCredentials, null, mode);
         }
 
         await IssueCodeAsync(user.Id, OneTimeCodePurpose.SignIn, cancellationToken).ConfigureAwait(false);
         return new SignInCheck(SignInStatus.RequiresOtp, ToSummary(user), mode);
+    }
+
+    /// <summary>
+    /// rc.2: someone asked for a sign-in code for an account whose sign-in uses a password. The owner is reminded by
+    /// e-mail, at most <see cref="PasswordAccountRemindersPerDay"/> times in 24 hours so the button cannot be used to
+    /// flood a mailbox; every request is audited, with whether a reminder went out.
+    /// </summary>
+    private async Task RemindPasswordAccountAsync(SangamUser owner, CancellationToken cancellationToken)
+    {
+        DateTimeOffset since = _clock.UtcNow.AddHours(-24);
+        int recent = await _db.AuditEvents.CountAsync(
+            e => e.Action == AuditActions.UserOtpPasswordAccount && e.TargetId == owner.Id && e.OccurredAt > since, cancellationToken).ConfigureAwait(false);
+        string channel = "none";
+        if (recent < PasswordAccountRemindersPerDay && !string.IsNullOrEmpty(owner.Email))
+        {
+            Dictionary<string, string> values = new(StringComparer.Ordinal) { ["name"] = owner.DisplayName };
+            EmailMessage reminder = await _templates.EmailAsync(
+                MessageTemplateKinds.PasswordAccountCodeNotice, owner.Locale, null, null, values, owner.Email, owner.DisplayName, cancellationToken).ConfigureAwait(false);
+            await _email.SendAsync(reminder, cancellationToken).ConfigureAwait(false);
+            channel = "email";
+        }
+
+        await _audit.WriteAsync(
+            new AuditEntry(AuditActions.UserOtpPasswordAccount, AuditActorType.Anonymous, TargetType: "user", TargetId: owner.Id,
+                Metadata: $"{{\"notified\":\"{channel}\"}}"),
+            cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

@@ -1,0 +1,74 @@
+/* rc.2 (Sangam.Web.Shared): the connection box of the interactive consoles (ConnectionStatus.razor). Hidden until
+   Blazor shows it: by state (data-state, .NET 10) or by class (earlier versions) for the reconnect box, and by an
+   inline display for the error box. Readable on the light portal and the dark consoles alike. */
+.sg-conn {
+  display: none;
+  position: fixed;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+}
+
+.sg-conn-box {
+  background: #14202E;
+  color: #F2EFE8;
+  border: 1px solid var(--sg-sandalwood, #D9C9A8);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  font: 400 15px/1.5 var(--sg-font-body, system-ui, sans-serif);
+}
+
+.sg-conn-box p { margin: 0; overflow-wrap: anywhere; }
+
+.sg-conn-btn {
+  margin-left: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--sg-sandalwood, #D9C9A8);
+  border-radius: 6px;
+  background: var(--sg-sandalwood, #D9C9A8);
+  color: #14202E;
+  font: 600 14px/1.4 var(--sg-font-body, system-ui, sans-serif);
+  cursor: pointer;
+}
+
+.sg-conn-btn:focus-visible { outline: 2px solid #F2EFE8; outline-offset: 2px; }
+.sg-conn-btn:disabled { opacity: 0.6; cursor: progress; }
+
+.sg-conn-retrying, .sg-conn-failed, .sg-conn-rejected { display: none; }
+
+#components-reconnect-modal[data-state="show"],
+#components-reconnect-modal[data-state="retrying"],
+#components-reconnect-modal[data-state="failed"],
+#components-reconnect-modal[data-state="paused"],
+#components-reconnect-modal[data-state="resume-failed"],
+#components-reconnect-modal[data-state="rejected"],
+#components-reconnect-modal.components-reconnect-show,
+#components-reconnect-modal.components-reconnect-failed,
+#components-reconnect-modal.components-reconnect-rejected { display: block; }
+
+#components-reconnect-modal[data-state="hide"] { display: none; }
+
+#components-reconnect-modal[data-state="show"] .sg-conn-retrying,
+#components-reconnect-modal[data-state="retrying"] .sg-conn-retrying,
+#components-reconnect-modal.components-reconnect-show:not([data-state]) .sg-conn-retrying { display: block; }
+
+#components-reconnect-modal[data-state="failed"] .sg-conn-failed,
+#components-reconnect-modal[data-state="paused"] .sg-conn-failed,
+#components-reconnect-modal.components-reconnect-failed:not([data-state]) .sg-conn-failed { display: block; }
+
+#components-reconnect-modal[data-state="rejected"] .sg-conn-rejected,
+#components-reconnect-modal[data-state="resume-failed"] .sg-conn-rejected,
+#components-reconnect-modal.components-reconnect-rejected:not([data-state]) .sg-conn-rejected { display: block; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .sg-conn-box { animation: sg-conn-in 160ms ease-out; }
+}
+
+@keyframes sg-conn-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}

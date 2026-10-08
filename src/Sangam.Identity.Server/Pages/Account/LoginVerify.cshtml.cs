@@ -59,6 +59,12 @@ public sealed class LoginVerifyModel : AuthPageModel
     /// <summary>Whether the current code was texted.</summary>
     public bool ViaSms { get; private set; }
 
+    /// <summary>
+    /// rc.2: whether this is the passwordless code (from "Sign in with a code"), not the code after a password. The page
+    /// then says that a password account gets a reminder instead, the same for every address.
+    /// </summary>
+    public bool Passwordless { get; private set; }
+
     /// <summary>Whether the person may switch to (or back from) a texted code.</summary>
     public bool SmsOffered => _sms.Enabled;
 
@@ -221,6 +227,7 @@ public sealed class LoginVerifyModel : AuthPageModel
     {
         await ResolvePartnerAsync(_apps, ReturnUrl, cancellationToken);
         ViaSms = pending.ViaSms && _sms.Enabled;
+        Passwordless = pending.Mode == SignInMode.OtpOnly;
         if (pending.UserId is not Guid userId || userId == Guid.Empty)
         {
             ResendIn = 60;

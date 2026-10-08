@@ -86,6 +86,9 @@ public static class MessageTemplateKinds
     /// <summary>To the person: a passkey was removed from their account (R7, ASVS V2.5.5).</summary>
     public const string PasskeyRemovedNotice = "passkey_removed_notice";
 
+    /// <summary>To the person: they asked for a sign-in code, but their sign-in uses a password (rc.2).</summary>
+    public const string PasswordAccountCodeNotice = "password_account_code_notice";
+
     /// <summary>Every kind, in the order the consoles list them.</summary>
     public static IReadOnlyList<MessageTemplateKind> All { get; } =
     [
@@ -101,6 +104,7 @@ public static class MessageTemplateKinds
         new(AuthenticatorRemovedNotice, false, false, ["name"], []),
         new(PasskeyAddedNotice, false, false, ["name"], []),
         new(PasskeyRemovedNotice, false, false, ["name"], []),
+        new(PasswordAccountCodeNotice, false, false, ["name"], []),
         new(TwoStepResetRequested, false, false, ["name", "hours", "effective", "link"], ["link"]),
         new(OperatorAlert, false, false, ["summary", "details"], ["summary"]),
         new(GrievanceAcknowledgement, false, false, ["name", "reference", "received", "resolve_by"], ["reference"]),

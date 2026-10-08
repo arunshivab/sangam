@@ -10,6 +10,17 @@ penetration test: those are commissioned by the founder.
 | [dependency-scan.md](dependency-scan.md) | How every dependency and image is scanned on every pull request (the `security` CI job), and the R7 results. |
 | [pentest-scope.md](pentest-scope.md) | Scope, rules of engagement, test accounts, method and deliverables for the external penetration test (SGM-506). |
 
+## Automated checks (rc.2)
+
+| Check | When | Fails on | Required to merge |
+|---|---|---|---|
+| `security` (CI) | every pull request and push to main | a high or critical finding in a dependency, the repository or the identity image | yes |
+| `migrations` (CI) | every pull request and push to main | an entity change without its migration, in Sangam's database or the imagiQa sample's | yes |
+| CodeQL (`codeql.yml`) | every pull request, push to main, and weekly | through the ruleset's "Require code scanning results": a high or critical security alert | yes |
+| `accessibility` (`nightly.yml`) | every night, and by hand | any WCAG 2.2 AA violation, policy violation or broken live connection, in three languages | no (nightly) |
+| `zap-baseline` (`nightly.yml`) | every night, and by hand | any FAIL from the ZAP baseline scan of a host | no (nightly) |
+| Dependabot (`dependabot.yml`) | weekly, and at once for an advisory | opens pull requests for NuGet, npm, pip, Maven, GitHub Actions and Docker updates | each runs the full CI |
+
 Related:
 
 - [../siem.md](../siem.md): streaming the audit log to a SIEM.

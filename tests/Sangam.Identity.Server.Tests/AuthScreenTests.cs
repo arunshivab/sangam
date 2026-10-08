@@ -20,6 +20,8 @@ public sealed partial class AuthScreenTests
         _factory = factory;
     }
 
+    private const string ReminderLine = "If your account signs in with a password, we have emailed you a reminder instead.";
+
     [Fact]
     public async Task Screens_RenderWithoutDatabase_AndLoadNothingExternal()
     {
@@ -296,6 +298,9 @@ public sealed partial class AuthScreenTests
 
         (_, string? loc, _) = await s.PostFormAsync("/login", new Dictionary<string, string> { ["Email"] = email, ["Password"] = "Correct-Horse-2026!" });
         Assert.Equal("/login/verify", loc);
+        // rc.2: the password-account reminder line belongs to the passwordless screen only, not to the code after a password.
+        (_, string twoStepHtml) = await s.GetAsync("/login/verify");
+        Assert.DoesNotContain(ReminderLine, twoStepHtml, StringComparison.Ordinal);
         string code = Code(outbox.LatestFor(email)!.Message.TextBody);
         (_, string? afterCode, _) = await s.PostFormAsync("/login/verify", new Dictionary<string, string> { ["Code"] = code });
         Assert.Equal("/account", afterCode);
@@ -315,6 +320,8 @@ public sealed partial class AuthScreenTests
         using BrowserSession stranger = new(_factory);
         (_, string? strangerLoc, _) = await stranger.PostFormAsync("/login/code", new Dictionary<string, string> { ["Email"] = "nobody-" + Guid.NewGuid().ToString("N") + "@example.in" });
         Assert.Equal("/login/verify", strangerLoc);
+        (_, string strangerScreen) = await stranger.GetAsync("/login/verify");
+        Assert.Contains(ReminderLine, strangerScreen, StringComparison.Ordinal);
         (HttpStatusCode strSt, _, string strHtml) = await stranger.PostFormAsync("/login/verify", new Dictionary<string, string> { ["Code"] = "123456" });
         Assert.Equal(HttpStatusCode.OK, strSt);
         Assert.Contains("not valid", strHtml, StringComparison.Ordinal);

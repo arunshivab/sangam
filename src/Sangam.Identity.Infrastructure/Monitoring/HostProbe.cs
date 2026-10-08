@@ -12,6 +12,13 @@ namespace Sangam.Identity.Infrastructure.Monitoring;
 public sealed class HostProbe
 {
     private static readonly TimeSpan CertificateRecheck = TimeSpan.FromHours(1);
+
+    /// <summary>
+    /// rc.2: the disk watched when <c>Sangam:Monitoring:DiskPaths</c> is not set — the root of the drive this host runs
+    /// from: "/" on Linux and macOS, "C:\" (or wherever it is installed) on Windows, where "/" is not a drive name.
+    /// </summary>
+    public static string DefaultDiskPath { get; } = Path.GetPathRoot(AppContext.BaseDirectory) is { Length: > 0 } root ? root : "/";
+
     private readonly IConfiguration _configuration;
     private readonly IReadOnlyList<string> _paths;
     private readonly Lock _gate = new();
@@ -23,7 +30,7 @@ public sealed class HostProbe
     public HostProbe(IConfiguration configuration)
     {
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-        _paths = [.. (configuration["Sangam:Monitoring:DiskPaths"] ?? "/").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
+        _paths = [.. (configuration["Sangam:Monitoring:DiskPaths"] ?? DefaultDiskPath).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
         SangamMetrics.Instance.CreateObservableGauge(SangamMetrics.HostUp, () => 1);
         SangamMetrics.Instance.CreateObservableGauge(SangamMetrics.DiskFreePercent, DiskFree);
         SangamMetrics.Instance.CreateObservableGauge(SangamMetrics.CertificateDaysLeft, CertificateDays);

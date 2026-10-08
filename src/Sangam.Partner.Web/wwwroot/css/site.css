@@ -220,7 +220,11 @@ h1[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 .sg-tree { list-style: none; margin: 0 0 1rem; padding: 0; }
 .sg-tree-item { display: flex; flex-direction: column; align-items: flex-start; width: 100%; padding: 0.45rem 0.6rem; background: none; border: 1px solid transparent; border-radius: 6px; color: var(--c-text); font: inherit; text-align: left; cursor: pointer; }
 .sg-tree-item:hover { background: var(--c-raise); }
-.sg-tree-item--on { background: var(--c-raise); border-color: var(--c-sand); }
+/* rc.2: the chosen organisation is marked by more than a tint — a sandalwood bar, a bolder name and a tick — so it
+   stands apart from a row the pointer is merely resting on. */
+.sg-tree-item--on { background: var(--c-raise); border-color: var(--c-sand); box-shadow: inset 4px 0 0 var(--c-sand); padding-left: 0.9rem; }
+.sg-tree-item--on .sg-name { font-weight: 600; }
+.sg-tree-item--on .sg-name::after { content: "\2713"; margin-left: 0.4rem; color: var(--c-sand); }
 
 .sg-check { display: flex; gap: 0.5rem; align-items: baseline; margin: 0.4rem 0; }
 .sg-choices { border: 0; margin: 0; padding: 0; }

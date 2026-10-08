@@ -22,7 +22,7 @@ else
         @foreach (OrganisationDto org in _orgs)
         {
           <li style="padding-left:@(org.Depth * 1.25)rem">
-            <button type="button" class="sg-tree-item @(org.Id == _selected?.Id ? "sg-tree-item--on" : string.Empty)" @onclick="() => SelectAsync(org)">
+            <button type="button" class="sg-tree-item @(org.Id == _selected?.Id ? "sg-tree-item--on" : string.Empty)" aria-pressed="@(org.Id == _selected?.Id ? "true" : "false")" @onclick="() => SelectAsync(org)">
               <span class="sg-name">@org.Name</span>
               <span class="sg-sub">@TypeName(org.Type)</span>
             </button>

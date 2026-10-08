@@ -96,7 +96,7 @@ public sealed class MonitoringTests : IAsyncLifetime
         Assert.True(await db.MetricPoints.AnyAsync(p => p.Name == SangamMetrics.RequestDuration && p.Max >= 480));
         MetricPoint up = await db.MetricPoints.Where(p => p.Name == SangamMetrics.HostUp).OrderByDescending(p => p.Minute).FirstAsync();
         Assert.Equal((1L, 1.0), (up.Count, up.Sum));
-        Assert.True(await db.MetricPoints.AnyAsync(p => p.Name == SangamMetrics.DiskFreePercent && p.Tag == "/"));
+        Assert.True(await db.MetricPoints.AnyAsync(p => p.Name == SangamMetrics.DiskFreePercent && p.Tag == HostProbe.DefaultDiskPath));
     }
 
     [PostgresFact]
