@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 namespace Sangam.Admin.Web.Tests;
 
 /// <summary>R7 (SGM-503): the console sends the security headers on every answer, signed in or not.</summary>
+[Collection("admin-db")]
 public sealed class SecurityHeaderTests : IClassFixture<ConsoleFactory>
 {
     private readonly ConsoleFactory _factory;

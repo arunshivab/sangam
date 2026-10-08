@@ -177,3 +177,12 @@ public sealed class PartnerFactory : WebApplicationFactory<Program>
         }
     }
 }
+
+/// <summary>
+/// The partner console test classes share one database; run them one at a time. Each class has its own host, and
+/// two hosts migrating a fresh database at once collide (as on CI, where the database starts empty).
+/// </summary>
+[CollectionDefinition("partner-db")]
+public sealed class PartnerDatabaseGroup
+{
+}

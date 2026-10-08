@@ -7,6 +7,7 @@ using Sangam.Identity.Application.Portal;
 namespace Sangam.SelfService.Web.Tests;
 
 /// <summary>The five portal screens, rendered by the real host against a real database.</summary>
+[Collection("portal-db")]
 public sealed class PortalScreenTests : IClassFixture<PortalFactory>, IAsyncLifetime
 {
     private readonly PortalFactory _factory;

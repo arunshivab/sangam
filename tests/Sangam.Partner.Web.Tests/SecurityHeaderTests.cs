@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 namespace Sangam.Partner.Web.Tests;
 
 /// <summary>R7 (SGM-503): the partner sends the security headers on every answer, signed in or not.</summary>
+[Collection("partner-db")]
 public sealed class SecurityHeaderTests : IClassFixture<PartnerFactory>
 {
     private readonly PartnerFactory _factory;

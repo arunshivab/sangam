@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 namespace Sangam.SelfService.Web.Tests;
 
 /// <summary>R7 (SGM-503): the portal sends the security headers on every answer, signed in or not.</summary>
+[Collection("portal-db")]
 public sealed class SecurityHeaderTests : IClassFixture<PortalFactory>
 {
     private readonly PortalFactory _factory;

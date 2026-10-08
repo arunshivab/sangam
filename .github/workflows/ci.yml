@@ -192,7 +192,8 @@ jobs:
           cache: maven
       - name: Java dependencies resolved for the scanner
         working-directory: sdk/java
-        run: mvn -B -ntp -q dependency:resolve dependency:resolve-plugins
+        # install first: the sibling modules (sangam-client) are not on Maven Central, only in this reactor.
+        run: mvn -B -ntp -q -DskipTests install dependency:resolve dependency:resolve-plugins
 
       # Reviewed exceptions are in .trivyignore.yaml; the kind overlay's test-only services are not scanned.
       - name: Trivy, the repository (every lockfile and pom, secrets, Dockerfile, Kubernetes manifests)

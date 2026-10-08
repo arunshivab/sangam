@@ -7,6 +7,7 @@ using Sangam.Identity.Infrastructure.Persistence;
 namespace Sangam.Admin.Web.Tests;
 
 /// <summary>The console's two bars, and what each rank is shown. Rendered by the real host.</summary>
+[Collection("admin-db")]
 public sealed class ConsoleGateTests : IClassFixture<ConsoleFactory>
 {
     private readonly ConsoleFactory _factory;

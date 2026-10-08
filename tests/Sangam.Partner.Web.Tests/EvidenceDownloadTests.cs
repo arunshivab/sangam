@@ -8,6 +8,7 @@ namespace Sangam.Partner.Web.Tests;
 /// PR-32 (CAP-110): the evidence pack download repeats the console's gate — an antiforgery token, an authenticator,
 /// and administering the application — and answers with the zip.
 /// </summary>
+[Collection("partner-db")]
 public sealed partial class EvidenceDownloadTests : IClassFixture<PartnerFactory>
 {
     private readonly PartnerFactory _factory;

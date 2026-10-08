@@ -201,3 +201,12 @@ public sealed class PortalFactory : WebApplicationFactory<Program>
         }
     }
 }
+
+/// <summary>
+/// The portal test classes share one database; run them one at a time. Each class has its own host, and
+/// two hosts migrating a fresh database at once collide (as on CI, where the database starts empty).
+/// </summary>
+[CollectionDefinition("portal-db")]
+public sealed class PortalDatabaseGroup
+{
+}
