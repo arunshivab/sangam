@@ -40,6 +40,36 @@ public sealed class PartnerGateTests : IClassFixture<PartnerFactory>
     }
 
     [PostgresFact]
+    public async Task TheProvisioningTab_IsForTheApplicationsAdministrators()
+    {
+        // PR-23: SCIM settings and the delivery log, for the application's own administrators only.
+        Guid app = await _factory.SeedAppAsync("Scim Lab");
+        Guid admin = await _factory.SeedUserAsync(mfa: true, "Provisioner");
+        await _factory.MakeAdminAsync(app, admin, AppAdminRole.Admin);
+        string tab = System.Net.WebUtility.HtmlDecode(await GetAsync(admin, $"/apps/{app:D}/provisioning"));
+        Assert.Contains("data-panel=\"scim-settings\"", tab, StringComparison.Ordinal);
+        Assert.Contains("SCIM base address", tab, StringComparison.Ordinal);
+        Assert.Contains("Nothing sent yet.", tab, StringComparison.Ordinal);
+
+        Guid stranger = await _factory.SeedUserAsync(mfa: true, "Outsider");
+        Assert.DoesNotContain("data-panel=\"scim-settings\"", await GetAsync(stranger, $"/apps/{app:D}/provisioning"), StringComparison.Ordinal);
+
+        // PR-24: the webhooks tab, with every event type offered.
+        string hooks = System.Net.WebUtility.HtmlDecode(await GetAsync(admin, $"/apps/{app:D}/webhooks"));
+        Assert.Contains("data-panel=\"webhook-endpoints\"", hooks, StringComparison.Ordinal);
+        Assert.Contains("membership.granted", hooks, StringComparison.Ordinal);
+        Assert.Contains("No endpoints yet.", hooks, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-panel=\"webhook-endpoints\"", await GetAsync(stranger, $"/apps/{app:D}/webhooks"), StringComparison.Ordinal);
+
+        // PR-25: attributes and custom claims, with the not-health-data declaration.
+        string attributes = System.Net.WebUtility.HtmlDecode(await GetAsync(admin, $"/apps/{app:D}/attributes"));
+        Assert.Contains("data-panel=\"attributes\"", attributes, StringComparison.Ordinal);
+        Assert.Contains("data-panel=\"claims\"", attributes, StringComparison.Ordinal);
+        Assert.Contains("This is not health data", attributes, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-panel=\"attributes\"", await GetAsync(stranger, $"/apps/{app:D}/attributes"), StringComparison.Ordinal);
+    }
+
+    [PostgresFact]
     public async Task AnAdministratorWithoutAnAuthenticator_IsSentToEnrol()
     {
         Guid app = await _factory.SeedAppAsync("Enrol HIS");

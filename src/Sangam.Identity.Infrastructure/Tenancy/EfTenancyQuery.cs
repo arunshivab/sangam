@@ -23,7 +23,7 @@ public sealed class EfTenancyQuery : ITenancyQuery
     {
         var rows = await _db.OrgMemberships
             .AsNoTracking()
-            .Where(m => m.UserId == userId && m.AppId == appId && m.RevokedAt == null)
+            .Where(m => m.UserId == userId && m.AppId == appId && m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > DateTimeOffset.UtcNow))
             .Where(m => m.Org!.Status == OrganisationStatus.Active)
             .OrderBy(m => m.Org!.Path)
             .Select(m => new

@@ -1,5 +1,6 @@
 using System.Net;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Sangam.Identity.Application.Portal;
 
@@ -145,6 +146,105 @@ public sealed class PortalScreenTests : IClassFixture<PortalFactory>, IAsyncLife
             Assert.Contains("<!--Blazor:{\"type\":\"server\"", body, StringComparison.Ordinal);
         }
     }
+
+    [PostgresFact]
+    public async Task VerifyingWithDigiLocker_TakesTheRecordsValues_LocksThem_AndCanBeRemoved()
+    {
+        // PR-26, end to end through the portal's endpoints and a stand-in DigiLocker.
+        using HttpClient client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        string profile = await client.GetStringAsync(new Uri("/profile", UriKind.Relative));
+        Assert.Contains("data-panel=\"identity\"", profile, StringComparison.Ordinal);
+        Assert.Contains("never your Aadhaar number", System.Net.WebUtility.HtmlDecode(profile), StringComparison.Ordinal);
+
+        // Without agreeing, nothing starts; without the antiforgery token, the post is refused.
+        using (HttpResponseMessage unagreed = await PostAsync(client, "/verify/digilocker", Token(profile), agree: false))
+        {
+            Assert.EndsWith("digilocker=agree", unagreed.Headers.Location!.OriginalString, StringComparison.Ordinal);
+        }
+
+        using (HttpResponseMessage forged = await PostAsync(client, "/verify/digilocker", token: null, agree: true))
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, forged.StatusCode);
+        }
+
+        // The state round-trips; a wrong one ends the attempt.
+        (string state, string challenge, string redirectUri) = await StartAsync(client, profile);
+        string code = FakeDigiLocker.Shared.Issue(challenge, redirectUri, "dl-" + Guid.NewGuid().ToString("N"), "RAVI KUMAR MENON", "12061986", "M");
+        Assert.EndsWith("digilocker=expired", await CallbackAsync(client, code, state + "x"), StringComparison.Ordinal);
+
+        (state, challenge, redirectUri) = await StartAsync(client, profile);
+        string digiLockerId = "dl-" + Guid.NewGuid().ToString("N");
+        code = FakeDigiLocker.Shared.Issue(challenge, redirectUri, digiLockerId, "RAVI KUMAR MENON", "14061986", "M", identityInToken: false);
+        Assert.EndsWith("digilocker=verified", await CallbackAsync(client, code, state), StringComparison.Ordinal);
+
+        using (IServiceScope scope = _factory.Services.CreateScope())
+        {
+            Identity.Infrastructure.Persistence.SangamDbContext db = scope.ServiceProvider.GetRequiredService<Identity.Infrastructure.Persistence.SangamDbContext>();
+            Identity.Domain.Entities.SangamUser user = await db.Users.AsNoTracking().SingleAsync(u => u.Id == PortalFactory.UserId);
+            Assert.Equal(("RAVI KUMAR", "MENON", new DateOnly(1986, 6, 14)), (user.FirstName, user.LastName, user.DateOfBirth));
+            Assert.NotNull(user.IdentityVerifiedAt);
+            Identity.Domain.Entities.IdentityVerification row = await db.IdentityVerifications.AsNoTracking().SingleAsync(v => v.UserId == PortalFactory.UserId);
+            Assert.NotEqual(digiLockerId, row.SubjectHash);
+            Assert.DoesNotContain(digiLockerId, row.SubjectHash, StringComparison.Ordinal);
+        }
+
+        string verified = System.Net.WebUtility.HtmlDecode(await client.GetStringAsync(new Uri("/profile?digilocker=verified", UriKind.Relative)));
+        Assert.Contains("Your identity is verified with DigiLocker.", verified, StringComparison.Ordinal);
+        Assert.Contains("Remove the verification", verified, StringComparison.Ordinal);
+        Assert.Contains("data-identity=\"verified\"", verified, StringComparison.Ordinal);
+
+        // The profile service refuses a changed name while verified.
+        using IServiceScope portalScope = _factory.Services.CreateScope();
+        IPortalService portal = portalScope.ServiceProvider.GetRequiredService<IPortalService>();
+        ProfileUpdateResult renamed = await portal.UpdateProfileAsync(PortalFactory.UserId, new ProfileUpdate("Ravi", "Menon", "en-IN", Identity.Domain.Enums.Gender.Male, "IN", "9876500001"), null);
+        Assert.False(renamed.Succeeded);
+
+        using (HttpResponseMessage removed = await PostAsync(client, "/verify/digilocker/remove", Token(verified), agree: false))
+        {
+            Assert.EndsWith("digilocker=removed", removed.Headers.Location!.OriginalString, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("Verify with DigiLocker", System.Net.WebUtility.HtmlDecode(await client.GetStringAsync(new Uri("/profile", UriKind.Relative))), StringComparison.Ordinal);
+    }
+
+    private static async Task<(string State, string Challenge, string RedirectUri)> StartAsync(HttpClient client, string profile)
+    {
+        using HttpResponseMessage start = await PostAsync(client, "/verify/digilocker", Token(profile), agree: true);
+        Assert.Equal(HttpStatusCode.Redirect, start.StatusCode);
+        Uri authorize = start.Headers.Location!;
+        Assert.StartsWith("https://digilocker.example.invalid/public/oauth2/1/authorize?", authorize.AbsoluteUri, StringComparison.Ordinal);
+        System.Collections.Specialized.NameValueCollection query = System.Web.HttpUtility.ParseQueryString(authorize.Query);
+        Assert.Equal("S256", query["code_challenge_method"]);
+        Assert.Equal(FakeDigiLocker.ClientId, query["client_id"]);
+        return (query["state"]!, query["code_challenge"]!, query["redirect_uri"]!);
+    }
+
+    private static async Task<string> CallbackAsync(HttpClient client, string code, string state)
+    {
+        using HttpResponseMessage response = await client.GetAsync(new Uri($"/verify/digilocker/callback?code={code}&state={state}", UriKind.Relative));
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        return response.Headers.Location!.OriginalString;
+    }
+
+    private static async Task<HttpResponseMessage> PostAsync(HttpClient client, string path, string? token, bool agree)
+    {
+        Dictionary<string, string> form = [];
+        if (token is not null)
+        {
+            form["__RequestVerificationToken"] = token;
+        }
+
+        if (agree)
+        {
+            form["agree"] = "true";
+        }
+
+        using FormUrlEncodedContent content = new(form);
+        return await client.PostAsync(new Uri(path, UriKind.Relative), content);
+    }
+
+    private static string Token(string html)
+        => System.Net.WebUtility.HtmlDecode(System.Text.RegularExpressions.Regex.Match(html, "name=\"__RequestVerificationToken\" value=\"([^\"]+)\"").Groups[1].Value);
 
     private async Task<string> GetAsync(string path)
     {

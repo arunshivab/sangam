@@ -1,0 +1,26 @@
+# PR-26: lets people verify their name, date of birth and gender with DigiLocker in the account portal. Use together
+# with docker-compose.yml (and the SAML file if you use it):
+#   docker compose -f docker-compose.yml -f docker-compose.digilocker.yml up -d
+# Without this file DigiLocker stays off. Register https://account.sangamid.in/verify/digilocker/callback with
+# DigiLocker (API Setu) as the redirect address; the portal refuses to start without the three secrets below.
+services:
+  portal:
+    environment:
+      Sangam__DigiLocker__Enabled: "true"
+      Sangam__DigiLocker__RedirectUri: https://account.sangamid.in/verify/digilocker/callback
+      # The endpoints default to api.digitallocker.gov.in (Requester API Specification v1.12). Point them at the
+      # sandbox or the MeriPehchaan host here if DigiLocker's onboarding says so:
+      # Sangam__DigiLocker__AuthorizeUrl: https://digilocker.meripehchaan.gov.in/public/oauth2/1/authorize
+      # Sangam__DigiLocker__TokenUrl: https://digilocker.meripehchaan.gov.in/public/oauth2/1/token
+      # Sangam__DigiLocker__UserUrl: https://digilocker.meripehchaan.gov.in/public/oauth2/1/user
+    secrets:
+      - source: Sangam__DigiLocker__ClientId
+      - source: Sangam__DigiLocker__ClientSecret
+      # The key DigiLocker ids are hashed with: 32 characters or more. Never change it, or every verified person's
+      # DigiLocker identity becomes free to verify a second account.
+      - source: Sangam__DigiLocker__SubjectKey
+
+secrets:
+  Sangam__DigiLocker__ClientId: { file: ./secrets/Sangam__DigiLocker__ClientId }
+  Sangam__DigiLocker__ClientSecret: { file: ./secrets/Sangam__DigiLocker__ClientSecret }
+  Sangam__DigiLocker__SubjectKey: { file: ./secrets/Sangam__DigiLocker__SubjectKey }

@@ -79,6 +79,9 @@ internal static class AuditNarrator
                 ? "You changed your personal details, including your mobile number (it is unverified again)."
                 : "You changed your personal details.",
             AuditActions.UserSessionRevoke => "You ended one of your sessions.",
+            AuditActions.IdentityVerify => "You verified your identity with DigiLocker: your name, date of birth and gender now match its record.",
+            AuditActions.IdentityVerifyRefused => "A DigiLocker verification was refused: that DigiLocker account already verifies another Sangam account.",
+            AuditActions.IdentityUnverify => "You removed your DigiLocker verification.",
             AuditActions.UserSessionRevokeAll => "You signed out of all devices.",
             AuditActions.UserDataExport => "You downloaded a copy of your data.",
             AuditActions.UserAccountDeletionRequest => "You asked for your account to be deleted.",
@@ -94,6 +97,9 @@ internal static class AuditNarrator
                 ? $"{ByWhom(e, actor, app)} gave you a role in an organisation ({role})."
                 : $"{ByWhom(e, actor, app)} gave you a role in an organisation.",
             AuditActions.OrgMembershipRevoke => $"{ByWhom(e, actor, app)} removed one of your organisation roles.",
+            AuditActions.OrgMembershipExpire => Read(e.Metadata, "role") is string ended
+                ? $"Your time-limited role in {app} ended ({ended})."
+                : $"Your time-limited role in {app} ended.",
             AuditActions.AppAdminGrant => Read(e.Metadata, "role") is "owner"
                 ? $"{actor} made you an owner of {Read(e.Metadata, "app") ?? app}."
                 : $"{actor} made you an administrator of {Read(e.Metadata, "app") ?? app}.",

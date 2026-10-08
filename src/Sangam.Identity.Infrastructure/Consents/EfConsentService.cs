@@ -80,6 +80,7 @@ public sealed class EfConsentService : IConsentService
         if (!hasGrant)
         {
             _db.AppGrants.Add(new AppGrant { Id = Guid.NewGuid(), UserId = userId, AppId = appId, GrantedAt = now });
+            await Provisioning.AppEventLog.AddAsync(_db, AppEventTypes.UserCreated, appId, userId, null, null, now, cancellationToken).ConfigureAwait(false);
         }
 
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

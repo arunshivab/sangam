@@ -4,8 +4,11 @@ using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Sangam.Identity.Application;
 using Sangam.Identity.Infrastructure;
 using Sangam.Identity.Infrastructure.Services;
+using Sangam.Identity.Infrastructure.Verification;
 using Sangam.SelfService.Web.Components;
+using Sangam.SelfService.Web.Verification;
 using Sangam.Shared.Constants;
+using Sangam.Web.Shared.Hosting;
 using Sangam.Web.Shared.Localization;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -33,6 +36,13 @@ string? emailProblem = EmailSenderGuard.Validate(builder.Environment.Environment
 if (emailProblem is not null)
 {
     throw new InvalidOperationException(emailProblem);
+}
+
+// PR-26: DigiLocker, when switched on, needs its credentials and a real key for hashing DigiLocker ids.
+string? digiLockerProblem = DigiLockerGuard.Validate(builder.Environment.EnvironmentName, builder.Configuration);
+if (digiLockerProblem is not null)
+{
+    throw new InvalidOperationException(digiLockerProblem);
 }
 
 builder.Services.AddHttpContextAccessor();
@@ -92,7 +102,7 @@ app.UseSangamRequestMetrics();
 
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    app.UseSangamErrorPage();
     app.UseHsts();
 }
 
@@ -112,6 +122,9 @@ app.MapGet("/signout", (HttpContext context) =>
         new Microsoft.AspNetCore.Authentication.AuthenticationProperties { RedirectUri = "/" },
         [CookieAuthenticationDefaults.AuthenticationScheme, OpenIdConnectDefaults.AuthenticationScheme]))
     .AllowAnonymous();
+
+// PR-26: verifying the name, date of birth and gender through DigiLocker.
+app.MapDigiLocker();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

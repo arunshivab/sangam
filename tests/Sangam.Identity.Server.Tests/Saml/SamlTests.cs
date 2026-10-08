@@ -109,6 +109,28 @@ public sealed partial class SamlTests
     }
 
     [PostgresFact]
+    public async Task TheConsentScreen_NamesExactlyWhatTheAssertionCarries()
+    {
+        // V-14: the consent list used to be the OpenID Connect "profile" one (name, date of birth and gender).
+        using Sp sp = await RegisterSpAsync(encrypt: false, attributes: ["given_name", "family_name", "email"]);
+        using BrowserSession s = new(_factory);
+        (_, string email) = await RegisterAsync(s);
+        (_, string location, string consent) = await s.FollowAsync("/saml/sso?" + RedirectQuery(AuthnRequest(sp.EntityId, NewId(), sp.Acs), null));
+        Assert.StartsWith("/consent", location, StringComparison.Ordinal);
+        consent = WebUtility.HtmlDecode(consent);
+        List<(string Label, string Value)> shown = [.. ShareRowRegex().Matches(consent).Select(m => (m.Groups[1].Value, m.Groups[2].Value))];
+        Assert.DoesNotContain(shown, r => r.Label.Contains("birth", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(["First name", "Last name", "Email address"], shown.Select(r => r.Label));
+
+        (_, string? allowed, _) = await s.PostFormAsync(location, [], handler: "Allow");
+        (_, _, string page) = await s.FollowAsync(allowed!);
+        (XmlDocument response, _) = ReadPost(page, sp.Acs);
+        List<string> carried = [.. response.GetElementsByTagName("AttributeValue", SamlProtocol.AssertionNs).Cast<XmlNode>().Select(n => n.InnerText)];
+        Assert.Equal(carried.Order(StringComparer.Ordinal), shown.Select(r => r.Value).Order(StringComparer.Ordinal));
+        Assert.Contains(email, carried);
+    }
+
+    [PostgresFact]
     public async Task Requests_ToAnUnregisteredAddress_Unsigned_OrStale_AreRefused()
     {
         using Sp sp = await RegisterSpAsync(encrypt: false, requireSigned: true);
@@ -220,7 +242,7 @@ public sealed partial class SamlTests
         return X509CertificateLoader.LoadCertificate(Convert.FromBase64String(metadata.GetElementsByTagName("X509Certificate", SamlProtocol.DsigNs)[0]!.InnerText));
     }
 
-    private async Task<Sp> RegisterSpAsync(bool encrypt, bool requireSigned = false, bool idpInitiated = false)
+    private async Task<Sp> RegisterSpAsync(bool encrypt, bool requireSigned = false, bool idpInitiated = false, string[]? attributes = null)
     {
         Sp sp = new();
         using IServiceScope scope = _factory.Services.CreateScope();
@@ -233,7 +255,7 @@ public sealed partial class SamlTests
         }
 
         Application.Admin.AdminResult result = await scope.ServiceProvider.GetRequiredService<ISamlAdminService>().SaveAsync(manager.Id, new SamlSpInput(
-            null, "Legacy CRM", "Example Systems", sp.EntityId, sp.Acs, sp.Slo, sp.SigningPem, encrypt ? sp.EncryptionPem : null, "persistent", ["name", "email", "roles"], requireSigned, idpInitiated, "/ward"), null);
+            null, "Legacy CRM", "Example Systems", sp.EntityId, sp.Acs, sp.Slo, sp.SigningPem, encrypt ? sp.EncryptionPem : null, "persistent", attributes ?? ["name", "email", "roles"], requireSigned, idpInitiated, "/ward"), null);
         Assert.True(result.Succeeded, result.Message);
         sp.Id = await db.SamlServiceProviders.Where(p => p.EntityId == sp.EntityId).Select(p => p.Id).SingleAsync();
         return sp;
@@ -269,6 +291,9 @@ public sealed partial class SamlTests
 
     [GeneratedRegex("name=\"SAMLResponse\" value=\"([^\"]+)\"")]
     private static partial Regex SamlResponseRegex();
+
+    [GeneratedRegex("sg-share-claim\">([^<]*)</span><span class=\"sg-share-value\">([^<]*)<")]
+    private static partial Regex ShareRowRegex();
 
     [GeneratedRegex("name=\"RelayState\" value=\"([^\"]*)\"")]
     private static partial Regex RelayRegex();

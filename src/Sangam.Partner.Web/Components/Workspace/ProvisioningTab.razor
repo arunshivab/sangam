@@ -1,0 +1,208 @@
+@using Sangam.Identity.Application.Provisioning
+@inject IProvisioningService Provisioning
+@inject IConfiguration Configuration
+
+@if (_view is null)
+{
+  <p class="sg-muted">@L["Loading…"]</p>
+}
+else
+{
+  <p class="sg-lede">@L["Sangam can keep {0}'s own list of people in step through SCIM 2.0: someone given a role is created there, changes follow, and someone who loses their last role, withdraws consent or whose account is suspended is deactivated. Roles become groups. Your application needs a SCIM server; Sangam is its client.", Info.AppName]</p>
+
+  <div class="sg-panel" data-panel="scim-settings">
+    <h2 class="sg-h3">@L["SCIM server"]</h2>
+    @if (_view.Configured)
+    {
+      <p>
+        <span class="sg-pill sg-pill--@(_view.Enabled ? (_view.Status == "ok" ? "active" : "failing") : "disabled")">@(_view.Enabled ? (_view.Status == "ok" ? L["on"] : L["failing"]) : L["off"])</span>
+        <span class="sg-muted">@L["{0} people provisioned", _view.Provisioned]</span>
+        @if (_view.LastSuccessAt is DateTimeOffset ok)
+        {
+          <span class="sg-muted"> · @L["last success {0}", IndiaTime.Stamp(ok)]</span>
+        }
+        @if (_view.LastFailureAt is DateTimeOffset failed)
+        {
+          <span class="sg-warn-text"> · @L["last failure {0}", IndiaTime.Stamp(failed)]</span>
+        }
+      </p>
+    }
+    <div class="sg-form-row">
+      <label class="sg-label" for="scim-url">@L["SCIM base address (https)"]</label>
+      <input id="scim-url" class="sg-input sg-mono" @bind="_baseUrl" @bind:event="oninput" maxlength="500" placeholder="https://lims.example.in/scim/v2" />
+    </div>
+    <fieldset class="sg-choices">
+      <legend class="sg-label">@L["How Sangam signs in to it"]</legend>
+      <label class="sg-check"><input type="radio" name="scim-auth" checked="@(_authMode == "bearer")" @onchange="@(() => _authMode = "bearer")" /> @L["A bearer token your SCIM server gave you"]</label>
+      <label class="sg-check"><input type="radio" name="scim-auth" checked="@(_authMode == "sangam")" @onchange="@(() => _authMode = "sangam")" /> @L["A short token Sangam signs for each call (no shared secret)"]</label>
+    </fieldset>
+    @if (_authMode == "bearer")
+    {
+      <div class="sg-form-row">
+        <label class="sg-label" for="scim-token">@(_view.HasToken ? L["Bearer token (stored; type a new one to replace it)"] : L["Bearer token"])</label>
+        <input id="scim-token" class="sg-input sg-mono" type="password" autocomplete="off" @bind="_token" @bind:event="oninput" maxlength="2000" />
+      </div>
+    }
+    else
+    {
+      <p class="sg-muted">@L["Your server checks it as it checks Sangam's access tokens: issuer {0}, keys at {1}, audience the base address above, type {2}, subject sangam. It lasts five minutes.", Authority, Authority + "/.well-known/jwks", "sangam-service+jwt"]</p>
+    }
+    <fieldset class="sg-choices">
+      <legend class="sg-label">@L["Groups"]</legend>
+      <label class="sg-check"><input type="radio" name="scim-map" checked="@(_mapping == "role")" @onchange="@(() => _mapping = "role")" /> @L["One group per role"]</label>
+      <label class="sg-check"><input type="radio" name="scim-map" checked="@(_mapping == "role_org")" @onchange="@(() => _mapping = "role_org")" /> @L["One group per role at each organisation"]</label>
+    </fieldset>
+    <label class="sg-check"><input type="checkbox" @bind="_delete" /> @L["Delete people who lose access, instead of deactivating them"]</label>
+    <label class="sg-check"><input type="checkbox" @bind="_enabled" /> @L["Provisioning is on"]</label>
+    <div class="sg-actions">
+      <button type="button" class="sg-btn sg-btn--primary" @onclick="SaveAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_baseUrl))">@L["Save"]</button>
+      @if (_authMode == "bearer")
+      {
+        <button type="button" class="sg-btn sg-btn--ghost" @onclick="TestAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_baseUrl))">@L["Test the connection"]</button>
+      }
+      @if (_view.Enabled)
+      {
+        <button type="button" class="sg-btn sg-btn--ghost" @onclick="ReconcileAsync" disabled="@_busy">@L["Reconcile now"]</button>
+      }
+    </div>
+    @if (_view.LastReconciledAt is DateTimeOffset reconciled)
+    {
+      <p class="sg-muted">@L["Last reconciled {0}: {1}", IndiaTime.Stamp(reconciled), _view.LastReconcileSummary ?? string.Empty]</p>
+    }
+  </div>
+
+  <div class="sg-panel" data-panel="scim-log">
+    <h2 class="sg-h3">@L["Delivery log"]</h2>
+    @if (_view.Deliveries.Count == 0)
+    {
+      <p class="sg-muted">@L["Nothing sent yet."]</p>
+    }
+    else
+    {
+      <div class="sg-table-wrap">
+        <table class="sg-table">
+          <thead><tr><th>@L["Queued"]</th><th>@L["Person"]</th><th>@L["Why"]</th><th>@L["State"]</th><th>@L["Calls"]</th><th></th></tr></thead>
+          <tbody>
+            @foreach (ScimDeliveryRow row in _view.Deliveries)
+            {
+              <tr>
+                <td class="sg-mono">@IndiaTime.Compact(row.CreatedAt)</td>
+                <td>@(row.Person ?? "—")</td>
+                <td class="sg-mono">@row.Reason</td>
+                <td>
+                  @StateText(row)
+                  @if (row.NextAttemptAt is DateTimeOffset next && row.Attempts > 0)
+                  {
+                    <span class="sg-sub">@L["next try {0}", IndiaTime.Compact(next)]</span>
+                  }
+                </td>
+                <td class="sg-mono sg-small">@row.Summary
+                  @if (row.LastError is { Length: > 0 } error)
+                  {
+                    <span class="sg-sub sg-warn-text">@error</span>
+                  }
+                </td>
+                <td>
+                  @if (row.Status == "dead")
+                  {
+                    <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => RetryAsync(row.Id)" disabled="@_busy">@L["Try again"]</button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+}
+
+<StatusLine Ok="_ok" Message="@_message" />
+
+@code {
+    /// <summary>The application being worked on.</summary>
+    [Parameter]
+    [EditorRequired]
+    public WorkspaceInfo Info { get; set; } = null!;
+
+    private ScimSettingsView? _view;
+    private string _baseUrl = string.Empty;
+    private string _authMode = "bearer";
+    private string? _token;
+    private string _mapping = "role";
+    private bool _delete;
+    private bool _enabled;
+    private bool _busy;
+    private bool _ok;
+    private string? _message;
+
+    private string Authority => (Configuration["Sangam:Authority"] ?? "https://id.sangamid.in").TrimEnd('/');
+
+    protected override async Task OnInitializedAsync() => await LoadAsync(fill: true);
+
+    private async Task LoadAsync(bool fill)
+    {
+        _view = await Provisioning.GetScimAsync(Info.UserId, Info.AppId);
+        if (_view is not null && fill)
+        {
+            _baseUrl = _view.BaseUrl;
+            _authMode = _view.AuthMode;
+            _mapping = _view.GroupMapping;
+            _delete = _view.DeleteOnDeprovision;
+            _enabled = _view.Configured ? _view.Enabled : true;
+        }
+    }
+
+    private string StateText(ScimDeliveryRow row) => row.Status switch
+    {
+        "done" => L["done"],
+        "dead" => L["gave up after {0} tries", row.Attempts],
+        _ => row.Attempts == 0 ? L["waiting"] : L["retrying ({0} tries)", row.Attempts],
+    };
+
+    private ScimSettingsInput Input() => new(_baseUrl, _authMode, string.IsNullOrWhiteSpace(_token) ? null : _token, _mapping, _delete, _enabled);
+
+    private async Task SaveAsync()
+    {
+        _busy = true;
+        PartnerResult result = await Provisioning.SaveScimAsync(Info.UserId, Info.AppId, Input());
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = L[result.Message ?? string.Empty];
+        if (result.Succeeded)
+        {
+            _token = null;
+        }
+
+        await LoadAsync(fill: false);
+    }
+
+    private async Task TestAsync()
+    {
+        _busy = true;
+        PartnerResult result = await Provisioning.TestScimAsync(Info.UserId, Info.AppId, Input());
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = L[result.Message ?? string.Empty];
+    }
+
+    private async Task ReconcileAsync()
+    {
+        _busy = true;
+        PartnerResult result = await Provisioning.ReconcileScimAsync(Info.UserId, Info.AppId);
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = L[result.Message ?? string.Empty];
+        await LoadAsync(fill: false);
+    }
+
+    private async Task RetryAsync(long id)
+    {
+        _busy = true;
+        PartnerResult result = await Provisioning.RetryScimAsync(Info.UserId, Info.AppId, id);
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = L[result.Message ?? string.Empty];
+        await LoadAsync(fill: false);
+    }
+}

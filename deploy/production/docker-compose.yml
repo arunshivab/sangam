@@ -87,6 +87,10 @@ services:
       Sangam__Clients__demo__DisplayName: imagiQa (demo)
       Sangam__Clients__demo__Description: "A small hospital information system that shows how an application signs people in with Sangam. Demo, not for real patient data."
       Sangam__Clients__demo__OwnerCompanyName: imagiQa Healthcare Services Pvt Ltd
+      # V-15: the demo places invited testers at its made-up Demo Hospital through the management API (docs/pilot-guide.md).
+      Sangam__Clients__demo__ManagementApi: "true"
+      # D-I private pilot: registration by invitation only. Remove at the controlled launch.
+      Sangam__Registration__InvitationOnly: "true"
     secrets:
       - source: ConnectionStrings__Sangam
       - source: Sangam__Anjal__ApiKey

@@ -43,12 +43,17 @@ public sealed record OrganisationUpsert(string Name, string Type, Guid? ParentId
 /// <param name="Role">Role code.</param>
 /// <param name="AppliesToDescendants">Whether the role flows down the subtree.</param>
 /// <param name="GrantedAt">When granted.</param>
-public sealed record MembershipDto(Guid UserId, Guid OrgId, string Role, bool AppliesToDescendants, DateTimeOffset GrantedAt);
+/// <param name="ExpiresAt">When a time-limited membership ends (PR-25), or null.</param>
+public sealed record MembershipDto(Guid UserId, Guid OrgId, string Role, bool AppliesToDescendants, DateTimeOffset GrantedAt, DateTimeOffset? ExpiresAt = null);
 
 /// <summary>Input for granting or changing a membership.</summary>
 /// <param name="Role">Role code in the app's vocabulary.</param>
 /// <param name="AppliesToDescendants">Whether the role flows down the subtree.</param>
-public sealed record MembershipUpsert(string Role, bool AppliesToDescendants);
+/// <param name="ExpiresAt">
+/// PR-25: when the role ends by itself (a contractor, an auditor); null for one that lasts until it is taken away. Must be
+/// in the future and at most five years away.
+/// </param>
+public sealed record MembershipUpsert(string Role, bool AppliesToDescendants, DateTimeOffset? ExpiresAt = null);
 
 /// <summary>Outcome of a management call.</summary>
 public enum ManagementStatus

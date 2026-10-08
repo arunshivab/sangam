@@ -175,12 +175,12 @@ public sealed class EfPartnerService : IPartnerService
         }
 
         var rows = await _db.OrgMemberships.AsNoTracking()
-            .Where(m => m.AppId == appId && m.OrgId == orgId && m.RevokedAt == null)
+            .Where(m => m.AppId == appId && m.OrgId == orgId && m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > DateTimeOffset.UtcNow))
             .OrderBy(m => m.User!.FirstName)
-            .Select(m => new { m.UserId, m.User!.FirstName, m.User.LastName, m.User.Email, Role = m.Role!.Code, m.AppliesToDescendants, m.GrantedAt })
+            .Select(m => new { m.UserId, m.User!.FirstName, m.User.LastName, m.User.Email, Role = m.Role!.Code, m.AppliesToDescendants, m.GrantedAt, m.ExpiresAt })
             .ToListAsync(cancellationToken).ConfigureAwait(false);
 
-        return [.. rows.Select(r => new PartnerMemberRow(r.UserId, (r.FirstName + " " + r.LastName).Trim(), r.Email ?? string.Empty, r.Role, r.AppliesToDescendants, r.GrantedAt))];
+        return [.. rows.Select(r => new PartnerMemberRow(r.UserId, (r.FirstName + " " + r.LastName).Trim(), r.Email ?? string.Empty, r.Role, r.AppliesToDescendants, r.GrantedAt, r.ExpiresAt))];
     }
 
     /// <inheritdoc />

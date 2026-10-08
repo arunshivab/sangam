@@ -18,6 +18,7 @@ namespace Sangam.Identity.Application.Accounts;
 /// <param name="MfaEnrolled">Whether an authenticator app is enrolled.</param>
 /// <param name="UpdatedAt">When the profile last changed; emitted as the OIDC <c>updated_at</c> claim.</param>
 /// <param name="SecurityStamp">Rotates on password reset or forced sign-out; a session whose stamp no longer matches is ended.</param>
+/// <param name="IdentityVerifiedAt">When the name, date of birth and gender were verified through DigiLocker (PR-26), if they were.</param>
 public sealed record UserSummary(
     Guid Id,
     string FirstName,
@@ -33,7 +34,8 @@ public sealed record UserSummary(
     DateTimeOffset CreatedAt,
     bool MfaEnrolled,
     DateTimeOffset UpdatedAt,
-    string SecurityStamp)
+    string SecurityStamp,
+    DateTimeOffset? IdentityVerifiedAt = null)
 {
     /// <summary>Gets "First Last".</summary>
     public string DisplayName => string.IsNullOrWhiteSpace(LastName) ? FirstName : FirstName + " " + LastName;

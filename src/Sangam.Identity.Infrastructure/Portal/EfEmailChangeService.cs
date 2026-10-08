@@ -151,6 +151,7 @@ public sealed class EfEmailChangeService : IEmailChangeService
         }
 
         await _users.UpdateSecurityStampAsync(user).ConfigureAwait(false);
+        await Provisioning.AppEventLog.AddAsync(_db, AppEventTypes.UserUpdated, null, user.Id, null, null, now, cancellationToken).ConfigureAwait(false);
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         if (oldEmail.Length > 0)

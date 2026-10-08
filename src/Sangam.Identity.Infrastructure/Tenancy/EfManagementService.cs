@@ -7,6 +7,7 @@ using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Entities;
 using Sangam.Identity.Domain.Enums;
 using Sangam.Identity.Infrastructure.Persistence;
+using Sangam.Identity.Infrastructure.Provisioning;
 
 namespace Sangam.Identity.Infrastructure.Tenancy;
 
@@ -75,6 +76,7 @@ public sealed partial class EfManagementService : IManagementService
         role.Description = input.Description?.Trim();
         role.Permissions = permissions;
         role.RetiredAt = null;
+        await AppEventLog.AddAsync(_db, AppEventTypes.RoleChanged, appId, null, input.OrgId, new Dictionary<string, object?> { ["role"] = code, ["change"] = "saved" }, now, cancellationToken).ConfigureAwait(false);
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         await _audit.WriteAsync(
@@ -100,6 +102,7 @@ public sealed partial class EfManagementService : IManagementService
         }
 
         role.RetiredAt = _clock.UtcNow;
+        await AppEventLog.AddAsync(_db, AppEventTypes.RoleChanged, appId, null, null, new Dictionary<string, object?> { ["role"] = code, ["change"] = "retired" }, role.RetiredAt.Value, cancellationToken).ConfigureAwait(false);
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await _audit.WriteAsync(
             new AuditEntry(AuditActions.RoleRetire, actor.Type, actor.UserId, ActorAppId: appId, TargetType: "role", TargetId: role.Id, Metadata: $"{{\"code\":\"{code}\"}}"),
@@ -201,11 +204,11 @@ public sealed partial class EfManagementService : IManagementService
     public async Task<IReadOnlyList<MembershipDto>> ListMembersAsync(Guid appId, Guid orgId, CancellationToken cancellationToken = default)
     {
         var rows = await _db.OrgMemberships.AsNoTracking()
-            .Where(m => m.AppId == appId && m.OrgId == orgId && m.RevokedAt == null)
+            .Where(m => m.AppId == appId && m.OrgId == orgId && m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > DateTimeOffset.UtcNow))
             .OrderBy(m => m.GrantedAt)
-            .Select(m => new { m.UserId, m.OrgId, Role = m.Role!.Code, m.AppliesToDescendants, m.GrantedAt })
+            .Select(m => new { m.UserId, m.OrgId, Role = m.Role!.Code, m.AppliesToDescendants, m.GrantedAt, m.ExpiresAt })
             .ToListAsync(cancellationToken).ConfigureAwait(false);
-        return [.. rows.Select(r => new MembershipDto(r.UserId, r.OrgId, r.Role, r.AppliesToDescendants, r.GrantedAt))];
+        return [.. rows.Select(r => new MembershipDto(r.UserId, r.OrgId, r.Role, r.AppliesToDescendants, r.GrantedAt, r.ExpiresAt))];
     }
 
     /// <inheritdoc />
@@ -243,7 +246,13 @@ public sealed partial class EfManagementService : IManagementService
         }
 
         DateTimeOffset now = _clock.UtcNow;
+        if (input.ExpiresAt is DateTimeOffset until && (until <= now || until > now.AddYears(5)))
+        {
+            return ManagementResult.Invalid<MembershipDto>("A time-limited role must end in the future, and at most five years from now.");
+        }
+
         OrgMembership? membership = await _db.OrgMemberships.FirstOrDefaultAsync(m => m.AppId == appId && m.OrgId == orgId && m.UserId == userId && m.RevokedAt == null, cancellationToken).ConfigureAwait(false);
+        bool changed = membership is null || membership.RoleId != role.Id || membership.AppliesToDescendants != input.AppliesToDescendants || membership.ExpiresAt != input.ExpiresAt;
         if (membership is null)
         {
             membership = new OrgMembership { Id = Guid.NewGuid(), AppId = appId, OrgId = orgId, UserId = userId, GrantedAt = now, GrantedByUserId = actor.UserId };
@@ -252,19 +261,32 @@ public sealed partial class EfManagementService : IManagementService
 
         membership.RoleId = role.Id;
         membership.AppliesToDescendants = input.AppliesToDescendants;
+        membership.ExpiresAt = input.ExpiresAt;
 
         bool hasGrant = await _db.AppGrants.AnyAsync(g => g.UserId == userId && g.AppId == appId && g.RevokedAt == null, cancellationToken).ConfigureAwait(false);
         if (!hasGrant)
         {
             _db.AppGrants.Add(new AppGrant { Id = Guid.NewGuid(), UserId = userId, AppId = appId, GrantedAt = now });
+            await AppEventLog.AddAsync(_db, AppEventTypes.UserCreated, appId, userId, null, null, now, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (changed)
+        {
+            await AppEventLog.AddAsync(_db, AppEventTypes.MembershipGranted, appId, userId, orgId, new Dictionary<string, object?>
+            {
+                ["org_id"] = orgId,
+                ["role"] = role.Code,
+                ["applies_to_descendants"] = input.AppliesToDescendants,
+                ["expires_at"] = input.ExpiresAt,
+            }, now, cancellationToken).ConfigureAwait(false);
         }
 
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await _audit.WriteAsync(
             new AuditEntry(AuditActions.OrgMembershipGrant, actor.Type, actor.UserId, ActorAppId: appId, TargetType: "user", TargetId: userId,
-                Metadata: $"{{\"org\":\"{orgId:D}\",\"role\":\"{role.Code}\",\"inherits\":{(input.AppliesToDescendants ? "true" : "false")}}}"),
+                Metadata: JsonSerializer.Serialize(new { org = orgId, role = role.Code, inherits = input.AppliesToDescendants, expires_at = input.ExpiresAt })),
             cancellationToken).ConfigureAwait(false);
-        return ManagementResult.Ok<MembershipDto>(new MembershipDto(userId, orgId, role.Code, membership.AppliesToDescendants, membership.GrantedAt));
+        return ManagementResult.Ok<MembershipDto>(new MembershipDto(userId, orgId, role.Code, membership.AppliesToDescendants, membership.GrantedAt, membership.ExpiresAt));
     }
 
     /// <inheritdoc />
@@ -278,8 +300,15 @@ public sealed partial class EfManagementService : IManagementService
             return ManagementResult.NotFound<MembershipDto>("No live membership for that user in that organisation.");
         }
 
-        membership.RevokedAt = _clock.UtcNow;
+        DateTimeOffset revokedAt = _clock.UtcNow;
+        membership.RevokedAt = revokedAt;
         membership.RevokedByUserId = actor.UserId;
+        await AppEventLog.AddAsync(_db, AppEventTypes.MembershipRevoked, appId, userId, orgId, new Dictionary<string, object?> { ["org_id"] = orgId, ["role"] = membership.Role!.Code }, revokedAt, cancellationToken).ConfigureAwait(false);
+        if (!await _db.OrgMemberships.AnyAsync(m => m.AppId == appId && m.UserId == userId && m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > DateTimeOffset.UtcNow) && m.Id != membership.Id, cancellationToken).ConfigureAwait(false))
+        {
+            await AppEventLog.AddAsync(_db, AppEventTypes.UserDeactivated, appId, userId, null, new Dictionary<string, object?> { ["reason"] = "last_role_revoked" }, revokedAt, cancellationToken).ConfigureAwait(false);
+        }
+
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await _audit.WriteAsync(
             new AuditEntry(AuditActions.OrgMembershipRevoke, actor.Type, actor.UserId, ActorAppId: appId, TargetType: "user", TargetId: userId, Metadata: $"{{\"org\":\"{orgId:D}\"}}"),
