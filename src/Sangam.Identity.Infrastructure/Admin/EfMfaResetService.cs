@@ -20,8 +20,8 @@ namespace Sangam.Identity.Infrastructure.Admin;
 /// <summary>
 /// Support resets of two-step sign-in with a cooling-off period (D-K). A request alerts the owner on every channel —
 /// e-mail with a one-click "this wasn't me, cancel" link, SMS when SMS is on, and a notice at their next sign-in —
-/// and is applied only after <c>Sangam:Recovery:CoolingOffHours</c> (24) or, for privileged accounts,
-/// <c>Sangam:Recovery:PrivilegedCoolingOffHours</c> (72, never below 24), and only if nobody cancelled it.
+/// and is applied only after <c>Sangam:Recovery:CoolingOffHours</c> (24, never below 24) or, for privileged accounts,
+/// <c>Sangam:Recovery:PrivilegedCoolingOffHours</c> (72, never below the ordinary period), and only if nobody cancelled it.
 /// </summary>
 public sealed class EfMfaResetService : IMfaResetService
 {
@@ -58,12 +58,27 @@ public sealed class EfMfaResetService : IMfaResetService
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
     }
 
-    /// <summary>The cooling-off period for an account.</summary>
+    /// <summary>The shortest cooling-off D-K allows, for any account (V-13): a setting below it is raised to it.</summary>
+    public const int MinimumCoolingOffHours = 24;
+
+    /// <summary>
+    /// The cooling-off period for an account: never below <see cref="MinimumCoolingOffHours"/>, and a privileged
+    /// account's never shorter than an ordinary one's.
+    /// </summary>
     /// <param name="privileged">Whether the account is privileged.</param>
-    public TimeSpan CoolingOff(bool privileged)
-        => privileged
-            ? TimeSpan.FromHours(Math.Max(24, _configuration.GetValue("Sangam:Recovery:PrivilegedCoolingOffHours", 72)))
-            : TimeSpan.FromHours(Math.Max(1, _configuration.GetValue("Sangam:Recovery:CoolingOffHours", 24)));
+    public TimeSpan CoolingOff(bool privileged) => CoolingOff(_configuration, privileged);
+
+    /// <summary>The cooling-off period the settings give an account (see the instance method).</summary>
+    /// <param name="configuration">Configuration (<c>Sangam:Recovery</c>).</param>
+    /// <param name="privileged">Whether the account is privileged.</param>
+    public static TimeSpan CoolingOff(IConfiguration configuration, bool privileged)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        int ordinary = Math.Max(MinimumCoolingOffHours, configuration.GetValue("Sangam:Recovery:CoolingOffHours", 24));
+        return TimeSpan.FromHours(privileged
+            ? Math.Max(ordinary, configuration.GetValue("Sangam:Recovery:PrivilegedCoolingOffHours", 72))
+            : ordinary);
+    }
 
     /// <inheritdoc />
     public async Task<PendingTwoStepReset?> PendingAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -273,5 +288,5 @@ public sealed class EfMfaResetService : IMfaResetService
     private static string Hash(string token) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
 
     private static string Ist(DateTimeOffset at)
-        => at.ToOffset(TimeSpan.FromHours(5.5)).ToString("d MMM yyyy, HH:mm 'IST'", CultureInfo.InvariantCulture);
+        => at.ToOffset(Sangam.Shared.IndiaTime.Offset).ToString("d MMM yyyy, HH:mm 'IST'", CultureInfo.InvariantCulture);
 }

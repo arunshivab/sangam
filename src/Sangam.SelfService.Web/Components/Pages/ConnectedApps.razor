@@ -41,7 +41,7 @@ else
             <span class="sg-app-desc">@(app.Description ?? app.OwnerCompanyName)</span>
           </span>
         </span>
-        <span role="cell">@app.LinkedAt.ToString("d MMM yyyy", CultureInfo.CurrentCulture)</span>
+        <span role="cell">@IndiaTime.Date(app.LinkedAt)</span>
         <span role="cell">
           <span class="sg-cord-dot @StatusClass(status)" aria-hidden="true"></span>@(app.LastUsedAt is null ? L["not yet"] : Relative.Describe(app.LastUsedAt.Value, _now))
         </span>

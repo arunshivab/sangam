@@ -23,7 +23,7 @@ internal static partial class TextSources
     [
         "/Persistence/", "/Seeding/", "Guard.cs", "KeyRingProtection.cs", "UnavailableEmailSender.cs", "AccountEmails.cs",
         "WebHosting.cs", "/Tenancy/EfManagementService.cs", "/Emails/", "/Sms/Templates",
-        "/Monitoring/AlertRules.cs", "/Monitoring/TlsProbe.cs", "/Monitoring/EfMonitoringService.cs",
+        "/Monitoring/AlertRules.cs", "/Monitoring/TlsProbe.cs", "/Monitoring/EfMonitoringService.cs", "/Audit/",
     ];
 
     /// <summary>

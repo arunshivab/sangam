@@ -62,6 +62,12 @@ public static class MessageTemplateKinds
     /// <summary>An alert e-mail to operators (D-H, D-K).</summary>
     public const string OperatorAlert = "operator_alert";
 
+    /// <summary>The acknowledgement of a grievance, with its reference and the date it will be answered by (D-D).</summary>
+    public const string GrievanceAcknowledgement = "grievance_acknowledgement";
+
+    /// <summary>The answer to a grievance (D-D).</summary>
+    public const string GrievanceResolution = "grievance_resolution";
+
     /// <summary>Every kind, in the order the consoles list them.</summary>
     public static IReadOnlyList<MessageTemplateKind> All { get; } =
     [
@@ -74,6 +80,8 @@ public static class MessageTemplateKinds
         new(TwoStepResetNotice, false, false, ["name"], []),
         new(TwoStepResetRequested, false, false, ["name", "hours", "effective", "link"], ["link"]),
         new(OperatorAlert, false, false, ["summary", "details"], ["summary"]),
+        new(GrievanceAcknowledgement, false, false, ["name", "reference", "received", "resolve_by"], ["reference"]),
+        new(GrievanceResolution, false, false, ["name", "reference", "resolution"], ["reference", "resolution"]),
         new(RegistrationAttemptNotice, false, false, [], []),
         new(MobileAttemptNotice, false, false, [], []),
         new(SmsSignIn, true, false, [], []),

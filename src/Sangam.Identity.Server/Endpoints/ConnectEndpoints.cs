@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
@@ -68,6 +69,18 @@ public static class ConnectEndpoints
         }
 
         string returnUrl = httpContext.Request.PathBase + httpContext.Request.Path + httpContext.Request.QueryString;
+        if (!string.IsNullOrEmpty(request.RequestUri))
+        {
+            // PR-21, a pushed request (RFC 9126): its parameters are not in the address. The sign-in and consent pages read
+            // the scopes, level and language from the return address, so copy them there; OpenIddict ignores them and
+            // keeps using the pushed request.
+            returnUrl = httpContext.Request.PathBase + httpContext.Request.Path
+                + "?client_id=" + Uri.EscapeDataString(request.ClientId ?? string.Empty)
+                + "&request_uri=" + Uri.EscapeDataString(request.RequestUri)
+                + (string.IsNullOrEmpty(request.Scope) ? string.Empty : "&scope=" + Uri.EscapeDataString(request.Scope))
+                + (string.IsNullOrEmpty(request.AcrValues) ? string.Empty : "&acr_values=" + Uri.EscapeDataString(request.AcrValues))
+                + (string.IsNullOrEmpty(request.UiLocales) ? string.Empty : "&ui_locales=" + Uri.EscapeDataString(request.UiLocales));
+        }
 
         // 1. Signed in?  (prompt=login always re-authenticates)
         AuthenticateResult session = await httpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme).ConfigureAwait(false);
@@ -232,6 +245,7 @@ public static class ConnectEndpoints
         IAccountService accounts,
         IAppDirectory apps,
         ITenancyQuery tenancy,
+        IConsentService consents,
         IAuditWriter audit,
         IOpenIddictApplicationManager applications,
         IOpenIddictAuthorizationManager authorizations,
@@ -246,7 +260,13 @@ public static class ConnectEndpoints
             return await ClientCredentialsAsync(request, applications, scopes, cancellationToken).ConfigureAwait(false);
         }
 
-        if (request.IsAuthorizationCodeGrantType() || request.IsRefreshTokenGrantType())
+        if (request.IsTokenExchangeGrantType())
+        {
+            return await TokenExchangeAsync(httpContext, request, accounts, apps, tenancy, consents, audit, cancellationToken).ConfigureAwait(false);
+        }
+
+        // PR-21: the device code grant redeems what the person approved at /device exactly like a code.
+        if (request.IsAuthorizationCodeGrantType() || request.IsRefreshTokenGrantType() || request.IsDeviceCodeGrantType())
         {
             // The principal validated by OpenIddict from the code / refresh token.
             AuthenticateResult result = await httpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme).ConfigureAwait(false);
@@ -291,7 +311,7 @@ public static class ConnectEndpoints
 
             await audit.WriteAsync(
                 new AuditEntry(AuditActions.TokenIssue, AuditActorType.User, user.Id, app.Id, "app", app.Id,
-                    Metadata: $"{{\"grant\":\"{(request.IsRefreshTokenGrantType() ? "refresh_token" : "authorization_code")}\"}}",
+                    Metadata: $"{{\"grant\":\"{(request.IsRefreshTokenGrantType() ? "refresh_token" : request.IsDeviceCodeGrantType() ? "device_code" : "authorization_code")}\"}}",
                     IpAddress: httpContext.Connection.RemoteIpAddress?.ToString()),
                 cancellationToken).ConfigureAwait(false);
 
@@ -299,6 +319,93 @@ public static class ConnectEndpoints
         }
 
         return Forbid(Errors.UnsupportedGrantType, "The specified grant type is not supported.");
+    }
+
+    /// <summary>How long an exchanged token lives: long enough for one call chain, never refreshable.</summary>
+    public static readonly TimeSpan ExchangedTokenLifetime = TimeSpan.FromMinutes(10);
+
+    /// <summary>
+    /// PR-21, token exchange (RFC 8693): a confidential application's back end trades the access token a person's
+    /// sign-in gave it for a short-lived token addressed to another Sangam application (one audience), so that one
+    /// service can call the next on that person's behalf — LiPi HIS reading from the laboratory system, say. Only
+    /// with the caller's audience permission for the target (<c>aud:&lt;client id&gt;</c>, checked by OpenIddict), only a
+    /// token the caller itself was issued, only where the person has consented to the target application, never
+    /// more scopes than they gave, never a refresh token; the caller is named in <c>act</c>, and it is audited.
+    /// </summary>
+    private static async Task<IResult> TokenExchangeAsync(
+        HttpContext httpContext,
+        OpenIddictRequest request,
+        IAccountService accounts,
+        IAppDirectory apps,
+        ITenancyQuery tenancy,
+        IConsentService consents,
+        IAuditWriter audit,
+        CancellationToken cancellationToken)
+    {
+        if (!string.Equals(request.SubjectTokenType, TokenTypeIdentifiers.AccessToken, StringComparison.Ordinal))
+        {
+            return Forbid(Errors.InvalidRequest, "Only an access token can be exchanged.");
+        }
+
+        System.Collections.Immutable.ImmutableArray<string> audiences = request.GetAudiences();
+        if (audiences.Length != 1)
+        {
+            return Forbid(Errors.InvalidTarget, "Name exactly one audience: the client id of the application the token is for.");
+        }
+
+        AppSummary? caller = request.ClientId is null ? null : await apps.FindByClientIdAsync(request.ClientId, cancellationToken).ConfigureAwait(false);
+        AppSummary? target = await apps.FindByClientIdAsync(audiences[0], cancellationToken).ConfigureAwait(false);
+        if (caller is null || caller.Status != AppStatus.Active || target is null || target.Status != AppStatus.Active || target.Id == caller.Id)
+        {
+            return Forbid(Errors.InvalidTarget, "The audience is not an active Sangam application other than the caller.");
+        }
+
+        // The subject token, validated by OpenIddict (signature, lifetime, not revoked).
+        AuthenticateResult result = await httpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme).ConfigureAwait(false);
+        ClaimsPrincipal? subject = result.Principal;
+        if (subject is null || !subject.GetPresenters().Contains(caller.ClientId))
+        {
+            return Forbid(Errors.InvalidGrant, "Only a token issued to the calling application can be exchanged.");
+        }
+
+        Guid? userId = Guid.TryParse(subject.GetClaim(Claims.Subject), out Guid id) ? id : null;
+        UserSummary? user = userId is null ? null : await accounts.FindByIdAsync(userId.Value, cancellationToken).ConfigureAwait(false);
+        if (user is null || !user.EmailVerified)
+        {
+            return Forbid(Errors.InvalidGrant, "The user no longer exists or cannot sign in.");
+        }
+
+        System.Collections.Immutable.ImmutableArray<string> held = subject.GetScopes();
+        List<string> granted = [.. (request.GetScopes().IsDefaultOrEmpty ? held : request.GetScopes()).Where(s => held.Contains(s) && s != Scopes.OfflineAccess)];
+        if (request.GetScopes().Any(s => !held.Contains(s)))
+        {
+            return Forbid(Errors.InvalidScope, "An exchanged token cannot carry more than the original.");
+        }
+
+        if (!await consents.HasValidConsentAsync(user.Id, target.Id, granted, cancellationToken).ConfigureAwait(false))
+        {
+            return Forbid(Errors.InvalidGrant, "The person has not allowed the target application to see this.");
+        }
+
+        IReadOnlyList<OrgClaim> orgs = await tenancy.GetOrgClaimsAsync(user.Id, target.Id, cancellationToken).ConfigureAwait(false);
+        ClaimsIdentity identity = SangamClaimsBuilder.Build(user, granted, orgs, TokenValidationParameters.DefaultAuthenticationType, subject.GetClaim(SangamClaims.SessionId), AuthenticationProof.FromToken(subject));
+        identity.SetAudiences(target.ClientId);
+        identity.SetResources(target.ClientId);
+        identity.SetAccessTokenLifetime(ExchangedTokenLifetime);
+        // RFC 8693 §4.1: who is acting for the person.
+        identity.AddClaim(new Claim("act", JsonSerializer.Serialize(new Dictionary<string, string> { [Claims.Subject] = caller.ClientId }), "JSON"));
+        foreach (Claim claim in identity.Claims.Where(c => c.Type == "act"))
+        {
+            claim.SetDestinations(Destinations.AccessToken);
+        }
+
+        await audit.WriteAsync(
+            new AuditEntry(AuditActions.TokenExchange, AuditActorType.Api, user.Id, caller.Id, "app", target.Id,
+                Metadata: JsonSerializer.Serialize(new Dictionary<string, object> { ["from"] = caller.ClientId, ["to"] = target.ClientId, ["scopes"] = granted }),
+                IpAddress: httpContext.Connection.RemoteIpAddress?.ToString()),
+            cancellationToken).ConfigureAwait(false);
+
+        return Results.SignIn(new ClaimsPrincipal(identity), authenticationScheme: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
 
     private static async Task<IResult> ClientCredentialsAsync(OpenIddictRequest request, IOpenIddictApplicationManager applications, IOpenIddictScopeManager scopes, CancellationToken cancellationToken)

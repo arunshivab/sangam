@@ -1,6 +1,6 @@
-using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Sangam.Identity.Application.Accounts;
+using Sangam.Shared;
 
 namespace Sangam.Identity.Server.Pages.Account;
 
@@ -11,7 +11,6 @@ namespace Sangam.Identity.Server.Pages.Account;
 /// </summary>
 public sealed class ResetCancelModel : AuthPageModel
 {
-    private static readonly TimeSpan India = TimeSpan.FromHours(5.5);
     private readonly IMfaResetService _resets;
 
     /// <summary>Initialises the page.</summary>
@@ -37,7 +36,7 @@ public sealed class ResetCancelModel : AuthPageModel
     /// <summary>A time in India, in the reader's language.</summary>
     /// <param name="at">The time.</param>
     public static string When(DateTimeOffset at)
-        => at.ToOffset(India).ToString("f", CultureInfo.CurrentCulture) + " IST";
+        => IndiaTime.Full(at);
 
     /// <summary>Shows the button.</summary>
     /// <param name="cancellationToken">Cancellation token.</param>

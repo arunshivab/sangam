@@ -20,7 +20,9 @@ using Sangam.Identity.Domain.Entities;
 using Sangam.Identity.Infrastructure.Accounts;
 using Sangam.Identity.Infrastructure.Admin;
 using Sangam.Identity.Infrastructure.Apps;
+using Sangam.Identity.Infrastructure.Audit;
 using Sangam.Identity.Infrastructure.Consents;
+using Sangam.Identity.Infrastructure.Grievances;
 using Sangam.Identity.Infrastructure.Maintenance;
 using Sangam.Identity.Infrastructure.Messaging;
 using Sangam.Identity.Infrastructure.Monitoring;
@@ -162,6 +164,12 @@ public static class DependencyInjection
                 sp.GetRequiredService<ILogger<AnjalClient>>()));
         }
 
+        if (configuration.GetValue<bool>("Sangam:Email:UseOutbox") && configuration.GetValue<bool>(DevOutboxStore.SharedKey))
+        {
+            // V-11: in Development every host's outbox also writes to one table, shown on the identity server's /dev/outbox.
+            services.AddSingleton<DevOutboxStore>();
+        }
+
         if (configuration.GetValue<bool>("Sangam:Email:UseOutbox"))
         {
             // Development/Testing: capture messages for /dev/outbox and the tests.
@@ -195,6 +203,18 @@ public static class DependencyInjection
         services.AddScoped<IClientContext>(sp => sp.GetRequiredService<ClientContext>());
         services.AddScoped<IAuditWriter>(sp => new ClientAwareAuditWriter(sp.GetRequiredService<EfAuditWriter>(), sp.GetRequiredService<IClientContext>()));
         services.AddScoped<DevelopmentSeeder>();
+        services.AddScoped<ClientRegistration>();
+        // PR-22: the SAML identity provider's state and the console's service providers.
+        services.AddScoped<Saml.SamlIdentityProvider>();
+        services.AddScoped<Application.Saml.ISamlAdminService>(sp => sp.GetRequiredService<Saml.SamlIdentityProvider>());
+
+        // D-D: the grievance log in the operator console.
+        services.AddSingleton<GrievanceClock>();
+        services.AddScoped<Application.Grievances.IGrievanceService, EfGrievanceService>();
+
+        // D-A: a year live, then the encrypted, anonymised archive; purged at seven years.
+        services.AddSingleton(AuditArchiveOptions.From(configuration));
+        services.AddSingleton<AuditArchiver>();
         services.AddHostedService<AccountPurgeService>();
 
         // D-K: support resets of two-step sign-in wait out a cooling-off period; D-H/D-K: alerts to the founder.

@@ -1,0 +1,54 @@
+@page
+@model DeviceModel
+@{
+    ViewData["Title"] = L["Sign in on another device"].Value;
+}
+
+<section class="sg-card">
+  @switch (Model.Step)
+  {
+    case DeviceStep.Approve:
+      <h1 class="sg-card-title">@L["{0} on another device wants to sign in as you", Model.App!.DisplayName]</h1>
+      <p class="sg-card-body">@L["Check that the device shows this code: {0}. If it does not, or you did not start this, refuse.", Model.UserCode ?? string.Empty]</p>
+      <p class="sg-field--code sg-code-show" aria-label="@L["The code"]">@Model.UserCode</p>
+      <div class="sg-account-row">
+        <span class="sg-account-text"><span class="sg-account-name">@Model.User!.DisplayName</span><span class="sg-account-email sg-mono">@Model.User.Email</span></span>
+      </div>
+      <h2 class="sg-consent-head sg-consent-head--share">@L["WILL BE SHARED"]</h2>
+      <ul class="sg-share-list">
+        @foreach (var item in Model.Shared)
+        {
+          <li><span class="sg-share-tick" aria-hidden="true">✓</span><span><span class="sg-share-claim">@item.Label</span><span class="sg-share-value">@item.Value</span></span></li>
+        }
+      </ul>
+      <form method="post" class="sg-consent-actions">
+        <input type="hidden" name="user_code" value="@Model.UserCode" />
+        <button type="submit" class="sg-btn sg-btn--secondary sg-btn--consent" asp-page-handler="Deny">@L["Refuse"]</button>
+        <button type="submit" class="sg-btn sg-btn--primary sg-btn--consent sg-btn--consent-allow" asp-page-handler="Allow">@L["Allow"]</button>
+      </form>
+      break;
+    case DeviceStep.Approved:
+      <h1 class="sg-card-title">@L["Done: go back to your device"]</h1>
+      <p class="sg-card-body">@L["The device is now signed in as you. You can close this page. To sign it out, use Connected apps at account.sangamid.in."]</p>
+      break;
+    case DeviceStep.Refused:
+      <h1 class="sg-card-title">@L["Refused"]</h1>
+      <p class="sg-card-body">@L["The device was not signed in. If you did not start this, nobody can use the code now."]</p>
+      break;
+    default:
+      <h1 class="sg-card-title">@L["Sign in on another device"]</h1>
+      <p class="sg-card-body">@L["Enter the code your TV, kiosk or other device shows. You will sign in here and then choose whether to allow it."]</p>
+      @if (Model.Step == DeviceStep.BadCode)
+      {
+        <p class="sg-banner" role="alert">@L["That code is not right, or it has expired. Check the device and try again."]</p>
+      }
+      <form method="get">
+        <div class="sg-field-group">
+          <label class="sg-label" for="user_code">@L["Code"]</label>
+          <input id="user_code" name="user_code" class="sg-field sg-field--code" autocomplete="off" autocapitalize="characters" spellcheck="false" value="@Model.UserCode" autofocus required />
+        </div>
+        <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Continue"]</button>
+      </form>
+      break;
+  }
+</section>

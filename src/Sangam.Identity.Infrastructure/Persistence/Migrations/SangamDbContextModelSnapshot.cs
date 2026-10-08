@@ -908,6 +908,54 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.DevOutboxMessage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("body");
+
+                    b.Property<string>("Host")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("host");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Recipient")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("recipient");
+
+                    b.Property<DateTimeOffset>("SentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sent_at");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("subject");
+
+                    b.HasKey("Id")
+                        .HasName("pk_dev_outbox");
+
+                    b.ToTable("dev_outbox", (string)null);
+                });
+
             modelBuilder.Entity("Sangam.Identity.Domain.Entities.EmailChangeRequest", b =>
                 {
                     b.Property<Guid>("Id")
@@ -950,6 +998,174 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("idx_email_change_requests_user");
 
                     b.ToTable("email_change_requests", (string)null);
+                });
+
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.Grievance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("AcknowledgeBy")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("acknowledge_by");
+
+                    b.Property<DateTimeOffset?>("AcknowledgedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("acknowledged_at");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("category");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("channel");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closed_at");
+
+                    b.Property<string>("ComplainantContact")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("complainant_contact");
+
+                    b.Property<string>("ComplainantName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("complainant_name");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTimeOffset>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("received_at");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("reference");
+
+                    b.Property<string>("Resolution")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("resolution");
+
+                    b.Property<DateTimeOffset>("ResolveBy")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resolve_by");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("summary");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_grievances");
+
+                    b.HasIndex("Reference")
+                        .IsUnique()
+                        .HasDatabaseName("ux_grievances_reference");
+
+                    b.HasIndex("Status", "ResolveBy")
+                        .HasDatabaseName("idx_grievances_status_due");
+
+                    b.ToTable("grievances", null, t =>
+                        {
+                            t.HasCheckConstraint("chk_grievances_status", "status IN ('received','acknowledged','resolved','declined')");
+                        });
+                });
+
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.GrievanceEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("at");
+
+                    b.Property<Guid>("GrievanceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("grievance_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid>("OperatorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("operator_user_id");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("text");
+
+                    b.HasKey("Id")
+                        .HasName("pk_grievance_entries");
+
+                    b.HasIndex("GrievanceId", "At")
+                        .HasDatabaseName("idx_grievance_entries_grievance");
+
+                    b.ToTable("grievance_entries", (string)null);
+                });
+
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.HostReport", b =>
+                {
+                    b.Property<string>("Host")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("host");
+
+                    b.Property<string>("Subject")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("subject");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("payload");
+
+                    b.Property<DateTimeOffset>("ReportedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reported_at");
+
+                    b.HasKey("Host", "Subject")
+                        .HasName("pk_host_reports");
+
+                    b.ToTable("host_reports", (string)null);
                 });
 
             modelBuilder.Entity("Sangam.Identity.Domain.Entities.Invitation", b =>
@@ -1851,6 +2067,153 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                     b.ToTable("roles", (string)null);
                 });
 
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.SamlRequest", b =>
+                {
+                    b.Property<string>("Handle")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("handle");
+
+                    b.Property<string>("AcsUrl")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("acs_url");
+
+                    b.Property<DateTimeOffset?>("AnsweredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("answered_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<bool>("ForceAuthn")
+                        .HasColumnType("boolean")
+                        .HasColumnName("force_authn");
+
+                    b.Property<string>("RelayState")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("relay_state");
+
+                    b.Property<string>("RequestId")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("request_id");
+
+                    b.Property<int>("RequiredLevel")
+                        .HasColumnType("integer")
+                        .HasColumnName("required_level");
+
+                    b.Property<Guid>("ServiceProviderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("service_provider_id");
+
+                    b.HasKey("Handle")
+                        .HasName("pk_saml_requests");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("idx_saml_requests_expires");
+
+                    b.HasIndex("ServiceProviderId", "RequestId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_saml_requests_sp_request")
+                        .HasFilter("request_id <> ''");
+
+                    b.ToTable("saml_requests", (string)null);
+                });
+
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.SamlServiceProvider", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AcsUrls")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("acs_urls");
+
+                    b.Property<bool>("AllowIdpInitiated")
+                        .HasColumnType("boolean")
+                        .HasColumnName("allow_idp_initiated");
+
+                    b.Property<Guid>("AppId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("app_id");
+
+                    b.Property<string>("Attributes")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("attributes");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DefaultRelayState")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("default_relay_state");
+
+                    b.Property<string>("EncryptionCertificate")
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)")
+                        .HasColumnName("encryption_certificate");
+
+                    b.Property<string>("EntityId")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("entity_id");
+
+                    b.Property<string>("NameIdFormat")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("name_id_format");
+
+                    b.Property<bool>("RequireSignedRequests")
+                        .HasColumnType("boolean")
+                        .HasColumnName("require_signed_requests");
+
+                    b.Property<string>("SigningCertificate")
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)")
+                        .HasColumnName("signing_certificate");
+
+                    b.Property<string>("SloUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("slo_url");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_saml_service_providers");
+
+                    b.HasIndex("AppId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_saml_service_providers_app_id");
+
+                    b.HasIndex("EntityId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_saml_service_providers_entity_id");
+
+                    b.ToTable("saml_service_providers", (string)null);
+                });
+
             modelBuilder.Entity("Sangam.Identity.Domain.Entities.SangamUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2486,6 +2849,16 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_email_change_requests_asp_net_users_user_id");
                 });
 
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.GrievanceEntry", b =>
+                {
+                    b.HasOne("Sangam.Identity.Domain.Entities.Grievance", null)
+                        .WithMany("Entries")
+                        .HasForeignKey("GrievanceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_grievance_entries_grievances_grievance_id");
+                });
+
             modelBuilder.Entity("Sangam.Identity.Domain.Entities.Invitation", b =>
                 {
                     b.HasOne("Sangam.Identity.Domain.Entities.App", null)
@@ -2645,6 +3018,16 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                     b.Navigation("Org");
                 });
 
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.SamlServiceProvider", b =>
+                {
+                    b.HasOne("Sangam.Identity.Domain.Entities.App", null)
+                        .WithMany()
+                        .HasForeignKey("AppId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_saml_service_providers_apps_app_id");
+                });
+
             modelBuilder.Entity("Sangam.Identity.Domain.Entities.SessionApp", b =>
                 {
                     b.HasOne("Sangam.Identity.Domain.Entities.App", null)
@@ -2717,6 +3100,11 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreAuthorization", b =>
                 {
                     b.Navigation("Tokens");
+                });
+
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.Grievance", b =>
+                {
+                    b.Navigation("Entries");
                 });
 #pragma warning restore 612, 618
         }

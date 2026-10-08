@@ -197,5 +197,52 @@ public sealed class MonitoringTests : IAsyncLifetime
             Anjal = new AnjalStatus(true, now, true, 10, 0, 0, 0),
         };
         Assert.Empty(AlertRules.Evaluate(quiet, new AlertThresholds(), ["identity"], anjalConfigured: true));
+
+        // D-E: a backup that stayed on the server; D-A: an archive that stopped running; D-D: an overdue grievance.
+        MonitoringSnapshot gaps = quiet with
+        {
+            Backup = new JobStatus(now.AddHours(-2), true, "sangam_identity.dump, 1024 bytes; no off-site target configured"),
+            AuditArchive = new AuditArchiveStatus(true, now.AddHours(-30), 3, 900, now.AddYears(-3), now.AddDays(-200), 365, 7),
+            Grievances = new GrievanceCounts(2, 1, 0),
+        };
+        Assert.Equal(["backup_offsite", "grievance_overdue", "audit_archive"], AlertRules.Evaluate(gaps, new AlertThresholds(), ["identity"], anjalConfigured: true).Select(c => c.Key));
+    }
+
+    [PostgresFact]
+    public async Task TheBreachList_IsShownAsTheIdentityServerReportsIt_NotFromTheConsolesOwnSettings()
+    {
+        // V-10: this test's host has the check off; the identity server reports it on and loaded.
+        await _provider.GetRequiredService<MetricsRecorder>().ReportAsync();
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            Assert.Contains("\"Enabled\":false", (await db.HostReports.SingleAsync(r => r.Host == "identity" && r.Subject == MetricsRecorder.BreachListSubject)).Payload, StringComparison.Ordinal);
+            HostReport identity = await db.HostReports.SingleAsync(r => r.Host == "identity");
+            identity.Payload = System.Text.Json.JsonSerializer.Serialize(new Application.Security.BreachListStatus(true, true, new DateOnly(2026, 10, 1), 900_000_000, null));
+            db.HostReports.Add(new HostReport
+            {
+                Host = "admin",
+                Subject = MetricsRecorder.BreachListSubject,
+                Payload = System.Text.Json.JsonSerializer.Serialize(new Application.Security.BreachListStatus(false, false, null, 0, null)),
+                ReportedAt = DateTimeOffset.UtcNow,
+            });
+            await db.SaveChangesAsync();
+        }
+
+        using IServiceScope scope = _provider.CreateScope();
+        MonitoringSnapshot snapshot = (await scope.ServiceProvider.GetRequiredService<IMonitoringService>().SnapshotAsync(_owner))!;
+        Assert.True(snapshot.BreachList.Enabled && snapshot.BreachList.Loaded);
+        Assert.Equal(900_000_000, snapshot.BreachList.Entries);
+        Assert.Equal("identity", snapshot.BreachListSource!.Host);
+        Assert.Equal(2, snapshot.BreachListReports.Count);
+        Assert.Contains(snapshot.BreachListReports, r => r.Host == "admin" && !r.Status.Enabled);
+        Assert.DoesNotContain(AlertRules.Evaluate(snapshot, new AlertThresholds(), ["identity"], anjalConfigured: false), c => c.Key == "breach_list");
+    }
+
+    [Fact]
+    public void ADatabaseThatCannotBeReached_IsRecognised_SoTheFounderIsStillAlerted()
+    {
+        Assert.True(PlatformAlerts.IsDatabaseFailure(new Npgsql.NpgsqlException("Failed to connect to 127.0.0.1:5432")));
+        Assert.True(PlatformAlerts.IsDatabaseFailure(new InvalidOperationException("An exception has been raised that is likely due to a transient failure.", new Npgsql.NpgsqlException("refused"))));
+        Assert.False(PlatformAlerts.IsDatabaseFailure(new ArgumentException("not a database problem")));
     }
 }

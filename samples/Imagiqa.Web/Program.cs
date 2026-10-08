@@ -1,10 +1,37 @@
 using Imagiqa.Web.Components;
 using Imagiqa.Web.Components.Ward;
 using Imagiqa.Web.Records;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Sangam.Client;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+// D-I: at demo.sangamid.in the client secret and the database password arrive as Docker secret files.
+string secrets = Environment.GetEnvironmentVariable("SANGAM_SECRETS_DIR") ?? "/run/secrets";
+if (Directory.Exists(secrets))
+{
+    builder.Configuration.AddKeyPerFile(secrets, optional: true);
+}
+
+// Behind Caddy: the client address and https come from the proxy, trusted on its network only.
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
+    foreach (string network in (builder.Configuration["Imagiqa:ForwardedHeaders:KnownNetworks"] ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+    {
+        o.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(network));
+    }
+});
+
+// The sign-in cookie survives a restart: keys kept on a volume (a demo with no real patient data; see the README).
+if (builder.Configuration["Imagiqa:DataProtection:KeysDirectory"] is { Length: > 0 } keys)
+{
+    builder.Services.AddDataProtection().SetApplicationName("imagiqa").PersistKeysToFileSystem(new DirectoryInfo(keys));
+}
+
+builder.Services.AddHealthChecks();
 
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddCascadingAuthenticationState();
@@ -28,7 +55,10 @@ builder.Services.AddAuthorization(o => o.FallbackPolicy = o.DefaultPolicy);
 
 WebApplication app = builder.Build();
 
-if (app.Environment.IsDevelopment() && app.Configuration.GetValue("Imagiqa:MigrateOnStartup", false))
+app.UseForwardedHeaders();
+
+// Development, and the demo (its own database, no real patient data), create their tables on start.
+if (app.Configuration.GetValue("Imagiqa:MigrateOnStartup", false))
 {
     using IServiceScope scope = app.Services.CreateScope();
     using ImagiqaDbContext db = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ImagiqaDbContext>>().CreateDbContext();
@@ -37,15 +67,31 @@ if (app.Environment.IsDevelopment() && app.Configuration.GetValue("Imagiqa:Migra
 
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    // A plain answer, with no page behind the sign-in that could itself fail: the usual cause is that Sangam cannot be
+    // reached to sign someone in.
+    app.UseExceptionHandler(error => error.Run(async context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "text/plain; charset=utf-8";
+        await context.Response.WriteAsync("imagiQa could not complete this request. If you were signing in, Sangam may be unreachable: try again in a few minutes.").ConfigureAwait(false);
+    }));
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+// Behind Caddy (a known proxy network), Caddy redirects to https itself and health-checks over plain http, as for
+// Sangam's own hosts (V-07); a host exposed directly still redirects.
+bool behindProxy = !string.IsNullOrWhiteSpace(app.Configuration["Imagiqa:ForwardedHeaders:KnownNetworks"]);
+if (!behindProxy && !app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Testing"))
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
 app.MapStaticAssets();
+app.MapHealthChecks("/health/live").AllowAnonymous();
+app.MapHealthChecks("/health/ready").AllowAnonymous();
 app.MapSangamSignOut();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 

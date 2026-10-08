@@ -17,7 +17,7 @@ else
           <td><span class="sg-name">@admin.DisplayName</span><span class="sg-sub">@admin.Email</span></td>
           <td><span class="sg-rank sg-rank--@(admin.Role == AppAdminRole.Owner ? "owner" : "app")">@(admin.Role == AppAdminRole.Owner ? L["Owner"] : L["Administrator"])</span></td>
           <td>@if (admin.MfaEnrolled) { <span>@L["set up"]</span> } else { <span class="sg-warn-text">@L["not yet — cannot sign in here"]</span> }</td>
-          <td>@admin.GrantedAt.ToString("d MMM yyyy", System.Globalization.CultureInfo.CurrentCulture)</td>
+          <td>@Sangam.Shared.IndiaTime.Date(admin.GrantedAt)</td>
           <td>
             @if (admin.UserId != Info.UserId)
             {

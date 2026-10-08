@@ -35,8 +35,7 @@ exist, so there is no production database to act on yet.
 - [ ] Monitoring points at `/health/live` and `/health/ready` on all four hosts.
 - [ ] The data-protection key ring (`data_protection_keys`) is protected at rest with a certificate,
       and included in backups (SGM-603).
-- [ ] `Sangam:Audit:RetentionDays` set — or deliberately left unset — once the founder has decided the
-      retention periods. Unset keeps every audit event.
+- [ ] *(Superseded by D-A, built in R4: `Sangam:Audit:RetentionDays` is refused; see "Added by R4" below.)*
 - [ ] The identity server starts: it refuses without a real e-mail sender or with the outbox on.
 
 ## Added by R1
@@ -127,7 +126,29 @@ Checks:
       method is required, and that the urgent override alerts the founder.
 - [ ] D-L: `Sangam__Registration__ConcealExistingAccounts` is **true** (the default).
 - [ ] D-M: SMS stays off until DLT is registered under the new company (above).
-- [ ] D-A and D-E (R4): audit archive and anonymisation; encrypted off-region backups with object lock.
+- [ ] D-A and D-E (R4): audit archive and anonymisation; encrypted off-region backups with object lock (see "Added by R4").
+
+## Added by R4
+
+- [ ] D-A: the audit-archive key pair made on the founder's own computer (`audit-archive keygen`); only
+      `audit_archive.crt` on the server; the private key and passphrase offline in two copies kept apart;
+      `/srv/sangam/audit-archive` exists and is writable by the container user; the monitoring page shows the archive.
+- [ ] D-E: the founder's `age` key made offline, its public line in `/etc/sangam/backup-recipients.txt`; the off-site
+      bucket created **with object lock**, in another region, with `backup/lifecycle.json` applied; **E2E Object
+      Storage's object-lock support confirmed** (OI-040); one nightly run seen to upload, and one off-site restore
+      drill passed (`restore-drill.sh --offsite`). The second provider before the public launch.
+- [ ] D-I: `demo.sangamid.in` in DNS; the demo's database and role (`imagiqa_demo`) created; `Imagiqa__ClientSecret`
+      and `ConnectionStrings__Imagiqa` secret files present; the banner seen.
+- [ ] Clients: every `Sangam__Clients__*__Secret` file is 32+ random characters and the same file the host reads; a
+      change of a client's base address is made in `docker-compose.yml`, never in the database.
+- [ ] D-D: the `grievance@sangamid.in` mailbox exists; the grievance-officer details in the privacy policy (counsel);
+      `Sangam__Grievance__Holidays` set for the year; support staff know to log a grievance the day it arrives and
+      never to record identity-document numbers.
+- [ ] PR-21: each native or device application registered with its kind and exact redirect addresses; token exchange
+      audiences (`ExchangeAudiences`) granted only where one application must call another for the same person.
+- [ ] PR-22 (only if a SAML application is connected): SAML signing key and pairwise key made and kept offline as well
+      (`docker-compose.saml.yml`, production README); each service provider registered on the operator console and one
+      sign-in and one logout seen to work; SAML included in the penetration test (OI-045).
 
 ## Bootstrapping the first owner — a deliberate, one-time act
 

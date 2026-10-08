@@ -73,6 +73,31 @@ public sealed class SmsNoticeSender
         return TrySendAsync(number, null, "en-IN", SmsSettings.OperatorAlertTemplate, MessageTemplateKinds.SmsOperatorAlert, [variable], null, cancellationToken);
     }
 
+    /// <summary>
+    /// The founder's alert when the database is down (D-H): the configured template, sent straight to the provider,
+    /// without the per-number limits or the record, both of which live in the database.
+    /// </summary>
+    /// <param name="number">E.164 number.</param>
+    /// <param name="summary">One line.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task<bool> TrySendAlertDirectAsync(string number, string summary, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(number);
+        ArgumentNullException.ThrowIfNull(summary);
+        if (!_settings.Enabled || !_settings.CountryCodes.Any(c => number.StartsWith(c, StringComparison.Ordinal))
+            || !_settings.Templates.TryGetValue(SmsSettings.OperatorAlertTemplate, out SmsTemplateSettings? template))
+        {
+            return false;
+        }
+
+        string variable = summary.ReplaceLineEndings(" ");
+        variable = variable.Length > DltTemplate.MaxVariableLength ? variable[..DltTemplate.MaxVariableLength] : variable;
+        SmsSendResult result = await _sender.SendAsync(
+            new OutgoingSms(number, SmsSettings.OperatorAlertTemplate, template.Id ?? string.Empty, _settings.SenderHeader, DltTemplate.Render(template.Text, [variable])),
+            cancellationToken).ConfigureAwait(false);
+        return result.Accepted;
+    }
+
     private async Task<bool> TrySendAsync(string? number, Guid? userId, string? language, string templateKey, string kind, string[] variables, string? ipAddress, CancellationToken cancellationToken)
     {
         if (!_settings.Enabled || string.IsNullOrEmpty(number) || !_settings.CountryCodes.Any(c => number.StartsWith(c, StringComparison.Ordinal)))

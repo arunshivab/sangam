@@ -152,5 +152,33 @@
       "subject": "{{application}}-ലേക്ക് നിങ്ങളെ ക്ഷണിച്ചിരിക്കുന്നു",
       "body": "നമസ്കാരം,\n\n{{application}}-ൽ {{organisation}} എന്ന സ്ഥാപനത്തിൽ {{role}} ആയി ചേരാൻ നിങ്ങളെ ക്ഷണിച്ചിരിക്കുന്നു.\n\nസ്വീകരിക്കാൻ, ഈ ലിങ്ക് തുറന്ന് ഈ ഇമെയിൽ വിലാസം ഉപയോഗിച്ച് Sangam-ൽ സൈൻ ഇൻ ചെയ്യുക (അല്ലെങ്കിൽ ഇത്\nഉപയോഗിച്ച് ഒരു Sangam അക്കൗണ്ട് സൃഷ്ടിക്കുക):\n\n    {{link}}\n\nഈ ലിങ്ക് ഒരു തവണ മാത്രം, {{days}} ദിവസത്തേക്ക് പ്രവർത്തിക്കും. നിങ്ങൾ ഇത് പ്രതീക്ഷിച്ചിരുന്നില്ലെങ്കിൽ, ഈ\nഇമെയിൽ അവഗണിക്കുക; ഒന്നും സംഭവിക്കില്ല, {{application}}-ന് നിങ്ങളുടെ അക്കൗണ്ട് കാണാനാകില്ല.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
     }
+  },
+  "grievance_acknowledgement": {
+    "en-IN": {
+      "subject": "We have received your grievance {{reference}}",
+      "body": "Hello {{name}},\n\nWe received your grievance on {{received}} and have logged it under the reference {{reference}}. Please quote\nthis reference if you write to us about it.\n\nWe will look into it and answer you by {{resolve_by}} at the latest.\n\nArun Shiva Balasubramanian\nGrievance Officer, Sangam\ngrievance@sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "हमें आपकी शिकायत {{reference}} मिल गई है",
+      "body": "नमस्ते {{name}},\n\nहमें {{received}} को आपकी शिकायत मिली और हमने इसे संदर्भ संख्या {{reference}} के साथ दर्ज किया है। इसके बारे में\nहमें लिखते समय कृपया यह संदर्भ संख्या लिखें।\n\nहम इसकी जाँच करेंगे और अधिक से अधिक {{resolve_by}} तक आपको उत्तर देंगे।\n\nअरुण शिवा बालसुब्रमण्यम\nशिकायत अधिकारी, Sangam\ngrievance@sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "നിങ്ങളുടെ പരാതി {{reference}} ഞങ്ങൾക്ക് ലഭിച്ചു",
+      "body": "നമസ്കാരം {{name}},\n\n{{received}}-ന് നിങ്ങളുടെ പരാതി ഞങ്ങൾക്ക് ലഭിച്ചു; {{reference}} എന്ന റഫറൻസ് നമ്പറിൽ അത് രേഖപ്പെടുത്തി. ഇതിനെക്കുറിച്ച്\nഞങ്ങൾക്ക് എഴുതുമ്പോൾ ഈ റഫറൻസ് നമ്പർ ചേർക്കുക.\n\nഞങ്ങൾ ഇത് പരിശോധിച്ച് ഏറ്റവും വൈകി {{resolve_by}}-നകം മറുപടി നൽകും.\n\nഅരുൺ ശിവ ബാലസുബ്രഹ്മണ്യം\nപരാതി പരിഹാര ഓഫീസർ, Sangam\ngrievance@sangamid.in"
+    }
+  },
+  "grievance_resolution": {
+    "en-IN": {
+      "subject": "Our answer to your grievance {{reference}}",
+      "body": "Hello {{name}},\n\nThis is our answer to your grievance {{reference}}:\n\n{{resolution}}\n\nIf you are not satisfied with our answer, you may complain to the Data Protection Board of India under the\nDigital Personal Data Protection Act, 2023.\n\nArun Shiva Balasubramanian\nGrievance Officer, Sangam\ngrievance@sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "आपकी शिकायत {{reference}} पर हमारा उत्तर",
+      "body": "नमस्ते {{name}},\n\nआपकी शिकायत {{reference}} पर हमारा उत्तर यह है:\n\n{{resolution}}\n\nयदि आप हमारे उत्तर से संतुष्ट नहीं हैं, तो आप डिजिटल व्यक्तिगत डेटा संरक्षण अधिनियम, 2023 के अंतर्गत भारतीय डेटा\nसंरक्षण बोर्ड से शिकायत कर सकते हैं।\n\nअरुण शिवा बालसुब्रमण्यम\nशिकायत अधिकारी, Sangam\ngrievance@sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "നിങ്ങളുടെ പരാതി {{reference}}-നുള്ള ഞങ്ങളുടെ മറുപടി",
+      "body": "നമസ്കാരം {{name}},\n\nനിങ്ങളുടെ പരാതി {{reference}}-നുള്ള ഞങ്ങളുടെ മറുപടി ഇതാണ്:\n\n{{resolution}}\n\nഞങ്ങളുടെ മറുപടിയിൽ നിങ്ങൾ തൃപ്തരല്ലെങ്കിൽ, ഡിജിറ്റൽ വ്യക്തിഗത ഡാറ്റ സംരക്ഷണ നിയമം, 2023 പ്രകാരം ഇന്ത്യയുടെ\nഡാറ്റ സംരക്ഷണ ബോർഡിൽ പരാതിപ്പെടാം.\n\nഅരുൺ ശിവ ബാലസുബ്രഹ്മണ്യം\nപരാതി പരിഹാര ഓഫീസർ, Sangam\ngrievance@sangamid.in"
+    }
   }
 }

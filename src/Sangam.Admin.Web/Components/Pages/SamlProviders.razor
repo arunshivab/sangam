@@ -1,0 +1,272 @@
+@page "/apps/saml"
+@using Sangam.Identity.Application.Saml
+@inject ISamlAdminService Saml
+@inject IConfiguration Configuration
+
+<PageTitle>@L["SAML service providers · Sangam console"]</PageTitle>
+
+<p><a href="/apps">@L["← Applications"]</a></p>
+<h1 class="sg-h1">@L["SAML service providers"]</h1>
+<p class="sg-lede">@L["Older applications that speak SAML 2.0 instead of OpenID Connect. Each is also an application: people sign in to it under its sign-in rule, consent to what it is given, and it can be disabled on the Applications page. Give the service provider Sangam's metadata address below."]</p>
+
+<div class="sg-panel" data-panel="saml-idp">
+  <p><span class="sg-label">@L["Sangam's metadata"]</span> <span class="sg-mono">@(_authority + "/saml/metadata")</span></p>
+  <p><span class="sg-label">@L["Sangam's entity id"]</span> <span class="sg-mono">@(_authority + "/saml")</span></p>
+</div>
+
+@if (_rows is null)
+{
+  <p class="sg-muted">@(_loaded ? L["The service providers are for platform operators only."] : L["Loading…"])</p>
+}
+else
+{
+  @if (_rows.Count == 0)
+  {
+    <p class="sg-muted">@L["No SAML service providers yet."]</p>
+  }
+  else
+  {
+    <div class="sg-table-wrap">
+      <table class="sg-table">
+        <thead><tr><th>@L["Service provider"]</th><th>@L["Entity id"]</th><th>@L["Released"]</th><th>@L["Protection"]</th><th>@L["Status"]</th><th></th></tr></thead>
+        <tbody>
+          @foreach (SamlSpView row in _rows)
+          {
+            <tr>
+              <td><span class="sg-name">@row.Input.DisplayName</span><span class="sg-sub">@row.Input.OwnerCompanyName</span></td>
+              <td class="sg-mono">@row.Input.EntityId</td>
+              <td>@string.Join(", ", row.Input.Attributes.Select(AttributeLabel))</td>
+              <td>
+                @(row.EncryptsAssertions ? L["encrypted"] : L["signed only"])@if (row.Input.RequireSignedRequests)
+                {
+                  <span class="sg-sub">@L["signed requests"]</span>
+                }@if (row.Input.AllowIdpInitiated)
+                {
+                  <span class="sg-sub">@L["may start at Sangam"]</span>
+                }
+              </td>
+              <td><span class="sg-pill sg-pill--@(row.Active ? "active" : "disabled")">@(row.Active ? L["active"] : L["disabled"])</span></td>
+              <td>
+                @if (Context?.CanManageApps == true)
+                {
+                  <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => Edit(row)" disabled="@_busy">@L["Change"]</button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (Context?.CanManageApps == true)
+  {
+    <section class="sg-panel" data-panel="saml-sp">
+      <h2 class="sg-h2">@(_editing is null ? L["Register a service provider"] : L["Change a service provider"])</h2>
+      @if (_editing is null)
+      {
+        <div class="sg-form-row">
+          <label class="sg-label" for="s-metadata">@L["Its metadata (optional): paste it to fill the form, then check every field"]</label>
+          <textarea id="s-metadata" class="sg-input sg-mono" rows="4" @bind="_metadata" @bind:event="oninput"></textarea>
+        </div>
+        <div class="sg-actions">
+          <button type="button" class="sg-btn sg-btn--ghost" @onclick="ReadMetadata" disabled="@(_busy || string.IsNullOrWhiteSpace(_metadata))">@L["Read the metadata"]</button>
+        </div>
+      }
+      <div class="sg-form-row">
+        <label class="sg-label" for="s-name">@L["Its name, as people see it"]</label>
+        <input id="s-name" class="sg-input" @bind="_name" @bind:event="oninput" maxlength="200" />
+      </div>
+      <div class="sg-form-row">
+        <label class="sg-label" for="s-owner">@L["Who runs it"]</label>
+        <input id="s-owner" class="sg-input" @bind="_owner" @bind:event="oninput" maxlength="200" />
+      </div>
+      <div class="sg-form-row">
+        <label class="sg-label" for="s-entity">@L["Entity id"]</label>
+        <input id="s-entity" class="sg-input sg-mono" @bind="_entity" @bind:event="oninput" maxlength="500" readonly="@(_editing is not null)" />
+      </div>
+      <div class="sg-form-row">
+        <label class="sg-label" for="s-acs">@L["Where it receives sign-ins (HTTPS, one per line, the default first)"]</label>
+        <textarea id="s-acs" class="sg-input sg-mono" rows="2" @bind="_acs" @bind:event="oninput"></textarea>
+      </div>
+      <div class="sg-form-row">
+        <label class="sg-label" for="s-slo">@L["Where it receives sign-outs (optional)"]</label>
+        <input id="s-slo" class="sg-input sg-mono" @bind="_slo" @bind:event="oninput" maxlength="500" />
+      </div>
+      <div class="sg-form-row">
+        <label class="sg-label" for="s-signing">@L["Its signing certificate (PEM; needed for signed requests and sign-out)"]</label>
+        <textarea id="s-signing" class="sg-input sg-mono" rows="3" @bind="_signing" @bind:event="oninput"></textarea>
+      </div>
+      <div class="sg-form-row">
+        <label class="sg-label" for="s-encryption">@L["Its encryption certificate (PEM; assertions are encrypted when there is one)"]</label>
+        <textarea id="s-encryption" class="sg-input sg-mono" rows="3" @bind="_encryption" @bind:event="oninput"></textarea>
+      </div>
+      <div class="sg-form-row">
+        <label class="sg-label" for="s-nameid">@L["How the person is named to it"]</label>
+        <select id="s-nameid" class="sg-input" @bind="_nameId">
+          <option value="persistent">@L["A private identifier for this service provider only (recommended)"]</option>
+          <option value="email">@L["Their e-mail address"]</option>
+        </select>
+      </div>
+      <fieldset class="sg-form-row">
+        <legend class="sg-label">@L["What it is given"]</legend>
+        @foreach (string attribute in SamlAttributes.All)
+        {
+          <label class="sg-check"><input type="checkbox" checked="@_attributes.Contains(attribute)" @onchange="e => Toggle(attribute, e)" /> @AttributeLabel(attribute)</label>
+        }
+      </fieldset>
+      <label class="sg-check"><input type="checkbox" @bind="_requireSigned" /> @L["Its requests must be signed"]</label>
+      <label class="sg-check"><input type="checkbox" @bind="_idpInitiated" /> @L["Sign-in may start at Sangam (IdP-initiated); off unless it needs it"]</label>
+      @if (_idpInitiated)
+      {
+        <div class="sg-form-row">
+          <label class="sg-label" for="s-relay">@L["Where such a sign-in lands (RelayState, optional)"]</label>
+          <input id="s-relay" class="sg-input sg-mono" @bind="_relay" @bind:event="oninput" maxlength="500" />
+        </div>
+      }
+      <div class="sg-actions">
+        <button type="button" class="sg-btn sg-btn--primary" @onclick="SaveAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_entity) || string.IsNullOrWhiteSpace(_acs))">@(_editing is null ? L["Register it"] : L["Save the changes"])</button>
+        @if (_editing is not null)
+        {
+          <button type="button" class="sg-btn sg-btn--ghost" @onclick="Clear" disabled="@_busy">@L["Cancel"]</button>
+        }
+      </div>
+    </section>
+  }
+
+  @if (_message is not null)
+  {
+    <p class="@(_ok ? "sg-ok" : "sg-warn")">@_message</p>
+  }
+}
+
+@code {
+    [CascadingParameter]
+    public ConsoleContext? Context { get; set; }
+
+    private IReadOnlyList<SamlSpView>? _rows;
+    private bool _loaded;
+    private bool _busy;
+    private bool _ok;
+    private string? _message;
+    private string _authority = string.Empty;
+    private Guid? _editing;
+    private string _metadata = string.Empty;
+    private string _name = string.Empty;
+    private string _owner = string.Empty;
+    private string _entity = string.Empty;
+    private string _acs = string.Empty;
+    private string _slo = string.Empty;
+    private string _signing = string.Empty;
+    private string _encryption = string.Empty;
+    private string _nameId = "persistent";
+    private HashSet<string> _attributes = ["name", "email"];
+    private bool _requireSigned;
+    private bool _idpInitiated;
+    private string _relay = string.Empty;
+
+    protected override Task OnInitializedAsync()
+    {
+        _authority = (Configuration["Sangam:Authority"] ?? "https://id.sangamid.in").TrimEnd('/');
+        return LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        if (Context is null)
+        {
+            return;
+        }
+
+        _rows = await Saml.ListAsync(Context.UserId);
+        _loaded = true;
+    }
+
+    private string AttributeLabel(string attribute) => attribute switch
+    {
+        "name" => L["Full name"],
+        "given_name" => L["First name"],
+        "family_name" => L["Last name"],
+        "email" => L["E-mail address"],
+        "roles" => L["Roles in its organisations"],
+        "orgs" => L["Organisations"],
+        _ => attribute,
+    };
+
+    private void Toggle(string attribute, ChangeEventArgs e)
+    {
+        if (e.Value is true)
+        {
+            _attributes.Add(attribute);
+        }
+        else
+        {
+            _attributes.Remove(attribute);
+        }
+    }
+
+    private void ReadMetadata()
+    {
+        (SamlSpInput? input, string? problem) = Saml.FromMetadata(_metadata);
+        if (input is null)
+        {
+            _ok = false;
+            _message = L[problem ?? string.Empty];
+            return;
+        }
+
+        Fill(input);
+        _ok = true;
+        _message = L["Read. Check every field, then register it."];
+    }
+
+    private void Edit(SamlSpView row)
+    {
+        Fill(row.Input);
+        _editing = row.Id;
+        _message = null;
+    }
+
+    private void Fill(SamlSpInput input)
+    {
+        _name = input.DisplayName;
+        _owner = input.OwnerCompanyName;
+        _entity = input.EntityId;
+        _acs = input.AcsUrls;
+        _slo = input.SloUrl ?? string.Empty;
+        _signing = input.SigningCertificate ?? string.Empty;
+        _encryption = input.EncryptionCertificate ?? string.Empty;
+        _nameId = input.NameIdFormat;
+        _attributes = [.. input.Attributes];
+        _requireSigned = input.RequireSignedRequests;
+        _idpInitiated = input.AllowIdpInitiated;
+        _relay = input.DefaultRelayState ?? string.Empty;
+    }
+
+    private void Clear()
+    {
+        Fill(new SamlSpInput(null, string.Empty, string.Empty, string.Empty, string.Empty, null, null, null, "persistent", ["name", "email"], false, false, null));
+        _editing = null;
+        _metadata = string.Empty;
+    }
+
+    private async Task SaveAsync()
+    {
+        _busy = true;
+        SamlSpInput input = new(
+            _editing, _name, _owner, _entity, _acs, Blank(_slo), Blank(_signing), Blank(_encryption), _nameId,
+            [.. SamlAttributes.All.Where(_attributes.Contains)], _requireSigned, _idpInitiated, _idpInitiated ? Blank(_relay) : null);
+        AdminResult result = await Saml.SaveAsync(Context!.UserId, input, null);
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = L[result.Message ?? string.Empty];
+        if (result.Succeeded)
+        {
+            Clear();
+        }
+
+        await LoadAsync();
+    }
+
+    private static string? Blank(string value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+}

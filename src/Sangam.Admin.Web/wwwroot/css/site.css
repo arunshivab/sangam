@@ -214,3 +214,10 @@ h1[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 @media (max-width: 720px) {
   .sg-mon-head { flex-direction: column; align-items: flex-start; }
 }
+
+/* D-D: the grievance log. */
+.sg-pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.sg-timeline { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; font-size: 13px; }
+.sg-timeline .sg-sub { display: block; margin-top: 2px; }
+.sg-check { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; margin: 6px 0 10px; }
+textarea.sg-input { width: 100%; min-height: 4.5em; resize: vertical; font: inherit; }

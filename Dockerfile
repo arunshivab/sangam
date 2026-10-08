@@ -1,13 +1,15 @@
 # Sangam - one image recipe for every host, and a migrator (PR-10, SGM-307).
 #   docker build --build-arg PROJECT=Sangam.Identity.Server -t sangam/identity .
 #   docker build --target migrator -t sangam/migrator .
+#   docker build --build-arg PROJECT_DIR=samples --build-arg PROJECT=Imagiqa.Web -t sangam/demo .   (D-I)
 ARG DOTNET_VERSION=10.0
 
 FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION} AS build
 WORKDIR /src
 COPY . .
 ARG PROJECT=Sangam.Identity.Server
-RUN dotnet publish "src/${PROJECT}/${PROJECT}.csproj" -c Release -o /out/app
+ARG PROJECT_DIR=src
+RUN dotnet publish "${PROJECT_DIR}/${PROJECT}/${PROJECT}.csproj" -c Release -o /out/app
 
 FROM build AS bundle
 # dotnet-ef is pinned in the repository's tool manifest (.config/dotnet-tools.json); a global install
