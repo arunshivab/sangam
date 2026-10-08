@@ -40,4 +40,10 @@ public sealed class AuditEvent
 
     /// <summary>When it happened (UTC).</summary>
     public DateTimeOffset OccurredAt { get; set; }
+
+    /// <summary>Hash of the previous event in the chain (hex SHA-256), or <see langword="null"/> for the first chained event.</summary>
+    public string? PrevHash { get; set; }
+
+    /// <summary>Hash of this event and <see cref="PrevHash"/> (hex SHA-256); makes tampering evident (OI-039).</summary>
+    public string? Hash { get; set; }
 }

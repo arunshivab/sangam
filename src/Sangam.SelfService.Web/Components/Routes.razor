@@ -1,6 +1,23 @@
+@inject Sangam.Identity.Application.Abstractions.ClientContext Client
 <Router AppAssembly="typeof(Program).Assembly">
   <Found Context="routeData">
     <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)" />
     <FocusOnNavigate RouteData="routeData" Selector="h1" />
   </Found>
 </Router>
+
+@code {
+    /// <summary>Client IP address, from the server-side render.</summary>
+    [Parameter]
+    public string? ClientIp { get; set; }
+
+    /// <summary>Client user agent, from the server-side render.</summary>
+    [Parameter]
+    public string? ClientUserAgent { get; set; }
+
+    /// <inheritdoc />
+    protected override void OnInitialized()
+    {
+        Client.Set(ClientIp, ClientUserAgent);
+    }
+}

@@ -6,6 +6,35 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+### Fixed — R0 stabilisation (PR-11 logs and audit, PR-12 abuse protection and host hardening)
+- **One-time codes never reach a log (OI-038).** The logging e-mail sender, which wrote whole messages —
+  codes included — to the log outside Development, is removed. Without a real sender, sends are refused
+  and name no recipient or content; the identity server refuses to start outside Development and Testing
+  if no sender is configured (`Sangam:Email:Smtp:Host`) or if the development outbox is on. The outbox's
+  own log line now shows only a masked recipient: subjects carry the code.
+- **The audit trail refuses tampering and shows it (OI-039).** Triggers replace the silent append-only
+  rules: UPDATE, DELETE and TRUNCATE on `audit_events` now fail with an error (TRUNCATE was not covered
+  before). Every event carries a SHA-256 hash chained to the previous one; `AuditChain.VerifyAsync` finds
+  the first altered event. Metadata is hashed in a canonical form so jsonb normalisation cannot break the
+  chain. Every audit entry now records the client's IP and browser — the consoles and the portal had
+  passed none — through a per-request and per-circuit client context.
+- **Audit retention is configurable and off by default.** `Sangam:Audit:RetentionDays` unset keeps every
+  event; when set, the maintenance sweep removes older events and records the cut as
+  `audit.retention.purge`. The periods are the founder's decision.
+- **Bot friction without a CAPTCHA (OI-034, D-111).** Sign-in, code sign-in, registration and forgotten
+  password carry a hidden honeypot field and a signed form timestamp; posts that fill the honeypot, lack
+  the timestamp or come faster than `Sangam:Antibot:MinimumSeconds` (default 2) are refused with one
+  neutral message. No JavaScript needed.
+- **Rate limits on every endpoint (OI-035).** `/connect/token` (60 a minute per IP), `/connect/userinfo`
+  (120) and `/api/v1` (300), configurable under `Sangam:RateLimit`.
+- **Ready for running behind Caddy (OI-037).** The data-protection key ring is kept in the database
+  (`data_protection_keys`) so cookies and form tokens survive a restart; forwarded headers are trusted only
+  from `Sangam:ForwardedHeaders:KnownProxies` or `KnownNetworks`; every host serves `/health/live` and
+  `/health/ready`.
+- PostgreSQL is described as 16 or later (OI-014); the expected HTTPS-port warning is silenced in tests
+  (OI-015); a test covers individuals without an organisation (REQ-021).
+- Migrations: `AuditProtection`, `DataProtectionKeys`. Tests: 269 (29 new).
+
 ### Added — PR-08 Sangam.Client SDK and the imagiQa sample
 - `Sangam.Client` is now a real, packable SDK (with `Sangam.Shared`): `AddSangam` adds sign-in with
   authorization code + PKCE in one call, validating its options at start-up; `MapSangamSignOut`

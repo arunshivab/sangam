@@ -22,6 +22,8 @@ internal sealed class AuditEventConfiguration : IEntityTypeConfiguration<AuditEv
         b.Property(e => e.TargetType).HasMaxLength(50);
         b.Property(e => e.Metadata).HasColumnType("jsonb").IsRequired();
         b.Property(e => e.IpAddress).HasMaxLength(45);
+        b.Property(e => e.PrevHash).HasMaxLength(64);
+        b.Property(e => e.Hash).HasMaxLength(64);
 
         b.HasIndex(e => new { e.ActorUserId, e.OccurredAt }).IsDescending(false, true).HasDatabaseName("idx_audit_actor");
         b.HasIndex(e => new { e.TargetType, e.TargetId, e.OccurredAt }).IsDescending(false, false, true).HasDatabaseName("idx_audit_target");

@@ -55,6 +55,14 @@ internal sealed partial class BrowserSession : IDisposable
         Assert.True(token.Success, "No antiforgery token on " + path);
 
         Dictionary<string, string> form = new(fields) { ["__RequestVerificationToken"] = token.Groups[1].Value };
+
+        // Like a browser, submit the form’s hidden bot-check timestamp too (OI-034), unless the test sets it.
+        Match stamp = TimestampRegex().Match(page);
+        if (stamp.Success)
+        {
+            form.TryAdd("__form_ts", stamp.Groups[1].Value);
+        }
+
         string target = handler is null ? path : path + (path.Contains('?', StringComparison.Ordinal) ? "&" : "?") + "handler=" + handler;
         using FormUrlEncodedContent content = new(form);
         using HttpResponseMessage response = await _client.PostAsync(new Uri(target, UriKind.Relative), content);
@@ -65,4 +73,7 @@ internal sealed partial class BrowserSession : IDisposable
 
     [GeneratedRegex("name=\"__RequestVerificationToken\" type=\"hidden\" value=\"([^\"]+)\"")]
     private static partial Regex TokenRegex();
+
+    [GeneratedRegex("name=\"__form_ts\" value=\"([^\"]+)\"")]
+    private static partial Regex TimestampRegex();
 }

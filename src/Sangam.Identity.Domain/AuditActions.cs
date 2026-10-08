@@ -155,4 +155,7 @@ public static class AuditActions
 
     /// <summary>Reference data or the bootstrap app was seeded.</summary>
     public const string SystemSeed = "system.seed";
+
+    /// <summary>The audit retention job removed events older than the configured period (OI-039).</summary>
+    public const string AuditRetentionPurge = "audit.retention.purge";
 }

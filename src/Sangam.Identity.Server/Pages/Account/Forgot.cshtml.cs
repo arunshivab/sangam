@@ -6,6 +6,7 @@ using Sangam.Identity.Server.Authentication;
 namespace Sangam.Identity.Server.Pages.Account;
 
 /// <summary>Screen 5 — forgot password. No partner chip; the response never reveals whether the address exists.</summary>
+[Antibot]
 public sealed class ForgotModel : AuthPageModel
 {
     private readonly IAccountService _accounts;

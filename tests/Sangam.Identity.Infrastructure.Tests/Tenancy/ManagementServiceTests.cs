@@ -145,6 +145,26 @@ public sealed class ManagementServiceTests : IAsyncLifetime
     }
 
     [PostgresFact]
+    public async Task Individual_WithoutAnOrganisation_KeepsTheAccountAfterJoiningAndLeavingOne()
+    {
+        // REQ-021 (D-043): a person may use an application with no organisation, join one through
+        // the application, leave it, and keep their account.
+        EfManagementService mgmt = Create(out SangamDbContext db);
+        EfTenancyQuery tenancy = new(db);
+        Assert.Empty(await tenancy.GetOrgClaimsAsync(_userId, _appId));
+
+        Guid orgId = Guid.NewGuid();
+        await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor, ManagementActor.Api);
+        await mgmt.UpsertOrganisationAsync(_appId, orgId, new OrganisationUpsert("Apulki", "hospital", null, null), ManagementActor.Api);
+        await mgmt.UpsertMembershipAsync(_appId, orgId, _userId, new MembershipUpsert("doctor", false), ManagementActor.Api);
+        Assert.Single(await tenancy.GetOrgClaimsAsync(_userId, _appId));
+
+        await mgmt.RevokeMembershipAsync(_appId, orgId, _userId, ManagementActor.Api);
+        Assert.Empty(await tenancy.GetOrgClaimsAsync(_userId, _appId));
+        Assert.Equal(UserStatus.Active, (await db.Users.AsNoTracking().SingleAsync(u => u.Id == _userId)).Status);
+    }
+
+    [PostgresFact]
     public async Task OrgScopedRole_WinsOverTheAppWideRoleOfTheSameCode()
     {
         EfManagementService mgmt = Create(out SangamDbContext db);
