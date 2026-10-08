@@ -25,6 +25,8 @@ namespace Sangam.Identity.Infrastructure.Seeding;
 /// Sangam:Clients:&lt;key&gt;:RequirePushedAuthorization  true: this application must use PAR (RFC 9126)
 /// Sangam:Clients:&lt;key&gt;:ExchangeAudiences   client ids this application may exchange tokens for (RFC 8693)
 /// Sangam:Clients:&lt;key&gt;:RedirectUris  native only: claimed https, private-use scheme or loopback (RFC 8252)
+/// Sangam:Clients:&lt;key&gt;:ManagementApi  true: the application may call the management API for itself (client
+///                                    credentials, scope sangam.manage) — the demo uses it to place testers (V-15)
 /// </code>
 /// PR-21: <c>native</c> applications (Android, iOS, desktop) are public clients with PKCE and no secret, redirected by
 /// the system browser to the addresses RFC 8252 allows; <c>device</c> applications (TVs, kiosks, command lines) use the
@@ -130,6 +132,7 @@ public sealed partial class ClientRegistration
                 RedirectUris = redirects,
                 RequirePushedAuthorization = section.GetValue("RequirePushedAuthorization", false),
                 ExchangeAudiences = Split(section["ExchangeAudiences"]),
+                ManagementApi = confidential && section.GetValue("ManagementApi", false),
             });
         }
 
@@ -227,7 +230,17 @@ public sealed partial class ClientRegistration
         descriptor.ApplicationType = spec.Kind == "native" ? ApplicationTypes.Native : ApplicationTypes.Web;
         descriptor.ConsentType = ConsentTypes.Explicit;
         descriptor.DisplayName = spec.DisplayName;
-        descriptor.ClientSecret = secretChanged ? spec.Secret : null;
+        // Keep the stored (hashed) secret when it has not changed: OpenIddict re-hashes only a different value, and an
+        // empty one fails validation — which made any change other than a new secret refuse the start (found in R5).
+        if (secretChanged)
+        {
+            descriptor.ClientSecret = spec.Secret;
+        }
+        else if (!confidential)
+        {
+            descriptor.ClientSecret = null;
+        }
+
         descriptor.Permissions.Clear();
         descriptor.Permissions.UnionWith(permissions);
         descriptor.Requirements.Clear();
@@ -286,11 +299,18 @@ public sealed partial class ClientRegistration
         else if (kind is "application" or "native" or "device")
         {
             list.Add(OpenIddictConstants.Permissions.Prefixes.Scope + SangamScopes.OrgsRead);
+            list.Add(OpenIddictConstants.Permissions.Prefixes.Scope + SangamScopes.Attributes);
         }
 
         if (kind is "native" or "device")
         {
             list.Add(OpenIddictConstants.Permissions.Prefixes.Scope + SangamScopes.OfflineAccess);
+        }
+
+        if (spec.ManagementApi && kind is not ("native" or "device"))
+        {
+            list.Add(OpenIddictConstants.Permissions.GrantTypes.ClientCredentials);
+            list.Add(OpenIddictConstants.Permissions.Prefixes.Scope + SangamScopes.Manage);
         }
 
         if (spec.ExchangeAudiences.Count > 0 && kind is not ("native" or "device"))
@@ -344,6 +364,9 @@ public sealed record ClientSpec(string ClientId, string Kind, Uri BaseUrl, strin
 
     /// <summary>Client ids the application may exchange a person's token for (RFC 8693).</summary>
     public IReadOnlyList<string> ExchangeAudiences { get; init; } = [];
+
+    /// <summary>Whether the application may call the management API for itself (client credentials, <c>sangam.manage</c>).</summary>
+    public bool ManagementApi { get; init; }
 
     /// <inheritdoc />
     public override string ToString() => $"{ClientId} ({Kind})";

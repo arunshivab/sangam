@@ -65,6 +65,10 @@ builder.Services.AddSingleton<Sangam.Identity.Application.Signatures.ISignatureT
 builder.Services.AddHttpClient(Sangam.Identity.Server.Logout.BackChannelLogoutSender.HttpClientName, c => c.Timeout = TimeSpan.FromSeconds(5));
 builder.Services.AddSingleton<Sangam.Identity.Server.Logout.BackChannelLogoutSender>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<Sangam.Identity.Server.Logout.BackChannelLogoutSender>());
+// PR-23/24: SCIM provisioning and webhooks are delivered from here (Sangam-signed SCIM tokens need the signing keys).
+builder.Services.AddSingleton<Sangam.Identity.Infrastructure.Provisioning.IServiceTokenIssuer, Sangam.Identity.Server.Provisioning.ServiceTokenIssuer>();
+builder.Services.AddSingleton<Sangam.Identity.Server.Provisioning.ProvisioningWorker>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<Sangam.Identity.Server.Provisioning.ProvisioningWorker>());
 
 string? keyRingProblem = KeyRingProtection.Validate(builder.Environment.EnvironmentName, builder.Configuration);
 if (keyRingProblem is not null)
@@ -146,7 +150,7 @@ builder.Services.AddOpenIddict()
 
         o.RegisterScopes([.. SangamScopes.All]);
         o.RegisterClaims(Claims.Name, Claims.GivenName, Claims.FamilyName, Claims.Birthdate, Claims.Gender, Claims.Locale, Claims.Zoneinfo, Claims.UpdatedAt,
-            Claims.Email, Claims.EmailVerified, Claims.PhoneNumber, Claims.PhoneNumberVerified, SangamClaims.SessionId, SangamClaims.Orgs,
+            Claims.Email, Claims.EmailVerified, Claims.PhoneNumber, Claims.PhoneNumberVerified, SangamClaims.SessionId, SangamClaims.Orgs, SangamClaims.IdentityVerified,
             Claims.AuthenticationContextReference, Claims.AuthenticationMethodReference, Claims.AuthenticationTime);
 
         // PR-17: advertise the assurance levels an application may ask for with acr_values (SGM-207 §3).

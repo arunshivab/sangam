@@ -1,0 +1,228 @@
+@using Sangam.Identity.Application.Provisioning
+@using Sangam.Identity.Domain.Entities
+@inject IWebhookService Webhooks
+
+@if (_view is null)
+{
+  <p class="sg-muted">@L["Loading…"]</p>
+}
+else
+{
+  <p class="sg-lede">@L["Sangam tells {0} when something changes — a role given or taken away, a person deactivated, sessions ended, consent withdrawn — by posting a signed event to your address. Events carry ids, never personal data: read the details through tokens or the management API. Check the signature on every message.", Info.AppName]</p>
+
+  @if (_secret is not null)
+  {
+    <div class="sg-panel" data-panel="webhook-secret">
+      <h2 class="sg-h3">@L["Signing secret"]</h2>
+      <p>@L["Copy it now and keep it in your receiver's secret store: Sangam does not show it again."]</p>
+      <code class="sg-secret sg-mono">@_secret</code>
+    </div>
+  }
+
+  <div class="sg-panel" data-panel="webhook-endpoints">
+    <h2 class="sg-h3">@L["Endpoints"]</h2>
+    @if (_view.Endpoints.Count == 0)
+    {
+      <p class="sg-muted">@L["No endpoints yet."]</p>
+    }
+    else
+    {
+      <div class="sg-table-wrap">
+        <table class="sg-table">
+          <thead><tr><th>@L["Address"]</th><th>@L["Events"]</th><th>@L["State"]</th><th></th></tr></thead>
+          <tbody>
+            @foreach (WebhookEndpointView endpoint in _view.Endpoints)
+            {
+              <tr>
+                <td><span class="sg-mono sg-small">@endpoint.Url</span>
+                  @if (endpoint.Description is { Length: > 0 } description)
+                  {
+                    <span class="sg-sub">@description</span>
+                  }
+                </td>
+                <td class="sg-small">@string.Join(", ", endpoint.Events.Select(EventLabel))</td>
+                <td>
+                  <span class="sg-pill sg-pill--@(endpoint.Enabled ? (endpoint.Status == "ok" ? "active" : "failing") : "disabled")">@(endpoint.Enabled ? (endpoint.Status == "ok" ? L["on"] : L["failing"]) : L["off"])</span>
+                  @if (endpoint.PreviousSecretUntil is DateTimeOffset until)
+                  {
+                    <span class="sg-sub">@L["old secret also signs until {0}", IndiaTime.Compact(until)]</span>
+                  }
+                </td>
+                <td>
+                  <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => TestAsync(endpoint.Id)" disabled="@(_busy || !endpoint.Enabled)">@L["Send a test"]</button>
+                  <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => RotateAsync(endpoint.Id)" disabled="@_busy">@L["New secret"]</button>
+                  <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => ToggleAsync(endpoint)" disabled="@_busy">@(endpoint.Enabled ? L["Switch off"] : L["Switch on"])</button>
+                  <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => RemoveAsync(endpoint.Id)" disabled="@_busy">@L["Remove"]</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <h3 class="sg-h3">@L["Add an endpoint"]</h3>
+    <div class="sg-form-row">
+      <label class="sg-label" for="hook-url">@L["Address (https)"]</label>
+      <input id="hook-url" class="sg-input sg-mono" @bind="_url" @bind:event="oninput" maxlength="500" placeholder="https://his.example.in/sangam/events" />
+    </div>
+    <div class="sg-form-row">
+      <label class="sg-label" for="hook-desc">@L["What it is for (optional)"]</label>
+      <input id="hook-desc" class="sg-input" @bind="_description" @bind:event="oninput" maxlength="200" />
+    </div>
+    <fieldset class="sg-choices">
+      <legend class="sg-label">@L["Events"]</legend>
+      @foreach (string type in AppEventTypes.All)
+      {
+        <label class="sg-check"><input type="checkbox" checked="@_events.Contains(type)" @onchange="e => Toggle(type, e)" /> @EventLabel(type) <span class="sg-muted sg-mono">@type</span></label>
+      }
+    </fieldset>
+    <div class="sg-actions">
+      <button type="button" class="sg-btn sg-btn--primary" @onclick="AddAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_url) || _events.Count == 0)">@L["Add the endpoint"]</button>
+    </div>
+  </div>
+
+  <div class="sg-panel" data-panel="webhook-log">
+    <h2 class="sg-h3">@L["Delivery log"]</h2>
+    @if (_view.Deliveries.Count == 0)
+    {
+      <p class="sg-muted">@L["Nothing sent yet."]</p>
+    }
+    else
+    {
+      <div class="sg-table-wrap">
+        <table class="sg-table">
+          <thead><tr><th>@L["Queued"]</th><th>@L["Event"]</th><th>@L["State"]</th><th>@L["Answer"]</th><th></th></tr></thead>
+          <tbody>
+            @foreach (WebhookDeliveryRow row in _view.Deliveries)
+            {
+              <tr>
+                <td class="sg-mono">@IndiaTime.Compact(row.CreatedAt)</td>
+                <td><span class="sg-mono">@row.EventType</span><span class="sg-sub sg-mono">@row.MessageId</span><span class="sg-sub sg-mono">@row.EndpointUrl</span></td>
+                <td>@StateText(row)
+                  @if (row.NextAttemptAt is DateTimeOffset next && row.Attempts > 0)
+                  {
+                    <span class="sg-sub">@L["next try {0}", IndiaTime.Compact(next)]</span>
+                  }
+                </td>
+                <td class="sg-small">
+                  @if (row.LastStatusCode is int httpStatus)
+                  {
+                    <span class="sg-mono">@httpStatus</span>
+                  }
+                  @if (row.LatencyMs is int ms)
+                  {
+                    <span class="sg-muted"> · @L["{0} ms", ms]</span>
+                  }
+                  @if (row.LastError is { Length: > 0 } error)
+                  {
+                    <span class="sg-sub sg-warn-text">@error</span>
+                  }
+                  <details><summary>@L["Body"]</summary><pre class="sg-mono sg-small">@row.Payload</pre>
+                    @if (row.ResponseSnippet is { Length: > 0 } snippet)
+                    {
+                      <p class="sg-muted">@L["Their answer"]</p>
+                      <pre class="sg-mono sg-small">@snippet</pre>
+                    }
+                  </details>
+                </td>
+                <td>
+                  @if (row.Status != "pending")
+                  {
+                    <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => ReplayAsync(row.Id)" disabled="@_busy">@L["Send again"]</button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+}
+
+<StatusLine Ok="_ok" Message="@_message" />
+
+@code {
+    /// <summary>The application being worked on.</summary>
+    [Parameter]
+    [EditorRequired]
+    public WorkspaceInfo Info { get; set; } = null!;
+
+    private WebhookOverview? _view;
+    private string _url = string.Empty;
+    private string _description = string.Empty;
+    private HashSet<string> _events = [AppEventTypes.MembershipGranted, AppEventTypes.MembershipRevoked, AppEventTypes.UserDeactivated, AppEventTypes.SessionRevoked];
+    private string? _secret;
+    private bool _busy;
+    private bool _ok;
+    private string? _message;
+
+    protected override async Task OnInitializedAsync() => _view = await Webhooks.GetAsync(Info.UserId, Info.AppId);
+
+    private string EventLabel(string type) => type switch
+    {
+        AppEventTypes.UserCreated => L["A person linked the application"],
+        AppEventTypes.UserUpdated => L["A person's details changed"],
+        AppEventTypes.UserDeactivated => L["A person can no longer use it"],
+        AppEventTypes.UserReactivated => L["A person's account was restored"],
+        AppEventTypes.MembershipGranted => L["A role given"],
+        AppEventTypes.MembershipRevoked => L["A role taken away or expired"],
+        AppEventTypes.SessionRevoked => L["Sessions ended"],
+        AppEventTypes.ConsentRevoked => L["Consent withdrawn"],
+        AppEventTypes.RoleChanged => L["A role created, changed or retired"],
+        _ => type,
+    };
+
+    private string StateText(WebhookDeliveryRow row) => row.Status switch
+    {
+        "done" => L["done"],
+        "dead" => L["gave up after {0} tries", row.Attempts],
+        _ => row.Attempts == 0 ? L["waiting"] : L["retrying ({0} tries)", row.Attempts],
+    };
+
+    private void Toggle(string type, ChangeEventArgs e)
+    {
+        if (e.Value is true)
+        {
+            _events.Add(type);
+        }
+        else
+        {
+            _events.Remove(type);
+        }
+    }
+
+    private async Task AddAsync()
+    {
+        WebhookResult result = await RunAsync(() => Webhooks.AddAsync(Info.UserId, Info.AppId, new WebhookEndpointInput(_url, [.. _events], _description, true)));
+        if (result.Succeeded)
+        {
+            _url = string.Empty;
+            _description = string.Empty;
+        }
+    }
+
+    private Task TestAsync(Guid endpoint) => RunAsync(() => Webhooks.SendTestAsync(Info.UserId, Info.AppId, endpoint));
+
+    private Task RotateAsync(Guid endpoint) => RunAsync(() => Webhooks.RotateSecretAsync(Info.UserId, Info.AppId, endpoint));
+
+    private Task RemoveAsync(Guid endpoint) => RunAsync(() => Webhooks.RemoveAsync(Info.UserId, Info.AppId, endpoint));
+
+    private Task ReplayAsync(long delivery) => RunAsync(() => Webhooks.ReplayAsync(Info.UserId, Info.AppId, delivery));
+
+    private Task ToggleAsync(WebhookEndpointView endpoint)
+        => RunAsync(() => Webhooks.UpdateAsync(Info.UserId, Info.AppId, endpoint.Id, new WebhookEndpointInput(endpoint.Url, endpoint.Events, endpoint.Description, !endpoint.Enabled)));
+
+    private async Task<WebhookResult> RunAsync(Func<Task<WebhookResult>> action)
+    {
+        _busy = true;
+        WebhookResult result = await action();
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = L[result.Message ?? string.Empty];
+        _secret = result.Secret ?? (result.Succeeded ? null : _secret);
+        _view = await Webhooks.GetAsync(Info.UserId, Info.AppId);
+        return result;
+    }
+}

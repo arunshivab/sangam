@@ -51,6 +51,9 @@ public sealed class SangamUser : IdentityUser<Guid>
     /// <summary>When any column last changed (UTC).</summary>
     public DateTimeOffset UpdatedAt { get; set; }
 
+    /// <summary>When the name, date of birth and gender were verified against a government record (PR-26); they are locked while set.</summary>
+    public DateTimeOffset? IdentityVerifiedAt { get; set; }
+
     /// <summary>When the user requested deletion (UTC); <see langword="null"/> while active.</summary>
     public DateTimeOffset? DeletedAt { get; set; }
 

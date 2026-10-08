@@ -50,6 +50,12 @@ public sealed class OrgMembership
     /// <summary>When revoked (UTC); <see langword="null"/> while active.</summary>
     public DateTimeOffset? RevokedAt { get; set; }
 
+    /// <summary>
+    /// When a time-limited membership ends (PR-25: contractors, auditors); null for one that lasts until revoked. From
+    /// then on it no longer counts, and the expiry sweep revokes it.
+    /// </summary>
+    public DateTimeOffset? ExpiresAt { get; set; }
+
     /// <summary>Who revoked it.</summary>
     public Guid? RevokedByUserId { get; set; }
 }

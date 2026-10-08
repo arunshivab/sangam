@@ -10,10 +10,17 @@
 @inject Sangam.Identity.Application.Sms.ISmsCodeService Sms
 @inject IConfiguration Configuration
 @inject NavigationManager Navigation
+@inject Sangam.Identity.Infrastructure.Verification.DigiLockerSettings DigiLocker
 
 <PageTitle>@L["Personal details · sangam"]</PageTitle>
 
 <PageHeader Title="@L["Personal details"].Value" Subtitle="@L["What Sangam knows about you, and what you can do with it."].Value" />
+
+@* PR-26: the person has just come back from DigiLocker, so the outcome goes at the top where they land. *@
+@if (DigiLockerOutcome is not null && Outcome(DigiLockerOutcome) is (string text, bool good))
+{
+  <p class="sg-banner sg-banner--top @(good ? "sg-banner--success" : "sg-banner--error")" role="status" data-digilocker="@DigiLockerOutcome">@text</p>
+}
 
 @if (_user is null)
 {
@@ -26,13 +33,17 @@ else
     <EditForm Model="_form" OnValidSubmit="SaveAsync" FormName="profile">
       <DataAnnotationsValidator />
       <div class="sg-two">
-        <label class="sg-field-group"><span class="sg-label">@L["First name"]</span><InputText class="sg-field" @bind-Value="_form.FirstName" /></label>
-        <label class="sg-field-group"><span class="sg-label">@L["Last name"]</span><InputText class="sg-field" @bind-Value="_form.LastName" /></label>
+        <label class="sg-field-group"><span class="sg-label">@L["First name"]</span><InputText class="sg-field" @bind-Value="_form.FirstName" disabled="@Verified" /></label>
+        <label class="sg-field-group"><span class="sg-label">@L["Last name"]</span><InputText class="sg-field" @bind-Value="_form.LastName" disabled="@Verified" /></label>
       </div>
+      @if (Verified)
+      {
+        <p class="sg-note" data-identity="verified">@L["Your name, date of birth and gender are verified with DigiLocker, so they cannot be changed here. To change them, remove the verification below."]</p>
+      }
       <div class="sg-two">
         <label class="sg-field-group">
           <span class="sg-label">@L["Gender"]</span>
-          <InputSelect class="sg-field" @bind-Value="_form.Gender">
+          <InputSelect class="sg-field" @bind-Value="_form.Gender" disabled="@Verified">
             <option value="female">@L["Female"]</option>
             <option value="male">@L["Male"]</option>
             <option value="other">@L["Other"]</option>
@@ -113,10 +124,44 @@ else
         <p class="sg-field-error">@_changeError</p>
       }
     </div>
-    <p class="sg-note">
-      @L.Markup("Your date of birth is fixed here because applications rely on it to identify you; it will become changeable once you can prove your identity with DigiLocker. Write to {0} if it is wrong.", LocalizedMarkup.Link("mailto:help@sangamid.in", "help@sangamid.in"))
-    </p>
+    @if (!Verified)
+    {
+      <p class="sg-note">
+        @if (DigiLocker.Enabled)
+        {
+          @L.Markup("Your date of birth is fixed here because applications rely on it to identify you. If it is wrong, verify with DigiLocker below to take the one on your government record, or write to {0}.", LocalizedMarkup.Link("mailto:help@sangamid.in", "help@sangamid.in"))
+        }
+        else
+        {
+          @L.Markup("Your date of birth is fixed here because applications rely on it to identify you; it will become changeable once you can prove your identity with DigiLocker. Write to {0} if it is wrong.", LocalizedMarkup.Link("mailto:help@sangamid.in", "help@sangamid.in"))
+        }
+      </p>
+    }
   </section>
+
+  @if (Verified || DigiLocker.Enabled)
+  {
+    <section class="sg-panel" data-panel="identity">
+      <h2 class="sg-panel-title">@L["Verified identity"]</h2>
+      @if (Verified)
+      {
+        <p class="sg-panel-body">@L["Verified with DigiLocker on {0}. Applications that ask for your profile are told your details are verified.", IndiaTime.LongDate(_user.IdentityVerifiedAt!.Value)]</p>
+        <form method="post" action="/verify/digilocker/remove">
+          <AntiforgeryToken />
+          <button type="submit" class="sg-btn sg-btn--secondary">@L["Remove the verification"]</button>
+        </form>
+      }
+      else
+      {
+        <p class="sg-panel-body">@L["DigiLocker can confirm your name, date of birth and gender from your government records. Your Sangam profile then takes DigiLocker's values, and they stay locked until you remove the verification. Sangam keeps only those three details: never your Aadhaar number, and no documents."]</p>
+        <form method="post" action="/verify/digilocker" class="sg-verify-form">
+          <AntiforgeryToken />
+          <label class="sg-check"><input type="checkbox" name="agree" value="true" required /> @L["I agree that my name, date of birth and gender will be replaced with DigiLocker's and locked."]</label>
+          <button type="submit" class="sg-btn sg-btn--primary">@L["Verify with DigiLocker"]</button>
+        </form>
+      }
+    </section>
+  }
 
   <section class="sg-panel">
     <h2 class="sg-panel-title">@L["How you sign in"]</h2>
@@ -251,6 +296,10 @@ else
 }
 
 @code {
+    /// <summary>PR-26: how a DigiLocker round trip ended, from the portal's verification endpoints.</summary>
+    [SupplyParameterFromQuery(Name = "digilocker")]
+    public string? DigiLockerOutcome { get; set; }
+
     private UserSummary? _user;
     private DeletionState? _deletion;
     private readonly ProfileForm _form = new();
@@ -274,6 +323,8 @@ else
     private string? _changeMessage;
     private string? _changeError;
     private IReadOnlyList<Sangam.Identity.Application.Passkeys.PasskeyRow> _passkeys = [];
+
+    private bool Verified => _user?.IdentityVerifiedAt is not null;
 
     private string MobileUrl => (Configuration["Sangam:Authority"] ?? "https://id.sangamid.in").TrimEnd('/') + "/account/mobile";
 
@@ -486,13 +537,26 @@ else
             : (match.Iso, mobile[match.DialCode.Length..]);
     }
 
+    private (string Text, bool Good)? Outcome(string code) => code switch
+    {
+        "verified" => (L["Your identity is verified with DigiLocker. Your name, date of birth and gender now match its record."], true),
+        "removed" => (L["The DigiLocker verification is removed. You can change your name and gender again."], true),
+        "taken" => (L["That DigiLocker account already verifies another Sangam account. One DigiLocker identity can verify one account only."], false),
+        "denied" => (L["DigiLocker verification was cancelled. Nothing changed."], false),
+        "failed" => (L["DigiLocker could not confirm your details just now. Nothing changed; please try again later."], false),
+        "expired" => (L["The verification took too long, or was started in another window. Please start again."], false),
+        "agree" => (L["Tick the box to agree before verifying with DigiLocker."], false),
+        "off" => (L["Verification with DigiLocker is not available."], false),
+        _ => null,
+    };
+
     private sealed class ProfileForm
     {
         [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Enter your first name.")]
         [System.ComponentModel.DataAnnotations.StringLength(100)]
         public string FirstName { get; set; } = string.Empty;
 
-        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Enter your last name.")]
+        // Not required here: a one-word name verified through DigiLocker has no family name (the server checks the rest).
         [System.ComponentModel.DataAnnotations.StringLength(100)]
         public string LastName { get; set; } = string.Empty;
 

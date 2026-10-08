@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Sangam.Identity.Infrastructure.Seeding;
 
 namespace Sangam.Identity.Server.Tests.Oidc;
@@ -97,13 +99,37 @@ public sealed class ManagementApiTests
         Assert.Equal(HttpStatusCode.OK, retired.StatusCode);
     }
 
-    private static async Task<string> ClientTokenAsync(HttpClient client, string scope)
+    [PostgresFact]
+    public async Task TheDemo_CanPlaceATesterAtItsMadeUpHospital_AsAnyApplicationWould()
+    {
+        // V-15: the same calls imagiQa's DemoHospital makes, with imagiQa's own development client.
+        using HttpClient client = _factory.CreateClient();
+        string token = await ClientTokenAsync(client, scope: "sangam.manage", DevelopmentSeeder.ImagiqaClientId, DevelopmentSeeder.ImagiqaClientSecret);
+        Guid hospital = Guid.NewGuid();
+        Guid tester;
+        using (IServiceScope scope = _factory.Services.CreateScope())
+        {
+            Infrastructure.Persistence.SangamDbContext db = scope.ServiceProvider.GetRequiredService<Infrastructure.Persistence.SangamDbContext>();
+            tester = await db.Users.OrderBy(u => u.CreatedAt).Select(u => u.Id).FirstAsync();
+        }
+
+        using HttpResponseMessage role = await SendAsync(client, token, HttpMethod.Put, "/api/v1/roles/doctor", new { displayName = "Doctor", description = "Demo", permissions = NursePermissions, orgId = (Guid?)null });
+        Assert.Equal(HttpStatusCode.OK, role.StatusCode);
+        using HttpResponseMessage org = await SendAsync(client, token, HttpMethod.Put, $"/api/v1/orgs/{hospital:D}", new { name = "Demo Hospital (made up)", type = "hospital", parentId = (Guid?)null, metadata = "{\"demo\":true}" });
+        Assert.Equal(HttpStatusCode.OK, org.StatusCode);
+        using HttpResponseMessage member = await SendAsync(client, token, HttpMethod.Put, $"/api/v1/orgs/{hospital:D}/members/{tester:D}", new { role = "doctor", appliesToDescendants = false });
+        Assert.Equal(HttpStatusCode.OK, member.StatusCode);
+        using HttpResponseMessage again = await SendAsync(client, token, HttpMethod.Put, $"/api/v1/orgs/{hospital:D}/members/{tester:D}", new { role = "doctor", appliesToDescendants = false });
+        Assert.Equal(HttpStatusCode.OK, again.StatusCode);
+    }
+
+    private static async Task<string> ClientTokenAsync(HttpClient client, string scope, string clientId = DevelopmentSeeder.SampleClientId, string clientSecret = DevelopmentSeeder.SampleClientSecret)
     {
         using FormUrlEncodedContent form = new(new Dictionary<string, string>
         {
             ["grant_type"] = "client_credentials",
-            ["client_id"] = DevelopmentSeeder.SampleClientId,
-            ["client_secret"] = DevelopmentSeeder.SampleClientSecret,
+            ["client_id"] = clientId,
+            ["client_secret"] = clientSecret,
             ["scope"] = scope,
         });
         using HttpResponseMessage response = await client.PostAsync(new Uri("/connect/token", UriKind.Relative), form);

@@ -119,6 +119,7 @@ public partial class TemplateEditor : ComponentBase
         MessageTemplateKinds.OperatorAlert => L["E-mail: alert to the platform owner"],
         MessageTemplateKinds.GrievanceAcknowledgement => L["E-mail: acknowledgement of a grievance"],
         MessageTemplateKinds.GrievanceResolution => L["E-mail: the answer to a grievance"],
+        MessageTemplateKinds.IntegrationFailing => L["E-mail: an application's provisioning or webhook stopped working"],
         _ => L["Text message: confirm an action"],
     };
 

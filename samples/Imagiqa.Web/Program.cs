@@ -1,6 +1,8 @@
 using Imagiqa.Web.Components;
 using Imagiqa.Web.Components.Ward;
+using Imagiqa.Web.Demo;
 using Imagiqa.Web.Records;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
@@ -41,6 +43,7 @@ builder.Services.AddDbContextFactory<ImagiqaDbContext>(o => o
     .UseSnakeCaseNamingConvention());
 builder.Services.AddScoped<PatientRecords>();
 builder.Services.AddScoped<WardState>();
+builder.Services.AddHttpClient<DemoHospital>();
 
 // Everything imagiQa knows about who someone is comes from this one call.
 builder.Services.AddSangam(o =>
@@ -93,6 +96,27 @@ app.MapStaticAssets();
 app.MapHealthChecks("/health/live").AllowAnonymous();
 app.MapHealthChecks("/health/ready").AllowAnonymous();
 app.MapSangamSignOut();
+
+// V-15: on the demo, a tester with no role joins the made-up Demo Hospital, then signs in again for the new role.
+app.MapPost("/demo/join", async (HttpContext context, Microsoft.AspNetCore.Antiforgery.IAntiforgery antiforgery, DemoHospital demo, CancellationToken cancellationToken) =>
+{
+    if (!await antiforgery.IsRequestValidAsync(context).ConfigureAwait(false))
+    {
+        return Results.BadRequest();
+    }
+
+    IFormCollection form = await context.Request.ReadFormAsync(cancellationToken).ConfigureAwait(false);
+    string role = form["role"].ToString();
+    Guid? userId = context.User.GetSangamUser()?.Id;
+    string? problem = userId is null ? "Not signed in." : await demo.JoinAsync(userId.Value, role, cancellationToken).ConfigureAwait(false);
+    if (problem is not null)
+    {
+        return Results.Redirect("/?demo=failed");
+    }
+
+    await context.SignOutAsync(SangamDefaults.CookieScheme).ConfigureAwait(false);
+    return Results.Challenge(new AuthenticationProperties { RedirectUri = "/" });
+}).RequireAuthorization();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
 await app.RunAsync().ConfigureAwait(false);

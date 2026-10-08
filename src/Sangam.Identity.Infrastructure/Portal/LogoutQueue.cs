@@ -17,6 +17,23 @@ internal static class LogoutQueue
             return;
         }
 
+        // PR-24: every application that took part in an ended session hears session.revoked (webhooks), so it can end
+        // its own session — whether or not it has a back-channel logout address.
+        var used = await db.SessionApps.AsNoTracking()
+            .Where(sa => sessionIds.Contains(sa.SessionId))
+            .Select(sa => new { sa.SessionId, sa.AppId, sa.UserId })
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        foreach (var session in used)
+        {
+            await Provisioning.AppEventLog.AddAsync(db, AppEventTypes.SessionRevoked, session.AppId, session.UserId, null, new Dictionary<string, object?> { ["sid"] = session.SessionId }, now, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (used.Count > 0)
+        {
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+
         var targets = await db.SessionApps.AsNoTracking()
             .Where(sa => sessionIds.Contains(sa.SessionId))
             .Join(db.Apps.Where(a => a.BackChannelLogoutUri != null), sa => sa.AppId, a => a.Id, (sa, a) => new { sa.SessionId, sa.AppId, sa.UserId })

@@ -31,7 +31,8 @@ public sealed record LinkedUserRow(Guid UserId, string DisplayName, string Email
 /// <param name="Role">Role code.</param>
 /// <param name="AppliesToDescendants">Whether the role flows down the organisation tree.</param>
 /// <param name="GrantedAt">When granted.</param>
-public sealed record PartnerMemberRow(Guid UserId, string DisplayName, string Email, string Role, bool AppliesToDescendants, DateTimeOffset GrantedAt);
+/// <param name="ExpiresAt">When the role ends by itself (PR-25), or null.</param>
+public sealed record PartnerMemberRow(Guid UserId, string DisplayName, string Email, string Role, bool AppliesToDescendants, DateTimeOffset GrantedAt, DateTimeOffset? ExpiresAt = null);
 
 /// <summary>One of the application's administrators.</summary>
 /// <param name="UserId">User id.</param>

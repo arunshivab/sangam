@@ -7,6 +7,7 @@ using Sangam.Identity.Infrastructure;
 using Sangam.Identity.Infrastructure.Seeding;
 using Sangam.Identity.Infrastructure.Services;
 using Sangam.Shared.Constants;
+using Sangam.Web.Shared.Hosting;
 using Sangam.Web.Shared.Localization;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -96,7 +97,7 @@ app.UseSangamRequestMetrics();
 
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    app.UseSangamErrorPage();
     app.UseHsts();
 }
 

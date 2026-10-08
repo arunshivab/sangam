@@ -180,5 +180,19 @@
       "subject": "നിങ്ങളുടെ പരാതി {{reference}}-നുള്ള ഞങ്ങളുടെ മറുപടി",
       "body": "നമസ്കാരം {{name}},\n\nനിങ്ങളുടെ പരാതി {{reference}}-നുള്ള ഞങ്ങളുടെ മറുപടി ഇതാണ്:\n\n{{resolution}}\n\nഞങ്ങളുടെ മറുപടിയിൽ നിങ്ങൾ തൃപ്തരല്ലെങ്കിൽ, ഡിജിറ്റൽ വ്യക്തിഗത ഡാറ്റ സംരക്ഷണ നിയമം, 2023 പ്രകാരം ഇന്ത്യയുടെ\nഡാറ്റ സംരക്ഷണ ബോർഡിൽ പരാതിപ്പെടാം.\n\nഅരുൺ ശിവ ബാലസുബ്രഹ്മണ്യം\nപരാതി പരിഹാര ഓഫീസർ, Sangam\ngrievance@sangamid.in"
     }
+  },
+  "integration_failing": {
+    "en-IN": {
+      "subject": "{{application}}: {{integration}} has stopped working",
+      "body": "Hello {{name}},\n\nSangam could not deliver to {{integration}} for {{application}} for about a day, and has stopped trying for now.\n\nThe last error was:\n\n    {{error}}\n\nThe delivery log shows every attempt. Once it is fixed, use \"Try again\" there:\n\n{{link}}\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "{{application}}: {{integration}} ने काम करना बंद कर दिया है",
+      "body": "नमस्ते {{name}},\n\nSangam लगभग एक दिन तक {{application}} के लिए {{integration}} पर डिलीवर नहीं कर सका, और अभी के लिए कोशिश करना बंद कर दिया है।\n\nआख़िरी त्रुटि थी:\n\n    {{error}}\n\nडिलीवरी लॉग हर प्रयास दिखाता है। ठीक होने पर वहाँ \"फिर से कोशिश करें\" का उपयोग करें:\n\n{{link}}\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "{{application}}: {{integration}} പ്രവർത്തനം നിർത്തി",
+      "body": "നമസ്കാരം {{name}},\n\nഏകദേശം ഒരു ദിവസം {{application}}-നായി {{integration}}-ലേക്ക് Sangam-ന് ഡെലിവർ ചെയ്യാനായില്ല, ഇപ്പോൾ ശ്രമം നിർത്തിയിരിക്കുന്നു.\n\nഅവസാനത്തെ പിശക്:\n\n    {{error}}\n\nഡെലിവറി ലോഗ് ഓരോ ശ്രമവും കാണിക്കുന്നു. ശരിയാക്കിയ ശേഷം അവിടെ \"വീണ്ടും ശ്രമിക്കുക\" ഉപയോഗിക്കുക:\n\n{{link}}\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
   }
 }

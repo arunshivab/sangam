@@ -88,6 +88,13 @@
   catalogue is the same idea in a form translators can review without tools). Branding and message templates by
   level — organisation, application, platform, built-in — with partner branding never changing structure
   (PR-19). Back- and front-channel logout, introspection and revocation (PR-20).
+- **Integrations and verified identity (R5).** SCIM 2.0 provisioning to applications that ask for it, kept in step by
+  a state-based sync with retries and a reconcile (PR-23, [`provisioning.md`](provisioning.md)); signed webhooks on the
+  Standard Webhooks scheme, with secret rotation and a delivery log (PR-24, [`webhooks.md`](webhooks.md)); custom
+  attributes (never health data), custom claims under the `attributes` scope, and time-limited roles (PR-25,
+  [`attributes-and-claims.md`](attributes-and-claims.md)); verification of name, date of birth and gender with
+  DigiLocker, keeping a keyed hash of the DigiLocker id and never an Aadhaar number (PR-26,
+  [`identity-verification.md`](identity-verification.md)). For pilot testers: [`pilot-guide.md`](pilot-guide.md).
 - **Protocols, archive, backups, demo and grievances (R4).** Device authorization grant, PAR, token exchange and
   native apps (PR-21, `native-and-mobile.md`); Sangam as a SAML 2.0 identity provider (PR-22, ADR-0016, which
   replaces the proposed ADR-0016 of SGM-302); the encrypted audit archive (D-A); encrypted off-region backups under

@@ -343,6 +343,10 @@ public sealed partial class DevelopmentSeeder
             Permissions.Prefixes.Scope + SangamScopes.Profile,
             Permissions.Prefixes.Scope + SangamScopes.Email,
             Permissions.Prefixes.Scope + SangamScopes.OrgsRead,
+
+            // V-15: the demo places testers at its made-up hospital through the management API.
+            Permissions.GrantTypes.ClientCredentials,
+            Permissions.Prefixes.Scope + SangamScopes.Manage,
         ];
         bool changed = existing is null
             || !permissions.All(descriptor.Permissions.Contains)

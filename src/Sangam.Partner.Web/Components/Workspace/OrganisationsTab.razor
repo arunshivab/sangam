@@ -85,7 +85,12 @@ else
               {
                 <tr>
                   <td><span class="sg-name">@member.DisplayName</span><span class="sg-sub">@member.Email</span></td>
-                  <td class="sg-mono">@member.Role</td>
+                  <td class="sg-mono">@member.Role
+                    @if (member.ExpiresAt is DateTimeOffset until)
+                    {
+                      <span class="sg-sub">@L["until {0}", IndiaTime.Date(until)]</span>
+                    }
+                  </td>
                   <td>@(member.AppliesToDescendants ? L["this and everything under it"] : L["only this"])</td>
                   <td><button type="button" class="sg-btn sg-btn--ghost" @onclick="() => RevokeAsync(member)" disabled="@_busy">@L["Remove"]</button></td>
                 </tr>
@@ -129,6 +134,10 @@ else
             </select>
           </div>
           <label class="sg-check"><input type="checkbox" @bind="_descendants" /> @L["Also everything under {0}", _selected.Name]</label>
+          <div class="sg-form-row">
+            <label class="sg-label" for="grant-until">@L["Until (optional: for a contractor or an auditor, the role ends by itself at the end of this day)"]</label>
+            <input id="grant-until" class="sg-input" type="date" @bind="_until" min="@IndiaTime.ToIndia(DateTimeOffset.UtcNow).AddDays(1).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)" />
+          </div>
           <div class="sg-actions">
             <button type="button" class="sg-btn sg-btn--primary" @onclick="GrantAsync" disabled="@(_busy || string.IsNullOrEmpty(_grantRole))">@L["Give role"]</button>
           </div>
@@ -191,6 +200,7 @@ else
     private string _newType = string.Empty;
     private string _query = string.Empty;
     private string _grantRole = string.Empty;
+    private DateOnly? _until;
     private bool _descendants;
     private string _inviteEmail = string.Empty;
     private string _inviteRole = string.Empty;
@@ -286,11 +296,14 @@ else
         _found = await Partners.SearchLinkedUsersAsync(Info.UserId, Info.AppId, _query, 20);
     }
 
+    /// <summary>The end of the chosen day, India time (PR-25).</summary>
+    private static DateTimeOffset? Until(DateOnly? day) => day is DateOnly d ? new DateTimeOffset(d.ToDateTime(new TimeOnly(23, 59, 59)), IndiaTime.Offset) : null;
+
     private async Task GrantAsync()
     {
         _busy = true;
         PartnerResult result = await Partners.GrantMembershipAsync(
-            Info.UserId, Info.AppId, _selected!.Id, _pick!.UserId, new MembershipUpsert(_grantRole, _descendants));
+            Info.UserId, Info.AppId, _selected!.Id, _pick!.UserId, new MembershipUpsert(_grantRole, _descendants, Until(_until)));
         _busy = false;
         _ok = result.Succeeded;
         _message = L[result.Message ?? string.Empty];
@@ -300,6 +313,7 @@ else
             _found = null;
             _query = string.Empty;
             _grantRole = string.Empty;
+            _until = null;
             _descendants = false;
             _members = await Partners.ListMembersAsync(Info.UserId, Info.AppId, _selected.Id);
         }

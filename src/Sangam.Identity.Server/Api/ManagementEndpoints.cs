@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using OpenIddict.Abstractions;
 using OpenIddict.Validation.AspNetCore;
 using Sangam.Identity.Application.Apps;
+using Sangam.Identity.Application.Attributes;
 using Sangam.Identity.Application.Signatures;
 using Sangam.Identity.Application.Tenancy;
 using Sangam.Identity.Domain.Enums;
@@ -95,6 +96,31 @@ public static class ManagementEndpoints
             AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
             return app is null ? Results.Forbid() : ToResult(await mgmt.RevokeMembershipAsync(app.Id, orgId, userId, ManagementActor.Api, ct).ConfigureAwait(false));
         }).WithName("RevokeMembership");
+
+        // PR-25: custom attribute values, for people who have linked the calling application.
+        api.MapGet("/users/{userId:guid}/attributes", async (Guid userId, ClaimsPrincipal caller, IAppDirectory apps, IAttributeService attributes, CancellationToken ct) =>
+        {
+            AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
+            if (app is null)
+            {
+                return Results.Forbid();
+            }
+
+            IReadOnlyList<AttributeValueRow>? rows = await attributes.GetValuesAsync(null, app.Id, userId, ct).ConfigureAwait(false);
+            return rows is null ? Results.NotFound() : Results.Ok(rows.ToDictionary(r => r.Key, r => r.Value));
+        }).WithName("GetUserAttributes");
+
+        api.MapPut("/users/{userId:guid}/attributes", async (Guid userId, Dictionary<string, string?> values, ClaimsPrincipal caller, IAppDirectory apps, IAttributeService attributes, CancellationToken ct) =>
+        {
+            AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
+            if (app is null)
+            {
+                return Results.Forbid();
+            }
+
+            Sangam.Identity.Application.Partners.PartnerResult result = await attributes.SetValuesAsync(null, app.Id, userId, values ?? [], ct).ConfigureAwait(false);
+            return result.Succeeded ? Results.Ok(new { message = result.Message }) : Results.Problem(title: result.Message, statusCode: StatusCodes.Status400BadRequest);
+        }).WithName("SetUserAttributes");
 
         // PR-17 (SGM-207 §5.1): electronic-signature requests. The person signs in Sangam's ceremony at /sign/{id}.
         api.MapPost("/signatures", async (SignatureRequestInput input, ClaimsPrincipal caller, IAppDirectory apps, IOpenIddictApplicationManager clients, ISignatureService signatures, CancellationToken ct) =>

@@ -4,6 +4,75 @@ All notable changes to Sangam are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.14.0] - R5 integrations: SCIM, webhooks, custom claims, time-limited roles and DigiLocker
+
+### Fixed — R4 verification findings (V-14, V-15)
+- **The SAML consent screen names exactly what the assertion carries (V-14).** `SamlRelease` builds both the
+  assertion's attributes and the consent rows from the service provider's chosen attributes (plus the e-mail when it is
+  the NameID); a test compares the two.
+- **Invited testers can get into the demo (V-15).** In demo mode a signed-in person with no role sees *Join as a
+  doctor* or *Join as a nurse*; the demo calls the management API (`client_credentials`, `sangam.manage`) to place
+  them in the made-up "Demo Hospital (made up)" and signs them in again. New `Sangam:Clients:<key>:ManagementApi`
+  setting; `docs/pilot-guide.md` for testers.
+- **Restarting the identity server with a client already registered could refuse the start.** A registration update
+  without a new secret cleared the stored secret; it now keeps it. Found by the new registration test.
+- **The demo's join form is checked for its antiforgery token** (found while building the DigiLocker forms).
+- **The portal and both consoles answer a failed request with a plain page.** They re-executed `/Error`, a page that did
+  not exist and sat behind the sign-in, so when Sangam could not be reached the error handler failed too and the visitor
+  saw a bare 500 (found in the R5 Docker run). `UseSangamErrorPage` (Sangam.Web.Shared) writes a short translated page.
+- **`sangam_identity_verified` is advertised in `claims_supported`** (found in the R5 Docker run).
+
+### Added — R5 (PR-23 SCIM 2.0 provisioning)
+- Partner console → **Provisioning**: an application's SCIM base address, a bearer token (stored encrypted) or a
+  Sangam-signed service JWT (`typ` `sangam-service+jwt`), groups per role or per role at each organisation, delete or
+  deactivate people who lose access, *Test the connection*, *Reconcile now*, and a delivery log.
+- State-based sync: every change raises an event (`user.created/updated/deactivated/reactivated`,
+  `membership.granted/revoked`, `role.changed`, `session.revoked`, `consent.revoked`); a delivery brings one person to
+  the state Sangam holds at that moment, so deliveries are idempotent and order-proof. Retries after 1 min, 5 min,
+  30 min, 2 h, 6 h and 12 h, then *failing*, `scim.failing` audited and the owners e-mailed (new template
+  `integration_failing` in en/hi/ml). Nightly reconcile. A background worker runs it every five seconds.
+- Outbound calls to partner addresses: https only, no redirects, and no private-network addresses (checked again on
+  connect) unless `Sangam:Outbound:AllowPrivateNetworks`. Migration: `Provisioning`.
+
+### Added — R5 (PR-24 signed webhooks)
+- Partner console → **Webhooks**: up to ten https endpoints, each with the event types it wants; messages signed on the
+  Standard Webhooks scheme (`webhook-id`, `webhook-timestamp`, `webhook-signature: v1,…`, HMAC-SHA256 with a `whsec_`
+  secret; the published test vector passes); bodies carry ids, never personal data. Secret rotation with both secrets
+  signing for 24 hours, *Send a test* (`ping`), *Send again* with the same id, the same retry schedule as SCIM, and a
+  delivery log. `docs/webhooks.md` with C#, Node and Python verification. Migration: `Webhooks`.
+
+### Added — R5 (PR-25 custom attributes, claims and time-limited roles)
+- Partner console → **Attributes & claims**: up to 20 attributes per application (text, number, date, yes/no, one of a
+  list; for the whole application or one organisation; editable by administrators or by the person too), with health
+  data refused by a word check and a required *not health data* declaration; per-person values; up to 10 custom claims
+  from an attribute, the person's role codes, their permissions or their organisations' names. Sangam's own claim names
+  are reserved.
+- Custom claims are released only under the new **`attributes`** scope, in the access token and at userinfo, never in
+  the ID token; the consent screen shows *Details {application} keeps about you* with the values.
+- Account portal → Connected apps: everything an application keeps about the person, editable where it is theirs.
+- Management API: `GET` and `PUT /api/v1/users/{userId}/attributes`.
+- **Time-limited roles**: `expiresAt` on a membership (API) or *Until* on the partner console (end of that day, IST),
+  at most five years ahead. An ended role stops counting at once everywhere; a sweep each minute revokes it, audits
+  `org_membership.expire` and raises `membership.revoked` (and `user.deactivated` for a last role).
+- Deleting an account now deletes the attribute values applications kept about the person. Migration: `Attributes`.
+
+### Added — R5 (PR-26 DigiLocker verification)
+- Account portal → Personal details → **Verified identity**: after agreeing that their profile will take DigiLocker's
+  values and be locked, the person verifies with DigiLocker (OAuth 2.0 with PKCE S256; state in an encrypted cookie
+  bound to them, ten minutes). The record's name, date of birth and gender replace the profile's and are locked until
+  the person removes the verification.
+- Sangam keeps the three values and an HMAC of the DigiLocker id (`Sangam:DigiLocker:SubjectKey`), never the id itself,
+  never an Aadhaar number, no documents. One DigiLocker identity verifies one account (`identity.verify.refused`).
+- `sangam_identity_verified: true` under the `profile` scope. Audited (`identity.verify`, `identity.unverify`),
+  narrated in the person's activity, `user.updated` for SCIM and webhooks; deleted with the account.
+- Off unless `Sangam:DigiLocker:Enabled`; outside Development the portal refuses to start without the client id,
+  secret, https endpoints and a 32+ character subject key. `deploy/production/docker-compose.digilocker.yml`,
+  `docs/identity-verification.md`. Migration: `IdentityVerification`.
+
+### Notes
+- The delivery worker (SCIM, webhooks, the expiry sweep) assumes one identity-server instance (OI-047).
+- DigiLocker onboarding details to confirm with DigiLocker are listed as OI-046.
+
 ## [0.13.0] - R4 protocols, audit archive, backups, demo and grievances
 
 ### Fixed — R3 verification findings (V-10 to V-13)
