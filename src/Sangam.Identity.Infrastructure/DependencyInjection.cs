@@ -88,8 +88,10 @@ public static class DependencyInjection
         services.AddScoped<ITenancyQuery, EfTenancyQuery>();
         services.AddScoped<IManagementService, EfManagementService>();
         services.AddScoped<IPortalService, EfPortalService>();
+        services.AddScoped<IEmailChangeService, EfEmailChangeService>();
         services.AddScoped<IAdminService, EfAdminService>();
         services.AddScoped<IPartnerService, EfPartnerService>();
+        services.AddScoped<IInvitationService, EfInvitationService>();
         services.AddScoped<IMfaService, TotpMfaService>();
         services.AddSingleton<ISessionService, EfSessionService>();
 
@@ -109,9 +111,15 @@ public static class DependencyInjection
             services.AddSingleton<InMemoryEmailOutbox>();
             services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<InMemoryEmailOutbox>());
         }
+        else if (!string.IsNullOrWhiteSpace(configuration[EmailSenderGuard.SmtpHostKey]))
+        {
+            // PR-09: e-mail through Anjal by SMTP submission; settings are the founder’s (OI-027).
+            services.Configure<SmtpOptions>(configuration.GetSection(SmtpOptions.SectionName));
+            services.AddSingleton<IEmailSender, SmtpEmailSender>();
+        }
         else
         {
-            // No real sender until PR-09: refuse to send, and never log content (OI-038).
+            // No sender configured: refuse to send, and never log content (OI-038).
             services.AddSingleton<IEmailSender, UnavailableEmailSender>();
         }
 

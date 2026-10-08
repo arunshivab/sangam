@@ -11,6 +11,7 @@ using Sangam.Shared.Constants;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddSangamSecretFiles();
 
 builder.Services.AddRazorPages(o =>
 {
@@ -80,8 +81,17 @@ builder.Services.AddOpenIddict()
         }
         else
         {
-            throw new InvalidOperationException(
-                "No production signing and encryption certificates are configured (Sangam:Certificates). See docs/go-live-checklist.md. Refusing to start with development keys.");
+            // PR-10: certificates from files; previous ones stay published during a rotation (SGM-803).
+            (IReadOnlyList<System.Security.Cryptography.X509Certificates.X509Certificate2> signing, IReadOnlyList<System.Security.Cryptography.X509Certificates.X509Certificate2> encryption) = TokenCertificates.Load(builder.Configuration);
+            foreach (System.Security.Cryptography.X509Certificates.X509Certificate2 certificate in signing)
+            {
+                o.AddSigningCertificate(certificate);
+            }
+
+            foreach (System.Security.Cryptography.X509Certificates.X509Certificate2 certificate in encryption)
+            {
+                o.AddEncryptionCertificate(certificate);
+            }
         }
 
         o.DisableAccessTokenEncryption();

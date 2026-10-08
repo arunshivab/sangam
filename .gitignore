@@ -43,3 +43,7 @@ desktop.ini
 
 # Node (if a front-end toolchain is ever added)
 node_modules/
+
+# Production secrets: never committed (deploy/production/secrets/README.md)
+deploy/production/secrets/*
+!deploy/production/secrets/README.md

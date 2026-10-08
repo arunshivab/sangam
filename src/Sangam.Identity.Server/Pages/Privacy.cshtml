@@ -1,0 +1,22 @@
+@page "/privacy"
+@model PrivacyModel
+@{
+    ViewData["Title"] = "Privacy notice";
+}
+
+<section class="sg-card sg-doc">
+  <h1 class="sg-card-title">Privacy notice</h1>
+  @if (Model.Paragraphs is null)
+  {
+    <p class="sg-card-body">This document is being reviewed by counsel and will be published here before Sangam opens to the public.</p>
+    <p class="sg-card-body">Questions in the meantime: <a href="mailto:@Model.SupportEmail">@Model.SupportEmail</a>.</p>
+  }
+  else
+  {
+    @foreach (string paragraph in Model.Paragraphs)
+    {
+      <p class="sg-card-body">@paragraph</p>
+    }
+  }
+  <a class="sg-tertiary" href="/privacy/grievance">Raise a grievance</a>
+</section>

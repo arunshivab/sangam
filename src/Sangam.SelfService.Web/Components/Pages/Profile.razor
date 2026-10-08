@@ -5,6 +5,7 @@
 @inject IJSRuntime Js
 @inject IMfaService Mfa
 @inject IAdminService Admin
+@inject IEmailChangeService EmailChanges
 
 <PageTitle>Personal details · sangam</PageTitle>
 
@@ -69,10 +70,35 @@ else
       <div><dt>Date of birth</dt><dd>@_user.DateOfBirth.ToString("d MMMM yyyy", CultureInfo.InvariantCulture)</dd></div>
       <div><dt>Member since</dt><dd>@_user.CreatedAt.ToString("d MMMM yyyy", CultureInfo.InvariantCulture)</dd></div>
     </dl>
+    <div class="sg-field-group" aria-live="polite">
+      <span class="sg-label">Change your email</span>
+      @if (_pendingChange is null)
+      {
+        <div class="sg-two">
+          <label class="sg-field-group"><span class="sg-label">New email</span><input class="sg-field" type="email" autocomplete="email" @bind="_newEmail" /></label>
+          <label class="sg-field-group"><span class="sg-label">Current password</span><input class="sg-field" type="password" autocomplete="current-password" @bind="_currentPassword" /></label>
+        </div>
+        <button type="button" class="sg-btn sg-btn--secondary" disabled="@_working" @onclick="RequestEmailChangeAsync">Send a code to the new address</button>
+      }
+      else
+      {
+        <p class="sg-note">Enter the code we sent to <strong>@_pendingChange.NewEmail</strong>. Until you do, your account keeps its current address.</p>
+        <label class="sg-field-group"><span class="sg-label">Code</span><input class="sg-field" inputmode="numeric" autocomplete="one-time-code" @bind="_changeCode" /></label>
+        <button type="button" class="sg-btn sg-btn--primary" disabled="@_working" @onclick="ConfirmEmailChangeAsync">Change my email</button>
+        <button type="button" class="sg-btn sg-btn--secondary" disabled="@_working" @onclick="CancelEmailChangeAsync">Cancel</button>
+      }
+      @if (_changeMessage is not null)
+      {
+        <p class="sg-note">@_changeMessage</p>
+      }
+      @if (_changeError is not null)
+      {
+        <p class="sg-field-error">@_changeError</p>
+      }
+    </div>
     <p class="sg-note">
-      Your email address is how you sign in, so changing it needs its own verified step — that is coming.
       Your date of birth is fixed here because applications rely on it to identify you; it will become changeable
-      once you can prove your identity with DigiLocker. For either, write to <a href="mailto:help@@sangamid.in">help@@sangamid.in</a>.
+      once you can prove your identity with DigiLocker. Write to <a href="mailto:help@@sangamid.in">help@@sangamid.in</a> if it is wrong.
     </p>
   </section>
 
@@ -211,6 +237,12 @@ else
     private string? _mfaError;
     private IReadOnlyList<string> _recoveryCodes = [];
     private Guid _userId;
+    private PendingEmailChange? _pendingChange;
+    private string _newEmail = string.Empty;
+    private string _currentPassword = string.Empty;
+    private string _changeCode = string.Empty;
+    private string? _changeMessage;
+    private string? _changeError;
 
     protected override async Task OnInitializedAsync()
     {
@@ -230,6 +262,7 @@ else
         _mfaEnrolled = await Mfa.IsEnrolledAsync(_userId);
         _isOperator = await Admin.GetRoleAsync(_userId) is not null;
         _deletion = await Portal.GetDeletionStateAsync(_userId);
+        _pendingChange = await EmailChanges.GetPendingAsync(_userId);
         if (_user is not null)
         {
             _form.FirstName = _user.FirstName;
@@ -239,6 +272,52 @@ else
             (_form.CountryIso, _form.MobileNumber) = SplitMobile(_user.Mobile);
             _mode = SignInModes.ToCode(_user.SignInPreference);
         }
+    }
+
+    private async Task RequestEmailChangeAsync()
+    {
+        _working = true;
+        _changeMessage = null;
+        _changeError = null;
+        EmailChangeResult result = await EmailChanges.RequestAsync(_userId, _newEmail, _currentPassword);
+        _currentPassword = string.Empty;
+        _working = false;
+        if (result.Status == EmailChangeStatus.CodeSent)
+        {
+            _changeMessage = result.Message;
+            _pendingChange = await EmailChanges.GetPendingAsync(_userId);
+            return;
+        }
+
+        _changeError = result.Message;
+    }
+
+    private async Task ConfirmEmailChangeAsync()
+    {
+        _working = true;
+        _changeMessage = null;
+        _changeError = null;
+        EmailChangeResult result = await EmailChanges.ConfirmAsync(_userId, _changeCode);
+        _changeCode = string.Empty;
+        _working = false;
+        if (result.Status == EmailChangeStatus.Changed)
+        {
+            _changeMessage = result.Message;
+            _pendingChange = null;
+            _newEmail = string.Empty;
+            _user = await Accounts.FindByIdAsync(_userId) ?? _user;
+            return;
+        }
+
+        _changeError = result.Message;
+    }
+
+    private async Task CancelEmailChangeAsync()
+    {
+        await EmailChanges.CancelAsync(_userId);
+        _pendingChange = null;
+        _changeMessage = "The change was cancelled. Your address is unchanged.";
+        _changeError = null;
     }
 
     private async Task SaveAsync()

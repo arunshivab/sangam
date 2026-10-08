@@ -12,6 +12,12 @@ public static class AuditActions
     /// <summary>The email address was verified.</summary>
     public const string UserEmailVerify = "user.email.verify";
 
+    /// <summary>The person asked to change their e-mail address; a code went to the new address (OI-022).</summary>
+    public const string UserEmailChangeRequest = "user.email.change.request";
+
+    /// <summary>The person confirmed the new address with its code; the old address was told (OI-022).</summary>
+    public const string UserEmailChange = "user.email.change";
+
     /// <summary>Successful sign-in.</summary>
     public const string UserLoginSuccess = "user.login.success";
 
@@ -68,6 +74,12 @@ public static class AuditActions
 
     /// <summary>A partner owner removed one of their application's administrators.</summary>
     public const string AppAdminRevoke = "app.admin.revoke";
+
+    /// <summary>An application administrator invited someone by e-mail to an organisation and role (PR-13).</summary>
+    public const string AppInvitationCreate = "app.invitation.create";
+
+    /// <summary>The invited person accepted, linking the application and taking the role (PR-13).</summary>
+    public const string AppInvitationAccept = "app.invitation.accept";
 
     /// <summary>A partner changed their application's branding or sign-in policy.</summary>
     public const string AppSettingsUpdate = "app.settings.update";
