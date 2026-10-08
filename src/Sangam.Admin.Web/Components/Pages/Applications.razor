@@ -13,45 +13,47 @@
 }
 else
 {
-  <table class="sg-table">
-    <thead><tr><th>@L["Application"]</th><th>@L["Client id"]</th><th>@L["Sign-in rule"]</th><th>@L["Users"]</th><th>@L["Orgs"]</th><th>@L["Partner owners"]</th><th>@L["Status"]</th><th></th></tr></thead>
-    <tbody>
-      @foreach (AdminAppRow row in _rows)
-      {
-        <tr>
-          <td><span class="sg-name">@row.DisplayName</span><span class="sg-sub">@row.OwnerCompanyName</span></td>
-          <td class="sg-mono">@row.ClientId</td>
-          <td>@PolicyName(row.SignInPolicy)</td>
-          <td>@row.Users</td>
-          <td>@row.Organisations</td>
-          <td>@if (row.IsPlatform) { <span class="sg-muted">—</span> } else if (row.PartnerOwners == 0) { <span class="sg-warn-text">@L["none"]</span> } else { @row.PartnerOwners }</td>
-          <td><span class="sg-pill sg-pill--@row.Status.ToString().ToLowerInvariant()">@(row.Status == AppStatus.Active ? L["active"] : L["disabled"])</span></td>
-          <td>
-            @if (row.IsPlatform)
-            {
-              <span class="sg-pill sg-pill--platform" title="@L["Part of Sangam itself: never disabled here, never given partner owners"]">@L["platform"]</span>
-            }
-            @if (Context?.CanManageApps == true)
-            {
-              <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => StartLogout(row)" disabled="@_busy" title="@L["Where this application is told that a session has ended"]">@L["Logout"]@(row.BackChannelLogoutUri is null && row.FrontChannelLogoutUri is null ? "" : " ✓")</button>
-            }
-            @if (!row.IsPlatform && Context?.CanManageApps == true)
-            {
-              <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => StartAssign(row)" disabled="@_busy">@L["Assign owner"]</button>
-              @if (row.Status == AppStatus.Active)
+  <div class="sg-table-wrap">
+    <table class="sg-table">
+      <thead><tr><th>@L["Application"]</th><th>@L["Client id"]</th><th>@L["Sign-in rule"]</th><th>@L["Users"]</th><th>@L["Orgs"]</th><th>@L["Partner owners"]</th><th>@L["Status"]</th><th></th></tr></thead>
+      <tbody>
+        @foreach (AdminAppRow row in _rows)
+        {
+          <tr>
+            <td><span class="sg-name">@row.DisplayName</span><span class="sg-sub">@row.OwnerCompanyName</span></td>
+            <td class="sg-mono">@row.ClientId</td>
+            <td>@PolicyName(row.SignInPolicy)</td>
+            <td>@row.Users</td>
+            <td>@row.Organisations</td>
+            <td>@if (row.IsPlatform) { <span class="sg-muted">—</span> } else if (row.PartnerOwners == 0) { <span class="sg-warn-text">@L["none"]</span> } else { @row.PartnerOwners }</td>
+            <td><span class="sg-pill sg-pill--@row.Status.ToString().ToLowerInvariant()">@(row.Status == AppStatus.Active ? L["active"] : L["disabled"])</span></td>
+            <td>
+              @if (row.IsPlatform)
               {
-                <button type="button" class="sg-btn sg-btn--warn" @onclick="() => _confirming = row" disabled="@_busy">@L["Disable"]</button>
+                <span class="sg-pill sg-pill--platform" title="@L["Part of Sangam itself: never disabled here, never given partner owners"]">@L["platform"]</span>
               }
-              else
+              @if (Context?.CanManageApps == true)
               {
-                <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => SetAsync(row, AppStatus.Active)" disabled="@_busy">@L["Enable"]</button>
+                <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => StartLogout(row)" disabled="@_busy" title="@L["Where this application is told that a session has ended"]">@L["Logout"]@(row.BackChannelLogoutUri is null && row.FrontChannelLogoutUri is null ? "" : " ✓")</button>
               }
-            }
-          </td>
-        </tr>
-      }
-    </tbody>
-  </table>
+              @if (!row.IsPlatform && Context?.CanManageApps == true)
+              {
+                <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => StartAssign(row)" disabled="@_busy">@L["Assign owner"]</button>
+                @if (row.Status == AppStatus.Active)
+                {
+                  <button type="button" class="sg-btn sg-btn--warn" @onclick="() => _confirming = row" disabled="@_busy">@L["Disable"]</button>
+                }
+                else
+                {
+                  <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => SetAsync(row, AppStatus.Active)" disabled="@_busy">@L["Enable"]</button>
+                }
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
 
   @if (Context?.CanManageApps != true)
   {

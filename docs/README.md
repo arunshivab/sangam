@@ -88,6 +88,10 @@
   catalogue is the same idea in a form translators can review without tools). Branding and message templates by
   level — organisation, application, platform, built-in — with partner branding never changing structure
   (PR-19). Back- and front-channel logout, introspection and revocation (PR-20).
+- **SDK family and the shared audit event (R6).** JavaScript/TypeScript (`@sangam/client`, `@sangam/node`,
+  `@sangam/react`), Python (`sangam-client`, FastAPI and Flask) and Java (`sangam-client`, `sangam-spring`) SDKs next to
+  .NET's `Sangam.Client`, with one sample each; the shared audit event schema 1.0 and its helper in every SDK; shared
+  conformance vectors every SDK runs, and a live check of every sample ([`../sdk/README.md`](../sdk/README.md)).
 - **Integrations and verified identity (R5).** SCIM 2.0 provisioning to applications that ask for it, kept in step by
   a state-based sync with retries and a reconcile (PR-23, [`provisioning.md`](provisioning.md)); signed webhooks on the
   Standard Webhooks scheme, with secret rotation and a delivery log (PR-24, [`webhooks.md`](webhooks.md)); custom

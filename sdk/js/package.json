@@ -1,0 +1,12 @@
+{
+  "name": "sangam-js",
+  "private": true,
+  "description": "Sangam SDKs for JavaScript and TypeScript (R6, PR-27): @sangam/client, @sangam/node, @sangam/react, and the React + Node sample.",
+  "license": "Apache-2.0",
+  "workspaces": ["packages/client", "packages/node", "packages/react", "samples/react-node"],
+  "scripts": {
+    "build": "npm run build -w @sangam/client -w @sangam/node -w @sangam/react -w sangam-sample-react-node",
+    "test": "npm run test -w @sangam/client -w @sangam/node -w @sangam/react"
+  },
+  "engines": { "node": ">=20" }
+}

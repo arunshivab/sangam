@@ -126,3 +126,28 @@ With your client id and secret (HTTP Basic or form fields):
 
 - `POST /connect/introspect` with `token=...` (RFC 7662) answers `{ "active": true|false, ... }`.
 - `POST /connect/revoke` with `token=...` (RFC 7009) revokes an access or refresh token.
+
+## Webhooks, the management API and the shared audit event (R6)
+
+```csharp
+// Signed webhooks (Standard Webhooks, SGM-217): check every message on the body exactly as received.
+bool genuine = SangamWebhook.Verify(Request.Headers["webhook-id"], Request.Headers["webhook-timestamp"], Request.Headers["webhook-signature"], body, secret);
+
+// The management API from your back end (needs sangam.manage); tokens are fetched and cached for you.
+SangamManagementClient sangam = services.GetRequiredService<SangamManagementClient>();
+await sangam.UpsertMembershipAsync(wardId, personId, "nurse", appliesToDescendants: false, expiresAt: contractEnd);
+
+// The shared audit event (SGM-208): who, where and from which device are filled in from the request.
+builder.Services.AddSangamAudit(o => { o.AppId = "lims"; o.AppVersion = "1.2.0"; o.BufferPath = "/var/lib/lims/audit.jsonl"; });
+await audit.RecordAsync(new SangamAuditEntry("lims.result.sign", "sign", "result", resultId)
+{
+    Signature = (tokenId, "Approved", recordHash),
+    OrganisationId = ward.OrganisationId,
+    OrganisationPath = ward.Path,
+});
+```
+
+Events are checked against schema 1.0 and buffered in a JSON Lines file; once the audit service exists, set
+`SangamAuditOptions.Endpoint` and the forwarder sends them in batches. The same rules — permissions, step-up, the RFC
+9470 challenge, webhook signatures and the audit schema — are in the JavaScript, Python and Java SDKs, and every SDK
+runs the shared conformance vectors in `sdk/conformance/vectors.json`. Sample: `samples/Sangam.Sample.AspNetCore`.

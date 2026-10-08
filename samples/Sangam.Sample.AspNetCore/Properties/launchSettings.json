@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "Sangam.Sample.AspNetCore": {
+      "commandName": "Project",
+      "applicationUrl": "http://localhost:5940",
+      "environmentVariables": { "ASPNETCORE_ENVIRONMENT": "Development" }
+    }
+  }
+}

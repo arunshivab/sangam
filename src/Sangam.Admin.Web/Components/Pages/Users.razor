@@ -22,30 +22,32 @@ else if (_rows.Count == 0)
 }
 else
 {
-  <table class="sg-table">
-    <thead><tr><th>@L["Person"]</th><th>@L["Status"]</th><th>@L["Two-step"]</th><th>@L["Joined"]</th><th></th></tr></thead>
-    <tbody>
-      @foreach (AdminUserRow row in _rows)
-      {
-        <tr>
-          <td>
-            <span class="sg-name">@row.DisplayName</span>
-            <span class="sg-sub sg-mono">@row.Email@(row.Mobile is null ? "" : " · " + row.Mobile)</span>
-          </td>
-          <td>
-            <span class="sg-pill sg-pill--@row.Status.ToString().ToLowerInvariant()">@Status(row)</span>
-            @if (row.IsOperator)
-            {
-              <span class="sg-pill sg-pill--op">@L["console"]</span>
-            }
-          </td>
-          <td>@(row.MfaEnrolled ? "on" : "—")</td>
-          <td class="sg-mono">@IndiaTime.Date(row.CreatedAt)</td>
-          <td><a class="sg-btn sg-btn--ghost" href="@($"/users/{row.Id:D}")">@L["Open"]</a></td>
-        </tr>
-      }
-    </tbody>
-  </table>
+  <div class="sg-table-wrap">
+    <table class="sg-table">
+      <thead><tr><th>@L["Person"]</th><th>@L["Status"]</th><th>@L["Two-step"]</th><th>@L["Joined"]</th><th></th></tr></thead>
+      <tbody>
+        @foreach (AdminUserRow row in _rows)
+        {
+          <tr>
+            <td>
+              <span class="sg-name">@row.DisplayName</span>
+              <span class="sg-sub sg-mono">@row.Email@(row.Mobile is null ? "" : " · " + row.Mobile)</span>
+            </td>
+            <td>
+              <span class="sg-pill sg-pill--@row.Status.ToString().ToLowerInvariant()">@Status(row)</span>
+              @if (row.IsOperator)
+              {
+                <span class="sg-pill sg-pill--op">@L["console"]</span>
+              }
+            </td>
+            <td>@(row.MfaEnrolled ? "on" : "—")</td>
+            <td class="sg-mono">@IndiaTime.Date(row.CreatedAt)</td>
+            <td><a class="sg-btn sg-btn--ghost" href="@($"/users/{row.Id:D}")">@L["Open"]</a></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
   <p class="sg-muted">@(_rows.Count >= 50 ? L["{0} shown, narrow the search to see more.", _rows.Count] : L["{0} shown.", _rows.Count])</p>
 }
 

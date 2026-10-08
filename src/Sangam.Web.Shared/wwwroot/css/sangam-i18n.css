@@ -26,3 +26,6 @@ h1, h2, h3, .sg-card-title, label, .sg-btn { overflow-wrap: break-word; }
   .sg-search, .sg-grant { flex-wrap: wrap; }
   .sg-grant select.sg-input { flex: 1 1 140px; }
 }
+
+/* A short code or value (E-1042, 2026-10-07) stays on one line in a narrow column rather than breaking at its hyphen. */
+.sg-keep { white-space: nowrap; }

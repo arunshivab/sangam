@@ -19,31 +19,33 @@ else
   }
   else
   {
-    <table class="sg-table">
-      <thead><tr><th>@L["Person"]</th><th>@L["Rank"]</th><th>@L["Two-step"]</th><th>@L["Since"]</th><th>@L["Granted by"]</th><th></th></tr></thead>
-      <tbody>
-        @foreach (OperatorRow row in _rows)
-        {
-          <tr>
-            <td><span class="sg-name">@row.DisplayName</span><span class="sg-sub sg-mono">@row.Email</span></td>
-            <td><span class="sg-rank sg-rank--@row.Role.ToString().ToLowerInvariant()">@L[PlatformRanks.Label(row.Role)]</span></td>
-            <td>@(row.MfaEnrolled ? "on" : Blocked)</td>
-            <td class="sg-mono">@IndiaTime.Date(row.GrantedAt)</td>
-            <td>@(row.GrantedByName ?? L["bootstrap"])</td>
-            <td>
-              @if (row.UserId != Context.UserId)
-              {
-                <button type="button" class="sg-btn sg-btn--warn" @onclick="() => RevokeAsync(row)" disabled="@_busy">@L["Revoke"]</button>
-              }
-              else
-              {
-                <span class="sg-muted">@L["you"]</span>
-              }
-            </td>
-          </tr>
-        }
-      </tbody>
-    </table>
+    <div class="sg-table-wrap">
+      <table class="sg-table">
+        <thead><tr><th>@L["Person"]</th><th>@L["Rank"]</th><th>@L["Two-step"]</th><th>@L["Since"]</th><th>@L["Granted by"]</th><th></th></tr></thead>
+        <tbody>
+          @foreach (OperatorRow row in _rows)
+          {
+            <tr>
+              <td><span class="sg-name">@row.DisplayName</span><span class="sg-sub sg-mono">@row.Email</span></td>
+              <td><span class="sg-rank sg-rank--@row.Role.ToString().ToLowerInvariant()">@L[PlatformRanks.Label(row.Role)]</span></td>
+              <td>@(row.MfaEnrolled ? "on" : Blocked)</td>
+              <td class="sg-mono">@IndiaTime.Date(row.GrantedAt)</td>
+              <td>@(row.GrantedByName ?? L["bootstrap"])</td>
+              <td>
+                @if (row.UserId != Context.UserId)
+                {
+                  <button type="button" class="sg-btn sg-btn--warn" @onclick="() => RevokeAsync(row)" disabled="@_busy">@L["Revoke"]</button>
+                }
+                else
+                {
+                  <span class="sg-muted">@L["you"]</span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
 
     <div class="sg-panel">
       <h2 class="sg-h2">@L["Give someone console access"]</h2>

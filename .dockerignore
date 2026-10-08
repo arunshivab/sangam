@@ -4,3 +4,7 @@
 .vs/
 **/*.user
 deploy/production/secrets/
+# R6: the JavaScript, Python and Java SDKs are not part of any image.
+sdk/
+**/node_modules/
+**/target/

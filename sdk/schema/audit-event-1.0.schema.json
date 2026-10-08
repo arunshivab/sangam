@@ -1,0 +1,303 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://sangamid.in/schemas/audit-event/1.0.json",
+ "title": "Sangam shared audit event 1.0 (SGM-208)",
+ "description": "One event as an application emits it. recorded_at, prev_hash and hash are set by the audit service and must not be sent.",
+ "type": "object",
+ "additionalProperties": false,
+ "required": [
+  "schema_version",
+  "event_id",
+  "occurred_at",
+  "source",
+  "actor",
+  "action",
+  "category",
+  "target",
+  "outcome",
+  "data_classification"
+ ],
+ "properties": {
+  "schema_version": {
+   "type": "string",
+   "pattern": "^1\\.[0-9]+$"
+  },
+  "event_id": {
+   "type": "string",
+   "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+  },
+  "occurred_at": {
+   "type": "string",
+   "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+  },
+  "source": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "app_id",
+    "app_version",
+    "environment"
+   ],
+   "properties": {
+    "app_id": {
+     "type": "string",
+     "minLength": 1
+    },
+    "app_version": {
+     "type": "string",
+     "minLength": 1
+    },
+    "environment": {
+     "enum": [
+      "production",
+      "staging",
+      "development"
+     ]
+    }
+   }
+  },
+  "tenant": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "org_id"
+   ],
+   "properties": {
+    "org_id": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "org_path": {
+     "type": "string",
+     "pattern": "^/.*/$"
+    }
+   }
+  },
+  "actor": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "type"
+   ],
+   "properties": {
+    "type": {
+     "enum": [
+      "user",
+      "admin",
+      "api",
+      "system",
+      "anonymous"
+     ]
+    },
+    "sub": {
+     "type": "string",
+     "minLength": 1,
+     "pattern": "^[^@]+$"
+    },
+    "client_id": {
+     "type": "string",
+     "minLength": 1
+    },
+    "session_id": {
+     "type": "string"
+    },
+    "acr": {
+     "type": "string"
+    },
+    "amr": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    }
+   },
+   "allOf": [
+    {
+     "if": {
+      "properties": {
+       "type": {
+        "enum": [
+         "user",
+         "admin"
+        ]
+       }
+      }
+     },
+     "then": {
+      "required": [
+       "sub"
+      ]
+     }
+    },
+    {
+     "if": {
+      "properties": {
+       "type": {
+        "const": "api"
+       }
+      }
+     },
+     "then": {
+      "required": [
+       "client_id"
+      ]
+     }
+    }
+   ]
+  },
+  "action": {
+   "type": "string",
+   "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*){2,}$"
+  },
+  "category": {
+   "enum": [
+    "access",
+    "create",
+    "update",
+    "delete",
+    "approve",
+    "sign",
+    "export",
+    "admin",
+    "security"
+   ]
+  },
+  "target": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "type",
+    "id"
+   ],
+   "properties": {
+    "type": {
+     "type": "string",
+     "minLength": 1
+    },
+    "id": {
+     "type": "string",
+     "minLength": 1
+    },
+    "display": {
+     "type": "string"
+    }
+   }
+  },
+  "outcome": {
+   "enum": [
+    "success",
+    "failure",
+    "denied"
+   ]
+  },
+  "reason": {
+   "type": "string"
+  },
+  "signature": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "token_id",
+    "meaning",
+    "record_hash"
+   ],
+   "properties": {
+    "token_id": {
+     "type": "string",
+     "minLength": 1
+    },
+    "meaning": {
+     "type": "string",
+     "minLength": 1
+    },
+    "record_hash": {
+     "type": "string",
+     "minLength": 1
+    }
+   }
+  },
+  "changes": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+     "field"
+    ],
+    "properties": {
+     "field": {
+      "type": "string",
+      "minLength": 1
+     },
+     "before": {},
+     "after": {}
+    }
+   }
+  },
+  "client": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "ip"
+   ],
+   "properties": {
+    "ip": {
+     "type": "string",
+     "minLength": 1
+    },
+    "user_agent": {
+     "type": "string"
+    }
+   }
+  },
+  "correlation_id": {
+   "type": "string"
+  },
+  "data_classification": {
+   "enum": [
+    "public",
+    "internal",
+    "personal",
+    "sensitive-personal",
+    "health"
+   ]
+  }
+ },
+ "allOf": [
+  {
+   "if": {
+    "properties": {
+     "actor": {
+      "properties": {
+       "type": {
+        "enum": [
+         "user",
+         "admin"
+        ]
+       }
+      }
+     }
+    }
+   },
+   "then": {
+    "required": [
+     "client"
+    ]
+   }
+  },
+  {
+   "if": {
+    "properties": {
+     "category": {
+      "const": "sign"
+     }
+    }
+   },
+   "then": {
+    "required": [
+     "signature"
+    ]
+   }
+  }
+ ]
+}

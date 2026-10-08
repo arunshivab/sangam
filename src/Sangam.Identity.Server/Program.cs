@@ -62,7 +62,10 @@ builder.Services.AddSingleton(Sangam.Identity.Infrastructure.Saml.SamlOptions.Fr
 // PR-17: the identity server holds the token-signing keys, so it alone issues signature tokens.
 builder.Services.AddSingleton<Sangam.Identity.Application.Signatures.ISignatureTokenIssuer, Sangam.Identity.Server.Signatures.SignatureTokenIssuer>();
 // PR-20: deliver queued back-channel logouts (only the identity server holds the signing keys).
-builder.Services.AddHttpClient(Sangam.Identity.Server.Logout.BackChannelLogoutSender.HttpClientName, c => c.Timeout = TimeSpan.FromSeconds(5));
+// V-16: back-channel logout calls go through the same guard as SCIM and webhooks: no redirects, and no private-network
+// address (checked again on every connection) unless Sangam:Outbound:AllowPrivateNetworks.
+builder.Services.AddHttpClient(Sangam.Identity.Server.Logout.BackChannelLogoutSender.HttpClientName, c => c.Timeout = TimeSpan.FromSeconds(5))
+    .ConfigurePrimaryHttpMessageHandler(sp => Sangam.Identity.Infrastructure.Provisioning.OutboundHttp.CreateHandler(sp.GetRequiredService<Sangam.Identity.Infrastructure.Provisioning.OutboundSettings>().AllowPrivate));
 builder.Services.AddSingleton<Sangam.Identity.Server.Logout.BackChannelLogoutSender>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<Sangam.Identity.Server.Logout.BackChannelLogoutSender>());
 // PR-23/24: SCIM provisioning and webhooks are delivered from here (Sangam-signed SCIM tokens need the signing keys).

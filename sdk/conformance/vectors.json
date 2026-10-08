@@ -1,0 +1,1804 @@
+{
+ "version": "1.0",
+ "description": "Sangam SDK conformance vectors (SGM-306 §2). Every SDK runs these in its own test suite; a change here is a change to every SDK.",
+ "permissions": {
+  "description": "One permission rule everywhere: granted at the organisation, or at an ancestor whose membership inherits (SangamMembership.Covers). Deny by default. Organisation paths end with '/'; comparison of paths is case-insensitive, of roles and permissions case-sensitive.",
+  "sangam_orgs": [
+   {
+    "id": "0192a6b0-0000-7000-8000-000000000001",
+    "name": "Apulki Group",
+    "type": "group",
+    "path": "/0192a6b0-0000-7000-8000-000000000001/",
+    "role": "auditor",
+    "permissions": [
+     "audit:read"
+    ],
+    "inherits": true
+   },
+   {
+    "id": "0192a6b0-0000-7000-8000-000000000002",
+    "name": "Apulki Hospital",
+    "type": "hospital",
+    "path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/",
+    "role": "nurse",
+    "permissions": [
+     "vitals:read",
+     "vitals:write"
+    ],
+    "inherits": false
+   },
+   {
+    "id": "0192a6b0-0000-7000-8000-000000000003",
+    "name": "Baner Clinic",
+    "type": "clinic",
+    "path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000003/",
+    "role": "doctor",
+    "permissions": [
+     "orders:write",
+     "vitals:read"
+    ],
+    "inherits": true
+   }
+  ],
+  "has_permission": [
+   {
+    "permission": "vitals:write",
+    "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/",
+    "expect": true,
+    "why": "granted at the organisation itself"
+   },
+   {
+    "permission": "vitals:write",
+    "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/0192a6b0-0000-7000-8000-000000000004/",
+    "expect": false,
+    "why": "granted at the parent without inheritance does not reach a ward"
+   },
+   {
+    "permission": "audit:read",
+    "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/0192a6b0-0000-7000-8000-000000000004/",
+    "expect": true,
+    "why": "granted at the group with inheritance reaches a ward two levels down"
+   },
+   {
+    "permission": "audit:read",
+    "org_path": "/0192a6b0-0000-7000-8000-000000000001/",
+    "expect": true,
+    "why": "granted at the organisation itself"
+   },
+   {
+    "permission": "orders:write",
+    "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000003/0192a6b0-0000-7000-8000-000000000005/",
+    "expect": true,
+    "why": "inheriting membership reaches a child"
+   },
+   {
+    "permission": "orders:write",
+    "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/",
+    "expect": false,
+    "why": "a sibling is not covered"
+   },
+   {
+    "permission": "vitals:read",
+    "org_path": "/0192a6b0-0000-7000-8000-000000000009/",
+    "expect": false,
+    "why": "an unrelated tree is not covered"
+   },
+   {
+    "permission": "vitals:read",
+    "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002",
+    "expect": false,
+    "why": "a path without its trailing slash is a different organisation"
+   },
+   {
+    "permission": "Vitals:Read",
+    "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/",
+    "expect": false,
+    "why": "permissions are case-sensitive"
+   },
+   {
+    "permission": "vitals:read",
+    "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002x/",
+    "expect": false,
+    "why": "a path that only starts with the same characters is not a child"
+   }
+  ],
+  "has_role": [
+   {
+    "role": "nurse",
+    "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/",
+    "expect": true
+   },
+   {
+    "role": "nurse",
+    "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/0192a6b0-0000-7000-8000-000000000004/",
+    "expect": false
+   },
+   {
+    "role": "auditor",
+    "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000003/",
+    "expect": true
+   },
+   {
+    "role": "doctor",
+    "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/",
+    "expect": false
+   }
+  ],
+  "roles_in": [
+   {
+    "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/0192a6b0-0000-7000-8000-000000000004/",
+    "expect": [
+     "auditor"
+    ]
+   },
+   {
+    "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000003/0192a6b0-0000-7000-8000-000000000005/",
+    "expect": [
+     "auditor",
+     "doctor"
+    ]
+   },
+   {
+    "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/",
+    "expect": [
+     "auditor",
+     "nurse"
+    ]
+   }
+  ],
+  "malformed_claims": [
+   {
+    "claim": "not json",
+    "memberships": 0
+   },
+   {
+    "claim": "[{\"id\": \"not-a-guid\", \"path\": \"/x/\", \"role\": \"r\"}]",
+    "memberships": 0
+   },
+   {
+    "claim": "[{\"id\": \"0192a6b0-0000-7000-8000-000000000001\", \"path\": \"\", \"role\": \"r\"}]",
+    "memberships": 0
+   },
+   {
+    "claim": "{\"id\": \"0192a6b0-0000-7000-8000-000000000007\", \"name\": \"Single\", \"type\": \"clinic\", \"path\": \"/0192a6b0-0000-7000-8000-000000000007/\", \"role\": \"r\", \"permissions\": [\"p:q\"], \"inherits\": false}",
+    "memberships": 1
+   }
+  ]
+ },
+ "step_up": {
+  "now": 1791360000,
+  "ranks": {
+   "urn:sangam:acr:1": 1,
+   "urn:sangam:acr:2": 2,
+   "urn:sangam:acr:sign": 2,
+   "urn:sangam:acr:3": 3
+  },
+  "signature_max_age_seconds": 300,
+  "cases": [
+   {
+    "acr": "urn:sangam:acr:1",
+    "auth_time": 1791359940,
+    "level": "urn:sangam:acr:1",
+    "max_age": null,
+    "expect": true,
+    "why": "same level"
+   },
+   {
+    "acr": "urn:sangam:acr:1",
+    "auth_time": 1791359940,
+    "level": "urn:sangam:acr:2",
+    "max_age": null,
+    "expect": false,
+    "why": "one factor does not meet two"
+   },
+   {
+    "acr": "urn:sangam:acr:2",
+    "auth_time": 1791359940,
+    "level": "urn:sangam:acr:1",
+    "max_age": null,
+    "expect": true,
+    "why": "stronger meets weaker"
+   },
+   {
+    "acr": "urn:sangam:acr:3",
+    "auth_time": 1791359940,
+    "level": "urn:sangam:acr:2",
+    "max_age": null,
+    "expect": true,
+    "why": "phishing-resistant meets two-factor"
+   },
+   {
+    "acr": "urn:sangam:acr:2",
+    "auth_time": 1791359940,
+    "level": "urn:sangam:acr:3",
+    "max_age": null,
+    "expect": false,
+    "why": "two-factor does not meet phishing-resistant"
+   },
+   {
+    "acr": "urn:sangam:acr:2",
+    "auth_time": 1791359400,
+    "level": "urn:sangam:acr:2",
+    "max_age": 300,
+    "expect": false,
+    "why": "too old for max_age"
+   },
+   {
+    "acr": "urn:sangam:acr:2",
+    "auth_time": 1791359800,
+    "level": "urn:sangam:acr:2",
+    "max_age": 300,
+    "expect": true,
+    "why": "within max_age"
+   },
+   {
+    "acr": "urn:sangam:acr:2",
+    "auth_time": null,
+    "level": "urn:sangam:acr:2",
+    "max_age": 300,
+    "expect": false,
+    "why": "no auth_time with a max_age"
+   },
+   {
+    "acr": "urn:sangam:acr:2",
+    "auth_time": null,
+    "level": "urn:sangam:acr:2",
+    "max_age": null,
+    "expect": true,
+    "why": "no auth_time, no max_age"
+   },
+   {
+    "acr": "urn:sangam:acr:sign",
+    "auth_time": 1791359800,
+    "level": "urn:sangam:acr:sign",
+    "max_age": null,
+    "expect": true,
+    "why": "a signature within five minutes"
+   },
+   {
+    "acr": "urn:sangam:acr:sign",
+    "auth_time": 1791359600,
+    "level": "urn:sangam:acr:sign",
+    "max_age": null,
+    "expect": false,
+    "why": "a signature level is capped at five minutes even with no max_age"
+   },
+   {
+    "acr": "urn:sangam:acr:sign",
+    "auth_time": 1791359600,
+    "level": "urn:sangam:acr:sign",
+    "max_age": 3600,
+    "expect": false,
+    "why": "a longer max_age cannot lift the five-minute cap"
+   },
+   {
+    "acr": "urn:sangam:acr:sign",
+    "auth_time": 1791359900,
+    "level": "urn:sangam:acr:sign",
+    "max_age": 60,
+    "expect": false,
+    "why": "a shorter max_age applies"
+   },
+   {
+    "acr": "urn:sangam:acr:2",
+    "auth_time": 1791359900,
+    "level": "urn:sangam:acr:sign",
+    "max_age": null,
+    "expect": true,
+    "why": "two-factor within five minutes meets a signature"
+   },
+   {
+    "acr": "urn:sangam:acr:3",
+    "auth_time": 1791359900,
+    "level": "urn:sangam:acr:sign",
+    "max_age": null,
+    "expect": true,
+    "why": "phishing-resistant within five minutes meets a signature"
+   },
+   {
+    "acr": "urn:sangam:acr:1",
+    "auth_time": 1791359990,
+    "level": "urn:sangam:acr:sign",
+    "max_age": null,
+    "expect": false,
+    "why": "one factor never meets a signature"
+   },
+   {
+    "acr": null,
+    "auth_time": 1791359990,
+    "level": "urn:sangam:acr:1",
+    "max_age": null,
+    "expect": false,
+    "why": "no acr meets nothing"
+   },
+   {
+    "acr": "urn:other:acr",
+    "auth_time": 1791359990,
+    "level": "urn:sangam:acr:1",
+    "max_age": null,
+    "expect": false,
+    "why": "an unknown acr meets nothing"
+   }
+  ]
+ },
+ "challenge": [
+  {
+   "level": "urn:sangam:acr:2",
+   "max_age": null,
+   "header": "Bearer error=\"insufficient_user_authentication\", error_description=\"A stronger or more recent authentication is required\", acr_values=\"urn:sangam:acr:2\""
+  },
+  {
+   "level": "urn:sangam:acr:sign",
+   "max_age": 300,
+   "header": "Bearer error=\"insufficient_user_authentication\", error_description=\"A stronger or more recent authentication is required\", acr_values=\"urn:sangam:acr:sign\", max_age=300"
+  }
+ ],
+ "webhooks": {
+  "tolerance_seconds": 300,
+  "cases": [
+   {
+    "secret": "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw",
+    "id": "msg_p5jXN8AQM9LWM0D4loKWxJek",
+    "timestamp": "1614265330",
+    "body": "{\"test\": 2432232314}",
+    "signature": "v1,g0hM9SsE+OTPJTGt/tmIKtSyZlE3uFJELVlNIOLJ1OE=",
+    "now": 1614265330,
+    "expect": true,
+    "why": "the published Standard Webhooks test vector"
+   },
+   {
+    "secret": "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw",
+    "id": "msg_p5jXN8AQM9LWM0D4loKWxJek",
+    "timestamp": "1614265330",
+    "body": "{\"test\": 2432232314} ",
+    "signature": "v1,g0hM9SsE+OTPJTGt/tmIKtSyZlE3uFJELVlNIOLJ1OE=",
+    "now": 1614265330,
+    "expect": false,
+    "why": "body changed by one byte"
+   },
+   {
+    "secret": "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw",
+    "id": "msg_p5jXN8AQM9LWM0D4loKWxJekx",
+    "timestamp": "1614265330",
+    "body": "{\"test\": 2432232314}",
+    "signature": "v1,g0hM9SsE+OTPJTGt/tmIKtSyZlE3uFJELVlNIOLJ1OE=",
+    "now": 1614265330,
+    "expect": false,
+    "why": "id changed"
+   },
+   {
+    "secret": "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw",
+    "id": "msg_p5jXN8AQM9LWM0D4loKWxJek",
+    "timestamp": "1614265330",
+    "body": "{\"test\": 2432232314}",
+    "signature": "v1,g0hM9SsE+OTPJTGt/tmIKtSyZlE3uFJELVlNIOLJ1OE=",
+    "now": 1614265631,
+    "expect": false,
+    "why": "more than five minutes old"
+   },
+   {
+    "secret": "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw",
+    "id": "msg_p5jXN8AQM9LWM0D4loKWxJek",
+    "timestamp": "1614265330",
+    "body": "{\"test\": 2432232314}",
+    "signature": "v1,g0hM9SsE+OTPJTGt/tmIKtSyZlE3uFJELVlNIOLJ1OE=",
+    "now": 1614265029,
+    "expect": false,
+    "why": "more than five minutes in the future"
+   },
+   {
+    "secret": "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw",
+    "id": "msg_p5jXN8AQM9LWM0D4loKWxJek",
+    "timestamp": "1614265330",
+    "body": "{\"test\": 2432232314}",
+    "signature": "v1,g0hM9SsE+OTPJTGt/tmIKtSyZlE3uFJELVlNIOLJ1OE=",
+    "now": 1614265629,
+    "expect": true,
+    "why": "within five minutes"
+   },
+   {
+    "secret": "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw",
+    "id": "msg_p5jXN8AQM9LWM0D4loKWxJek",
+    "timestamp": "not-a-number",
+    "body": "{\"test\": 2432232314}",
+    "signature": "v1,g0hM9SsE+OTPJTGt/tmIKtSyZlE3uFJELVlNIOLJ1OE=",
+    "now": 1614265330,
+    "expect": false,
+    "why": "timestamp not a number"
+   },
+   {
+    "secret": "whsec_c2FuZ2FtLWNvbmZvcm1hbmNlLXNlY29uZC1zZWNyZXQ=",
+    "id": "evt_01929f3c8a3b7c1d9e2f3a4b5c6d7e8f",
+    "timestamp": "1791359472",
+    "body": "{\"id\":\"evt_01929f3c8a3b7c1d9e2f3a4b5c6d7e8f\",\"type\":\"membership.granted\",\"created_at\":\"2026-10-06T09:41:12Z\",\"app_id\":\"lipi-his\",\"subject\":{\"sub\":\"0192a6b0-0000-7000-8000-000000000042\"},\"data\":{\"role\":\"nurse\"}}",
+    "signature": "v1,+H5VVUVYdFsN35ro+H44e8EgwuBVbO7qW7XNkAa/9Rc= v1,7aPCvwUPtdfmIuF1o2nf8ilRzvCwaPdiQ7gOFqJ0Yyc=",
+    "now": 1791359472,
+    "expect": true,
+    "why": "after a rotation the header carries two signatures; the new secret matches the second"
+   },
+   {
+    "secret": "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw",
+    "id": "evt_01929f3c8a3b7c1d9e2f3a4b5c6d7e8f",
+    "timestamp": "1791359472",
+    "body": "{\"id\":\"evt_01929f3c8a3b7c1d9e2f3a4b5c6d7e8f\",\"type\":\"membership.granted\",\"created_at\":\"2026-10-06T09:41:12Z\",\"app_id\":\"lipi-his\",\"subject\":{\"sub\":\"0192a6b0-0000-7000-8000-000000000042\"},\"data\":{\"role\":\"nurse\"}}",
+    "signature": "v1,+H5VVUVYdFsN35ro+H44e8EgwuBVbO7qW7XNkAa/9Rc= v1,7aPCvwUPtdfmIuF1o2nf8ilRzvCwaPdiQ7gOFqJ0Yyc=",
+    "now": 1791359472,
+    "expect": true,
+    "why": "the old secret matches the first"
+   },
+   {
+    "secret": "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw",
+    "id": "evt_01929f3c8a3b7c1d9e2f3a4b5c6d7e8f",
+    "timestamp": "1791359472",
+    "body": "{\"id\":\"evt_01929f3c8a3b7c1d9e2f3a4b5c6d7e8f\",\"type\":\"membership.granted\",\"created_at\":\"2026-10-06T09:41:12Z\",\"app_id\":\"lipi-his\",\"subject\":{\"sub\":\"0192a6b0-0000-7000-8000-000000000042\"},\"data\":{\"role\":\"nurse\"}}",
+    "signature": "v2,+H5VVUVYdFsN35ro+H44e8EgwuBVbO7qW7XNkAa/9Rc=",
+    "now": 1791359472,
+    "expect": false,
+    "why": "an unknown version prefix"
+   },
+   {
+    "secret": "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw",
+    "id": "evt_01929f3c8a3b7c1d9e2f3a4b5c6d7e8f",
+    "timestamp": "1791359472",
+    "body": "{\"id\":\"evt_01929f3c8a3b7c1d9e2f3a4b5c6d7e8f\",\"type\":\"membership.granted\",\"created_at\":\"2026-10-06T09:41:12Z\",\"app_id\":\"lipi-his\",\"subject\":{\"sub\":\"0192a6b0-0000-7000-8000-000000000042\"},\"data\":{\"role\":\"nurse\"}}",
+    "signature": "",
+    "now": 1791359472,
+    "expect": false,
+    "why": "no signature"
+   },
+   {
+    "secret": "whsec_c2FuZ2FtLWNvbmZvcm1hbmNlLXNlY29uZC1zZWNyZXQ=",
+    "id": "evt_01929f3c8a3b7c1d9e2f3a4b5c6d7e8f",
+    "timestamp": "1791359472",
+    "body": "{\"id\":\"evt_01929f3c8a3b7c1d9e2f3a4b5c6d7e8f\",\"type\":\"membership.granted\",\"created_at\":\"2026-10-06T09:41:12Z\",\"app_id\":\"lipi-his\",\"subject\":{\"sub\":\"0192a6b0-0000-7000-8000-000000000042\"},\"data\":{\"role\":\"nurse\"}}",
+    "signature": "v1,+H5VVUVYdFsN35ro+H44e8EgwuBVbO7qW7XNkAa/9Rc=",
+    "now": 1791359472,
+    "expect": false,
+    "why": "signed with another secret"
+   }
+  ]
+ },
+ "audit": {
+  "validation": [
+   {
+    "event": {
+     "schema_version": "1.0",
+     "event_id": "01929f2e-7c1b-7a3e-9b1f-2d4c5e6f7a8b",
+     "occurred_at": "2026-10-06T09:41:12.408Z",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "user",
+      "sub": "0192a6b0-0000-7000-8000-000000000042",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ]
+     },
+     "action": "qms.document.approve",
+     "category": "sign",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "signature": {
+      "token_id": "sig_1",
+      "meaning": "Approved",
+      "record_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "client": {
+      "ip": "203.0.113.10",
+      "user_agent": "Mozilla/5.0"
+     },
+     "data_classification": "internal"
+    },
+    "valid": true,
+    "why": "the example of SGM-208 §2.1"
+   },
+   {
+    "event": {
+     "schema_version": "2.0",
+     "event_id": "01929f2e-7c1b-7a3e-9b1f-2d4c5e6f7a8b",
+     "occurred_at": "2026-10-06T09:41:12.408Z",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "user",
+      "sub": "0192a6b0-0000-7000-8000-000000000042",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ]
+     },
+     "action": "qms.document.approve",
+     "category": "sign",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "signature": {
+      "token_id": "sig_1",
+      "meaning": "Approved",
+      "record_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "client": {
+      "ip": "203.0.113.10",
+      "user_agent": "Mozilla/5.0"
+     },
+     "data_classification": "internal"
+    },
+    "valid": false,
+    "why": "another major schema version"
+   },
+   {
+    "event": {
+     "schema_version": "1.0",
+     "occurred_at": "2026-10-06T09:41:12.408Z",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "user",
+      "sub": "0192a6b0-0000-7000-8000-000000000042",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ]
+     },
+     "action": "qms.document.approve",
+     "category": "sign",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "signature": {
+      "token_id": "sig_1",
+      "meaning": "Approved",
+      "record_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "client": {
+      "ip": "203.0.113.10",
+      "user_agent": "Mozilla/5.0"
+     },
+     "data_classification": "internal"
+    },
+    "valid": false,
+    "why": "no event_id"
+   },
+   {
+    "event": {
+     "schema_version": "1.0",
+     "event_id": "not-a-uuid",
+     "occurred_at": "2026-10-06T09:41:12.408Z",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "user",
+      "sub": "0192a6b0-0000-7000-8000-000000000042",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ]
+     },
+     "action": "qms.document.approve",
+     "category": "sign",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "signature": {
+      "token_id": "sig_1",
+      "meaning": "Approved",
+      "record_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "client": {
+      "ip": "203.0.113.10",
+      "user_agent": "Mozilla/5.0"
+     },
+     "data_classification": "internal"
+    },
+    "valid": false,
+    "why": "event_id not a UUID"
+   },
+   {
+    "event": {
+     "schema_version": "1.0",
+     "event_id": "01929f2e-7c1b-4a3e-9b1f-2d4c5e6f7a8b",
+     "occurred_at": "2026-10-06T09:41:12.408Z",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "user",
+      "sub": "0192a6b0-0000-7000-8000-000000000042",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ]
+     },
+     "action": "qms.document.approve",
+     "category": "sign",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "signature": {
+      "token_id": "sig_1",
+      "meaning": "Approved",
+      "record_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "client": {
+      "ip": "203.0.113.10",
+      "user_agent": "Mozilla/5.0"
+     },
+     "data_classification": "internal"
+    },
+    "valid": false,
+    "why": "event_id a UUID but not version 7"
+   },
+   {
+    "event": {
+     "schema_version": "1.0",
+     "event_id": "01929f2e-7c1b-7a3e-9b1f-2d4c5e6f7a8b",
+     "occurred_at": "06/10/2026 09:41",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "user",
+      "sub": "0192a6b0-0000-7000-8000-000000000042",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ]
+     },
+     "action": "qms.document.approve",
+     "category": "sign",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "signature": {
+      "token_id": "sig_1",
+      "meaning": "Approved",
+      "record_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "client": {
+      "ip": "203.0.113.10",
+      "user_agent": "Mozilla/5.0"
+     },
+     "data_classification": "internal"
+    },
+    "valid": false,
+    "why": "occurred_at not RFC 3339"
+   },
+   {
+    "event": {
+     "schema_version": "1.0",
+     "event_id": "01929f2e-7c1b-7a3e-9b1f-2d4c5e6f7a8b",
+     "occurred_at": "2026-10-06T15:11:12+05:30",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "user",
+      "sub": "0192a6b0-0000-7000-8000-000000000042",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ]
+     },
+     "action": "qms.document.approve",
+     "category": "sign",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "signature": {
+      "token_id": "sig_1",
+      "meaning": "Approved",
+      "record_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "client": {
+      "ip": "203.0.113.10",
+      "user_agent": "Mozilla/5.0"
+     },
+     "data_classification": "internal"
+    },
+    "valid": true,
+    "why": "occurred_at with an offset is RFC 3339 and valid"
+   },
+   {
+    "event": {
+     "schema_version": "1.0",
+     "event_id": "01929f2e-7c1b-7a3e-9b1f-2d4c5e6f7a8b",
+     "occurred_at": "2026-10-06T09:41:12.408Z",
+     "source": {
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "user",
+      "sub": "0192a6b0-0000-7000-8000-000000000042",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ]
+     },
+     "action": "qms.document.approve",
+     "category": "sign",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "signature": {
+      "token_id": "sig_1",
+      "meaning": "Approved",
+      "record_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "client": {
+      "ip": "203.0.113.10",
+      "user_agent": "Mozilla/5.0"
+     },
+     "data_classification": "internal"
+    },
+    "valid": false,
+    "why": "no source.app_id"
+   },
+   {
+    "event": {
+     "schema_version": "1.0",
+     "event_id": "01929f2e-7c1b-7a3e-9b1f-2d4c5e6f7a8b",
+     "occurred_at": "2026-10-06T09:41:12.408Z",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "prod"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "user",
+      "sub": "0192a6b0-0000-7000-8000-000000000042",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ]
+     },
+     "action": "qms.document.approve",
+     "category": "sign",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "signature": {
+      "token_id": "sig_1",
+      "meaning": "Approved",
+      "record_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "client": {
+      "ip": "203.0.113.10",
+      "user_agent": "Mozilla/5.0"
+     },
+     "data_classification": "internal"
+    },
+    "valid": false,
+    "why": "environment not one of the three"
+   },
+   {
+    "event": {
+     "schema_version": "1.0",
+     "event_id": "01929f2e-7c1b-7a3e-9b1f-2d4c5e6f7a8b",
+     "occurred_at": "2026-10-06T09:41:12.408Z",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "robot",
+      "sub": "0192a6b0-0000-7000-8000-000000000042",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ]
+     },
+     "action": "qms.document.approve",
+     "category": "sign",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "signature": {
+      "token_id": "sig_1",
+      "meaning": "Approved",
+      "record_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "client": {
+      "ip": "203.0.113.10",
+      "user_agent": "Mozilla/5.0"
+     },
+     "data_classification": "internal"
+    },
+    "valid": false,
+    "why": "actor.type not one of the five"
+   },
+   {
+    "event": {
+     "schema_version": "1.0",
+     "event_id": "01929f2e-7c1b-7a3e-9b1f-2d4c5e6f7a8b",
+     "occurred_at": "2026-10-06T09:41:12.408Z",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "user",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ]
+     },
+     "action": "qms.document.approve",
+     "category": "sign",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "signature": {
+      "token_id": "sig_1",
+      "meaning": "Approved",
+      "record_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "client": {
+      "ip": "203.0.113.10",
+      "user_agent": "Mozilla/5.0"
+     },
+     "data_classification": "internal"
+    },
+    "valid": false,
+    "why": "a user without actor.sub"
+   },
+   {
+    "event": {
+     "schema_version": "1.0",
+     "event_id": "01929f2e-7c1b-7a3e-9b1f-2d4c5e6f7a8b",
+     "occurred_at": "2026-10-06T09:41:12.408Z",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "user",
+      "sub": "meera@example.in",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ]
+     },
+     "action": "qms.document.approve",
+     "category": "sign",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "signature": {
+      "token_id": "sig_1",
+      "meaning": "Approved",
+      "record_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "client": {
+      "ip": "203.0.113.10",
+      "user_agent": "Mozilla/5.0"
+     },
+     "data_classification": "internal"
+    },
+    "valid": false,
+    "why": "actor.sub an e-mail address (people are identified by subject id only)"
+   },
+   {
+    "event": {
+     "schema_version": "1.0",
+     "event_id": "01929f2e-7c1b-7a3e-9b1f-2d4c5e6f7a8b",
+     "occurred_at": "2026-10-06T09:41:12.408Z",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "user",
+      "sub": "0192a6b0-0000-7000-8000-000000000042",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ]
+     },
+     "action": "Approve",
+     "category": "sign",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "signature": {
+      "token_id": "sig_1",
+      "meaning": "Approved",
+      "record_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "client": {
+      "ip": "203.0.113.10",
+      "user_agent": "Mozilla/5.0"
+     },
+     "data_classification": "internal"
+    },
+    "valid": false,
+    "why": "action not domain.object.verb"
+   },
+   {
+    "event": {
+     "schema_version": "1.0",
+     "event_id": "01929f2e-7c1b-7a3e-9b1f-2d4c5e6f7a8b",
+     "occurred_at": "2026-10-06T09:41:12.408Z",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "user",
+      "sub": "0192a6b0-0000-7000-8000-000000000042",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ]
+     },
+     "action": "his.order.create",
+     "category": "sign",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "signature": {
+      "token_id": "sig_1",
+      "meaning": "Approved",
+      "record_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "client": {
+      "ip": "203.0.113.10",
+      "user_agent": "Mozilla/5.0"
+     },
+     "data_classification": "internal"
+    },
+    "valid": true,
+    "why": "another valid action"
+   },
+   {
+    "event": {
+     "schema_version": "1.0",
+     "event_id": "01929f2e-7c1b-7a3e-9b1f-2d4c5e6f7a8b",
+     "occurred_at": "2026-10-06T09:41:12.408Z",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "user",
+      "sub": "0192a6b0-0000-7000-8000-000000000042",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ]
+     },
+     "action": "qms.document.approve",
+     "category": "misc",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "signature": {
+      "token_id": "sig_1",
+      "meaning": "Approved",
+      "record_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "client": {
+      "ip": "203.0.113.10",
+      "user_agent": "Mozilla/5.0"
+     },
+     "data_classification": "internal"
+    },
+    "valid": false,
+    "why": "category not one of the nine"
+   },
+   {
+    "event": {
+     "schema_version": "1.0",
+     "event_id": "01929f2e-7c1b-7a3e-9b1f-2d4c5e6f7a8b",
+     "occurred_at": "2026-10-06T09:41:12.408Z",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "user",
+      "sub": "0192a6b0-0000-7000-8000-000000000042",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ]
+     },
+     "action": "qms.document.approve",
+     "category": "sign",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "ok",
+     "signature": {
+      "token_id": "sig_1",
+      "meaning": "Approved",
+      "record_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "client": {
+      "ip": "203.0.113.10",
+      "user_agent": "Mozilla/5.0"
+     },
+     "data_classification": "internal"
+    },
+    "valid": false,
+    "why": "outcome not success, failure or denied"
+   },
+   {
+    "event": {
+     "schema_version": "1.0",
+     "event_id": "01929f2e-7c1b-7a3e-9b1f-2d4c5e6f7a8b",
+     "occurred_at": "2026-10-06T09:41:12.408Z",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "user",
+      "sub": "0192a6b0-0000-7000-8000-000000000042",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ]
+     },
+     "action": "qms.document.approve",
+     "category": "sign",
+     "target": {
+      "type": "document",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "signature": {
+      "token_id": "sig_1",
+      "meaning": "Approved",
+      "record_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "client": {
+      "ip": "203.0.113.10",
+      "user_agent": "Mozilla/5.0"
+     },
+     "data_classification": "internal"
+    },
+    "valid": false,
+    "why": "no target.id"
+   },
+   {
+    "event": {
+     "schema_version": "1.0",
+     "event_id": "01929f2e-7c1b-7a3e-9b1f-2d4c5e6f7a8b",
+     "occurred_at": "2026-10-06T09:41:12.408Z",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "user",
+      "sub": "0192a6b0-0000-7000-8000-000000000042",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ]
+     },
+     "action": "qms.document.approve",
+     "category": "sign",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "signature": {
+      "token_id": "sig_1",
+      "meaning": "Approved",
+      "record_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "client": {
+      "ip": "203.0.113.10",
+      "user_agent": "Mozilla/5.0"
+     },
+     "data_classification": "secret"
+    },
+    "valid": false,
+    "why": "data_classification not one of the five"
+   },
+   {
+    "event": {
+     "schema_version": "1.0",
+     "event_id": "01929f2e-7c1b-7a3e-9b1f-2d4c5e6f7a8b",
+     "occurred_at": "2026-10-06T09:41:12.408Z",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "user",
+      "sub": "0192a6b0-0000-7000-8000-000000000042",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ]
+     },
+     "action": "qms.document.approve",
+     "category": "sign",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "signature": {
+      "token_id": "sig_1",
+      "meaning": "Approved",
+      "record_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "data_classification": "internal"
+    },
+    "valid": false,
+    "why": "a person's event without client details"
+   },
+   {
+    "event": {
+     "schema_version": "1.0",
+     "event_id": "01929f2e-7c1b-7a3e-9b1f-2d4c5e6f7a8b",
+     "occurred_at": "2026-10-06T09:41:12.408Z",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "system"
+     },
+     "action": "qms.retention.purge",
+     "category": "admin",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "data_classification": "internal"
+    },
+    "valid": true,
+    "why": "a system event needs no person or client"
+   },
+   {
+    "event": {
+     "schema_version": "1.0",
+     "event_id": "01929f2e-7c1b-7a3e-9b1f-2d4c5e6f7a8b",
+     "occurred_at": "2026-10-06T09:41:12.408Z",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "api",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ],
+      "client_id": "lims"
+     },
+     "action": "qms.document.approve",
+     "category": "create",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "data_classification": "internal"
+    },
+    "valid": true,
+    "why": "an api event names its client"
+   },
+   {
+    "event": {
+     "schema_version": "1.0",
+     "event_id": "01929f2e-7c1b-7a3e-9b1f-2d4c5e6f7a8b",
+     "occurred_at": "2026-10-06T09:41:12.408Z",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "api",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ]
+     },
+     "action": "qms.document.approve",
+     "category": "create",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "data_classification": "internal"
+    },
+    "valid": false,
+    "why": "an api event without actor.client_id"
+   },
+   {
+    "event": {
+     "schema_version": "1.0",
+     "event_id": "01929f2e-7c1b-7a3e-9b1f-2d4c5e6f7a8b",
+     "occurred_at": "2026-10-06T09:41:12.408Z",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "user",
+      "sub": "0192a6b0-0000-7000-8000-000000000042",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ]
+     },
+     "action": "qms.document.approve",
+     "category": "sign",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "client": {
+      "ip": "203.0.113.10",
+      "user_agent": "Mozilla/5.0"
+     },
+     "data_classification": "internal"
+    },
+    "valid": false,
+    "why": "a sign event without its signature"
+   },
+   {
+    "event": {
+     "schema_version": "1.0",
+     "event_id": "01929f2e-7c1b-7a3e-9b1f-2d4c5e6f7a8b",
+     "occurred_at": "2026-10-06T09:41:12.408Z",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "user",
+      "sub": "0192a6b0-0000-7000-8000-000000000042",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ]
+     },
+     "action": "qms.document.approve",
+     "category": "sign",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "signature": {
+      "token_id": "sig_1",
+      "meaning": "Approved",
+      "record_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "client": {
+      "ip": "203.0.113.10",
+      "user_agent": "Mozilla/5.0"
+     },
+     "data_classification": "internal",
+     "changes": [
+      {
+       "field": "title",
+       "before": "v2",
+       "after": "v3"
+      }
+     ]
+    },
+    "valid": true,
+    "why": "changes as field, before, after"
+   },
+   {
+    "event": {
+     "schema_version": "1.0",
+     "event_id": "01929f2e-7c1b-7a3e-9b1f-2d4c5e6f7a8b",
+     "occurred_at": "2026-10-06T09:41:12.408Z",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "user",
+      "sub": "0192a6b0-0000-7000-8000-000000000042",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ]
+     },
+     "action": "qms.document.approve",
+     "category": "sign",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "signature": {
+      "token_id": "sig_1",
+      "meaning": "Approved",
+      "record_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "client": {
+      "ip": "203.0.113.10",
+      "user_agent": "Mozilla/5.0"
+     },
+     "data_classification": "internal",
+     "changes": [
+      {
+       "before": "v2"
+      }
+     ]
+    },
+    "valid": false,
+    "why": "a change without its field"
+   },
+   {
+    "event": {
+     "schema_version": "1.0",
+     "event_id": "01929f2e-7c1b-7a3e-9b1f-2d4c5e6f7a8b",
+     "occurred_at": "2026-10-06T09:41:12.408Z",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "user",
+      "sub": "0192a6b0-0000-7000-8000-000000000042",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ]
+     },
+     "action": "qms.document.approve",
+     "category": "sign",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "signature": {
+      "token_id": "sig_1",
+      "meaning": "Approved",
+      "record_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "client": {
+      "ip": "203.0.113.10",
+      "user_agent": "Mozilla/5.0"
+     },
+     "data_classification": "internal",
+     "recorded_at": "2026-10-06T09:41:13Z"
+    },
+    "valid": false,
+    "why": "recorded_at is set by the service, never by the application"
+   },
+   {
+    "event": {
+     "schema_version": "1.0",
+     "event_id": "01929f2e-7c1b-7a3e-9b1f-2d4c5e6f7a8b",
+     "occurred_at": "2026-10-06T09:41:12.408Z",
+     "source": {
+      "app_id": "qms",
+      "app_version": "1.4.0",
+      "environment": "production"
+     },
+     "tenant": {
+      "org_id": "0192a6b0-0000-7000-8000-000000000002",
+      "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+     },
+     "actor": {
+      "type": "user",
+      "sub": "0192a6b0-0000-7000-8000-000000000042",
+      "session_id": "s-1",
+      "acr": "urn:sangam:acr:sign",
+      "amr": [
+       "pwd",
+       "otp",
+       "mfa"
+      ]
+     },
+     "action": "qms.document.approve",
+     "category": "sign",
+     "target": {
+      "type": "document",
+      "id": "SOP-114",
+      "display": "SOP-114 Sterilisation v3"
+     },
+     "outcome": "success",
+     "signature": {
+      "token_id": "sig_1",
+      "meaning": "Approved",
+      "record_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "client": {
+      "ip": "203.0.113.10",
+      "user_agent": "Mozilla/5.0"
+     },
+     "data_classification": "internal",
+     "hash": "abc"
+    },
+    "valid": false,
+    "why": "hash is set by the service, never by the application"
+   }
+  ],
+  "builder": {
+   "description": "audit.record(...) fills source, tenant, actor and client from configuration, the signed-in user and the request; masks sensitive fields in changes; never sets recorded_at, prev_hash or hash.",
+   "config": {
+    "app_id": "qms",
+    "app_version": "1.4.0",
+    "environment": "production"
+   },
+   "user": {
+    "sub": "0192a6b0-0000-7000-8000-000000000042",
+    "sid": "s-1",
+    "acr": "urn:sangam:acr:sign",
+    "amr": [
+     "pwd",
+     "otp",
+     "mfa"
+    ]
+   },
+   "request": {
+    "ip": "203.0.113.10",
+    "user_agent": "Mozilla/5.0"
+   },
+   "input": {
+    "action": "qms.document.update",
+    "category": "update",
+    "target": {
+     "type": "document",
+     "id": "SOP-114",
+     "display": "SOP-114 Sterilisation v3"
+    },
+    "outcome": "success",
+    "tenant": {
+     "org_id": "0192a6b0-0000-7000-8000-000000000002",
+     "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+    },
+    "data_classification": "internal",
+    "changes": [
+     {
+      "field": "title",
+      "before": "v2",
+      "after": "v3"
+     },
+     {
+      "field": "reviewer_mobile",
+      "before": "+919876500001",
+      "after": "+919876500002"
+     }
+    ],
+    "sensitive": [
+     "reviewer_mobile"
+    ]
+   },
+   "expect": {
+    "schema_version": "1.0",
+    "source": {
+     "app_id": "qms",
+     "app_version": "1.4.0",
+     "environment": "production"
+    },
+    "tenant": {
+     "org_id": "0192a6b0-0000-7000-8000-000000000002",
+     "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/"
+    },
+    "actor": {
+     "type": "user",
+     "sub": "0192a6b0-0000-7000-8000-000000000042",
+     "session_id": "s-1",
+     "acr": "urn:sangam:acr:sign",
+     "amr": [
+      "pwd",
+      "otp",
+      "mfa"
+     ]
+    },
+    "action": "qms.document.update",
+    "category": "update",
+    "target": {
+     "type": "document",
+     "id": "SOP-114",
+     "display": "SOP-114 Sterilisation v3"
+    },
+    "outcome": "success",
+    "changes": [
+     {
+      "field": "title",
+      "before": "v2",
+      "after": "v3"
+     },
+     {
+      "field": "reviewer_mobile",
+      "before": "[masked]",
+      "after": "[masked]"
+     }
+    ],
+    "client": {
+     "ip": "203.0.113.10",
+     "user_agent": "Mozilla/5.0"
+    },
+    "data_classification": "internal"
+   },
+   "absent": [
+    "recorded_at",
+    "prev_hash",
+    "hash"
+   ]
+  }
+ }
+}
