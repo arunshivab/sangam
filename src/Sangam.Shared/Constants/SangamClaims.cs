@@ -17,6 +17,12 @@ public static class SangamClaims
 
     /// <summary>The consent-terms version the user last accepted for this app.</summary>
     public const string ConsentVersion = "sangam_consent_version";
+
+    /// <summary>
+    /// PR-26: <c>true</c> under the <c>profile</c> scope when the name, date of birth and gender were verified through
+    /// DigiLocker; absent otherwise.
+    /// </summary>
+    public const string IdentityVerified = "sangam_identity_verified";
 }
 
 /// <summary>Member names inside each element of the <see cref="SangamClaims.Orgs"/> array.</summary>

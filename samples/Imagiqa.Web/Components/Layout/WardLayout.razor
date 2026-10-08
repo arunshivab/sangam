@@ -2,6 +2,7 @@
 @inject WardState Ward
 @inject AuthenticationStateProvider Auth
 @inject NavigationManager Nav
+@inject Imagiqa.Web.Demo.DemoHospital Demo
 
 <div class="iq-shell">
   <header class="iq-bar">
@@ -49,6 +50,24 @@
           imagiQa. Ask your hospital's imagiQa administrator to give you a role, then sign out and
           sign in again.
         </p>
+        @if (Demo.Enabled)
+        {
+          <div class="iq-demo-join">
+            <p>
+              <strong>This is the demo.</strong> Join <em>@Imagiqa.Web.Demo.DemoHospital.Name</em> to try imagiQa: its
+              patients are made up, and so is the hospital. You will be signed in again with your new role.
+            </p>
+            @if (Nav.Uri.Contains("demo=failed", StringComparison.Ordinal))
+            {
+              <p class="iq-error">Joining did not work this time. Try again, or ask the person who invited you.</p>
+            }
+            <form method="post" action="/demo/join" data-enhance="false">
+              <AntiforgeryToken />
+              <button type="submit" name="role" value="doctor" class="iq-button">Join as a doctor</button>
+              <button type="submit" name="role" value="nurse" class="iq-button iq-button--quiet">Join as a nurse</button>
+            </form>
+          </div>
+        }
         <a class="iq-button iq-button--quiet" href="/signout" data-enhance-nav="false">Sign out</a>
       </section>
     }

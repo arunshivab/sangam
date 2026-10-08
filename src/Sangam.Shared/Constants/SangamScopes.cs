@@ -28,9 +28,15 @@ public static class SangamScopes
     /// <summary>Machine-to-machine management of the app's own roles, organisations and memberships (client credentials only).</summary>
     public const string Manage = "sangam.manage";
 
+    /// <summary>
+    /// PR-25: the application's custom claims — filled from the attributes it keeps about the person, or from their
+    /// memberships — in its tokens and userinfo. The consent screen lists them with their values.
+    /// </summary>
+    public const string Attributes = "attributes";
+
     /// <summary>Scopes a user can be asked to consent to, in canonical order.</summary>
-    public static IReadOnlyList<string> UserScopes { get; } = [OpenId, Profile, Email, Phone, OrgsRead, OfflineAccess];
+    public static IReadOnlyList<string> UserScopes { get; } = [OpenId, Profile, Email, Phone, OrgsRead, Attributes, OfflineAccess];
 
     /// <summary>Every scope Sangam knows how to issue, in canonical order.</summary>
-    public static IReadOnlyList<string> All { get; } = [OpenId, Profile, Email, Phone, OrgsRead, OfflineAccess, Manage];
+    public static IReadOnlyList<string> All { get; } = [OpenId, Profile, Email, Phone, OrgsRead, Attributes, OfflineAccess, Manage];
 }

@@ -85,6 +85,9 @@ textarea { width: 100%; resize: vertical; }
 .iq-note-text { margin: 0; white-space: pre-wrap; }
 
 .iq-closed { max-width: 620px; background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 24px 28px; }
+.iq-demo-join { margin: 18px 0; padding: 14px 16px; border: 1px dashed #E2C46B; border-radius: 8px; background: #FFF8E6; }
+.iq-demo-join form { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.iq-error { color: #8A1C1C; font-weight: 600; }
 
 @media (max-width: 900px) {
   .iq-columns { grid-template-columns: 1fr; }

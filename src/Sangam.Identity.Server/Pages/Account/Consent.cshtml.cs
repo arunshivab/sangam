@@ -6,8 +6,11 @@ using Sangam.Identity.Application.Accounts;
 using Sangam.Identity.Application.Apps;
 using Sangam.Identity.Application.Consents;
 using Sangam.Identity.Application.Tenancy;
+using Sangam.Identity.Domain.Entities;
+using Sangam.Identity.Infrastructure.Saml;
 using Sangam.Identity.Server.Authentication;
 using Sangam.Identity.Server.Authorization;
+using Sangam.Identity.Server.Saml;
 using Sangam.Shared.Constants;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -21,10 +24,12 @@ public sealed class ConsentModel : AuthPageModel
     private readonly IAppDirectory _apps;
     private readonly IConsentService _consents;
     private readonly ITenancyQuery _tenancy;
+    private readonly SamlIdentityProvider _saml;
 
     /// <summary>Initialises the page.</summary>
-    public ConsentModel(IAccountService accounts, IAppDirectory apps, IConsentService consents, ITenancyQuery tenancy)
+    public ConsentModel(IAccountService accounts, IAppDirectory apps, IConsentService consents, ITenancyQuery tenancy, SamlIdentityProvider saml)
     {
+        _saml = saml ?? throw new ArgumentNullException(nameof(saml));
         _accounts = accounts ?? throw new ArgumentNullException(nameof(accounts));
         _apps = apps ?? throw new ArgumentNullException(nameof(apps));
         _consents = consents ?? throw new ArgumentNullException(nameof(consents));
@@ -111,7 +116,16 @@ public sealed class ConsentModel : AuthPageModel
         HashSet<string> requested = [.. scopeParam.Split(' ', StringSplitOptions.RemoveEmptyEntries)];
         Scopes = [.. SangamScopes.UserScopes.Where(requested.Contains)];
 
-        Shared = await DescribeAsync(L, user, app, requested, _tenancy, cancellationToken);
+        // V-14: a SAML service provider is told exactly its released attributes, so the list comes from those.
+        SamlServiceProvider? provider = ReturnUrl.StartsWith("/saml/continue", StringComparison.OrdinalIgnoreCase)
+            ? await _saml.FindByAppAsync(app.Id, cancellationToken)
+            : null;
+        IReadOnlyDictionary<string, object>? custom = requested.Contains(SangamScopes.Attributes)
+            ? await HttpContext.RequestServices.GetRequiredService<Sangam.Identity.Application.Attributes.IAttributeService>().ClaimsAsync(user.Id, app.Id, cancellationToken)
+            : null;
+        Shared = provider is null
+            ? await DescribeAsync(L, user, app, requested, _tenancy, cancellationToken, custom)
+            : SamlRelease.Describe(L, provider, user, await _tenancy.GetOrgClaimsAsync(user.Id, app.Id, cancellationToken));
         return true;
     }
 
@@ -122,7 +136,8 @@ public sealed class ConsentModel : AuthPageModel
     /// <param name="requested">The scopes asked for.</param>
     /// <param name="tenancy">Tenancy, for organisations and roles.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    internal static async Task<IReadOnlyList<(string Label, string Value)>> DescribeAsync(Microsoft.Extensions.Localization.IStringLocalizer text, UserSummary user, AppSummary app, IReadOnlySet<string> requested, ITenancyQuery tenancy, CancellationToken cancellationToken)
+    /// <param name="custom">PR-25: the application's custom claims, for the attributes scope.</param>
+    internal static async Task<IReadOnlyList<(string Label, string Value)>> DescribeAsync(Microsoft.Extensions.Localization.IStringLocalizer text, UserSummary user, AppSummary app, IReadOnlySet<string> requested, ITenancyQuery tenancy, CancellationToken cancellationToken, IReadOnlyDictionary<string, object>? custom = null)
     {
 #pragma warning disable IDE1006 // Named L, as on every page, so the i18n lint finds the keys below.
         Microsoft.Extensions.Localization.IStringLocalizer L = text;
@@ -148,6 +163,14 @@ public sealed class ConsentModel : AuthPageModel
         {
             IReadOnlyList<OrgClaim> orgs = await tenancy.GetOrgClaimsAsync(user.Id, app.Id, cancellationToken);
             shared.Add((L["Organisations and roles"], orgs.Count == 0 ? L["None yet"] : string.Join(", ", orgs.Select(o => o.Name + " (" + o.Role + ")"))));
+        }
+
+        if (requested.Contains(SangamScopes.Attributes))
+        {
+            string details = custom is null || custom.Count == 0
+                ? L["None yet"]
+                : string.Join(" · ", custom.Select(c => c.Key + ": " + (c.Value is string[] list ? string.Join(", ", list) : Convert.ToString(c.Value, CultureInfo.InvariantCulture))));
+            shared.Add((L["Details {0} keeps about you", app.DisplayName], details));
         }
 
         if (requested.Contains(SangamScopes.OfflineAccess))

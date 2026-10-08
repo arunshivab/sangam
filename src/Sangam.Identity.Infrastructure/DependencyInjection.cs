@@ -212,6 +212,27 @@ public static class DependencyInjection
         services.AddSingleton<GrievanceClock>();
         services.AddScoped<Application.Grievances.IGrievanceService, EfGrievanceService>();
 
+        // PR-23/24: SCIM provisioning and webhooks call addresses partners typed in: https only, no redirects, and never
+        // a private network address unless Sangam:Outbound:AllowPrivateNetworks (Development and Testing) says so.
+        services.AddSingleton(sp => new Provisioning.OutboundSettings(Provisioning.OutboundHttp.AllowPrivate(configuration, sp.GetService<Microsoft.Extensions.Hosting.IHostEnvironment>()?.EnvironmentName ?? "Production")));
+        services.AddHttpClient(Provisioning.OutboundHttp.ClientName, c => c.Timeout = Provisioning.OutboundHttp.Timeout)
+            .ConfigurePrimaryHttpMessageHandler(sp => Provisioning.OutboundHttp.CreateHandler(sp.GetRequiredService<Provisioning.OutboundSettings>().AllowPrivate));
+        services.AddScoped<Tenancy.MembershipExpiry>();
+        services.AddScoped<Application.Attributes.IAttributeService, Attributes.EfAttributeService>();
+
+        // PR-26: identity verification through DigiLocker (off unless Sangam:DigiLocker:Enabled).
+        services.AddSingleton(Verification.DigiLockerSettings.From(configuration));
+        services.AddHttpClient(Verification.DigiLockerSettings.ClientName, c => c.Timeout = Provisioning.OutboundHttp.Timeout)
+            .ConfigurePrimaryHttpMessageHandler(sp => Provisioning.OutboundHttp.CreateHandler(sp.GetRequiredService<Provisioning.OutboundSettings>().AllowPrivate));
+        services.AddScoped<Verification.DigiLockerClient>();
+        services.AddScoped<Application.Verification.IIdentityVerificationService, Verification.EfIdentityVerificationService>();
+        services.AddScoped<Provisioning.AppEventDispatcher>();
+        services.AddScoped<Provisioning.IntegrationAlerts>();
+        services.AddScoped<Provisioning.ScimProvisioner>();
+        services.AddScoped<Provisioning.WebhookSender>();
+        services.AddScoped<Application.Provisioning.IWebhookService, Provisioning.EfWebhookService>();
+        services.AddScoped<Application.Provisioning.IProvisioningService, Provisioning.EfProvisioningService>();
+
         // D-A: a year live, then the encrypted, anonymised archive; purged at seven years.
         services.AddSingleton(AuditArchiveOptions.From(configuration));
         services.AddSingleton<AuditArchiver>();

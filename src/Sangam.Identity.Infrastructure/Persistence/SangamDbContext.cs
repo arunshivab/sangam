@@ -107,6 +107,42 @@ public sealed class SangamDbContext : IdentityUserContext<SangamUser, Guid>, IDa
     /// <summary>SAML requests being answered, and answered ones for replay detection (PR-22).</summary>
     public DbSet<SamlRequest> SamlRequests => Set<SamlRequest>();
 
+    /// <summary>Changes for applications, for SCIM and webhooks (PR-23, PR-24).</summary>
+    public DbSet<AppEvent> AppEvents => Set<AppEvent>();
+
+    /// <summary>Applications' SCIM servers (PR-23).</summary>
+    public DbSet<ScimTarget> ScimTargets => Set<ScimTarget>();
+
+    /// <summary>People as each SCIM server knows them.</summary>
+    public DbSet<ScimUserLink> ScimUserLinks => Set<ScimUserLink>();
+
+    /// <summary>Groups Sangam created on SCIM servers.</summary>
+    public DbSet<ScimGroupLink> ScimGroupLinks => Set<ScimGroupLink>();
+
+    /// <summary>People Sangam put in those groups.</summary>
+    public DbSet<ScimGroupMember> ScimGroupMembers => Set<ScimGroupMember>();
+
+    /// <summary>The SCIM delivery log.</summary>
+    public DbSet<ScimDelivery> ScimDeliveries => Set<ScimDelivery>();
+
+    /// <summary>Applications' webhook endpoints (PR-24).</summary>
+    public DbSet<WebhookEndpoint> WebhookEndpoints => Set<WebhookEndpoint>();
+
+    /// <summary>The webhook delivery log.</summary>
+    public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
+
+    /// <summary>Custom user attributes applications define (PR-25).</summary>
+    public DbSet<UserAttributeDefinition> UserAttributeDefinitions => Set<UserAttributeDefinition>();
+
+    /// <summary>People's values of them.</summary>
+    public DbSet<UserAttributeValue> UserAttributeValues => Set<UserAttributeValue>();
+
+    /// <summary>Identities verified against a government record (PR-26).</summary>
+    public DbSet<IdentityVerification> IdentityVerifications => Set<IdentityVerification>();
+
+    /// <summary>Custom claims applications ask for (PR-25).</summary>
+    public DbSet<AppClaimMapping> AppClaimMappings => Set<AppClaimMapping>();
+
     /// <summary>Support requests to reset two-step sign-in, with their cooling-off period (D-K).</summary>
     public DbSet<MfaResetRequest> MfaResetRequests => Set<MfaResetRequest>();
 

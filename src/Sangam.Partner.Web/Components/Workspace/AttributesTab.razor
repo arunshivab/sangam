@@ -1,0 +1,293 @@
+@using Sangam.Identity.Application.Attributes
+@inject IAttributeService Attributes
+@inject IPartnerService Partners
+
+@if (_view is null)
+{
+  <p class="sg-muted">@L["Loading…"]</p>
+}
+else
+{
+  <p class="sg-lede">@L["What {0} keeps about people beyond their Sangam profile — an employee number, a ward, a licence number — and which of it reaches {0}'s tokens as custom claims. A claim is released only to people who allow it (the attributes scope), and the consent screen shows its value. Never health data.", Info.AppName]</p>
+
+  <div class="sg-panel" data-panel="attributes">
+    <h2 class="sg-h3">@L["Attributes"]</h2>
+    @if (_view.Definitions.Count == 0)
+    {
+      <p class="sg-muted">@L["No attributes yet."]</p>
+    }
+    else
+    {
+      <div class="sg-table-wrap">
+        <table class="sg-table">
+          <thead><tr><th>@L["Attribute"]</th><th>@L["Kind of value"]</th><th>@L["Who may change it"]</th><th>@L["Applies to"]</th><th>@L["People with a value"]</th><th></th></tr></thead>
+          <tbody>
+            @foreach (AttributeDefinitionView d in _view.Definitions)
+            {
+              <tr>
+                <td><span class="sg-name">@d.Label</span><span class="sg-sub sg-mono">@d.Key</span></td>
+                <td>@TypeLabel(d.Type)@if (d.Choices is { Length: > 0 } choices)
+                  {
+                    <span class="sg-sub">@choices.Replace(",", ", ")</span>
+                  }</td>
+                <td>@(d.EditableBy == "person" ? L["the person, and administrators"] : L["administrators"])</td>
+                <td>@(d.OrgName ?? L["the whole application"])</td>
+                <td>@d.Values</td>
+                <td><button type="button" class="sg-btn sg-btn--ghost" @onclick="() => RetireAsync(d.Id)" disabled="@_busy">@L["Retire"]</button></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <h3 class="sg-h3">@L["Add an attribute"]</h3>
+    <div class="sg-form-row">
+      <label class="sg-label" for="attr-label">@L["Label"]</label>
+      <input id="attr-label" class="sg-input" @bind="_label" @bind:event="oninput" maxlength="80" placeholder="@L["Employee number"]" />
+    </div>
+    <div class="sg-form-row">
+      <label class="sg-label" for="attr-key">@L["Key (lowercase letters, digits and underscores)"]</label>
+      <input id="attr-key" class="sg-input sg-mono" @bind="_key" @bind:event="oninput" maxlength="40" placeholder="@KeyExample" />
+    </div>
+    <div class="sg-form-row">
+      <label class="sg-label" for="attr-type">@L["Kind of value"]</label>
+      <select id="attr-type" class="sg-input" @bind="_type">
+        @foreach (string type in Types)
+        {
+          <option value="@type">@TypeLabel(type)</option>
+        }
+      </select>
+    </div>
+    @if (_type == "choice")
+    {
+      <div class="sg-form-row">
+        <label class="sg-label" for="attr-choices">@L["Choices, separated by commas"]</label>
+        <input id="attr-choices" class="sg-input" @bind="_choices" @bind:event="oninput" maxlength="500" />
+      </div>
+    }
+    <div class="sg-form-row">
+      <label class="sg-label" for="attr-editable">@L["Who may change it"]</label>
+      <select id="attr-editable" class="sg-input" @bind="_editable">
+        <option value="admin">@L["Administrators only"]</option>
+        <option value="person">@L["The person too, in their account portal"]</option>
+      </select>
+    </div>
+    <div class="sg-form-row">
+      <label class="sg-label" for="attr-org">@L["Applies to"]</label>
+      <select id="attr-org" class="sg-input" @bind="_org">
+        <option value="">@L["the whole application"]</option>
+        @foreach ((Guid id, string name) in _view.Organisations)
+        {
+          <option value="@id">@name</option>
+        }
+      </select>
+    </div>
+    <label class="sg-check"><input type="checkbox" @bind="_notHealth" /> @L["This is not health data: no condition, treatment, test result or anything about a person's body or mind."]</label>
+    <div class="sg-actions">
+      <button type="button" class="sg-btn sg-btn--primary" @onclick="DefineAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_key) || string.IsNullOrWhiteSpace(_label) || !_notHealth)">@L["Add the attribute"]</button>
+    </div>
+  </div>
+
+  <div class="sg-panel" data-panel="claims">
+    <h2 class="sg-h3">@L["Custom claims"]</h2>
+    @if (_view.Claims.Count == 0)
+    {
+      <p class="sg-muted">@L["No custom claims yet."]</p>
+    }
+    else
+    {
+      <ul class="sg-list">
+        @foreach (ClaimMappingView c in _view.Claims)
+        {
+          <li><span class="sg-mono">@c.ClaimName</span> ← @SourceLabel(c)
+            <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => RemoveClaimAsync(c.Id)" disabled="@_busy">@L["Remove"]</button></li>
+        }
+      </ul>
+    }
+    <div class="sg-form-row">
+      <label class="sg-label" for="claim-name">@L["Claim name in tokens"]</label>
+      <input id="claim-name" class="sg-input sg-mono" @bind="_claimName" @bind:event="oninput" maxlength="40" placeholder="@ClaimExample" />
+    </div>
+    <div class="sg-form-row">
+      <label class="sg-label" for="claim-source">@L["Its value"]</label>
+      <select id="claim-source" class="sg-input" @bind="_source">
+        @foreach (AttributeDefinitionView d in _view.Definitions)
+        {
+          <option value="@("attribute:" + d.Key)">@L["The attribute {0}", d.Label]</option>
+        }
+        <option value="roles">@L["The person's role codes in {0}", Info.AppName]</option>
+        <option value="permissions">@L["The permissions those roles carry"]</option>
+        <option value="org_names">@L["The names of their organisations"]</option>
+      </select>
+    </div>
+    <div class="sg-actions">
+      <button type="button" class="sg-btn sg-btn--primary" @onclick="AddClaimAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_claimName) || string.IsNullOrEmpty(_source))">@L["Add the claim"]</button>
+    </div>
+  </div>
+
+  @if (_view.Definitions.Count > 0)
+  {
+    <div class="sg-panel" data-panel="attribute-values">
+      <h2 class="sg-h3">@L["A person's values"]</h2>
+      <div class="sg-search">
+        <input class="sg-input" aria-label="@L["Name or email"]" placeholder="@L["Name or email of someone who uses {0}", Info.AppName]" @bind="_query" @bind:event="oninput" />
+        <button type="button" class="sg-btn sg-btn--secondary" @onclick="SearchAsync" disabled="@_busy">@L["Search"]</button>
+      </div>
+      @if (_found is not null)
+      {
+        <ul class="sg-list">
+          @foreach (LinkedUserRow person in _found)
+          {
+            <li><button type="button" class="sg-tree-item @(person.UserId == _person?.UserId ? "sg-tree-item--on" : string.Empty)" @onclick="() => PickAsync(person)"><span class="sg-name">@person.DisplayName</span><span class="sg-sub">@person.Email</span></button></li>
+          }
+        </ul>
+      }
+      @if (_person is not null && _values is not null)
+      {
+        @foreach (AttributeValueRow row in _values)
+        {
+          <div class="sg-form-row">
+            <label class="sg-label" for="@("val-" + row.Key)">@row.Label</label>
+            @if (row.Type == "choice")
+            {
+              <select id="@("val-" + row.Key)" class="sg-input" @bind="_edits[row.Key]">
+                <option value="">—</option>
+                @foreach (string choice in (row.Choices ?? string.Empty).Split(','))
+                {
+                  <option value="@choice">@choice</option>
+                }
+              </select>
+            }
+            else if (row.Type == "boolean")
+            {
+              <select id="@("val-" + row.Key)" class="sg-input" @bind="_edits[row.Key]">
+                <option value="">—</option>
+                <option value="true">@L["Yes"]</option>
+                <option value="false">@L["No"]</option>
+              </select>
+            }
+            else
+            {
+              <input id="@("val-" + row.Key)" class="sg-input" type="@(row.Type == "date" ? "date" : row.Type == "number" ? "number" : "text")" @bind="_edits[row.Key]" maxlength="200" />
+            }
+          </div>
+        }
+        <div class="sg-actions">
+          <button type="button" class="sg-btn sg-btn--primary" @onclick="SaveValuesAsync" disabled="@_busy">@L["Save {0}'s values", _person.DisplayName]</button>
+        </div>
+      }
+    </div>
+  }
+}
+
+<StatusLine Ok="_ok" Message="@_message" />
+
+@code {
+    private const string KeyExample = "employee_number"; // i18n-ignore: an identifier, not prose
+    private const string ClaimExample = "employee_no"; // i18n-ignore: an identifier, not prose
+    private static readonly string[] Types = ["text", "number", "date", "boolean", "choice"];
+
+    /// <summary>The application being worked on.</summary>
+    [Parameter]
+    [EditorRequired]
+    public WorkspaceInfo Info { get; set; } = null!;
+
+    private AttributesView? _view;
+    private string _key = string.Empty;
+    private string _label = string.Empty;
+    private string _type = "text";
+    private string _choices = string.Empty;
+    private string _editable = "admin";
+    private string _org = string.Empty;
+    private bool _notHealth;
+    private string _claimName = string.Empty;
+    private string _source = "roles";
+    private string _query = string.Empty;
+    private IReadOnlyList<LinkedUserRow>? _found;
+    private LinkedUserRow? _person;
+    private IReadOnlyList<AttributeValueRow>? _values;
+    private Dictionary<string, string?> _edits = [];
+    private bool _busy;
+    private bool _ok;
+    private string? _message;
+
+    protected override async Task OnInitializedAsync() => _view = await Attributes.GetAsync(Info.UserId, Info.AppId);
+
+    private string TypeLabel(string type) => type switch
+    {
+        "number" => L["A number"],
+        "date" => L["A date"],
+        "boolean" => L["Yes or no"],
+        "choice" => L["One of a list"],
+        _ => L["Text"],
+    };
+
+    private string SourceLabel(ClaimMappingView c) => c.Source switch
+    {
+        "roles" => L["role codes"],
+        "permissions" => L["permissions"],
+        "org_names" => L["organisation names"],
+        _ => L["the attribute {0}", c.AttributeKey ?? string.Empty],
+    };
+
+    private async Task DefineAsync()
+    {
+        Guid? org = Guid.TryParse(_org, out Guid id) ? id : null;
+        PartnerResult result = await RunAsync(() => Attributes.DefineAsync(Info.UserId, Info.AppId, new AttributeDefinitionInput(_key, _label, _type, _choices, _editable, org, _notHealth)));
+        if (result.Succeeded)
+        {
+            _key = _label = _choices = string.Empty;
+            _notHealth = false;
+        }
+    }
+
+    private Task RetireAsync(Guid id) => RunAsync(() => Attributes.RetireAsync(Info.UserId, Info.AppId, id));
+
+    private async Task AddClaimAsync()
+    {
+        string source = _source.StartsWith("attribute:", StringComparison.Ordinal) ? "attribute" : _source;
+        string? key = source == "attribute" ? _source["attribute:".Length..] : null;
+        PartnerResult result = await RunAsync(() => Attributes.AddClaimAsync(Info.UserId, Info.AppId, new ClaimMappingInput(_claimName, source, key)));
+        if (result.Succeeded)
+        {
+            _claimName = string.Empty;
+        }
+    }
+
+    private Task RemoveClaimAsync(Guid id) => RunAsync(() => Attributes.RemoveClaimAsync(Info.UserId, Info.AppId, id));
+
+    private async Task SearchAsync()
+    {
+        _found = await Partners.SearchLinkedUsersAsync(Info.UserId, Info.AppId, _query, 10);
+    }
+
+    private async Task PickAsync(LinkedUserRow person)
+    {
+        _person = person;
+        _values = await Attributes.GetValuesAsync(Info.UserId, Info.AppId, person.UserId);
+        _edits = _values?.ToDictionary(v => v.Key, v => v.Value) ?? [];
+    }
+
+    private async Task SaveValuesAsync()
+    {
+        if (_person is null)
+        {
+            return;
+        }
+
+        await RunAsync(() => Attributes.SetValuesAsync(Info.UserId, Info.AppId, _person.UserId, _edits));
+        await PickAsync(_person);
+    }
+
+    private async Task<PartnerResult> RunAsync(Func<Task<PartnerResult>> action)
+    {
+        _busy = true;
+        PartnerResult result = await action();
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = L[result.Message ?? string.Empty];
+        _view = await Attributes.GetAsync(Info.UserId, Info.AppId);
+        return result;
+    }
+}

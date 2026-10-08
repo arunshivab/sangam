@@ -2,6 +2,7 @@
 @inject IPortalService Portal
 @inject AuthenticationStateProvider AuthProvider
 @inject IConfiguration Configuration
+@inject Sangam.Identity.Application.Attributes.IAttributeService Attributes
 
 <PageTitle>@L["Connected apps · sangam"]</PageTitle>
 
@@ -72,6 +73,64 @@ else
   </div>
 }
 
+@if (_details is { Count: > 0 })
+{
+  <section class="sg-panel sg-app-details" data-panel="app-details">
+    <h2 class="sg-panel-title">@L["Details apps keep about you"]</h2>
+    <p class="sg-panel-body">@L["Beyond your profile, an application may keep a few details about you, such as an employee number. Those marked as yours to change you can correct here; ask the application's administrators about the rest."]</p>
+    @foreach (Sangam.Identity.Application.Attributes.PersonAttributeGroup group in _details)
+    {
+      <h3 class="sg-app-details-app">@group.AppName</h3>
+      <dl class="sg-details">
+        @foreach (Sangam.Identity.Application.Attributes.AttributeValueRow row in group.Values)
+        {
+          string field = "mine-" + group.AppId.ToString("N") + "-" + row.Key;
+          <dt><label class="sg-label" for="@field">@row.Label</label></dt>
+          <dd>
+            @if (row.EditableBy == "person")
+            {
+              @if (row.Type == "choice")
+              {
+                <select id="@field" class="sg-field" @bind="_mine[group.AppId][row.Key]">
+                  <option value="">—</option>
+                  @foreach (string choice in (row.Choices ?? string.Empty).Split(','))
+                  {
+                    <option value="@choice">@choice</option>
+                  }
+                </select>
+              }
+              else if (row.Type == "boolean")
+              {
+                <select id="@field" class="sg-field" @bind="_mine[group.AppId][row.Key]">
+                  <option value="">—</option>
+                  <option value="true">@L["Yes"]</option>
+                  <option value="false">@L["No"]</option>
+                </select>
+              }
+              else
+              {
+                <input id="@field" class="sg-field" type="@(row.Type == "date" ? "date" : row.Type == "number" ? "number" : "text")" @bind="_mine[group.AppId][row.Key]" maxlength="200" />
+              }
+            }
+            else
+            {
+              <span id="@field">@(string.IsNullOrEmpty(row.Value) ? "—" : row.Value)</span>
+            }
+          </dd>
+        }
+      </dl>
+      @if (group.Values.Any(v => v.EditableBy == "person"))
+      {
+        <button type="button" class="sg-btn sg-btn--primary" @onclick="() => SaveMineAsync(group.AppId)" disabled="@_working">@L["Save my details for {0}", group.AppName]</button>
+      }
+    }
+    @if (_detailsMessage is not null)
+    {
+      <p class="sg-banner @(_detailsOk ? "sg-banner--success" : "sg-banner--error")" role="status">@_detailsMessage</p>
+    }
+  </section>
+}
+
 @if (_confirming is not null)
 {
   <div class="sg-confirm" role="alertdialog" aria-labelledby="revoke-title">
@@ -99,6 +158,11 @@ else
     private Guid _userId;
     private string _portalClientId = "sangam-portal";
     private DateTimeOffset _now = DateTimeOffset.UtcNow;
+    private IReadOnlyList<Sangam.Identity.Application.Attributes.PersonAttributeGroup>? _details;
+    private Dictionary<Guid, Dictionary<string, string?>> _mine = [];
+    private Dictionary<Guid, HashSet<string>> _editable = [];
+    private string? _detailsMessage;
+    private bool _detailsOk;
 
     protected override async Task OnInitializedAsync()
     {
@@ -112,6 +176,26 @@ else
     {
         _now = DateTimeOffset.UtcNow;
         _apps = _userId == Guid.Empty ? [] : await Portal.GetLinkedAppsAsync(_userId);
+        _details = _userId == Guid.Empty ? [] : await Attributes.GetMineAsync(_userId);
+        _mine = _details.ToDictionary(g => g.AppId, g => g.Values.ToDictionary(v => v.Key, v => v.Value));
+        _editable = _details.ToDictionary(g => g.AppId, g => g.Values.Where(v => v.EditableBy == "person").Select(v => v.Key).ToHashSet(StringComparer.Ordinal));
+    }
+
+    private async Task SaveMineAsync(Guid appId)
+    {
+        if (!_mine.TryGetValue(appId, out Dictionary<string, string?>? values))
+        {
+            return;
+        }
+
+        _working = true;
+        HashSet<string> editable = _editable.GetValueOrDefault(appId) ?? [];
+        Dictionary<string, string?> mine = values.Where(v => editable.Contains(v.Key)).ToDictionary(v => v.Key, v => v.Value);
+        Sangam.Identity.Application.Partners.PartnerResult result = await Attributes.SetMineAsync(_userId, appId, mine);
+        _working = false;
+        _detailsOk = result.Succeeded;
+        _detailsMessage = L[result.Message ?? string.Empty];
+        await LoadAsync();
     }
 
     private void Ask(LinkedApp app)

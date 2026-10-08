@@ -150,6 +150,20 @@ Checks:
       (`docker-compose.saml.yml`, production README); each service provider registered on the operator console and one
       sign-in and one logout seen to work; SAML included in the penetration test (OI-045).
 
+### Added by R5
+
+- [ ] PR-23 (only for an application with SCIM): its SCIM base address and token set on the partner console, *Test
+      connection* green, one person seen created and deactivated in the application.
+- [ ] PR-24 (only for an application with webhooks): each endpoint https and public, its receiver checking the
+      signature (the published test vector passes), *Send a test* seen to arrive.
+- [ ] PR-25: no application attribute holds health data (read the attribute list of each application at go-live and
+      after each pilot); time-limited roles seen to end on their own (one contractor role given until tomorrow).
+- [ ] PR-26 (only if DigiLocker is switched on): DigiLocker partner onboarding complete (OI-046); client id, secret and
+      a 32+ character subject key in `secrets/`, kept offline as well; the callback address registered; one real
+      verification and one removal seen to work; `docker-compose.digilocker.yml` in the start command.
+- [ ] R5: the delivery worker (SCIM, webhooks, expiry) runs in the one identity container; do not scale the identity
+      service to two replicas until it is made to share the work (OI-047).
+
 ## Bootstrapping the first owner — a deliberate, one-time act
 
 Nothing created on a developer's machine reaches production: migrations carry schema, never rows.

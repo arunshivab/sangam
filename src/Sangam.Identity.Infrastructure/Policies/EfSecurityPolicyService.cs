@@ -55,7 +55,7 @@ public sealed class EfSecurityPolicyService : ISecurityPolicyService
         }
 
         List<string> paths = await _db.OrgMemberships.AsNoTracking()
-            .Where(m => m.UserId == userId && m.AppId == id && m.RevokedAt == null)
+            .Where(m => m.UserId == userId && m.AppId == id && m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > DateTimeOffset.UtcNow))
             .Join(_db.Organisations.Where(o => o.DeletedAt == null), m => m.OrgId, o => o.Id, (m, o) => o.Path)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -92,7 +92,7 @@ public sealed class EfSecurityPolicyService : ISecurityPolicyService
     public async Task<SecurityPolicy> ForPasswordAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         List<Guid> appIds = await _db.AppGrants.AsNoTracking().Where(g => g.UserId == userId && g.RevokedAt == null).Select(g => g.AppId)
-            .Union(_db.OrgMemberships.AsNoTracking().Where(m => m.UserId == userId && m.RevokedAt == null).Select(m => m.AppId))
+            .Union(_db.OrgMemberships.AsNoTracking().Where(m => m.UserId == userId && m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > DateTimeOffset.UtcNow)).Select(m => m.AppId))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 

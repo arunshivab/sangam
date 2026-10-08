@@ -102,6 +102,7 @@ public sealed partial class AccountPurgeService : BackgroundService
 
         foreach (SangamUser user in due)
         {
+            await Provisioning.AppEventLog.AddAsync(db, AppEventTypes.UserDeactivated, null, user.Id, null, new Dictionary<string, object?> { ["reason"] = "deleted" }, now, cancellationToken).ConfigureAwait(false);
             Pseudonymise(user, now);
             await audit.WriteAsync(
                 new AuditEntry(AuditActions.UserAccountDeletionComplete, AuditActorType.System, TargetType: "user", TargetId: user.Id),
@@ -111,12 +112,25 @@ public sealed partial class AccountPurgeService : BackgroundService
         if (due.Count > 0)
         {
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+            // PR-25/26: what applications kept about the person, and their verified identity (with the DigiLocker id's
+            // hash, so the same person can verify a new account later), go with the account.
+            List<Guid> ids = [.. due.Select(u => u.Id)];
+            await db.UserAttributeValues.Where(v => ids.Contains(v.UserId)).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+            await db.IdentityVerifications.Where(v => ids.Contains(v.UserId)).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
         }
 
         DateTimeOffset cutoff = now - SessionRetention;
         int sessions = await db.UserSessions
             .Where(s => s.RevokedAt != null && s.RevokedAt < cutoff)
             .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+
+        // PR-23/24: events are kept 30 days after they were handed out, finished deliveries 90 days (the delivery log).
+        DateTimeOffset events = now - TimeSpan.FromDays(30);
+        await db.AppEvents.Where(e => e.DispatchedAt != null && e.DispatchedAt < events).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+        DateTimeOffset log = now - TimeSpan.FromDays(90);
+        await db.ScimDeliveries.Where(d => d.CompletedAt != null && d.CompletedAt < log).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+        await db.WebhookDeliveries.Where(d => d.CompletedAt != null && d.CompletedAt < log).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
 
         return (due.Count, sessions);
     }
@@ -145,6 +159,7 @@ public sealed partial class AccountPurgeService : BackgroundService
         user.SecurityStamp = Guid.NewGuid().ToString("N");
         user.DateOfBirth = default;
         user.Gender = Gender.PreferNotToSay;
+        user.IdentityVerifiedAt = null;
         user.Status = UserStatus.DeletedHard;
         user.PurgeAfter = null;
         user.DeletedAt ??= now;

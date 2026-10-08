@@ -204,7 +204,7 @@ public static class ConnectEndpoints
         IReadOnlyList<OrgClaim> orgs = await tenancy.GetOrgClaimsAsync(user.Id, app.Id, cancellationToken).ConfigureAwait(false);
         // Standard OIDC `sid`: lets a client (the portal, for one) tell which session is its own.
         string? browserSession = SangamAuthentication.SessionId(session.Principal!)?.ToString("D");
-        ClaimsIdentity identity = SangamClaimsBuilder.Build(user, requested, orgs, TokenValidationParameters.DefaultAuthenticationType, browserSession, proof);
+        ClaimsIdentity identity = SangamClaimsBuilder.Build(user, requested, orgs, TokenValidationParameters.DefaultAuthenticationType, browserSession, proof, await CustomClaimsAsync(httpContext, requested, user.Id, app.Id, cancellationToken).ConfigureAwait(false));
         if (SangamAuthentication.SessionId(session.Principal!) is Guid sid)
         {
             // PR-20: this application now takes part in the session and is told when it ends.
@@ -298,7 +298,7 @@ public static class ConnectEndpoints
             // Re-read the user so profile and membership changes reach the new tokens.
             IReadOnlyList<OrgClaim> orgs = await tenancy.GetOrgClaimsAsync(user.Id, app.Id, cancellationToken).ConfigureAwait(false);
             ClaimsPrincipal principal = stored!;
-            ClaimsIdentity identity = SangamClaimsBuilder.Build(user, [.. principal.GetScopes()], orgs, TokenValidationParameters.DefaultAuthenticationType, principal.GetClaim(SangamClaims.SessionId), AuthenticationProof.FromToken(principal));
+            ClaimsIdentity identity = SangamClaimsBuilder.Build(user, [.. principal.GetScopes()], orgs, TokenValidationParameters.DefaultAuthenticationType, principal.GetClaim(SangamClaims.SessionId), AuthenticationProof.FromToken(principal), await CustomClaimsAsync(httpContext, principal.GetScopes(), user.Id, app.Id, cancellationToken).ConfigureAwait(false));
             identity.SetAuthorizationId(authorizationId);
 
             List<string> resources = [];
@@ -388,7 +388,7 @@ public static class ConnectEndpoints
         }
 
         IReadOnlyList<OrgClaim> orgs = await tenancy.GetOrgClaimsAsync(user.Id, target.Id, cancellationToken).ConfigureAwait(false);
-        ClaimsIdentity identity = SangamClaimsBuilder.Build(user, granted, orgs, TokenValidationParameters.DefaultAuthenticationType, subject.GetClaim(SangamClaims.SessionId), AuthenticationProof.FromToken(subject));
+        ClaimsIdentity identity = SangamClaimsBuilder.Build(user, granted, orgs, TokenValidationParameters.DefaultAuthenticationType, subject.GetClaim(SangamClaims.SessionId), AuthenticationProof.FromToken(subject), await CustomClaimsAsync(httpContext, granted, user.Id, target.Id, cancellationToken).ConfigureAwait(false));
         identity.SetAudiences(target.ClientId);
         identity.SetResources(target.ClientId);
         identity.SetAccessTokenLifetime(ExchangedTokenLifetime);
@@ -496,10 +496,29 @@ public static class ConnectEndpoints
             }).ToArray();
         }
 
+        if (granted.Contains(SangamScopes.Attributes))
+        {
+            string? clientId = principal.GetClaim(Claims.Audience) ?? principal.GetClaim(Claims.ClientId);
+            AppSummary? app = clientId is null ? null : await apps.FindByClientIdAsync(clientId, cancellationToken).ConfigureAwait(false);
+            if (app is not null)
+            {
+                foreach ((string name, object value) in await CustomClaimsAsync(httpContext, granted, user.Id, app.Id, cancellationToken).ConfigureAwait(false) ?? new Dictionary<string, object>())
+                {
+                    claims.TryAdd(name, value);
+                }
+            }
+        }
+
         return Results.Ok(claims);
     }
 
     // ------------------------------------------------------------------ helpers
+
+    /// <summary>PR-25: the application's custom claims for the person, when the <c>attributes</c> scope is granted.</summary>
+    private static async Task<IReadOnlyDictionary<string, object>?> CustomClaimsAsync(HttpContext httpContext, IEnumerable<string> scopes, Guid userId, Guid appId, CancellationToken cancellationToken)
+        => scopes.Contains(SangamScopes.Attributes, StringComparer.Ordinal)
+            ? await httpContext.RequestServices.GetRequiredService<Sangam.Identity.Application.Attributes.IAttributeService>().ClaimsAsync(userId, appId, cancellationToken).ConfigureAwait(false)
+            : null;
 
     private static IResult Forbid(string error, string description) => Results.Forbid(
         authenticationSchemes: [OpenIddictServerAspNetCoreDefaults.AuthenticationScheme],

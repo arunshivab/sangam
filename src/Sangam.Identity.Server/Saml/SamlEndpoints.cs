@@ -209,7 +209,7 @@ public static class SamlEndpoints
             proof.AuthenticatedAt ?? DateTimeOffset.UtcNow,
             "_" + (sid?.ToString("N") ?? Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(16))),
             SamlProtocol.ClassFor(level),
-            Attributes(provider, user, orgs));
+            [.. SamlRelease.Release(provider, user, orgs).Select(a => a.Claim)]);
         if (sid is Guid sessionId)
         {
             await sessions.RecordAppAsync(sessionId, app.Id, user.Id, cancellationToken).ConfigureAwait(false);
@@ -319,43 +319,6 @@ public static class SamlEndpoints
         }
 
         return [.. scopes];
-    }
-
-    private static List<SamlClaim> Attributes(SamlServiceProvider provider, UserSummary user, IReadOnlyList<OrgClaim> orgs)
-    {
-        HashSet<string> released = [.. provider.Attributes.Split(',', StringSplitOptions.RemoveEmptyEntries)];
-        List<SamlClaim> attributes = [];
-        if (released.Contains("name"))
-        {
-            attributes.Add(new("urn:oid:2.16.840.1.113730.3.1.241", "displayName", [user.DisplayName]));
-        }
-
-        if (released.Contains("given_name"))
-        {
-            attributes.Add(new("urn:oid:2.5.4.42", "givenName", [user.FirstName]));
-        }
-
-        if (released.Contains("family_name"))
-        {
-            attributes.Add(new("urn:oid:2.5.4.4", "sn", [user.LastName]));
-        }
-
-        if (released.Contains("email"))
-        {
-            attributes.Add(new("urn:oid:0.9.2342.19200300.100.1.3", "mail", [user.Email]));
-        }
-
-        if (released.Contains("roles") && orgs.Count > 0)
-        {
-            attributes.Add(new("urn:sangam:attribute:roles", "roles", [.. orgs.Select(o => o.Role).Distinct(StringComparer.Ordinal)]));
-        }
-
-        if (released.Contains("orgs") && orgs.Count > 0)
-        {
-            attributes.Add(new("urn:sangam:attribute:orgs", "orgs", [.. orgs.Select(o => JsonSerializer.Serialize(new Dictionary<string, string> { ["id"] = o.Id.ToString("D"), ["name"] = o.Name, ["role"] = o.Role }))]));
-        }
-
-        return attributes;
     }
 
     private static IResult PostResponse(HttpContext http, SamlOptions options, string origin, SamlServiceProvider provider, string acs, string? inResponseTo, string? relayState, string status, string? subStatus, SamlSubjectContent? subject)

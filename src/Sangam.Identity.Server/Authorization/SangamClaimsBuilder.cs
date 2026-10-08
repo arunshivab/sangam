@@ -27,7 +27,8 @@ public static class SangamClaimsBuilder
     /// <param name="authenticationScheme">Identity authentication type.</param>
     /// <param name="sessionId">The Sangam browser session the token is issued from (the OIDC <c>sid</c>), when known.</param>
     /// <param name="proof">How and when the person authenticated (PR-17): <c>acr</c>, <c>amr</c>, <c>auth_time</c>.</param>
-    public static ClaimsIdentity Build(UserSummary user, IReadOnlyCollection<string> scopes, IReadOnlyList<OrgClaim> orgs, string authenticationScheme, string? sessionId = null, AuthenticationProof? proof = null)
+    /// <param name="custom">PR-25: the application's custom claims, released under the <c>attributes</c> scope.</param>
+    public static ClaimsIdentity Build(UserSummary user, IReadOnlyCollection<string> scopes, IReadOnlyList<OrgClaim> orgs, string authenticationScheme, string? sessionId = null, AuthenticationProof? proof = null, IReadOnlyDictionary<string, object>? custom = null)
     {
         ArgumentNullException.ThrowIfNull(user);
         ArgumentNullException.ThrowIfNull(scopes);
@@ -49,6 +50,10 @@ public static class SangamClaimsBuilder
             // Standard OIDC signal: an app compares this with the copy it cached and re-reads
             // /connect/userinfo when it has moved. Sangam never pushes profile changes.
             identity.SetClaim(Claims.UpdatedAt, user.UpdatedAt.ToUnixTimeSeconds());
+            if (user.IdentityVerifiedAt is not null)
+            {
+                identity.SetClaim(SangamClaims.IdentityVerified, true);
+            }
         }
 
         if (scopes.Contains(SangamScopes.Email))
@@ -66,6 +71,28 @@ public static class SangamClaimsBuilder
         if (scopes.Contains(SangamScopes.OrgsRead))
         {
             identity.AddClaim(new Claim(SangamClaims.Orgs, JsonSerializer.Serialize(orgs.Select(ToJson), JsonOptions), "JSON_ARRAY"));
+        }
+
+        if (custom is not null && scopes.Contains(SangamScopes.Attributes))
+        {
+            foreach ((string name, object value) in custom)
+            {
+                switch (value)
+                {
+                    case string[] list:
+                        identity.AddClaim(new Claim(name, JsonSerializer.Serialize(list), "JSON_ARRAY"));
+                        break;
+                    case bool flag:
+                        identity.AddClaim(new Claim(name, flag ? "true" : "false", ClaimValueTypes.Boolean));
+                        break;
+                    case decimal number:
+                        identity.AddClaim(new Claim(name, number.ToString(CultureInfo.InvariantCulture), ClaimValueTypes.Double));
+                        break;
+                    default:
+                        identity.SetClaim(name, Convert.ToString(value, CultureInfo.InvariantCulture));
+                        break;
+                }
+            }
         }
 
         if (!string.IsNullOrEmpty(sessionId))

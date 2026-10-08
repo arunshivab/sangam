@@ -55,6 +55,7 @@ public sealed class SangamServerFactory : WebApplicationFactory<Program>
         builder.UseSetting("Sangam:Antibot:MinimumSeconds", "0");
         builder.UseSetting("Sangam:Otp:ResendCooldown", "00:00:00");
         builder.UseSetting("Sangam:Logout:DeliverInBackground", "false");
+        builder.UseSetting("Sangam:Provisioning:DeliverInBackground", "false");
         builder.UseSetting("Sangam:PasswordHashing:MemoryKiB", "8192");
         builder.UseSetting("Sangam:PasswordHashing:Iterations", "2");
         builder.UseSetting("Logging:LogLevel:Microsoft.EntityFrameworkCore", "Warning");

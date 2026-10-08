@@ -133,7 +133,7 @@ public sealed partial class EfAdminService : IAdminService
             .Select(g => g.App!.DisplayName)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
         List<string> orgs = await _db.OrgMemberships.AsNoTracking()
-            .Where(m => m.UserId == userId && m.RevokedAt == null)
+            .Where(m => m.UserId == userId && m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > DateTimeOffset.UtcNow))
             .Select(m => m.Org!.Name)
             .Distinct()
             .ToListAsync(cancellationToken).ConfigureAwait(false);
@@ -178,6 +178,7 @@ public sealed partial class EfAdminService : IAdminService
 
         user.Status = UserStatus.Suspended;
         user.UpdatedAt = _clock.UtcNow;
+        await Provisioning.AppEventLog.AddAsync(_db, AppEventTypes.UserDeactivated, null, userId, null, new Dictionary<string, object?> { ["reason"] = "suspended" }, user.UpdatedAt, cancellationToken).ConfigureAwait(false);
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await _portal.RevokeAllSessionsAsync(userId, ipAddress, cancellationToken).ConfigureAwait(false);
 
@@ -205,6 +206,7 @@ public sealed partial class EfAdminService : IAdminService
 
         user.Status = UserStatus.Active;
         user.UpdatedAt = _clock.UtcNow;
+        await Provisioning.AppEventLog.AddAsync(_db, AppEventTypes.UserReactivated, null, userId, null, null, user.UpdatedAt, cancellationToken).ConfigureAwait(false);
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await _audit.WriteAsync(
             new AuditEntry(AuditActions.AdminUserReinstate, AuditActorType.Admin, operatorUserId, TargetType: "user", TargetId: userId, IpAddress: ipAddress),
@@ -771,7 +773,7 @@ public sealed partial class EfAdminService : IAdminService
 
         bool privileged = targetIsOperator
             || await _db.AppAdmins.AnyAsync(a => a.UserId == userId && a.RevokedAt == null, cancellationToken).ConfigureAwait(false)
-            || await _db.OrgMemberships.AnyAsync(m => m.UserId == userId && m.RevokedAt == null && m.Role!.Code == "org_admin", cancellationToken).ConfigureAwait(false);
+            || await _db.OrgMemberships.AnyAsync(m => m.UserId == userId && m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > DateTimeOffset.UtcNow) && m.Role!.Code == "org_admin", cancellationToken).ConfigureAwait(false);
         return (null, user, privileged);
     }
 

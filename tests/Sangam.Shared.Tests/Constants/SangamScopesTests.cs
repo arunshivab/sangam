@@ -7,13 +7,13 @@ public sealed class SangamScopesTests
     [Fact]
     public void All_ContainsEveryScopeInCanonicalOrder()
     {
-        Assert.Equal(["openid", "profile", "email", "phone", "orgs.read", "offline_access", "sangam.manage"], SangamScopes.All);
+        Assert.Equal(["openid", "profile", "email", "phone", "orgs.read", "attributes", "offline_access", "sangam.manage"], SangamScopes.All);
     }
 
     [Fact]
     public void UserScopes_AreTheOnesAUserCanConsentTo_AndExcludeManagement()
     {
-        Assert.Equal(["openid", "profile", "email", "phone", "orgs.read", "offline_access"], SangamScopes.UserScopes);
+        Assert.Equal(["openid", "profile", "email", "phone", "orgs.read", "attributes", "offline_access"], SangamScopes.UserScopes);
         Assert.DoesNotContain(SangamScopes.Manage, SangamScopes.UserScopes);
         Assert.All(SangamScopes.UserScopes, scope => Assert.Contains(scope, SangamScopes.All));
     }

@@ -68,6 +68,9 @@ public static class MessageTemplateKinds
     /// <summary>The answer to a grievance (D-D).</summary>
     public const string GrievanceResolution = "grievance_resolution";
 
+    /// <summary>To an application's owners: its SCIM provisioning or a webhook endpoint stopped working (PR-23, PR-24).</summary>
+    public const string IntegrationFailing = "integration_failing";
+
     /// <summary>Every kind, in the order the consoles list them.</summary>
     public static IReadOnlyList<MessageTemplateKind> All { get; } =
     [
@@ -82,6 +85,7 @@ public static class MessageTemplateKinds
         new(OperatorAlert, false, false, ["summary", "details"], ["summary"]),
         new(GrievanceAcknowledgement, false, false, ["name", "reference", "received", "resolve_by"], ["reference"]),
         new(GrievanceResolution, false, false, ["name", "reference", "resolution"], ["reference", "resolution"]),
+        new(IntegrationFailing, false, false, ["name", "application", "integration", "error", "link"], ["integration", "link"]),
         new(RegistrationAttemptNotice, false, false, [], []),
         new(MobileAttemptNotice, false, false, [], []),
         new(SmsSignIn, true, false, [], []),

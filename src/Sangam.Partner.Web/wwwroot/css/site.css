@@ -236,3 +236,9 @@ h1[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 .sg-template-pick { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; align-items: center; }
 .sg-template-body { width: 100%; min-height: 220px; font: 400 14px/1.6 var(--sg-font-body); resize: vertical; }
 .sg-template-preview { margin-top: 14px; }
+/* PR-23/24 provisioning and webhooks. */
+.sg-pill--failing { color: var(--c-danger); border-color: rgba(240, 160, 142, 0.4); }
+.sg-panel[data-panel=scim-log], .sg-panel[data-panel=webhook-log], .sg-panel[data-panel=webhook-endpoints] { margin-top: 18px; }
+.sg-small { font-size: 12.5px; word-break: break-word; }
+.sg-secret { display: block; padding: 10px 12px; border: 1px dashed var(--c-sand, #d9c9a8); border-radius: 6px; word-break: break-all; }
+.sg-table-wrap { overflow-x: auto; }

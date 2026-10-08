@@ -65,6 +65,12 @@ public sealed class SamlIdentityProvider : ISamlAdminService
         return found is null || found.a.Status != AppStatus.Active ? null : (found.p, found.a);
     }
 
+    /// <summary>The service provider behind an application, or <see langword="null"/> when the application is not a SAML one (V-14).</summary>
+    /// <param name="appId">The application.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public Task<SamlServiceProvider?> FindByAppAsync(Guid appId, CancellationToken cancellationToken = default)
+        => _db.SamlServiceProviders.AsNoTracking().SingleOrDefaultAsync(p => p.AppId == appId, cancellationToken);
+
     /// <summary>
     /// Checks an AuthnRequest against its service provider and keeps it for the person's sign-in: the issuer is
     /// registered, the request is fresh and addressed here, the ACS address is a registered one, a signature is there

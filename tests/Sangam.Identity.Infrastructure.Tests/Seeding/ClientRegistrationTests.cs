@@ -96,6 +96,37 @@ public sealed class ClientRegistrationTests : IAsyncLifetime
     }
 
     [PostgresFact]
+    public async Task ManagementApi_GivesClientCredentialsAndSangamManage_OnlyWhenAskedFor()
+    {
+        // V-15: the demo places testers at its made-up hospital through the management API; nothing else gets it.
+        (string, string)[] demo = [("Sangam:Clients:demo:ClientId", "imagiqa"), ("Sangam:Clients:demo:BaseUrl", "https://demo.sangamid.in/"), ("Sangam:Clients:demo:Secret", DemoSecret)];
+        await RegisterAsync(ClientRegistration.Read(Config(demo)));
+        Assert.DoesNotContain(OpenIddictConstants.Permissions.GrantTypes.ClientCredentials, await PermissionsAsync("imagiqa"));
+
+        await RegisterAsync(ClientRegistration.Read(Config([.. demo, ("Sangam:Clients:demo:ManagementApi", "true")])));
+        System.Collections.Immutable.ImmutableArray<string> permissions = await PermissionsAsync("imagiqa");
+        Assert.Contains(OpenIddictConstants.Permissions.GrantTypes.ClientCredentials, permissions);
+        Assert.Contains(OpenIddictConstants.Permissions.Prefixes.Scope + "sangam.manage", permissions);
+
+        // A change that is not a new secret keeps the secret (it used to refuse the start: OpenIddict rejected the update).
+        using (IServiceScope scope = _provider.CreateScope())
+        {
+            IOpenIddictApplicationManager clients = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+            Assert.True(await clients.ValidateClientSecretAsync((await clients.FindByClientIdAsync("imagiqa"))!, DemoSecret));
+        }
+
+        // A native application never can: it has no secret.
+        Assert.False(ClientRegistration.Read(Config(("Sangam:Clients:app:Kind", "native"), ("Sangam:Clients:app:RedirectUris", "in.example.app:/cb"), ("Sangam:Clients:app:ManagementApi", "true")))[0].ManagementApi);
+    }
+
+    private async Task<System.Collections.Immutable.ImmutableArray<string>> PermissionsAsync(string clientId)
+    {
+        using IServiceScope scope = _provider.CreateScope();
+        IOpenIddictApplicationManager clients = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+        return await clients.GetPermissionsAsync((await clients.FindByClientIdAsync(clientId))!);
+    }
+
+    [PostgresFact]
     public async Task ARotatedSecret_AndDevelopmentAddresses_AreCorrected()
     {
         (string, string)[] demo = [("Sangam:Clients:demo:ClientId", "imagiqa"), ("Sangam:Clients:demo:BaseUrl", "https://demo.sangamid.in/")];

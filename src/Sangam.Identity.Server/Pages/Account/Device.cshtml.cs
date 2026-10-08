@@ -119,7 +119,10 @@ public sealed class DeviceModel : AuthPageModel
         System.Collections.Immutable.ImmutableArray<string> requested = request.GetScopes();
         await _consents.GrantAsync(User.Id, App.Id, requested, ClientIp, ClientUserAgent, cancellationToken: cancellationToken);
         IReadOnlyList<OrgClaim> orgs = await _tenancy.GetOrgClaimsAsync(User.Id, App.Id, cancellationToken);
-        ClaimsIdentity identity = SangamClaimsBuilder.Build(User, requested, orgs, TokenValidationParameters.DefaultAuthenticationType, SangamAuthentication.SessionId(_session!)?.ToString("D"), AuthenticationProof.FromSession(_session!));
+        IReadOnlyDictionary<string, object>? custom = requested.Contains(Sangam.Shared.Constants.SangamScopes.Attributes)
+            ? await HttpContext.RequestServices.GetRequiredService<Sangam.Identity.Application.Attributes.IAttributeService>().ClaimsAsync(User.Id, App.Id, cancellationToken)
+            : null;
+        ClaimsIdentity identity = SangamClaimsBuilder.Build(User, requested, orgs, TokenValidationParameters.DefaultAuthenticationType, SangamAuthentication.SessionId(_session!)?.ToString("D"), AuthenticationProof.FromSession(_session!), custom);
         List<string> resources = [];
         await foreach (string resource in _scopes.ListResourcesAsync(identity.GetScopes(), cancellationToken))
         {
@@ -175,7 +178,11 @@ public sealed class DeviceModel : AuthPageModel
 
         User = user!;
         _session = session;
-        Shared = await ConsentModel.DescribeAsync(L, User, App, request.GetScopes().ToHashSet(StringComparer.Ordinal), _tenancy, cancellationToken);
+        HashSet<string> asked = request.GetScopes().ToHashSet(StringComparer.Ordinal);
+        IReadOnlyDictionary<string, object>? custom = asked.Contains(Sangam.Shared.Constants.SangamScopes.Attributes)
+            ? await HttpContext.RequestServices.GetRequiredService<Sangam.Identity.Application.Attributes.IAttributeService>().ClaimsAsync(User.Id, App.Id, cancellationToken)
+            : null;
+        Shared = await ConsentModel.DescribeAsync(L, User, App, asked, _tenancy, cancellationToken, custom);
         return (null, request);
     }
 }

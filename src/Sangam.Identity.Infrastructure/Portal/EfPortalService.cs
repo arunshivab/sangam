@@ -57,7 +57,7 @@ public sealed class EfPortalService : IPortalService
     public async Task<PortalOverview> GetOverviewAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         int apps = await _db.AppGrants.CountAsync(g => g.UserId == userId && g.RevokedAt == null, cancellationToken).ConfigureAwait(false);
-        int orgs = await _db.OrgMemberships.Where(m => m.UserId == userId && m.RevokedAt == null).Select(m => m.OrgId).Distinct().CountAsync(cancellationToken).ConfigureAwait(false);
+        int orgs = await _db.OrgMemberships.Where(m => m.UserId == userId && m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > DateTimeOffset.UtcNow)).Select(m => m.OrgId).Distinct().CountAsync(cancellationToken).ConfigureAwait(false);
         int sessions = await _db.UserSessions.CountAsync(s => s.UserId == userId && s.RevokedAt == null, cancellationToken).ConfigureAwait(false);
         DateTimeOffset? lastSignIn = await _db.AuditEvents
             .Where(e => e.ActorUserId == userId && e.Action == AuditActions.UserLoginSuccess)
@@ -88,7 +88,7 @@ public sealed class EfPortalService : IPortalService
 
         var memberships = await _db.OrgMemberships
             .AsNoTracking()
-            .Where(m => m.UserId == userId && m.RevokedAt == null)
+            .Where(m => m.UserId == userId && m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > DateTimeOffset.UtcNow))
             .Select(m => new { m.AppId, OrgName = m.Org!.Name })
             .ToListAsync(cancellationToken).ConfigureAwait(false);
 
@@ -149,6 +149,7 @@ public sealed class EfPortalService : IPortalService
             .ExecuteUpdateAsync(u => u.SetProperty(c => c.RevokedAt, now), cancellationToken).ConfigureAwait(false);
 
         await RevokeOpenIddictAsync(userId, app.ClientId, cancellationToken).ConfigureAwait(false);
+        await Provisioning.AppEventLog.RaiseAsync(_db, AppEventTypes.ConsentRevoked, appId, userId, null, null, now, cancellationToken).ConfigureAwait(false);
 
         await _audit.WriteAsync(new AuditEntry(AuditActions.AppAccessRevoke, AuditActorType.User, userId, appId, "app", appId, IpAddress: ipAddress), cancellationToken).ConfigureAwait(false);
         return true;
@@ -329,6 +330,7 @@ public sealed class EfPortalService : IPortalService
         user.DeletedAt = now;
         user.PurgeAfter = purgeAfter;
         user.UpdatedAt = now;
+        await Provisioning.AppEventLog.AddAsync(_db, AppEventTypes.UserDeactivated, null, userId, null, new Dictionary<string, object?> { ["reason"] = "deletion_requested" }, now, cancellationToken).ConfigureAwait(false);
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         // Revoke every application and end every session, so nothing keeps acting for the user.
@@ -370,12 +372,26 @@ public sealed class EfPortalService : IPortalService
     {
         ArgumentNullException.ThrowIfNull(update);
 
-        if (string.IsNullOrWhiteSpace(update.FirstName))
+        // PR-26: a name and gender verified through DigiLocker are locked until the verification is removed.
+        var verified = await _db.Users.AsNoTracking().Where(u => u.Id == userId && u.IdentityVerifiedAt != null)
+            .Select(u => new { u.FirstName, u.LastName, u.Gender }).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        if (verified is not null)
+        {
+            if (update.FirstName.Trim() != verified.FirstName || update.LastName.Trim() != verified.LastName)
+            {
+                return ProfileUpdateResult.Failed(nameof(update.FirstName), "Your name is verified through DigiLocker. To change it, remove the verification first.");
+            }
+
+            if (update.Gender != verified.Gender)
+            {
+                return ProfileUpdateResult.Failed(nameof(update.Gender), "Your gender is verified through DigiLocker. To change it, remove the verification first.");
+            }
+        }
+        else if (string.IsNullOrWhiteSpace(update.FirstName))
         {
             return ProfileUpdateResult.Failed(nameof(update.FirstName), "Enter your first name.");
         }
-
-        if (string.IsNullOrWhiteSpace(update.LastName))
+        else if (string.IsNullOrWhiteSpace(update.LastName))
         {
             return ProfileUpdateResult.Failed(nameof(update.LastName), "Enter your last name.");
         }
@@ -420,6 +436,7 @@ public sealed class EfPortalService : IPortalService
 
         // updated_at is what lets an application notice that the copy it cached has moved.
         user.UpdatedAt = _clock.UtcNow;
+        await Provisioning.AppEventLog.AddAsync(_db, AppEventTypes.UserUpdated, null, userId, null, null, user.UpdatedAt, cancellationToken).ConfigureAwait(false);
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         await _audit.WriteAsync(

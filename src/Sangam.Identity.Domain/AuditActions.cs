@@ -281,4 +281,52 @@ public static class AuditActions
 
     /// <summary>A grievance was closed, resolved or declined (D-D).</summary>
     public const string GrievanceClose = "grievance.close";
+
+    /// <summary>A partner changed their application's SCIM provisioning settings (PR-23).</summary>
+    public const string ScimSettings = "scim.settings";
+
+    /// <summary>A time-limited membership ended by itself (PR-25).</summary>
+    public const string OrgMembershipExpire = "org_membership.expire";
+
+    /// <summary>A person verified their identity through DigiLocker (PR-26); the profile took the record's values.</summary>
+    public const string IdentityVerify = "identity.verify";
+
+    /// <summary>A verification was refused: that DigiLocker identity already verifies another account (PR-26).</summary>
+    public const string IdentityVerifyRefused = "identity.verify.refused";
+
+    /// <summary>A person removed their identity verification (PR-26).</summary>
+    public const string IdentityUnverify = "identity.unverify";
+
+    /// <summary>A partner defined a custom user attribute (PR-25).</summary>
+    public const string AttributeDefine = "attribute.define";
+
+    /// <summary>A partner retired a custom user attribute.</summary>
+    public const string AttributeRetire = "attribute.retire";
+
+    /// <summary>A person's custom attribute values were set (by them, an administrator, or the application).</summary>
+    public const string AttributeValuesSet = "attribute.values.set";
+
+    /// <summary>A partner added a custom claim.</summary>
+    public const string ClaimMappingAdd = "claim.mapping.add";
+
+    /// <summary>A partner removed a custom claim.</summary>
+    public const string ClaimMappingRemove = "claim.mapping.remove";
+
+    /// <summary>A SCIM reconciliation ran.</summary>
+    public const string ScimReconcile = "scim.reconcile";
+
+    /// <summary>A SCIM delivery gave up after its retries; the target is marked failing.</summary>
+    public const string ScimFailing = "scim.failing";
+
+    /// <summary>A partner added or changed a webhook endpoint (PR-24).</summary>
+    public const string WebhookEndpointSave = "webhook.endpoint.save";
+
+    /// <summary>A partner removed a webhook endpoint.</summary>
+    public const string WebhookEndpointDelete = "webhook.endpoint.delete";
+
+    /// <summary>A partner rotated a webhook endpoint's signing secret.</summary>
+    public const string WebhookSecretRotate = "webhook.secret.rotate";
+
+    /// <summary>A webhook delivery gave up after its retries; the endpoint is marked failing.</summary>
+    public const string WebhookFailing = "webhook.failing";
 }

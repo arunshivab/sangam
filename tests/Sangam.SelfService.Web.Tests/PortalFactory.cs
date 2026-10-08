@@ -59,6 +59,15 @@ public sealed class PortalFactory : WebApplicationFactory<Program>
         builder.UseSetting("Sangam:Maintenance:Enabled", "false");
         builder.UseSetting("Logging:LogLevel:Microsoft.EntityFrameworkCore", "Warning");
 
+        // PR-26: DigiLocker, played by a stand-in on a local port.
+        builder.UseSetting("Sangam:DigiLocker:Enabled", "true");
+        builder.UseSetting("Sangam:DigiLocker:ClientId", FakeDigiLocker.ClientId);
+        builder.UseSetting("Sangam:DigiLocker:ClientSecret", FakeDigiLocker.ClientSecret);
+        builder.UseSetting("Sangam:DigiLocker:AuthorizeUrl", "https://digilocker.example.invalid/public/oauth2/1/authorize");
+        builder.UseSetting("Sangam:DigiLocker:TokenUrl", FakeDigiLocker.Shared.BaseUrl + "/public/oauth2/1/token");
+        builder.UseSetting("Sangam:DigiLocker:UserUrl", FakeDigiLocker.Shared.BaseUrl + "/public/oauth2/1/user");
+        builder.UseSetting("Sangam:Outbound:AllowPrivateNetworks", "true");
+
         builder.ConfigureServices(services =>
         {
             services.AddAuthentication(SchemeName).AddScheme<AuthenticationSchemeOptions, StubHandler>(SchemeName, _ => { });
