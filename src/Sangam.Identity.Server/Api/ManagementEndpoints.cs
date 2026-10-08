@@ -5,6 +5,7 @@ using OpenIddict.Validation.AspNetCore;
 using Sangam.Identity.Application.Apps;
 using Sangam.Identity.Application.Tenancy;
 using Sangam.Identity.Domain.Enums;
+using Sangam.Identity.Server.Authentication;
 using Sangam.Shared.Constants;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -38,7 +39,7 @@ public static class ManagementEndpoints
     {
         ArgumentNullException.ThrowIfNull(endpoints);
 
-        RouteGroupBuilder api = endpoints.MapGroup("/api/v1").RequireAuthorization(PolicyName).DisableAntiforgery();
+        RouteGroupBuilder api = endpoints.MapGroup("/api/v1").RequireAuthorization(PolicyName).DisableAntiforgery().RequireRateLimiting(AuthRateLimiting.ApiPolicy);
 
         api.MapGet("/roles", async (ClaimsPrincipal caller, IAppDirectory apps, IManagementService mgmt, CancellationToken ct) =>
         {

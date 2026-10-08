@@ -9,6 +9,7 @@
   <p class="sg-card-body">Enter the email you registered with. If an account exists, we will send a reset code.</p>
 
   <form method="post" novalidate>
+    <partial name="_Antibot" />
     <div class="sg-field-group">
       <label class="sg-label" asp-for="Email">Email</label>
       <input class="sg-field" asp-for="Email" type="email" autocomplete="username" inputmode="email" autofocus required />

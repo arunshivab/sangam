@@ -11,6 +11,7 @@ using Sangam.Identity.Server.Authorization;
 namespace Sangam.Identity.Server.Pages.Account;
 
 /// <summary>Screen 1 — sign in with email and password.</summary>
+[Antibot]
 public sealed class LoginModel : AuthPageModel
 {
     private readonly IAccountService _accounts;

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Sangam.Identity.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Sangam.Identity.Infrastructure.Persistence;
 namespace Sangam.Identity.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(SangamDbContext))]
-    partial class SangamDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261006115526_DataProtectionKeys")]
+    partial class DataProtectionKeys
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

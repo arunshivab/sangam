@@ -12,6 +12,7 @@ public sealed class PostgresFixture : IAsyncLifetime
     private static readonly string[] MutableTables =
     [
         "audit_events",
+        "data_protection_keys",
         "org_memberships",
         "app_grants",
         "consents",
@@ -54,12 +55,18 @@ public sealed class PostgresFixture : IAsyncLifetime
 
     public Task DisposeAsync() => Task.CompletedTask;
 
-    /// <summary>Empties every non-reference table. The append-only rules make TRUNCATE the only way to clear audit_events.</summary>
+    /// <summary>
+    /// Empties every non-reference table. audit_events refuses TRUNCATE unless the session sets
+    /// sangam.audit_maintenance, which this test-only reset does inside one transaction (OI-039).
+    /// </summary>
     public async Task ResetAsync()
     {
         await using SangamDbContext db = CreateContext();
+        await using Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction tx = await db.Database.BeginTransactionAsync();
+        await db.Database.ExecuteSqlRawAsync("SELECT set_config('sangam.audit_maintenance', 'on', true);");
         string sql = "TRUNCATE TABLE " + string.Join(", ", MutableTables) + " RESTART IDENTITY CASCADE;";
         await db.Database.ExecuteSqlRawAsync(sql);
+        await tx.CommitAsync();
     }
 }
 

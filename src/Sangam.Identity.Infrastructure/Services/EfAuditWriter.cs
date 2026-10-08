@@ -31,20 +31,32 @@ public sealed class EfAuditWriter : IAuditWriter
         SangamDbContext db = await _contextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         await using (db.ConfigureAwait(false))
         {
-            db.AuditEvents.Add(new AuditEvent
+            // One writer at a time extends the chain (OI-039): take a transaction-scoped advisory
+            // lock, read the newest hash, hash this event after it, insert, commit.
+            Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction tx = await db.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+            await using (tx.ConfigureAwait(false))
             {
-                Action = entry.Action,
-                ActorType = entry.ActorType,
-                ActorUserId = entry.ActorUserId,
-                ActorAppId = entry.ActorAppId,
-                TargetType = entry.TargetType,
-                TargetId = entry.TargetId,
-                Metadata = entry.Metadata,
-                IpAddress = entry.IpAddress,
-                UserAgent = entry.UserAgent,
-                OccurredAt = _clock.UtcNow,
-            });
-            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock({0})", [AuditChain.LockKey], cancellationToken).ConfigureAwait(false);
+                string? previous = await db.AuditEvents.Where(e => e.Hash != null).OrderByDescending(e => e.Id).Select(e => e.Hash).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+                AuditEvent row = new()
+                {
+                    Action = entry.Action,
+                    ActorType = entry.ActorType,
+                    ActorUserId = entry.ActorUserId,
+                    ActorAppId = entry.ActorAppId,
+                    TargetType = entry.TargetType,
+                    TargetId = entry.TargetId,
+                    Metadata = entry.Metadata,
+                    IpAddress = entry.IpAddress,
+                    UserAgent = entry.UserAgent,
+                    OccurredAt = AuditChain.ToStoredPrecision(_clock.UtcNow),
+                    PrevHash = previous,
+                };
+                row.Hash = AuditChain.Compute(previous, row);
+                db.AuditEvents.Add(row);
+                await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
+            }
         }
     }
 }

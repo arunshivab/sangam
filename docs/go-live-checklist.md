@@ -25,6 +25,20 @@ exist, so there is no production database to act on yet.
       if production registers them under different ids, set it by hand. Without it the operator
       console would offer to disable its own client — and lock every operator out.
 
+## Added by R0
+
+- [ ] The application connects as a database role that does **not own** `audit_events` (and cannot
+      alter it), separate from the role that runs migrations. The append-only triggers stop the
+      application; only role separation stops someone with the application's credentials.
+- [ ] `Sangam:ForwardedHeaders:KnownNetworks` (or `KnownProxies`) set to Caddy's network, so client
+      addresses — in the audit trail and the rate limits — are the real ones.
+- [ ] Monitoring points at `/health/live` and `/health/ready` on all four hosts.
+- [ ] The data-protection key ring (`data_protection_keys`) is protected at rest with a certificate,
+      and included in backups (SGM-603).
+- [ ] `Sangam:Audit:RetentionDays` set — or deliberately left unset — once the founder has decided the
+      retention periods. Unset keeps every audit event.
+- [ ] The identity server starts: it refuses without a real e-mail sender or with the outbox on.
+
 ## Bootstrapping the first owner — a deliberate, one-time act
 
 Nothing created on a developer's machine reaches production: migrations carry schema, never rows.

@@ -34,8 +34,8 @@ public static class ConnectEndpoints
         ArgumentNullException.ThrowIfNull(endpoints);
 
         endpoints.MapMethods("/connect/authorize", [HttpMethods.Get, HttpMethods.Post], AuthorizeAsync).WithName("Authorize").DisableAntiforgery();
-        endpoints.MapPost("/connect/token", ExchangeAsync).WithName("Token").DisableAntiforgery();
-        endpoints.MapMethods("/connect/userinfo", [HttpMethods.Get, HttpMethods.Post], UserInfoAsync).WithName("UserInfo")
+        endpoints.MapPost("/connect/token", ExchangeAsync).WithName("Token").DisableAntiforgery().RequireRateLimiting(AuthRateLimiting.TokenPolicy);
+        endpoints.MapMethods("/connect/userinfo", [HttpMethods.Get, HttpMethods.Post], UserInfoAsync).WithName("UserInfo").RequireRateLimiting(AuthRateLimiting.UserInfoPolicy)
             .RequireAuthorization(p => p.AddAuthenticationSchemes(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme).RequireAuthenticatedUser());
         return endpoints;
     }
