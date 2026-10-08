@@ -36,6 +36,11 @@
     return (list || []).map(function (d) { return { type: d.type || 'public-key', id: fromB64url(d.id), transports: d.transports }; });
   }
 
+  // PR-18: the page renders these messages in the reader's language as data-text-* attributes; English is the fallback.
+  function text(el, name, fallback) {
+    return el.getAttribute('data-text-' + name) || fallback;
+  }
+
   function show(el, message) {
     var target = document.getElementById(el.getAttribute('data-message'));
     if (target) { target.textContent = message; target.hidden = !message; }
@@ -63,10 +68,10 @@
         });
       }).then(function (result) {
         if (result.redirect) { window.location.assign(result.redirect); return; }
-        show(button, result.error || 'That passkey could not sign you in.');
+        show(button, result.error || text(button, 'failed', 'That passkey could not sign you in.'));
         button.disabled = false;
       }).catch(function () {
-        show(button, 'The passkey request was cancelled or is not available on this device.');
+        show(button, text(button, 'cancelled', 'The passkey request was cancelled or is not available on this device.'));
         button.disabled = false;
       });
     });
@@ -90,10 +95,10 @@
         });
       }).then(function (result) {
         if (result.redirect) { window.location.assign(result.redirect); return; }
-        show(button, result.error || 'This passkey could not be added.');
+        show(button, result.error || text(button, 'failed', 'This passkey could not be added.'));
         button.disabled = false;
       }).catch(function () {
-        show(button, 'The passkey request was cancelled or is not available on this device.');
+        show(button, text(button, 'cancelled', 'The passkey request was cancelled or is not available on this device.'));
         button.disabled = false;
       });
     });

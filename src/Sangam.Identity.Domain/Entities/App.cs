@@ -51,6 +51,12 @@ public sealed class App
     /// <summary>Whether passwords of this application's people are checked against known breaches (PR-16).</summary>
     public bool BreachedPasswordCheck { get; set; }
 
+    /// <summary>Where Sangam posts a logout token when a session the application took part in ends (PR-20, back-channel); set by the platform operators.</summary>
+    public string? BackChannelLogoutUri { get; set; }
+
+    /// <summary>The page Sangam loads in a hidden frame when the person signs out at Sangam (PR-20, front-channel); set by the platform operators.</summary>
+    public string? FrontChannelLogoutUri { get; set; }
+
     /// <summary>Brand colour (hex, "#1D4E89") used on the partner chip and consent tile. Never touches layout.</summary>
     public string BrandColour { get; set; } = "#0F3B38";
 

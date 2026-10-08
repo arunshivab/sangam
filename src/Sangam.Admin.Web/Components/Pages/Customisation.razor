@@ -1,0 +1,20 @@
+@page "/customisation"
+@inject IConfiguration Configuration
+
+@* PR-19 (SGM-209 §9): Sangam's own defaults — the sign-in page and every message, including the text messages
+   registered under DLT. Applications and organisations override them where they are allowed to. *@
+<PageTitle>@L["Defaults"] · @L["Sangam console"]</PageTitle>
+
+<h1 class="sg-h1">@L["Defaults"]</h1>
+<p class="sg-lede">@L["What every application gets unless it sets its own: the sign-in page and the words of every e-mail and text message. Security notices and text messages can only be changed here. AppManager rank and above."]</p>
+
+@if (Context is not null)
+{
+  <BrandingEditor UserId="Context.UserId" Scope="CustomisationScope.Platform" Heading="@L["Sign-in page"].Value" IdentityBaseUrl="@(Configuration["Sangam:Authority"] ?? "https://id.sangamid.in")" Key="platform-branding" />
+  <TemplateEditor UserId="Context.UserId" Scope="CustomisationScope.Platform" Heading="@L["Messages"].Value" Key="platform-templates" />
+}
+
+@code {
+    [CascadingParameter]
+    public ConsoleContext? Context { get; set; }
+}

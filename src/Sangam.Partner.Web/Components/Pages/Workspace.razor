@@ -3,24 +3,25 @@
 
 @if (_info is null)
 {
-  <PageTitle>Not available · Sangam partners</PageTitle>
-  <h1 class="sg-h1">Not available</h1>
-  <p class="sg-lede">You do not administer that application. <a href="/">Back to your applications</a>.</p>
+  <PageTitle>@L["Not available · Sangam partners"]</PageTitle>
+  <h1 class="sg-h1">@L["Not available"]</h1>
+  <p class="sg-lede">@L["You do not administer that application."] <a href="/">@L["Back to your applications"]</a>.</p>
 }
 else
 {
   <PageTitle>@_info.AppName · Sangam partners</PageTitle>
-  <a class="sg-back" href="/">← Your applications</a>
+  <a class="sg-back" href="/">@L["← Your applications"]</a>
   <h1 class="sg-h1">@_info.AppName</h1>
 
-  <nav class="sg-tabs" aria-label="Sections">
-    <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("people")" Match="NavLinkMatch.All">Organisations &amp; people</NavLink>
-    <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("roles")">Roles</NavLink>
+  <nav class="sg-tabs" aria-label="@L["Sections"]">
+    <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("people")" Match="NavLinkMatch.All">@L["Organisations & people"]</NavLink>
+    <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("roles")">@L["Roles"]</NavLink>
     @if (_info.IsOwner)
     {
-      <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("admins")">Administrators</NavLink>
+      <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("admins")">@L["Administrators"]</NavLink>
     }
-    <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("settings")">Settings</NavLink>
+    <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("settings")">@L["Settings"]</NavLink>
+    <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("messages")">@L["Messages"]</NavLink>
   </nav>
 
   @switch (CurrentTab)
@@ -33,6 +34,10 @@ else
       break;
     case "settings":
       <SettingsTab Info="_info" />
+      break;
+    case "messages":
+      <p class="sg-lede">@L["The e-mails Sangam sends for {0}: sign-in and verification codes, password resets and invitations. Security notices stay Sangam's own.", _info.AppName]</p>
+      <TemplateEditor UserId="_info.UserId" Scope="CustomisationScope.App" ScopeId="_info.AppId" Heading="@L["Messages"].Value" PreviewHeading="@_info.AppName" Key="app-templates" />
       break;
     default:
       <OrganisationsTab Info="_info" />

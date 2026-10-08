@@ -9,9 +9,8 @@ namespace Sangam.Identity.Infrastructure.Sms;
 /// </summary>
 public static class SmsGuard
 {
-    /// <summary>Provider names this build has adapters for, apart from the development outbox.</summary>
-    /// <remarks>None yet: the provider is the founder's decision (SGM-206 open question 1). Its adapter is added with that decision.</remarks>
-    public static IReadOnlySet<string> ProductionProviders { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    /// <summary>Provider names this build has adapters for, apart from the development outbox: Anjal only (D-M).</summary>
+    public static IReadOnlySet<string> ProductionProviders { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { Messaging.AnjalSmsSender.ProviderName };
 
     /// <summary>Returns why the host must not start, or <see langword="null"/> when SMS is safe or switched off.</summary>
     /// <param name="environmentName">The host environment name.</param>
@@ -28,7 +27,7 @@ public static class SmsGuard
 
         foreach ((string key, SmsTemplateSettings template) in settings.Templates)
         {
-            if (DltTemplate.VariableCount(template.Text) == 0)
+            if (SmsSettings.CodeTemplates.Contains(key) && DltTemplate.VariableCount(template.Text) == 0)
             {
                 return $"SMS template '{key}' has no {DltTemplate.Placeholder} for the code. Refusing to start.";
             }
@@ -42,22 +41,24 @@ public static class SmsGuard
         }
 
         string where = $"in the '{environmentName}' environment";
-        foreach (string provider in new[] { settings.Provider, settings.FailoverProvider ?? string.Empty }.Where(p => p.Length > 0))
-        {
-            if (string.Equals(provider, SmsSettings.OutboxProvider, StringComparison.OrdinalIgnoreCase))
-            {
-                return $"The development SMS outbox is configured {where}. Refusing to start: it would expose one-time codes.";
-            }
-
-            if (!ProductionProviders.Contains(provider))
-            {
-                return $"SMS provider '{provider}' has no adapter in this build {where}. Refusing to start; switch SMS off (Sangam:Sms:Enabled=false) until the provider's adapter is added.";
-            }
-        }
-
         if (settings.Provider.Length == 0)
         {
             return $"SMS is enabled {where} but no provider is configured (Sangam:Sms:Provider). Refusing to start.";
+        }
+
+        if (string.Equals(settings.Provider, SmsSettings.OutboxProvider, StringComparison.OrdinalIgnoreCase))
+        {
+            return $"The development SMS outbox is configured {where}. Refusing to start: it would expose one-time codes.";
+        }
+
+        if (!ProductionProviders.Contains(settings.Provider))
+        {
+            return $"SMS provider '{settings.Provider}' has no adapter in this build {where}. Refusing to start; SMS goes through Anjal (Sangam:Sms:Provider=anjal), or switch it off (Sangam:Sms:Enabled=false).";
+        }
+
+        if (!Messaging.AnjalOptions.From(configuration).Configured)
+        {
+            return $"SMS is enabled through Anjal {where} but Anjal's API is not configured (Sangam:Anjal:BaseUrl). Refusing to start.";
         }
 
         if (string.IsNullOrWhiteSpace(settings.HashKey) || settings.HashKey.Length < 32)

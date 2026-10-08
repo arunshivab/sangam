@@ -1,31 +1,31 @@
 @inject IPartnerService Partners
 
-<p class="sg-lede">The people who can manage @Info.AppName here. Owners can also add and remove administrators; there must always be at least one owner. Everyone must have an authenticator app before this console lets them in.</p>
+<p class="sg-lede">@L["The people who can manage {0} here. Owners can also add and remove administrators; there must always be at least one owner. Everyone must have an authenticator app before this console lets them in.", Info.AppName]</p>
 
 @if (_admins is null)
 {
-  <p class="sg-muted">Loading…</p>
+  <p class="sg-muted">@L["Loading…"]</p>
 }
 else
 {
   <table class="sg-table">
-    <thead><tr><th>Person</th><th>Rank</th><th>Authenticator</th><th>Since</th><th></th></tr></thead>
+    <thead><tr><th>@L["Person"]</th><th>@L["Rank"]</th><th>@L["Authenticator"]</th><th>@L["Since"]</th><th></th></tr></thead>
     <tbody>
       @foreach (AppAdminRow admin in _admins)
       {
         <tr>
           <td><span class="sg-name">@admin.DisplayName</span><span class="sg-sub">@admin.Email</span></td>
-          <td><span class="sg-rank sg-rank--@(admin.Role == AppAdminRole.Owner ? "owner" : "app")">@(admin.Role == AppAdminRole.Owner ? "Owner" : "Administrator")</span></td>
-          <td>@if (admin.MfaEnrolled) { <span>set up</span> } else { <span class="sg-warn-text">not yet — cannot sign in here</span> }</td>
-          <td>@admin.GrantedAt.ToString("d MMM yyyy", System.Globalization.CultureInfo.InvariantCulture)</td>
+          <td><span class="sg-rank sg-rank--@(admin.Role == AppAdminRole.Owner ? "owner" : "app")">@(admin.Role == AppAdminRole.Owner ? L["Owner"] : L["Administrator"])</span></td>
+          <td>@if (admin.MfaEnrolled) { <span>@L["set up"]</span> } else { <span class="sg-warn-text">@L["not yet — cannot sign in here"]</span> }</td>
+          <td>@admin.GrantedAt.ToString("d MMM yyyy", System.Globalization.CultureInfo.CurrentCulture)</td>
           <td>
             @if (admin.UserId != Info.UserId)
             {
               <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => ChangeAsync(admin, admin.Role == AppAdminRole.Owner ? AppAdminRole.Admin : AppAdminRole.Owner)" disabled="@_busy">
-                @(admin.Role == AppAdminRole.Owner ? "Make administrator" : "Make owner")
+                @(admin.Role == AppAdminRole.Owner ? L["Make administrator"] : L["Make owner"])
               </button>
             }
-            <button type="button" class="sg-btn sg-btn--warn" @onclick="() => _removing = admin" disabled="@_busy">Remove</button>
+            <button type="button" class="sg-btn sg-btn--warn" @onclick="() => _removing = admin" disabled="@_busy">@L["Remove"]</button>
           </td>
         </tr>
       }
@@ -36,30 +36,30 @@ else
 @if (_removing is not null)
 {
   <div class="sg-confirm">
-    <p><strong>Remove @_removing.DisplayName@(_removing.UserId == Info.UserId ? " (you)" : string.Empty)?</strong> They can no longer manage @Info.AppName here. Their own account and any roles they hold inside organisations are not affected.</p>
+    <p><strong>@(_removing.UserId == Info.UserId ? L["Remove {0} (you)?", _removing.DisplayName] : L["Remove {0}?", _removing.DisplayName])</strong> @L["They can no longer manage {0} here. Their own account and any roles they hold inside organisations are not affected.", Info.AppName]</p>
     <div class="sg-actions">
-      <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => _removing = null">Cancel</button>
-      <button type="button" class="sg-btn sg-btn--danger" @onclick="RemoveAsync" disabled="@_busy">Remove</button>
+      <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => _removing = null">@L["Cancel"]</button>
+      <button type="button" class="sg-btn sg-btn--danger" @onclick="RemoveAsync" disabled="@_busy">@L["Remove"]</button>
     </div>
   </div>
 }
 
-<h2 class="sg-h2">Add an administrator</h2>
+<h2 class="sg-h2">@L["Add an administrator"]</h2>
 <div class="sg-panel">
-  <p class="sg-muted">They need a verified Sangam account and must already have signed in to @Info.AppName once.</p>
+  <p class="sg-muted">@L["They need a verified Sangam account and must already have signed in to {0} once.", Info.AppName]</p>
   <div class="sg-form-row">
-    <label class="sg-label" for="admin-email">Their Sangam email address</label>
+    <label class="sg-label" for="admin-email">@L["Their Sangam email address"]</label>
     <input id="admin-email" class="sg-input" type="email" autocomplete="off" @bind="_email" @bind:event="oninput" />
   </div>
   <div class="sg-form-row">
-    <label class="sg-label" for="admin-rank">Rank</label>
+    <label class="sg-label" for="admin-rank">@L["Rank"]</label>
     <select id="admin-rank" class="sg-input" @bind="_rank">
-      <option value="@AppAdminRole.Admin">Administrator</option>
-      <option value="@AppAdminRole.Owner">Owner</option>
+      <option value="@AppAdminRole.Admin">@L["Administrator"]</option>
+      <option value="@AppAdminRole.Owner">@L["Owner"]</option>
     </select>
   </div>
   <div class="sg-actions">
-    <button type="button" class="sg-btn sg-btn--primary" @onclick="AddAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_email))">Add</button>
+    <button type="button" class="sg-btn sg-btn--primary" @onclick="AddAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_email))">@L["Add"]</button>
   </div>
 </div>
 
@@ -89,7 +89,7 @@ else
         PartnerResult result = await Partners.GrantAdminAsync(Info.UserId, Info.AppId, _email, _rank);
         _busy = false;
         _ok = result.Succeeded;
-        _message = result.Message;
+        _message = L[result.Message ?? string.Empty];
         if (result.Succeeded)
         {
             _email = string.Empty;
@@ -104,7 +104,7 @@ else
         PartnerResult result = await Partners.GrantAdminAsync(Info.UserId, Info.AppId, admin.Email, rank);
         _busy = false;
         _ok = result.Succeeded;
-        _message = result.Message;
+        _message = L[result.Message ?? string.Empty];
         await LoadAsync();
     }
 
@@ -115,7 +115,7 @@ else
         _busy = false;
         _removing = null;
         _ok = result.Succeeded;
-        _message = result.Message;
+        _message = L[result.Message ?? string.Empty];
         await LoadAsync();
     }
 }

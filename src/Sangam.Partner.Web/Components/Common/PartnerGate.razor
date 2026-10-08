@@ -4,30 +4,27 @@
 
 @if (_state == GateState.Checking)
 {
-    <p class="sg-note">Checking your access…</p>
+    <p class="sg-note">@L["Checking your access…"]</p>
 }
 else if (_state == GateState.NotAnAdministrator)
 {
     <section class="sg-shut">
-        <h1 class="sg-shut-title">You do not administer any application</h1>
+        <h1 class="sg-shut-title">@L["You do not administer any application"]</h1>
         <p class="sg-shut-body">
-            Your Sangam account is fine — it simply is not an administrator of any application on
-            Sangam. If you should be, ask an owner of the application to add you, or ask imagiQa to
-            make you its first owner.
+            @L["Your Sangam account is fine — it simply is not an administrator of any application on Sangam. If you should be, ask an owner of the application to add you, or ask the Sangam team to make you its first owner."]
         </p>
-        <a class="sg-btn sg-btn--secondary" href="/signout">Sign out</a>
+        <a class="sg-btn sg-btn--secondary" href="/signout">@L["Sign out"]</a>
     </section>
 }
 else if (_state == GateState.MfaRequired)
 {
     <section class="sg-shut">
-        <h1 class="sg-shut-title">Set up two-step sign-in first</h1>
+        <h1 class="sg-shut-title">@L["Set up two-step sign-in first"]</h1>
         <p class="sg-shut-body">
-            Application administrators must have an authenticator app. Open your Sangam account
-            portal, turn on two-step sign-in under Personal details, then sign in here again.
+            @L["Application administrators must have an authenticator app. Open your Sangam account portal, turn on two-step sign-in under Personal details, then sign in here again."]
         </p>
-        <a class="sg-btn sg-btn--primary" href="@PortalUrl">Go to your account portal</a>
-        <a class="sg-btn sg-btn--secondary" href="/signout">Sign out</a>
+        <a class="sg-btn sg-btn--primary" href="@PortalUrl">@L["Go to your account portal"]</a>
+        <a class="sg-btn sg-btn--secondary" href="/signout">@L["Sign out"]</a>
     </section>
 }
 else

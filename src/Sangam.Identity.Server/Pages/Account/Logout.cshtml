@@ -1,17 +1,52 @@
 @page
 @model LogoutModel
 @{
-    ViewData["Title"] = "Sign out";
+    ViewData["Title"] = L["Sign out"].Value;
+}
+
+@if (Model.SignedOut)
+{
+  <section class="sg-card" data-frontchannel>
+    <h1 class="sg-card-title">@L["You're signed out of Sangam"]</h1>
+    <p class="sg-card-body">@L["Signing you out of the applications you used in this session as well:"]</p>
+    <ul class="sg-signout-apps">
+      @foreach (var frame in Model.Frames)
+      {
+        <li>@frame.AppName</li>
+      }
+    </ul>
+    @foreach (var frame in Model.Frames)
+    {
+      <iframe class="sg-frontchannel" src="@frame.Uri" title="@L["Signing out of {0}", frame.AppName]" aria-hidden="true" tabindex="-1" referrerpolicy="origin"></iframe>
+    }
+
+    @if (Model.EndSessionFields.Count > 0)
+    {
+      <form method="post" class="sg-btn-row" data-frontchannel-continue>
+        @foreach (var field in Model.EndSessionFields)
+        {
+          <input type="hidden" name="@field.Key" value="@field.Value" />
+        }
+        <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Continue"]</button>
+      </form>
+    }
+    else
+    {
+      <div class="sg-btn-row"><a class="sg-btn sg-btn--primary sg-btn--block" href="@Model.ContinueUrl" data-frontchannel-continue>@L["Continue"]</a></div>
+    }
+  </section>
+  <script src="~/js/frontchannel.js" asp-append-version="true"></script>
+  return;
 }
 
 <section class="sg-card">
-  <h1 class="sg-card-title">Sign out of Sangam?</h1>
-  <p class="sg-card-body">This ends your Sangam session on this device. Applications you signed in to may keep their own sessions until they expire.</p>
+  <h1 class="sg-card-title">@L["Sign out of Sangam?"]</h1>
+  <p class="sg-card-body">@L["This ends your Sangam session on this device. Applications you signed in to may keep their own sessions until they expire."]</p>
 
   @if (Model.User is not null)
   {
     <div class="sg-signed-in-as">
-      <span class="sg-signed-in-label">SIGNED IN AS</span>
+      <span class="sg-signed-in-label">@L["SIGNED IN AS"]</span>
       <span class="sg-avatar sg-avatar--initials sg-avatar--32" aria-hidden="true">@Model.Initials</span>
       <span class="sg-account-text"><span class="sg-account-name">@Model.User.DisplayName</span><span class="sg-account-email sg-mono">@Model.User.Email</span></span>
     </div>
@@ -22,13 +57,13 @@
     {
       <input type="hidden" name="@field.Key" value="@field.Value" />
     }
-    <a class="sg-btn sg-btn--secondary sg-btn--block" href="@(Model.StayUrl)">Stay signed in</a>
-    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">Sign out</button>
+    <a class="sg-btn sg-btn--secondary sg-btn--block" href="@(Model.StayUrl)">@L["Stay signed in"]</a>
+    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Sign out"]</button>
   </form>
 
   @if (Model.Partner is not null && Model.PartnerReturnUrl is not null)
   {
     <div class="sg-cord-rule" role="presentation"></div>
-    <p class="sg-alt"><span class="sg-glyph-inline" style="background:@Model.Partner.BrandColour" aria-hidden="true">@Model.Partner.Glyph</span> <a href="@Model.PartnerReturnUrl">Return to @Model.Partner.DisplayName without signing out</a></p>
+    <p class="sg-alt"><span class="sg-glyph-inline" style="background:@Model.Partner.BrandColour" aria-hidden="true">@Model.Partner.Glyph</span> <a href="@Model.PartnerReturnUrl">@L["Return to {0} without signing out", Model.Partner.DisplayName]</a></p>
   }
 </section>

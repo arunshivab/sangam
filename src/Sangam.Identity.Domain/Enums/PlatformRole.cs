@@ -1,7 +1,7 @@
 namespace Sangam.Identity.Domain.Enums;
 
 /// <summary>
-/// The rank a platform operator (imagiQa staff) holds on the admin console.
+/// The rank a platform operator (the Sangam team) holds on the admin console.
 /// <para>
 /// Everyone in <c>platform_operators</c> is an operator; this is how much they may do. The ranks
 /// are ordered and cumulative, so every check is a comparison: <c>role &gt;= PlatformRole.Support</c>.

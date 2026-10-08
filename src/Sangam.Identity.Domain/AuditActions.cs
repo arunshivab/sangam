@@ -18,6 +18,9 @@ public static class AuditActions
     /// <summary>The person confirmed the new address with its code; the old address was told (OI-022).</summary>
     public const string UserEmailChange = "user.email.change";
 
+    /// <summary>Someone tried to register with an address or mobile that already has an account, while existing accounts are concealed (V-09).</summary>
+    public const string UserRegisterDuplicate = "user.register.duplicate";
+
     /// <summary>A passkey was added to the account (PR-14).</summary>
     public const string UserPasskeyAdd = "user.passkey.add";
 
@@ -35,6 +38,21 @@ public static class AuditActions
 
     /// <summary>The day's SMS volume reached the configured alert threshold (PR-15, cost and SMS-pumping watch).</summary>
     public const string SmsVolumeAlert = "sms.volume.alert";
+
+    /// <summary>An application asked for a stronger or more recent sign-in than the session had; the person was asked to authenticate again (PR-17).</summary>
+    public const string UserStepUpRequired = "user.stepup.required";
+
+    /// <summary>An application's step-up request (acr_values or max_age) was met (PR-17).</summary>
+    public const string UserStepUpSuccess = "user.stepup.success";
+
+    /// <summary>A step-up could not be met: the level asked for is not available to this person (PR-17).</summary>
+    public const string UserStepUpFail = "user.stepup.fail";
+
+    /// <summary>The person signed a record in an application's signature ceremony (PR-17).</summary>
+    public const string UserSignatureSign = "user.signature.sign";
+
+    /// <summary>The person declined to sign in an application's signature ceremony (PR-17).</summary>
+    public const string UserSignatureDecline = "user.signature.decline";
 
     /// <summary>Successful sign-in.</summary>
     public const string UserLoginSuccess = "user.login.success";
@@ -138,6 +156,24 @@ public static class AuditActions
     /// </summary>
     public const string AdminUserMfaReset = "admin.user.mfa.reset";
 
+    /// <summary>
+    /// Support asked to reset a person's two-step sign-in (D-K). Metadata records how the operator verified the
+    /// person's identity (required), the reference, whether the account is privileged, and when it takes effect.
+    /// </summary>
+    public const string AdminUserMfaResetRequest = "admin.user.mfa.reset.request";
+
+    /// <summary>An operator applied a two-step reset at once, skipping the cooling-off period (D-K); the reason is in metadata.</summary>
+    public const string AdminUserMfaResetUrgent = "admin.user.mfa.reset.urgent";
+
+    /// <summary>An operator withdrew a pending two-step reset (D-K).</summary>
+    public const string AdminUserMfaResetWithdraw = "admin.user.mfa.reset.withdraw";
+
+    /// <summary>The account's owner cancelled a pending two-step reset — "this wasn't me" (D-K).</summary>
+    public const string UserMfaResetCancel = "user.mfa.reset.cancel";
+
+    /// <summary>An alert was sent to the platform's owner (D-H, D-K).</summary>
+    public const string PlatformAlert = "platform.alert";
+
     /// <summary>A platform operator deleted an account immediately, without waiting for the grace period.</summary>
     public const string AdminUserDeleteNow = "admin.user.delete_now";
 
@@ -152,6 +188,12 @@ public static class AuditActions
 
     /// <summary>An application administrator changed the application's password or second-factor policy (PR-16).</summary>
     public const string AppPolicyUpdate = "app.policy.update";
+
+    /// <summary>Sign-in page branding (logo, accent, welcome line, links) changed at a level (PR-19).</summary>
+    public const string CustomisationBrandingUpdate = "customisation.branding.update";
+
+    /// <summary>An e-mail or SMS template changed or reset at a level (PR-19).</summary>
+    public const string CustomisationTemplateUpdate = "customisation.template.update";
 
     /// <summary>Membership granted.</summary>
     public const string OrgMembershipGrant = "org_membership.grant";

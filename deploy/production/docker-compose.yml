@@ -5,6 +5,17 @@ name: sangam
 x-host: &host
   restart: unless-stopped
   networks: [edge, sangam-db]
+  # D-J: the offline breached-password list, imported on the server (README: "Breached-password list").
+  # D-H: the backup and restore-drill scripts write their status here for the monitoring page.
+  volumes:
+    - /srv/sangam/pwned:/var/lib/sangam/pwned:ro
+    - /srv/sangam/status:/var/lib/sangam/status:ro
+  # D-H: logs stay on the server (rotated here; kept 180 days in the encrypted backups, R4).
+  logging:
+    driver: local
+    options:
+      max-size: "50m"
+      max-file: "20"
   environment: &env
     ASPNETCORE_ENVIRONMENT: Production
     SANGAM_SECRETS_DIR: /run/secrets
@@ -16,7 +27,14 @@ x-host: &host
     # SMS stays off until the founder picks a DLT provider, header and templates (SGM-206); the identity
     # server and the portal must agree, so it is set here for every host (PR-15).
     Sangam__Sms__Enabled: "false"
-    # Optional: Sangam__Telemetry__OtlpEndpoint: http://otel-collector:4317 (collector is the founder's choice)
+    # D-B / D-M: Anjal sends all of Sangam's e-mail (and later its SMS) through its API; every host sends e-mail.
+    # The address and paths are confirmed after Anjal's own testing (docs/anjal-messaging-contract.md).
+    Sangam__Anjal__BaseUrl: "SET-ANJAL-API-URL"
+    Sangam__Anjal__FromAddress: no-reply@sangamid.in
+    # D-J: offline only. The check stays off until the founder switches it on AND the list is loaded.
+    Sangam__Passwords__BreachCheck__ListPath: /var/lib/sangam/pwned/pwned-passwords.bin
+    # D-H: self-hosted monitoring; no third party. Every host records its metrics into the database.
+    Sangam__Monitoring__StatusDirectory: /var/lib/sangam/status
 
 services:
   identity:
@@ -25,21 +43,23 @@ services:
     environment:
       <<: *env
       Sangam__Issuer: https://id.sangamid.in
+      Sangam__Monitoring__HostName: identity
+      # D-H: the identity server evaluates the thresholds and alerts the founder by e-mail and SMS through Anjal.
+      Sangam__Monitoring__Evaluate: "true"
+      Sangam__Monitoring__ExpectedHosts: identity,portal,admin,partner
+      Sangam__Monitoring__TlsHosts: id.sangamid.in,account.sangamid.in,admin.sangamid.in,partner.sangamid.in
+      Sangam__Monitoring__AnjalHealthUrl: "SET-ANJAL-HEALTH-URL"
+      Sangam__Alerts__Emails: "SET-FOUNDER-ALERT-EMAIL"
+      Sangam__Alerts__Mobiles: "SET-FOUNDER-ALERT-MOBILE"
       # Passkeys are bound to this host for good: changing the RP ID later breaks every passkey (PR-14).
       Sangam__Passkeys__RpId: id.sangamid.in
       Sangam__Passkeys__Origins: https://id.sangamid.in
-      # Anjal's SMTP submission settings are the founder's to supply (OI-027).
-      Sangam__Email__Smtp__Host: "SET-ANJAL-SMTP-HOST"
-      Sangam__Email__Smtp__Port: "587"
-      Sangam__Email__Smtp__Security: StartTls
-      Sangam__Email__Smtp__FromAddress: no-reply@sangamid.in
       Sangam__Certificates__Signing__0__Path: /run/secrets/signing_current.pfx
       Sangam__Certificates__Encryption__0__Path: /run/secrets/encryption_current.pfx
       # Audit retention is unset until the founder decides the periods (Sangam__Audit__RetentionDays).
     secrets:
       - source: ConnectionStrings__Sangam
-      - source: Sangam__Email__Smtp__Username
-      - source: Sangam__Email__Smtp__Password
+      - source: Sangam__Anjal__ApiKey
       - source: Sangam__Certificates__Signing__0__Password
       - source: Sangam__Certificates__Encryption__0__Password
       - source: signing_current.pfx
@@ -50,17 +70,26 @@ services:
   portal:
     <<: *host
     build: { context: ../.., target: app, args: { PROJECT: Sangam.SelfService.Web } }
-    secrets: [ConnectionStrings__Sangam, Sangam__Portal__ClientSecret, keyring_current.pfx, Sangam__DataProtection__Certificates__0__Password]
+    environment:
+      <<: *env
+      Sangam__Monitoring__HostName: portal
+    secrets: [ConnectionStrings__Sangam, Sangam__Portal__ClientSecret, Sangam__Anjal__ApiKey, keyring_current.pfx, Sangam__DataProtection__Certificates__0__Password]
 
   admin:
     <<: *host
     build: { context: ../.., target: app, args: { PROJECT: Sangam.Admin.Web } }
-    secrets: [ConnectionStrings__Sangam, Sangam__Admin__ClientSecret, keyring_current.pfx, Sangam__DataProtection__Certificates__0__Password]
+    environment:
+      <<: *env
+      Sangam__Monitoring__HostName: admin
+    secrets: [ConnectionStrings__Sangam, Sangam__Admin__ClientSecret, Sangam__Anjal__ApiKey, keyring_current.pfx, Sangam__DataProtection__Certificates__0__Password]
 
   partner:
     <<: *host
     build: { context: ../.., target: app, args: { PROJECT: Sangam.Partner.Web } }
-    secrets: [ConnectionStrings__Sangam, Sangam__Partner__ClientSecret, keyring_current.pfx, Sangam__DataProtection__Certificates__0__Password]
+    environment:
+      <<: *env
+      Sangam__Monitoring__HostName: partner
+    secrets: [ConnectionStrings__Sangam, Sangam__Partner__ClientSecret, Sangam__Anjal__ApiKey, keyring_current.pfx, Sangam__DataProtection__Certificates__0__Password]
 
   caddy:
     image: caddy:2
@@ -74,8 +103,7 @@ services:
 
 secrets:
   ConnectionStrings__Sangam: { file: ./secrets/ConnectionStrings__Sangam }
-  Sangam__Email__Smtp__Username: { file: ./secrets/Sangam__Email__Smtp__Username }
-  Sangam__Email__Smtp__Password: { file: ./secrets/Sangam__Email__Smtp__Password }
+  Sangam__Anjal__ApiKey: { file: ./secrets/Sangam__Anjal__ApiKey }
   Sangam__Certificates__Signing__0__Password: { file: ./secrets/Sangam__Certificates__Signing__0__Password }
   Sangam__Certificates__Encryption__0__Password: { file: ./secrets/Sangam__Certificates__Encryption__0__Password }
   signing_current.pfx: { file: ./secrets/signing_current.pfx }

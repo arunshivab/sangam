@@ -18,18 +18,21 @@ public sealed class VerifyModel : AuthPageModel
     private readonly IAppDirectory _apps;
     private readonly OneTimeCodeService _codes;
     private readonly IClock _clock;
+    private readonly OtpOptions _otp;
 
     /// <summary>Initialises the page.</summary>
     /// <param name="accounts">Account service.</param>
     /// <param name="apps">App directory.</param>
     /// <param name="codes">Code service, for the resend countdown.</param>
     /// <param name="clock">Clock.</param>
-    public VerifyModel(IAccountService accounts, IAppDirectory apps, OneTimeCodeService codes, IClock clock)
+    /// <param name="otp">Code policy, so a concealed registration counts down exactly like a real one (V-09).</param>
+    public VerifyModel(IAccountService accounts, IAppDirectory apps, OneTimeCodeService codes, IClock clock, OtpOptions otp)
     {
         _accounts = accounts ?? throw new ArgumentNullException(nameof(accounts));
         _apps = apps ?? throw new ArgumentNullException(nameof(apps));
         _codes = codes ?? throw new ArgumentNullException(nameof(codes));
         _clock = clock ?? throw new ArgumentNullException(nameof(clock));
+        _otp = otp ?? throw new ArgumentNullException(nameof(otp));
     }
 
     /// <summary>Where to continue after verification.</summary>
@@ -59,6 +62,11 @@ public sealed class VerifyModel : AuthPageModel
     /// <summary>Renders the code form.</summary>
     public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken)
     {
+        if (await PrepareConcealedAsync(cancellationToken))
+        {
+            return Page();
+        }
+
         UserSummary? user = await LoadPendingUserAsync(cancellationToken);
         if (user is null)
         {
@@ -77,6 +85,17 @@ public sealed class VerifyModel : AuthPageModel
     /// <summary>Checks the code; on success the address is verified and a session is opened.</summary>
     public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)
     {
+        if (await PrepareConcealedAsync(cancellationToken))
+        {
+            // No code was sent, so none can match: answer exactly as for a wrong code (V-09).
+            if (ModelState.IsValid)
+            {
+                Error = L["That code is not correct. Check the email and try again."];
+            }
+
+            return Page();
+        }
+
         UserSummary? user = await LoadPendingUserAsync(cancellationToken);
         if (user is null)
         {
@@ -93,8 +112,8 @@ public sealed class VerifyModel : AuthPageModel
         if (status != OtpVerifyStatus.Valid)
         {
             Error = status == OtpVerifyStatus.Invalid
-                ? "That code is not correct. Check the email and try again."
-                : "That code has expired. Request a new one.";
+                ? L["That code is not correct. Check the email and try again."]
+                : L["That code has expired. Request a new one."];
             return Page();
         }
 
@@ -107,6 +126,14 @@ public sealed class VerifyModel : AuthPageModel
     /// <summary>Sends a fresh code (subject to the cooldown).</summary>
     public async Task<IActionResult> OnPostResendAsync(CancellationToken cancellationToken)
     {
+        PendingFlow? concealed = await SangamAuthentication.ReadPendingAsync(HttpContext, SangamAuthentication.Pending.EmailVerification);
+        if (concealed is { UserId: Guid id, Email: string email } && id == Guid.Empty)
+        {
+            // Restart the countdown, as a real resend would; nothing is sent.
+            await SangamAuthentication.StorePendingConcealedRegistrationAsync(HttpContext, email);
+            return RedirectToPage("/Account/Verify", new { returnUrl = ReturnUrl });
+        }
+
         UserSummary? user = await LoadPendingUserAsync(cancellationToken);
         if (user is null)
         {
@@ -115,6 +142,23 @@ public sealed class VerifyModel : AuthPageModel
 
         await _accounts.IssueCodeAsync(user.Id, OneTimeCodePurpose.EmailVerification, cancellationToken);
         return RedirectToPage("/Account/Verify", new { returnUrl = ReturnUrl });
+    }
+
+    /// <summary>Prepares the page for a concealed registration (V-09); <see langword="false"/> when this is a real one.</summary>
+    private async Task<bool> PrepareConcealedAsync(CancellationToken cancellationToken)
+    {
+        PendingFlow? pending = await SangamAuthentication.ReadPendingAsync(HttpContext, SangamAuthentication.Pending.EmailVerification);
+        if (pending is not { UserId: Guid id, Email: string email } || id != Guid.Empty)
+        {
+            return false;
+        }
+
+        await ResolvePartnerAsync(_apps, ReturnUrl, cancellationToken);
+        Email = email;
+        DateTimeOffset? issued = await SangamAuthentication.ReadPendingIssuedAsync(HttpContext);
+        int elapsed = issued is null ? int.MaxValue : (int)(_clock.UtcNow - issued.Value).TotalSeconds;
+        ResendIn = Math.Max(0, (int)Math.Ceiling(_otp.ResendCooldown.TotalSeconds) - elapsed);
+        return true;
     }
 
     private async Task<UserSummary?> LoadPendingUserAsync(CancellationToken cancellationToken)

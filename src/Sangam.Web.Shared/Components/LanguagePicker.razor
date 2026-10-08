@@ -1,0 +1,17 @@
+@using System.Globalization
+@using Sangam.Web.Shared.Localization
+@inject NavigationManager Navigation
+
+<nav class="sg-lang@(Class is null ? "" : " " + Class)" aria-label="Language / भाषा / ഭാഷ">
+  @foreach (SangamLanguage language in SangamLanguages.Offered)
+  {
+    @if (string.Equals(language.Culture, CultureInfo.CurrentUICulture.Name, StringComparison.OrdinalIgnoreCase))
+    {
+      <span class="sg-lang-item sg-lang-item--current" lang="@language.Culture" aria-current="true">@language.NativeName</span>
+    }
+    else
+    {
+      <a class="sg-lang-item" lang="@language.Culture" hreflang="@language.Culture" href="@LocalizationExtensions.SwitchUrl(language.Culture, Here)" data-enhance-nav="false" title="@language.EnglishName">@language.NativeName</a>
+    }
+  }
+</nav>

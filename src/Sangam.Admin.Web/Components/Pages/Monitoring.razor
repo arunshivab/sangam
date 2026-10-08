@@ -1,0 +1,266 @@
+@page "/monitoring"
+@using Sangam.Identity.Application.Monitoring
+@inject IMonitoringService Monitor
+
+<PageTitle>@L["Monitoring · Sangam console"]</PageTitle>
+
+<h1 class="sg-h1">@L["Monitoring"]</h1>
+<p class="sg-lede">@L["Sangam watches itself: these numbers are kept in Sangam's own database, and the platform owner is alerted by e-mail and SMS through Anjal when a threshold is crossed. Times are in India time."]</p>
+
+@if (_snapshot is null)
+{
+  <p class="sg-muted">@(_loaded ? L["Monitoring is for platform operators only."] : L["Loading…"])</p>
+}
+else
+{
+  MonitoringSnapshot s = _snapshot;
+  <div class="sg-mon-head">
+    <span class="sg-muted">@L["As of {0}", When(s.At)]</span>
+    <button type="button" class="sg-btn sg-btn--ghost" @onclick="LoadAsync" disabled="@_busy">@L["Refresh"]</button>
+  </div>
+
+  @if (s.Alerts.Count > 0)
+  {
+    <section class="sg-panel" data-panel="alerts">
+      <h2 class="sg-h2">@L["Alerts"]</h2>
+      <table class="sg-table">
+        <thead><tr><th>@L["Condition"]</th><th>@L["Opened"]</th><th>@L["State"]</th></tr></thead>
+        <tbody>
+          @foreach (AlertRow alert in s.Alerts)
+          {
+            <tr>
+              <td>@alert.Summary<span class="sg-sub sg-mono">@alert.Key</span></td>
+              <td class="sg-mono">@When(alert.OpenedAt)</td>
+              <td>@if (alert.ResolvedAt is DateTimeOffset resolved)
+                  {
+                    <span class="sg-ok">@L["resolved {0}", When(resolved)]</span>
+                  }
+                  else
+                  {
+                    <span class="sg-warn">@L["open"]</span>
+                  }</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  }
+
+  <div class="sg-grid">
+    <section class="sg-panel" data-panel="health">
+      <h2 class="sg-h2">@L["Hosts and database"]</h2>
+      <dl class="sg-facts">
+        @foreach (HostStatus host in s.Hosts)
+        {
+          <dt>@host.Host</dt>
+          <dd><span class="@(host.Up ? "sg-ok" : "sg-warn")">@(host.Up ? L["up"] : L["silent"])</span>@if (host.LastSeen is DateTimeOffset seen)
+              {
+                <span class="sg-muted"> · @L["last report {0}", When(seen)]</span>
+              }</dd>
+        }
+        <dt>@L["Database"]</dt>
+        <dd>@if (s.Database.Up)
+            {
+              <span class="sg-ok">@L["up"]</span><span class="sg-muted"> · @L["{0} ms · {1} · {2} connections", s.Database.LatencyMs.ToString("F0", CultureInfo.CurrentCulture), Size(s.Database.SizeBytes), s.Database.Connections] · @s.Database.Version</span>
+            }
+            else
+            {
+              <span class="sg-warn">@L["not answering"]</span>
+            }</dd>
+      </dl>
+    </section>
+
+    <section class="sg-panel" data-panel="last-hour">
+      <h2 class="sg-h2">@L["The last hour"]</h2>
+      <dl class="sg-facts">
+        <dt>@L["Sign-ins"]</dt><dd>@L["{0} completed, {1} refused", s.LastHour.SignIns, s.LastHour.SignInFailures]</dd>
+        <dt>@L["Lockouts"]</dt><dd>@s.LastHour.Lockouts</dd>
+        <dt>@L["Rate-limit hits"]</dt><dd>@s.LastHour.RateLimited</dd>
+        <dt>@L["Requests"]</dt><dd>@L["{0}, of which {1} server errors ({2}%)", s.LastHour.Requests, s.LastHour.Errors, s.LastHour.ErrorPercent.ToString("F1", CultureInfo.CurrentCulture)]</dd>
+        <dt>@L["Response time"]</dt><dd>@L["average {0} ms, slowest {1} ms", s.LastHour.AverageMs.ToString("F0", CultureInfo.CurrentCulture), s.LastHour.MaxMs.ToString("F0", CultureInfo.CurrentCulture)]</dd>
+      </dl>
+    </section>
+  </div>
+
+  <section class="sg-panel" data-panel="hours">
+    <h2 class="sg-h2">@L["The last 24 hours"]</h2>
+    @if (s.Hours.Count == 0)
+    {
+      <p class="sg-muted">@L["Nothing recorded yet."]</p>
+    }
+    else
+    {
+      <div class="sg-table-wrap">
+        <table class="sg-table sg-table--compact">
+          <thead><tr><th>@L["Hour"]</th><th>@L["Sign-ins"]</th><th>@L["Refused"]</th><th>@L["Lockouts"]</th><th>@L["Rate-limit hits"]</th><th>@L["Requests"]</th><th>@L["Errors"]</th><th>@L["Avg ms"]</th><th>@L["E-mail failures"]</th><th>@L["SMS failures"]</th></tr></thead>
+          <tbody>
+            @foreach (HourBucket h in s.Hours)
+            {
+              <tr>
+                <td class="sg-mono">@Hour(h.Hour)</td>
+                <td><span class="sg-bar-cell" style="--w:@Width(h.SignIns, s.Hours.Max(x => x.SignIns))">@h.SignIns</span></td>
+                <td class="@(h.SignInFailures > 0 ? "sg-warn-text" : null)">@h.SignInFailures</td>
+                <td>@h.Lockouts</td>
+                <td>@h.RateLimited</td>
+                <td>@h.Requests</td>
+                <td class="@(h.Errors > 0 ? "sg-warn-text" : null)">@h.Errors</td>
+                <td>@h.AverageMs.ToString("F0", CultureInfo.CurrentCulture)</td>
+                <td class="@(h.EmailsFailed > 0 ? "sg-warn-text" : null)">@h.EmailsFailed</td>
+                <td class="@(h.SmsFailed > 0 ? "sg-warn-text" : null)">@h.SmsFailed</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+
+  <div class="sg-grid">
+    <section class="sg-panel" data-panel="anjal">
+      <h2 class="sg-h2">@L["Anjal (e-mail and SMS)"]</h2>
+      <dl class="sg-facts">
+        <dt>@L["Health"]</dt>
+        <dd>@if (s.Anjal.Up is bool up)
+            {
+              <span class="@(up ? "sg-ok" : "sg-warn")">@(up ? L["answering"] : L["not answering"])</span><span class="sg-muted"> · @When(s.Anjal.LastChecked!.Value)</span>
+            }
+            else
+            {
+              <span class="sg-muted">@(s.Anjal.Configured ? L["not watched yet (Sangam:Monitoring:AnjalHealthUrl)"] : L["Anjal's API is not configured on this host"])</span>
+            }</dd>
+        <dt>@L["E-mail, 24 hours"]</dt><dd>@L["{0} accepted, {1} failed", s.Anjal.EmailsSent, s.Anjal.EmailsFailed]</dd>
+        <dt>@L["SMS, 24 hours"]</dt><dd>@L["{0} accepted, {1} failed", s.Anjal.SmsSent, s.Anjal.SmsFailed]</dd>
+      </dl>
+    </section>
+
+    <section class="sg-panel" data-panel="breach-list">
+      <h2 class="sg-h2">@L["Breached-password list"]</h2>
+      <dl class="sg-facts">
+        <dt>@L["Check"]</dt>
+        <dd>@if (s.BreachList.Enabled && s.BreachList.Loaded)
+            {
+              <span class="sg-ok">@L["on"]</span>
+            }
+            else if (s.BreachList.Enabled)
+            {
+              <span class="sg-warn">@L["switched on, but off until the list is loaded"]</span>
+            }
+            else
+            {
+              <span class="sg-muted">@L["off"]</span>
+            }</dd>
+        <dt>@L["List"]</dt>
+        <dd>@if (s.BreachList.Loaded)
+            {
+              @L["{0} hashes, dated {1}", s.BreachList.Entries.ToString("N0", CultureInfo.CurrentCulture), s.BreachList.ListDate?.ToString("d MMM yyyy", CultureInfo.CurrentCulture) ?? "—"]
+            }
+            else
+            {
+              <span class="sg-muted">@(s.BreachList.Problem is string problem ? L[problem] : L["not loaded"])</span>
+            }</dd>
+      </dl>
+    </section>
+  </div>
+
+  <div class="sg-grid">
+    <section class="sg-panel" data-panel="storage">
+      <h2 class="sg-h2">@L["Disk space"]</h2>
+      @if (s.Disks.Count == 0)
+      {
+        <p class="sg-muted">@L["Nothing recorded yet."]</p>
+      }
+      <dl class="sg-facts">
+        @foreach (GaugeReading disk in s.Disks)
+        {
+          <dt>@disk.Host <span class="sg-mono">@disk.Subject</span></dt>
+          <dd class="@(disk.Value < 15 ? "sg-warn-text" : null)">@L["{0}% free", disk.Value.ToString("F1", CultureInfo.CurrentCulture)]</dd>
+        }
+      </dl>
+    </section>
+
+    <section class="sg-panel" data-panel="certificates">
+      <h2 class="sg-h2">@L["Certificates"]</h2>
+      @if (s.Certificates.Count == 0 && s.Tls.Count == 0)
+      {
+        <p class="sg-muted">@L["No certificates are configured on the reporting hosts."]</p>
+      }
+      <dl class="sg-facts">
+        @foreach (GaugeReading cert in s.Certificates.GroupBy(c => c.Subject).Select(g => g.First()))
+        {
+          <dt>@CertificateName(cert.Subject)</dt>
+          <dd class="@(cert.Value < 30 ? "sg-warn-text" : null)">@(cert.Value < 0 ? L["could not be read"] : L["{0} days left", cert.Value.ToString("F0", CultureInfo.CurrentCulture)])</dd>
+        }
+        @foreach (TlsStatus tls in s.Tls)
+        {
+          <dt class="sg-mono">@tls.Host</dt>
+          <dd>@if (tls.NotAfter is DateTimeOffset notAfter)
+              {
+                @L["expires {0}", notAfter.ToString("d MMM yyyy", CultureInfo.CurrentCulture)]
+              }
+              else
+              {
+                <span class="sg-warn-text">@tls.Problem</span>
+              }</dd>
+        }
+      </dl>
+    </section>
+  </div>
+
+  <section class="sg-panel" data-panel="backups">
+    <h2 class="sg-h2">@L["Backups"]</h2>
+    <dl class="sg-facts">
+      <dt>@L["Last backup"]</dt><dd>@Job(s.Backup)</dd>
+      <dt>@L["Last restore drill"]</dt><dd>@Job(s.RestoreDrill)</dd>
+    </dl>
+  </section>
+}
+
+@code {
+    private static readonly TimeSpan India = TimeSpan.FromHours(5.5);
+
+    [CascadingParameter]
+    public ConsoleContext? Context { get; set; }
+
+    private MonitoringSnapshot? _snapshot;
+    private bool _loaded;
+    private bool _busy;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        if (Context is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        _snapshot = await Monitor.SnapshotAsync(Context.UserId);
+        _loaded = true;
+        _busy = false;
+    }
+
+    private static string When(DateTimeOffset at) => at.ToOffset(India).ToString("d MMM, HH:mm", CultureInfo.CurrentCulture);
+
+    private static string Hour(DateTimeOffset at) => at.ToOffset(India).ToString("d MMM HH:00", CultureInfo.CurrentCulture);
+
+    private static string Width(long value, long max) => max <= 0 ? "0%" : (100.0 * value / max).ToString("F0", CultureInfo.InvariantCulture) + "%";
+
+    private static string Size(long bytes) => bytes >= 1L << 30
+        ? (bytes / (double)(1L << 30)).ToString("F1", CultureInfo.CurrentCulture) + " GB"
+        : (bytes / (double)(1L << 20)).ToString("F0", CultureInfo.CurrentCulture) + " MB";
+
+    private string CertificateName(string subject) => subject switch
+    {
+        "signing" => L["Token signing certificate"],
+        "encryption" => L["Token encryption certificate"],
+        "key_ring" => L["Key-ring certificate"],
+        _ => subject,
+    };
+
+    private string Job(JobStatus job) => job.At is not DateTimeOffset at
+        ? L["no report yet"]
+        : job.Ok == false
+            ? L["failed {0}: {1}", When(at), job.Detail ?? string.Empty]
+            : L["succeeded {0}", When(at)] + (string.IsNullOrEmpty(job.Detail) ? string.Empty : " · " + job.Detail);
+}

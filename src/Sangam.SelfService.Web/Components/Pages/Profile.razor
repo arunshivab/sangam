@@ -9,48 +9,51 @@
 @inject Sangam.Identity.Application.Passkeys.IPasskeyService Passkeys
 @inject Sangam.Identity.Application.Sms.ISmsCodeService Sms
 @inject IConfiguration Configuration
+@inject NavigationManager Navigation
 
-<PageTitle>Personal details · sangam</PageTitle>
+<PageTitle>@L["Personal details · sangam"]</PageTitle>
 
-<PageHeader Title="Personal details" Subtitle="What Sangam knows about you, and what you can do with it." />
+<PageHeader Title="@L["Personal details"].Value" Subtitle="@L["What Sangam knows about you, and what you can do with it."].Value" />
 
 @if (_user is null)
 {
-  <p class="sg-note">Loading…</p>
+  <p class="sg-note">@L["Loading…"]</p>
 }
 else
 {
   <section class="sg-panel">
-    <h2 class="sg-panel-title">Your details</h2>
+    <h2 class="sg-panel-title">@L["Your details"]</h2>
     <EditForm Model="_form" OnValidSubmit="SaveAsync" FormName="profile">
       <DataAnnotationsValidator />
       <div class="sg-two">
-        <label class="sg-field-group"><span class="sg-label">First name</span><InputText class="sg-field" @bind-Value="_form.FirstName" /></label>
-        <label class="sg-field-group"><span class="sg-label">Last name</span><InputText class="sg-field" @bind-Value="_form.LastName" /></label>
+        <label class="sg-field-group"><span class="sg-label">@L["First name"]</span><InputText class="sg-field" @bind-Value="_form.FirstName" /></label>
+        <label class="sg-field-group"><span class="sg-label">@L["Last name"]</span><InputText class="sg-field" @bind-Value="_form.LastName" /></label>
       </div>
       <div class="sg-two">
         <label class="sg-field-group">
-          <span class="sg-label">Gender</span>
+          <span class="sg-label">@L["Gender"]</span>
           <InputSelect class="sg-field" @bind-Value="_form.Gender">
-            <option value="female">Female</option>
-            <option value="male">Male</option>
-            <option value="other">Other</option>
-            <option value="prefer_not_to_say">Prefer not to say</option>
+            <option value="female">@L["Female"]</option>
+            <option value="male">@L["Male"]</option>
+            <option value="other">@L["Other"]</option>
+            <option value="prefer_not_to_say">@L["Prefer not to say"]</option>
           </InputSelect>
         </label>
         <label class="sg-field-group">
-          <span class="sg-label">Language</span>
+          <span class="sg-label">@L["Language"]</span>
           <InputSelect class="sg-field" @bind-Value="_form.Locale">
-            <option value="en-IN">English (India)</option>
-            <option value="ta-IN">தமிழ் (India)</option>
-            <option value="hi-IN">हिन्दी (India)</option>
+            @* Each language in its own script, as in the language picker (PR-18). Tamil stays for people who chose it; its screens are not translated yet. *@
+            <option value="en-IN">English</option>
+            <option value="hi-IN">हिन्दी</option>
+            <option value="ml-IN">മലയാളം</option>
+            <option value="ta-IN">தமிழ்</option>
           </InputSelect>
         </label>
       </div>
       <div class="sg-field-group">
-        <span class="sg-label">Mobile</span>
+        <span class="sg-label">@L["Mobile"]</span>
         <div class="sg-phone">
-          <InputSelect class="sg-field sg-field--dial" @bind-Value="_form.CountryIso" aria-label="Country dialling code">
+          <InputSelect class="sg-field sg-field--dial" @bind-Value="_form.CountryIso" aria-label="@L["Country dialling code"]">
             @foreach (var country in CountryCodes.All)
             {
               <option value="@country.Iso">@CountryCodes.OptionLabel(country)</option>
@@ -60,46 +63,46 @@ else
         </div>
         @if (_user?.MobileVerified == true)
         {
-          <p class="sg-note" data-mobile="verified">Verified. Changing it makes the new number unverified until you confirm it with a texted code.</p>
+          <p class="sg-note" data-mobile="verified">@L["Verified. Changing it makes the new number unverified until you confirm it with a texted code."]</p>
         }
         else if (Sms.Enabled && Sms.IsCountryAllowed(_user?.Mobile))
         {
-          <p class="sg-note" data-mobile="unverified">Not yet verified. <a href="@MobileUrl">Verify it with a texted code</a> so sign-in codes can be sent to it.</p>
+          <p class="sg-note" data-mobile="unverified">@L.Markup("Not yet verified. {0} so sign-in codes can be sent to it.", LocalizedMarkup.Link(MobileUrl, L["Verify it with a texted code"]))</p>
         }
         else
         {
-          <p class="sg-note" data-mobile="unverified">Not yet verified. Changing it keeps it unverified until it can be confirmed with a code.</p>
+          <p class="sg-note" data-mobile="unverified">@L["Not yet verified. Changing it keeps it unverified until it can be confirmed with a code."]</p>
         }
       </div>
       @if (_error is not null)
       {
         <p class="sg-field-error">@_error</p>
       }
-      <button type="submit" class="sg-btn sg-btn--primary" disabled="@_working">Save changes</button>
+      <button type="submit" class="sg-btn sg-btn--primary" disabled="@_working">@L["Save changes"]</button>
       <ValidationSummary class="sg-field-error" />
     </EditForm>
 
     <dl class="sg-facts">
-      <div><dt>Email</dt><dd>@_user.Email @(_user.EmailVerified ? "· verified" : "· not verified")</dd></div>
-      <div><dt>Date of birth</dt><dd>@_user.DateOfBirth.ToString("d MMMM yyyy", CultureInfo.InvariantCulture)</dd></div>
-      <div><dt>Member since</dt><dd>@_user.CreatedAt.ToString("d MMMM yyyy", CultureInfo.InvariantCulture)</dd></div>
+      <div><dt>@L["Email"]</dt><dd>@_user.Email · @(_user.EmailVerified ? L["verified"] : L["not verified"])</dd></div>
+      <div><dt>@L["Date of birth"]</dt><dd>@_user.DateOfBirth.ToString("d MMMM yyyy", CultureInfo.CurrentCulture)</dd></div>
+      <div><dt>@L["Member since"]</dt><dd>@_user.CreatedAt.ToString("d MMMM yyyy", CultureInfo.CurrentCulture)</dd></div>
     </dl>
     <div class="sg-field-group" aria-live="polite">
-      <span class="sg-label">Change your email</span>
+      <span class="sg-label">@L["Change your email"]</span>
       @if (_pendingChange is null)
       {
         <div class="sg-two">
-          <label class="sg-field-group"><span class="sg-label">New email</span><input class="sg-field" type="email" autocomplete="email" @bind="_newEmail" /></label>
-          <label class="sg-field-group"><span class="sg-label">Current password</span><input class="sg-field" type="password" autocomplete="current-password" @bind="_currentPassword" /></label>
+          <label class="sg-field-group"><span class="sg-label">@L["New email"]</span><input class="sg-field" type="email" autocomplete="email" @bind="_newEmail" /></label>
+          <label class="sg-field-group"><span class="sg-label">@L["Current password"]</span><input class="sg-field" type="password" autocomplete="current-password" @bind="_currentPassword" /></label>
         </div>
-        <button type="button" class="sg-btn sg-btn--secondary" disabled="@_working" @onclick="RequestEmailChangeAsync">Send a code to the new address</button>
+        <button type="button" class="sg-btn sg-btn--secondary" disabled="@_working" @onclick="RequestEmailChangeAsync">@L["Send a code to the new address"]</button>
       }
       else
       {
-        <p class="sg-note">Enter the code we sent to <strong>@_pendingChange.NewEmail</strong>. Until you do, your account keeps its current address.</p>
-        <label class="sg-field-group"><span class="sg-label">Code</span><input class="sg-field" inputmode="numeric" autocomplete="one-time-code" @bind="_changeCode" /></label>
-        <button type="button" class="sg-btn sg-btn--primary" disabled="@_working" @onclick="ConfirmEmailChangeAsync">Change my email</button>
-        <button type="button" class="sg-btn sg-btn--secondary" disabled="@_working" @onclick="CancelEmailChangeAsync">Cancel</button>
+        <p class="sg-note">@L.Markup("Enter the code we sent to {0}. Until you do, your account keeps its current address.", LocalizedMarkup.Tag("strong", _pendingChange.NewEmail))</p>
+        <label class="sg-field-group"><span class="sg-label">@L["Code"]</span><input class="sg-field" inputmode="numeric" autocomplete="one-time-code" @bind="_changeCode" /></label>
+        <button type="button" class="sg-btn sg-btn--primary" disabled="@_working" @onclick="ConfirmEmailChangeAsync">@L["Change my email"]</button>
+        <button type="button" class="sg-btn sg-btn--secondary" disabled="@_working" @onclick="CancelEmailChangeAsync">@L["Cancel"]</button>
       }
       @if (_changeMessage is not null)
       {
@@ -111,69 +114,68 @@ else
       }
     </div>
     <p class="sg-note">
-      Your date of birth is fixed here because applications rely on it to identify you; it will become changeable
-      once you can prove your identity with DigiLocker. Write to <a href="mailto:help@@sangamid.in">help@@sangamid.in</a> if it is wrong.
+      @L.Markup("Your date of birth is fixed here because applications rely on it to identify you; it will become changeable once you can prove your identity with DigiLocker. Write to {0} if it is wrong.", LocalizedMarkup.Link("mailto:help@sangamid.in", "help@sangamid.in"))
     </p>
   </section>
 
   <section class="sg-panel">
-    <h2 class="sg-panel-title">How you sign in</h2>
+    <h2 class="sg-panel-title">@L["How you sign in"]</h2>
     <div class="sg-field-group">
       <InputSelect class="sg-field" Value="_mode" ValueChanged="@((string v) => _mode = v)" ValueExpression="() => _mode">
-        <option value="password">Email and password</option>
-        <option value="password_and_otp">Password, then an emailed code</option>
-        <option value="otp_only">An emailed code only (no password)</option>
+        <option value="password">@L["Email and password"]</option>
+        <option value="password_and_otp">@L["Password, then an emailed code"]</option>
+        <option value="otp_only">@L["An emailed code only (no password)"]</option>
       </InputSelect>
-      <p class="sg-note">An application can require a stronger method than the one you choose here.</p>
+      <p class="sg-note">@L["An application can require a stronger method than the one you choose here."]</p>
     </div>
-    <button type="button" class="sg-btn sg-btn--secondary" @onclick="SaveModeAsync">Save preference</button>
+    <button type="button" class="sg-btn sg-btn--secondary" @onclick="SaveModeAsync">@L["Save preference"]</button>
   </section>
 
   @if (Passkeys.Enabled)
   {
     <section class="sg-panel" data-panel="passkeys">
-      <h2 class="sg-panel-title">Passkeys</h2>
+      <h2 class="sg-panel-title">@L["Passkeys"]</h2>
       @if (_passkeys.Count == 0)
       {
-        <p class="sg-panel-body">Sign in with your fingerprint, face or device PIN instead of a password. A passkey only works on Sangam's own site, so a fake site cannot steal it.</p>
+        <p class="sg-panel-body">@L["Sign in with your fingerprint, face or device PIN instead of a password. A passkey only works on Sangam's own site, so a fake site cannot steal it."]</p>
       }
       else
       {
-        <p class="sg-panel-body">@(_passkeys.Count == 1 ? "1 passkey is" : $"{_passkeys.Count} passkeys are") set up: @string.Join(", ", _passkeys.Select(p => p.Name)).</p>
+        <p class="sg-panel-body">@(_passkeys.Count == 1 ? L["1 passkey is set up: {0}.", string.Join(", ", _passkeys.Select(p => p.Name))] : L["{0} passkeys are set up: {1}.", _passkeys.Count, string.Join(", ", _passkeys.Select(p => p.Name))])</p>
       }
-      <p class="sg-note">Passkeys are added and removed on the Sangam sign-in site, which is the only place they work.</p>
-      <a class="sg-btn sg-btn--secondary" href="@PasskeysUrl">@(_passkeys.Count == 0 ? "Add a passkey" : "Manage passkeys")</a>
+      <p class="sg-note">@L["Passkeys are added and removed on the Sangam sign-in site, which is the only place they work."]</p>
+      <a class="sg-btn sg-btn--secondary" href="@PasskeysUrl">@(_passkeys.Count == 0 ? L["Add a passkey"] : L["Manage passkeys"])</a>
     </section>
   }
 
   <section class="sg-panel">
-    <h2 class="sg-panel-title">Two-step sign-in</h2>
+    <h2 class="sg-panel-title">@L["Two-step sign-in"]</h2>
     @if (_mfaEnrolled)
     {
-      <p class="sg-panel-body">An authenticator app is set up on your account. You are asked for a code from it every time you sign in.</p>
+      <p class="sg-panel-body">@L["An authenticator app is set up on your account. You are asked for a code from it every time you sign in."]</p>
       @if (_isOperator)
       {
-        <p class="sg-note">You hold Sangam console access, so two-step sign-in cannot be switched off.</p>
+        <p class="sg-note">@L["You hold Sangam console access, so two-step sign-in cannot be switched off."]</p>
       }
       else
       {
-        <button type="button" class="sg-btn sg-btn--danger" @onclick="DisableMfaAsync" disabled="@_working">Remove the authenticator</button>
+        <button type="button" class="sg-btn sg-btn--danger" @onclick="DisableMfaAsync" disabled="@_working">@L["Remove the authenticator"]</button>
       }
     }
     else if (_enrolment is null)
     {
-      <p class="sg-panel-body">Add a second step with an authenticator app such as Google Authenticator, Aegis or 1Password. It is stronger than an emailed code, because it does not depend on your mailbox.</p>
-      <button type="button" class="sg-btn sg-btn--secondary" @onclick="BeginMfaAsync" disabled="@_working">Set up an authenticator app</button>
+      <p class="sg-panel-body">@L["Add a second step with an authenticator app such as Google Authenticator, Aegis or 1Password. It is stronger than an emailed code, because it does not depend on your mailbox."]</p>
+      <button type="button" class="sg-btn sg-btn--secondary" @onclick="BeginMfaAsync" disabled="@_working">@L["Set up an authenticator app"]</button>
     }
     else
     {
-      <p class="sg-panel-body">Scan this with your authenticator app, then type the six-digit code it shows.</p>
+      <p class="sg-panel-body">@L["Scan this with your authenticator app, then type the six-digit code it shows."]</p>
       <div class="sg-qr">@((MarkupString)_enrolment.QrCodeSvg)</div>
-      <p class="sg-note">Cannot scan? Type this key into the app instead, and choose <strong>Time based</strong>:</p>
+      <p class="sg-note">@L.Markup("Cannot scan? Type this key into the app instead, and choose {0}:", LocalizedMarkup.Tag("strong", L["Time based"]))</p>
       <p class="sg-key-box"><span class="sg-mono sg-key">@_enrolment.SharedKey</span></p>
-      <p class="sg-note">It contains only letters and the digits 2 to 7 — never 0, 1, 8 or 9. Spaces don't matter.</p>
+      <p class="sg-note">@L["It contains only letters and the digits 2 to 7 — never 0, 1, 8 or 9. Spaces don't matter."]</p>
       <div class="sg-field-group">
-        <label class="sg-label" for="mfa-code">Code from the app</label>
+        <label class="sg-label" for="mfa-code">@L["Code from the app"]</label>
         <input id="mfa-code" class="sg-field sg-field--confirm" @bind="_mfaCode" @bind:event="oninput" inputmode="numeric" maxlength="7" />
       </div>
       @if (_mfaError is not null)
@@ -181,66 +183,63 @@ else
         <p class="sg-field-error">@_mfaError</p>
       }
       <div class="sg-confirm-actions">
-        <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _enrolment = null">Cancel</button>
-        <button type="button" class="sg-btn sg-btn--primary" @onclick="ConfirmMfaAsync" disabled="@_working">Turn on two-step sign-in</button>
+        <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _enrolment = null">@L["Cancel"]</button>
+        <button type="button" class="sg-btn sg-btn--primary" @onclick="ConfirmMfaAsync" disabled="@_working">@L["Turn on two-step sign-in"]</button>
       </div>
     }
 
     @if (_recoveryCodes.Count > 0)
     {
       <div class="sg-recovery">
-        <h3 class="sg-recovery-title">Save these recovery codes now</h3>
-        <p class="sg-note">Each one signs you in once if you lose your phone. They are shown only this time.</p>
+        <h3 class="sg-recovery-title">@L["Save these recovery codes now"]</h3>
+        <p class="sg-note">@L["Each one signs you in once if you lose your phone. They are shown only this time."]</p>
         <ul class="sg-recovery-list">
           @foreach (string recoveryCode in _recoveryCodes)
           {
             <li class="sg-mono">@recoveryCode</li>
           }
         </ul>
-        <button type="button" class="sg-btn sg-btn--secondary" @onclick="DownloadRecoveryAsync">Download them</button>
+        <button type="button" class="sg-btn sg-btn--secondary" @onclick="DownloadRecoveryAsync">@L["Download them"]</button>
       </div>
     }
   </section>
 
   <section class="sg-panel">
-    <h2 class="sg-panel-title">A copy of your data</h2>
-    <p class="sg-panel-body">Download everything Sangam holds about you as a JSON file: your profile, the applications you have allowed, your organisations and roles, your sessions and your full activity log. Your password is not included — it is stored only as a one-way hash.</p>
-    <button type="button" class="sg-btn sg-btn--secondary" @onclick="DownloadAsync" disabled="@_working">Download my data</button>
+    <h2 class="sg-panel-title">@L["A copy of your data"]</h2>
+    <p class="sg-panel-body">@L["Download everything Sangam holds about you as a JSON file: your profile, the applications you have allowed, your organisations and roles, your sessions and your full activity log. Your password is not included — it is stored only as a one-way hash."]</p>
+    <button type="button" class="sg-btn sg-btn--secondary" @onclick="DownloadAsync" disabled="@_working">@L["Download my data"]</button>
   </section>
 
   <section class="sg-panel sg-panel--danger">
-    <h2 class="sg-panel-title">Delete your account</h2>
+    <h2 class="sg-panel-title">@L["Delete your account"]</h2>
     @if (_deletion?.Requested == true)
     {
       <p class="sg-panel-body">
-        Your account is scheduled for deletion on <strong>@(_deletion.PurgeAfter?.ToString("d MMMM yyyy", CultureInfo.InvariantCulture))</strong>.
-        Until then you can change your mind and everything comes back. After that date your name, email, mobile and password are destroyed permanently.
+        @L.Markup("Your account is scheduled for deletion on {0}. Until then you can change your mind and everything comes back. After that date your name, email, mobile and password are destroyed permanently.", LocalizedMarkup.Tag("strong", _deletion.PurgeAfter?.ToString("d MMMM yyyy", CultureInfo.CurrentCulture)))
         @if (_deletion.OnHold)
         {
-          <span> A Sangam operator has placed a hold on this account, so the deletion will not run until the hold is cleared.</span>
+          <span> @L["A Sangam operator has placed a hold on this account, so the deletion will not run until the hold is cleared."]</span>
         }
       </p>
-      <button type="button" class="sg-btn sg-btn--primary" @onclick="CancelDeletionAsync" disabled="@_working">Keep my account</button>
+      <button type="button" class="sg-btn sg-btn--primary" @onclick="CancelDeletionAsync" disabled="@_working">@L["Keep my account"]</button>
     }
     else
     {
       <p class="sg-panel-body">
-        Deleting your account signs you out everywhere, revokes every application's access immediately, and blocks sign-in.
-        Your data is kept for 30 days in case you change your mind, then permanently destroyed. Records that the law requires
-        us to retain — an anonymous audit trail of what happened and when — survive deletion.
+        @L["Deleting your account signs you out everywhere, revokes every application's access immediately, and blocks sign-in. Your data is kept for 30 days in case you change your mind, then permanently destroyed. Records that the law requires us to retain — an anonymous audit trail of what happened and when — survive deletion."]
       </p>
       @if (_confirmingDelete)
       {
-        <p class="sg-confirm-body">Type <strong>DELETE</strong> to confirm.</p>
-        <input class="sg-field sg-field--confirm" @bind="_confirmText" @bind:event="oninput" aria-label="Type DELETE to confirm" />
+        <p class="sg-confirm-body">@L.Markup("Type {0} to confirm.", LocalizedMarkup.Tag("strong", "DELETE"))</p>
+        <input class="sg-field sg-field--confirm" @bind="_confirmText" @bind:event="oninput" aria-label="@L["Type DELETE to confirm"]" />
         <div class="sg-confirm-actions">
-          <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _confirmingDelete = false">Cancel</button>
-          <button type="button" class="sg-btn sg-btn--danger" @onclick="DeleteAsync" disabled="@(_working || _confirmText != "DELETE")">Delete my account</button>
+          <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _confirmingDelete = false">@L["Cancel"]</button>
+          <button type="button" class="sg-btn sg-btn--danger" @onclick="DeleteAsync" disabled="@(_working || _confirmText != "DELETE")">@L["Delete my account"]</button>
         </div>
       }
       else
       {
-        <button type="button" class="sg-btn sg-btn--danger" @onclick="() => _confirmingDelete = true">Delete my account</button>
+        <button type="button" class="sg-btn sg-btn--danger" @onclick="() => _confirmingDelete = true">@L["Delete my account"]</button>
       }
     }
   </section>
@@ -321,12 +320,12 @@ else
         _working = false;
         if (result.Status == EmailChangeStatus.CodeSent)
         {
-            _changeMessage = result.Message;
+            _changeMessage = L[result.Message ?? string.Empty];
             _pendingChange = await EmailChanges.GetPendingAsync(_userId);
             return;
         }
 
-        _changeError = result.Message;
+        _changeError = L[result.Message ?? string.Empty];
     }
 
     private async Task ConfirmEmailChangeAsync()
@@ -339,21 +338,21 @@ else
         _working = false;
         if (result.Status == EmailChangeStatus.Changed)
         {
-            _changeMessage = result.Message;
+            _changeMessage = L[result.Message ?? string.Empty];
             _pendingChange = null;
             _newEmail = string.Empty;
             _user = await Accounts.FindByIdAsync(_userId) ?? _user;
             return;
         }
 
-        _changeError = result.Message;
+        _changeError = L[result.Message ?? string.Empty];
     }
 
     private async Task CancelEmailChangeAsync()
     {
         await EmailChanges.CancelAsync(_userId);
         _pendingChange = null;
-        _changeMessage = "The change was cancelled. Your address is unchanged.";
+        _changeMessage = L["The change was cancelled. Your address is unchanged."];
         _changeError = null;
     }
 
@@ -370,13 +369,20 @@ else
 
         if (!result.Succeeded)
         {
-            _error = result.Message;
+            _error = L[result.Message ?? string.Empty];
             return;
         }
 
         _message = result.MobileChanged
-            ? "Your details have been saved. Your new mobile number is not verified yet."
-            : "Your details have been saved.";
+            ? L["Your details have been saved. Your new mobile number is not verified yet."]
+            : L["Your details have been saved."];
+        if (!string.Equals(_form.Locale, System.Globalization.CultureInfo.CurrentUICulture.Name, StringComparison.OrdinalIgnoreCase) && SangamLanguages.IsOffered(_form.Locale))
+        {
+            // PR-18: show the portal in the language just chosen, straight away.
+            Navigation.NavigateTo(LocalizationExtensions.SwitchUrl(_form.Locale, "/profile"), forceLoad: true);
+            return;
+        }
+
         await LoadAsync();
     }
 
@@ -385,7 +391,7 @@ else
         if (SignInModes.TryParse(_mode, out SignInMode mode))
         {
             await Accounts.SetSignInPreferenceAsync(_userId, mode);
-            _message = "Your sign-in preference has been saved.";
+            _message = L["Your sign-in preference has been saved."];
             await LoadAsync();
         }
     }
@@ -396,7 +402,7 @@ else
         string json = await Portal.ExportAsync(_userId, null);
         _working = false;
         await Js.InvokeVoidAsync("sangamDownload", $"sangam-data-{DateTimeOffset.UtcNow:yyyy-MM-dd}.json", json);
-        _message = "Your data has been downloaded.";
+        _message = L["Your data has been downloaded."];
     }
 
     private async Task DeleteAsync()
@@ -405,7 +411,7 @@ else
         await Portal.RequestDeletionAsync(_userId, null);
         _working = false;
         _confirmingDelete = false;
-        _message = "Your account is scheduled for deletion. You have been signed out everywhere.";
+        _message = L["Your account is scheduled for deletion. You have been signed out everywhere."];
         await LoadAsync();
     }
 
@@ -414,7 +420,7 @@ else
         _working = true;
         await Portal.CancelDeletionAsync(_userId, null);
         _working = false;
-        _message = "Your account is no longer scheduled for deletion.";
+        _message = L["Your account is no longer scheduled for deletion."];
         await LoadAsync();
     }
 
@@ -436,14 +442,14 @@ else
 
         if (!confirmation.Succeeded)
         {
-            _mfaError = "That code is not correct. Authenticator codes change every 30 seconds — try the current one.";
+            _mfaError = L["That code is not correct. Authenticator codes change every 30 seconds — try the current one."];
             return;
         }
 
         _enrolment = null;
         _mfaCode = string.Empty;
         _recoveryCodes = confirmation.RecoveryCodes;
-        _message = "Two-step sign-in is on. You will be asked for a code next time you sign in.";
+        _message = L["Two-step sign-in is on. You will be asked for a code next time you sign in."];
         await LoadAsync();
     }
 
@@ -453,8 +459,8 @@ else
         bool removed = await Mfa.DisableAsync(_userId, null);
         _working = false;
         _message = removed
-            ? "Your authenticator app has been removed."
-            : "Two-step sign-in cannot be removed from an account with console access.";
+            ? L["Your authenticator app has been removed."]
+            : L["Two-step sign-in cannot be removed from an account with console access."];
         await LoadAsync();
     }
 

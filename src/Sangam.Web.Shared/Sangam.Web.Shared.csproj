@@ -15,6 +15,15 @@
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="LiPicons.Blazor" />
+    <!-- PR-19: the branding and message editors shared by the partner and operator consoles. -->
+    <ProjectReference Include="..\Sangam.Identity.Application\Sangam.Identity.Application.csproj" />
+  </ItemGroup>
+
+  <!-- PR-18: the text catalogues (English text → translation), embedded so every host reads the same file. -->
+  <ItemGroup>
+    <Content Remove="Localization\*.json" />
+    <None Remove="Localization\*.json" />
+    <EmbeddedResource Include="Localization\*.json" LogicalName="Sangam.Web.Shared.Localization.%(Filename).json" />
   </ItemGroup>
 
 </Project>

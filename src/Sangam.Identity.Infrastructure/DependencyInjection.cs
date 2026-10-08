@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Sangam.Identity.Application.Abstractions;
 using Sangam.Identity.Application.Accounts;
 using Sangam.Identity.Application.Admin;
@@ -12,6 +13,7 @@ using Sangam.Identity.Application.Partners;
 using Sangam.Identity.Application.Passkeys;
 using Sangam.Identity.Application.Portal;
 using Sangam.Identity.Application.Security;
+using Sangam.Identity.Application.Signatures;
 using Sangam.Identity.Application.Sms;
 using Sangam.Identity.Application.Tenancy;
 using Sangam.Identity.Domain.Entities;
@@ -20,6 +22,8 @@ using Sangam.Identity.Infrastructure.Admin;
 using Sangam.Identity.Infrastructure.Apps;
 using Sangam.Identity.Infrastructure.Consents;
 using Sangam.Identity.Infrastructure.Maintenance;
+using Sangam.Identity.Infrastructure.Messaging;
+using Sangam.Identity.Infrastructure.Monitoring;
 using Sangam.Identity.Infrastructure.Partners;
 using Sangam.Identity.Infrastructure.Passkeys;
 using Sangam.Identity.Infrastructure.Persistence;
@@ -28,6 +32,7 @@ using Sangam.Identity.Infrastructure.Portal;
 using Sangam.Identity.Infrastructure.Security;
 using Sangam.Identity.Infrastructure.Seeding;
 using Sangam.Identity.Infrastructure.Services;
+using Sangam.Identity.Infrastructure.Signatures;
 using Sangam.Identity.Infrastructure.Sms;
 using Sangam.Identity.Infrastructure.Tenancy;
 
@@ -47,7 +52,7 @@ public static class DependencyInjection
     /// with Argon2id hashing, OpenIddict core backed by EF, and the clock / email / audit services.
     /// </summary>
     /// <param name="services">The service collection.</param>
-    /// <param name="configuration">Application configuration; reads <c>ConnectionStrings:Sangam</c>, <c>Sangam:PasswordHashing</c>, <c>Sangam:Otp</c> and <c>Sangam:Email:UseOutbox</c>.</param>
+    /// <param name="configuration">Application configuration; reads <c>ConnectionStrings:Sangam</c>, <c>Sangam:PasswordHashing</c>, <c>Sangam:Otp</c>, <c>Sangam:Email:UseOutbox</c> and <c>Sangam:Anjal</c>.</param>
     /// <returns>The same collection, for chaining.</returns>
     public static IServiceCollection AddSangamInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
@@ -74,9 +79,11 @@ public static class DependencyInjection
                 o.Password.RequireUppercase = true;
                 o.Password.RequireLowercase = true;
                 o.Password.RequireDigit = true;
+                // UnknownAddressLockout mirrors these two for addresses with no account (D-L).
                 o.Lockout.MaxFailedAccessAttempts = 5;
                 o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
                 o.Lockout.AllowedForNewUsers = true;
+                o.Stores.SchemaVersion = IdentitySchemaVersions.Version3;
             })
             .AddEntityFrameworkStores<SangamDbContext>()
             .AddDefaultTokenProviders()
@@ -86,14 +93,10 @@ public static class DependencyInjection
         PolicySettings policies = PolicySettings.From(configuration);
         services.AddSingleton(policies);
         services.AddScoped<ISecurityPolicyService, EfSecurityPolicyService>();
-        if (policies.BreachCheckEnabled)
-        {
-            services.AddHttpClient<IBreachedPasswordChecker, RangeBreachedPasswordChecker>();
-        }
-        else
-        {
-            services.AddSingleton<IBreachedPasswordChecker, NoBreachedPasswordChecker>();
-        }
+        // D-J: offline only — the local Pwned Passwords list; off until the list is loaded.
+        services.AddSingleton<OfflineBreachedPasswordChecker>();
+        services.AddSingleton<IBreachedPasswordChecker>(sp => sp.GetRequiredService<OfflineBreachedPasswordChecker>());
+        services.AddSingleton<IBreachListStatus>(sp => sp.GetRequiredService<OfflineBreachedPasswordChecker>());
 
         services.AddOpenIddict()
             .AddCore(o => o.UseEntityFrameworkCore().UseDbContext<SangamDbContext>());
@@ -101,16 +104,32 @@ public static class DependencyInjection
         OtpOptions otp = new();
         configuration.GetSection(OtpOptions.SectionName).Bind(otp);
         services.AddSingleton(otp);
+        RegistrationOptions registration = new();
+        configuration.GetSection(RegistrationOptions.SectionName).Bind(registration);
+        services.AddSingleton(registration);
         services.AddScoped<OneTimeCodeService>();
         services.AddScoped<IAccountService, AccountService>();
+        services.AddSingleton(sp => new UnknownAddressLockout(sp.GetRequiredService<IClock>(), 5, TimeSpan.FromMinutes(15)));
         services.AddScoped<IAppDirectory, EfAppDirectory>();
         services.AddScoped<IConsentService, EfConsentService>();
         services.AddScoped<ITenancyQuery, EfTenancyQuery>();
         services.AddScoped<IManagementService, EfManagementService>();
         services.AddScoped<IPortalService, EfPortalService>();
         services.AddScoped<IEmailChangeService, EfEmailChangeService>();
+        // D-G: passkeys on ASP.NET Core Identity's built-in WebAuthn support (Fido2NetLib removed).
+        services.Configure<IdentityPasskeyOptions>(o => PasskeySettings.Apply(o, configuration));
+        services.AddHttpContextAccessor();
+        services.AddScoped<IPasskeyHandler<SangamUser>, PasskeyHandler<SangamUser>>();
         services.AddScoped<IPasskeyService, EfPasskeyService>();
         AddSms(services, configuration);
+        // PR-17: the token issuer is the identity server's (it holds the signing keys); hosts that never sign do not resolve it.
+        services.AddScoped<ISignatureService, EfSignatureService>();
+        // PR-19: branding and message templates by level.
+        services.AddScoped<Application.Customisation.CurrentApplication>();
+        services.AddScoped<Customisation.EfCustomisationService>();
+        services.AddScoped<Application.Customisation.ICustomisationService>(sp => sp.GetRequiredService<Customisation.EfCustomisationService>());
+        services.AddScoped<Application.Customisation.IMessageTemplates>(sp => sp.GetRequiredService<Customisation.EfCustomisationService>());
+        services.AddSingleton<ISignatureTokenIssuer, UnavailableSignatureTokenIssuer>();
         services.AddScoped<IAdminService, EfAdminService>();
         services.AddScoped<IPartnerService, EfPartnerService>();
         services.AddScoped<IInvitationService, EfInvitationService>();
@@ -128,17 +147,41 @@ public static class DependencyInjection
             KeyRingProtection.Apply(keyRing, configuration);
         }
 
+        // D-B / D-M: Anjal is Sangam's single messaging gateway, reached by its API with an API key.
+        AnjalOptions anjal = AnjalOptions.From(configuration);
+        services.AddSingleton(anjal);
+        if (anjal.Configured)
+        {
+            services.AddSingleton(sp => new AnjalClient(
+                new HttpClient(new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(5) })
+                {
+                    BaseAddress = new Uri(anjal.BaseUrl!.EndsWith('/') ? anjal.BaseUrl : anjal.BaseUrl + "/"),
+                    Timeout = TimeSpan.FromSeconds(Math.Max(1, anjal.TimeoutSeconds)),
+                },
+                anjal,
+                sp.GetRequiredService<ILogger<AnjalClient>>()));
+        }
+
         if (configuration.GetValue<bool>("Sangam:Email:UseOutbox"))
         {
             // Development/Testing: capture messages for /dev/outbox and the tests.
             services.AddSingleton<InMemoryEmailOutbox>();
             services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<InMemoryEmailOutbox>());
         }
-        else if (!string.IsNullOrWhiteSpace(configuration[EmailSenderGuard.SmtpHostKey]))
+        else if (anjal.Configured)
         {
-            // PR-09: e-mail through Anjal by SMTP submission; settings are the founder’s (OI-027).
-            services.Configure<SmtpOptions>(configuration.GetSection(SmtpOptions.SectionName));
-            services.AddSingleton<IEmailSender, SmtpEmailSender>();
+            services.AddSingleton<AnjalEmailSender>();
+            if (configuration.GetValue(EmailSenderGuard.DeliverInBackgroundKey, true))
+            {
+                // A page never waits for Anjal; failures are counted for the monitoring page (D-H).
+                services.AddSingleton(sp => new BackgroundEmailSender(sp.GetRequiredService<AnjalEmailSender>(), sp.GetRequiredService<ILogger<BackgroundEmailSender>>()));
+                services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<BackgroundEmailSender>());
+                services.AddHostedService(sp => sp.GetRequiredService<BackgroundEmailSender>());
+            }
+            else
+            {
+                services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<AnjalEmailSender>());
+            }
         }
         else
         {
@@ -154,6 +197,24 @@ public static class DependencyInjection
         services.AddScoped<DevelopmentSeeder>();
         services.AddHostedService<AccountPurgeService>();
 
+        // D-K: support resets of two-step sign-in wait out a cooling-off period; D-H/D-K: alerts to the founder.
+        services.AddScoped<EfMfaResetService>();
+        services.AddScoped<IMfaResetService>(sp => sp.GetRequiredService<EfMfaResetService>());
+        services.AddScoped<IPlatformAlerts, PlatformAlerts>();
+        services.AddHostedService<MfaResetApplier>();
+
+        // D-H: Sangam's own monitoring — metrics into its database, a page in the operator console, alerts through Anjal.
+        MonitoringOptions monitoring = MonitoringOptions.From(configuration);
+        services.AddSingleton(monitoring);
+        services.AddSingleton<HostProbe>();
+        services.AddSingleton<MetricsRecorder>();
+        services.AddHostedService(sp => sp.GetRequiredService<MetricsRecorder>());
+        services.AddSingleton<TlsProbe>();
+        services.AddScoped<EfMonitoringService>();
+        services.AddScoped<Application.Monitoring.IMonitoringService>(sp => sp.GetRequiredService<EfMonitoringService>());
+        services.AddSingleton<AlertEvaluator>();
+        services.AddHostedService(sp => sp.GetRequiredService<AlertEvaluator>());
+
         return services;
     }
 
@@ -166,19 +227,21 @@ public static class DependencyInjection
         SmsSettings sms = SmsSettings.From(configuration);
         services.AddSingleton(sms);
         services.AddScoped<ISmsCodeService, EfSmsCodeService>();
+        services.AddScoped<SmsNoticeSender>();
 
-        List<string> names = [.. new[] { sms.Provider, sms.FailoverProvider ?? string.Empty }.Where(n => n.Length > 0)];
-        if (names.Exists(n => string.Equals(n, SmsSettings.OutboxProvider, StringComparison.OrdinalIgnoreCase)))
+        if (string.Equals(sms.Provider, SmsSettings.OutboxProvider, StringComparison.OrdinalIgnoreCase))
         {
             services.AddSingleton<InMemorySmsOutbox>();
+            services.AddSingleton<ISmsSender>(sp => sp.GetRequiredService<InMemorySmsOutbox>());
         }
-
-        services.AddSingleton<ISmsSender>(sp =>
+        else if (string.Equals(sms.Provider, AnjalSmsSender.ProviderName, StringComparison.OrdinalIgnoreCase) && AnjalOptions.From(configuration).Configured)
         {
-            List<ISmsSender> providers = [.. names.Select(n => string.Equals(n, SmsSettings.OutboxProvider, StringComparison.OrdinalIgnoreCase)
-                ? (ISmsSender)sp.GetRequiredService<InMemorySmsOutbox>()
-                : new UnavailableSmsSender())];
-            return providers.Count == 0 ? new UnavailableSmsSender() : new FailoverSmsSender(providers);
-        });
+            // D-M: SMS through Anjal, which fails over between two aggregators itself.
+            services.AddSingleton<ISmsSender, AnjalSmsSender>();
+        }
+        else
+        {
+            services.AddSingleton<ISmsSender, UnavailableSmsSender>();
+        }
     }
 }

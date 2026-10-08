@@ -35,12 +35,15 @@ public sealed class InviteModel : PageModel
     /// <summary>Whether the invitation was accepted now.</summary>
     public bool Succeeded { get; private set; }
 
+    /// <summary>The text catalogue, in the request's language (PR-18).</summary>
+    private Microsoft.Extensions.Localization.IStringLocalizer L => PageText.For(HttpContext);
+
     /// <summary>Why the invitation cannot be accepted.</summary>
     public string StateText => View?.State switch
     {
-        InvitationState.Used => "This invitation has already been accepted.",
-        InvitationState.Expired => "This invitation has expired. Ask for a new one.",
-        _ => "This invitation is no longer valid.",
+        InvitationState.Used => L["This invitation has already been accepted."],
+        InvitationState.Expired => L["This invitation has expired. Ask for a new one."],
+        _ => L["This invitation is no longer valid."],
     };
 
     /// <summary>Shows the invitation.</summary>
@@ -62,7 +65,7 @@ public sealed class InviteModel : PageModel
 
         PartnerResult result = await _invitations.AcceptAsync(Token, userId.Value, cancellationToken);
         Succeeded = result.Succeeded;
-        Message = result.Message;
+        Message = L[result.Message ?? string.Empty];
         View = await _invitations.GetAsync(Token, cancellationToken);
         return Page();
     }

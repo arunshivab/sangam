@@ -32,13 +32,30 @@ The bundle applies only migrations not yet applied; running it again does nothin
 
 ## 5. Operate
 
-- Backups: `scripts/backup-db.sh` nightly from cron; `scripts/restore-drill.sh` monthly (SGM-603).
-  The off-site copy target is **FOUNDER** (vendor choice).
-- Telemetry: set `Sangam__Telemetry__OtlpEndpoint` to a collector. The collector and dashboards are
-  **FOUNDER** (vendor choice).
-- Audit retention: `Sangam__Audit__RetentionDays` stays unset until the periods are decided. **FOUNDER**
-- PostgreSQL version: 18 is pinned in `postgres/docker-compose.yml`. **FOUNDER (OI-014)**
+- **Backups:** `scripts/backup-db.sh` nightly from cron; `scripts/restore-drill.sh` monthly (SGM-603). Both write
+  their result to `/srv/sangam/status` (`backup.json`, `restore-drill.json`), which the hosts read for the monitoring
+  page. D-E (R4): encrypted before upload, to E2E Object Storage in another region with object lock; a second
+  provider before hospital go-live.
+- **Monitoring (D-H):** no third party. Every host records its metrics into the database; the operator console's
+  *Monitoring* page shows them; the identity server (`Sangam__Monitoring__Evaluate=true`) alerts the founder by
+  e-mail and SMS through Anjal. Anjal's server runs the outside watchdog against `/health/ready`; Sangam watches
+  Anjal through `Sangam__Monitoring__AnjalHealthUrl`. When Anjal itself is down, Sangam cannot send through it: the
+  page shows it, and Anjal's own watchdog is the alert path.
+- **Logs:** the `local` logging driver, rotated (50 MB × 20 per container). They stay on the server and go into the
+  encrypted backups, kept 180 days (D-H; backup job in R4).
+- **Breached-password list (D-J):** download the Pwned Passwords SHA-1 list with the official downloader, then
 
-Not verified in Claude's environment (no Docker there): building these images, `docker compose up`,
-and the Caddyfile under Caddy. The application side — certificates, secret files, health checks, the
-migration bundle against an empty database — is covered by tests.
+      mkdir -p /srv/sangam/pwned
+      docker compose run --rm -v /srv/sangam/pwned:/var/lib/sangam/pwned -v /path/to/download:/download:ro \
+        identity breach-list import --source /download/pwnedpasswords.txt \
+        --output /var/lib/sangam/pwned/pwned-passwords.bin --date 2026-10-01
+
+  The running hosts pick the new list up within a minute; the monitoring page shows its date. Switch the check on
+  with `Sangam__Passwords__BreachCheck__Enabled=true` only after the import. Refresh every few months.
+- **Audit retention:** `Sangam__Audit__RetentionDays` stays unset until D-A's archive (1 year live, then an
+  encrypted archive in India, purged at 7 years) is built in R4.
+- **PostgreSQL:** 18 everywhere (D-F).
+
+Not verified in Claude's environment: the Caddyfile under Caddy, and Anjal's real API. The images build and the
+identity server starts in Production in Docker (release evidence); certificates, secret files, health checks and the
+migration bundle against an empty database are covered by tests.

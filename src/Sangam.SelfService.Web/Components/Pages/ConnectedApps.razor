@@ -3,31 +3,31 @@
 @inject AuthenticationStateProvider AuthProvider
 @inject IConfiguration Configuration
 
-<PageTitle>Connected apps · sangam</PageTitle>
+<PageTitle>@L["Connected apps · sangam"]</PageTitle>
 
-<PageHeader Title="Connected apps" Subtitle="Applications you have allowed to use your Sangam account." />
+<PageHeader Title="@L["Connected apps"].Value" Subtitle="@L["Applications you have allowed to use your Sangam account."].Value" />
 
 @if (_apps is null)
 {
-  <p class="sg-note">Loading…</p>
+  <p class="sg-note">@L["Loading…"]</p>
 }
 else if (_apps.Count == 0)
 {
   <div class="sg-empty">
     <SangamMark Size="52" Mode="SangamMarkMode.LeafMist" Decorative="true" />
-    <h2 class="sg-empty-title">No apps linked yet</h2>
-    <p class="sg-empty-body">When you sign in to an application with your Sangam account, it appears here with the exact data it can see and a way to revoke that access.</p>
-    <a href="/help/consent">How consent works →</a>
+    <h2 class="sg-empty-title">@L["No apps linked yet"]</h2>
+    <p class="sg-empty-body">@L["When you sign in to an application with your Sangam account, it appears here with the exact data it can see and a way to revoke that access."]</p>
+    <a href="/help/consent">@L["How consent works →"]</a>
   </div>
 }
 else
 {
   <div class="sg-table sg-table--apps" role="table">
     <div class="sg-tr sg-tr--head" role="row">
-      <span role="columnheader">APPLICATION</span>
-      <span role="columnheader">LINKED</span>
-      <span role="columnheader">LAST USED</span>
-      <span role="columnheader">CAN SEE</span>
+      <span role="columnheader">@L["APPLICATION"]</span>
+      <span role="columnheader">@L["LINKED"]</span>
+      <span role="columnheader">@L["LAST USED"]</span>
+      <span role="columnheader">@L["CAN SEE"]</span>
       <span role="columnheader"></span>
     </div>
     @foreach (LinkedApp app in _apps)
@@ -41,9 +41,9 @@ else
             <span class="sg-app-desc">@(app.Description ?? app.OwnerCompanyName)</span>
           </span>
         </span>
-        <span role="cell">@app.LinkedAt.ToString("d MMM yyyy", CultureInfo.InvariantCulture)</span>
+        <span role="cell">@app.LinkedAt.ToString("d MMM yyyy", CultureInfo.CurrentCulture)</span>
         <span role="cell">
-          <span class="sg-cord-dot @StatusClass(status)" aria-hidden="true"></span>@(app.LastUsedAt is null ? "not yet" : Relative.Describe(app.LastUsedAt.Value, _now))
+          <span class="sg-cord-dot @StatusClass(status)" aria-hidden="true"></span>@(app.LastUsedAt is null ? L["not yet"] : Relative.Describe(app.LastUsedAt.Value, _now))
         </span>
         <span role="cell">
           <span class="sg-chips">
@@ -60,11 +60,11 @@ else
         <span role="cell">
           @if (app.ClientId == _portalClientId)
           {
-            <span class="sg-self-note" title="This is the page you are looking at. It cannot be revoked from here.">Your account portal</span>
+            <span class="sg-self-note" title="@L["This is the page you are looking at. It cannot be revoked from here."]">@L["Your account portal"]</span>
           }
           else
           {
-            <button type="button" class="sg-btn @(status == LinkedAppStatus.Dormant ? "sg-btn--danger" : "sg-btn--secondary") sg-btn--row" @onclick="() => Ask(app)">Revoke</button>
+            <button type="button" class="sg-btn @(status == LinkedAppStatus.Dormant ? "sg-btn--danger" : "sg-btn--secondary") sg-btn--row" @onclick="() => Ask(app)">@L["Revoke"]</button>
           }
         </span>
       </div>
@@ -75,15 +75,13 @@ else
 @if (_confirming is not null)
 {
   <div class="sg-confirm" role="alertdialog" aria-labelledby="revoke-title">
-    <h2 class="sg-confirm-title" id="revoke-title">Revoke @_confirming.DisplayName?</h2>
+    <h2 class="sg-confirm-title" id="revoke-title">@L["Revoke {0}?", _confirming.DisplayName]</h2>
     <p class="sg-confirm-body">
-      @_confirming.DisplayName will immediately lose access to your Sangam account, and any session it holds ends.
-      You keep your account and anything you created inside the app; the app decides what happens to that data
-      (see its <a href="@(_confirming.PrivacyUrl ?? "#")">privacy policy</a>). You can allow it again at any time by signing in to it.
+      @L.Markup("{0} will immediately lose access to your Sangam account, and any session it holds ends. You keep your account and anything you created inside the app; the app decides what happens to that data (see its {1}). You can allow it again at any time by signing in to it.", _confirming.DisplayName, LocalizedMarkup.Link(_confirming.PrivacyUrl ?? "#", L["privacy policy"]))
     </p>
     <div class="sg-confirm-actions">
-      <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _confirming = null">Keep access</button>
-      <button type="button" class="sg-btn sg-btn--danger" @onclick="ConfirmAsync" disabled="@_working">Revoke access</button>
+      <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _confirming = null">@L["Keep access"]</button>
+      <button type="button" class="sg-btn sg-btn--danger" @onclick="ConfirmAsync" disabled="@_working">@L["Revoke access"]</button>
     </div>
   </div>
 }
@@ -134,7 +132,7 @@ else
         await Portal.RevokeAppAsync(_userId, _confirming.AppId, null);
         _confirming = null;
         _working = false;
-        _message = $"{name} no longer has access to your Sangam account.";
+        _message = L["{0} no longer has access to your Sangam account.", name];
         await LoadAsync();
     }
 

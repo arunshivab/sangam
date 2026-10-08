@@ -1,24 +1,24 @@
 @page
 @model LoginMfaModel
 @{
-    ViewData["Title"] = "Two-step verification";
+    ViewData["Title"] = L["Two-step verification"].Value;
 }
 
 <section class="sg-card">
-  <h1 class="sg-card-title">Enter your authenticator code</h1>
-  <p class="sg-card-body">Open the authenticator app on your phone and type the six-digit code it shows for Sangam. The code changes every 30 seconds.</p>
+  <h1 class="sg-card-title">@L["Enter your authenticator code"]</h1>
+  <p class="sg-card-body">@L["Open the authenticator app on your phone and type the six-digit code it shows for Sangam. The code changes every 30 seconds."]</p>
 
   <partial name="_Banner" model="@(("danger", Model.Error ?? string.Empty))" />
 
   <form method="post" novalidate>
     <input type="hidden" asp-for="ReturnUrl" />
     <div class="sg-field-group">
-      <label class="sg-label" asp-for="Code">Authenticator code</label>
+      <label class="sg-label" asp-for="Code">@L["Authenticator code"]</label>
       <input class="sg-field sg-field--code" asp-for="Code" inputmode="numeric" autocomplete="one-time-code" maxlength="11" autofocus required />
       <span class="sg-field-error" asp-validation-for="Code"></span>
     </div>
-    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">Verify</button>
+    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Verify"]</button>
   </form>
 
-  <p class="sg-note">Lost your phone? Use one of the recovery codes you saved when you set the app up. If you have neither, write to <a href="mailto:help@@sangamid.in">help@@sangamid.in</a> from your account's e-mail address: support will confirm who you are — by a video call with photo identification, or by calling your verified mobile — and then remove the authenticator so you can set it up again. Support never asks for your password or a code.</p>
+  <p class="sg-note">@L.Html("Lost your phone? Use one of the recovery codes you saved when you set the app up. If you have neither, write to {0} from your account's e-mail address: support will confirm who you are — by a video call with photo identification, or by calling your verified mobile — and then remove the authenticator so you can set it up again. Support never asks for your password or a code.", LocalizedMarkup.Link("mailto:help@sangamid.in", "help@sangamid.in"))</p>
 </section>

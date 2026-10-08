@@ -1,5 +1,6 @@
+@* PR-18: page models pass text already in the reader's language; a service's English sentence is translated here. *@
 @model (string Kind, string Text)
 @if (!string.IsNullOrEmpty(Model.Text))
 {
-  <div class="sg-banner sg-banner--@Model.Kind" role="@(Model.Kind == "danger" ? "alert" : "status")">@Model.Text</div>
+  <div class="sg-banner sg-banner--@Model.Kind" role="@(Model.Kind == "danger" ? "alert" : "status")">@L[Model.Text]</div>
 }

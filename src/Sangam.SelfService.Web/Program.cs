@@ -3,15 +3,21 @@ using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Sangam.Identity.Application;
 using Sangam.Identity.Infrastructure;
+using Sangam.Identity.Infrastructure.Services;
 using Sangam.SelfService.Web.Components;
 using Sangam.Shared.Constants;
+using Sangam.Web.Shared.Localization;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
+// A refused start is logged at Critical and exits with code 1 (V-08).
+StartupGuard.Install(typeof(Program).Assembly);
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddSangamSecretFiles();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+// PR-18: every screen's text comes from the shared catalogue (Hindi and Malayalam translated).
+builder.Services.AddSangamLocalization();
 
 builder.Services.AddSangamApplication();
 builder.Services.AddSangamInfrastructure(builder.Configuration);
@@ -20,6 +26,13 @@ string? keyRingProblem = KeyRingProtection.Validate(builder.Environment.Environm
 if (keyRingProblem is not null)
 {
     throw new InvalidOperationException(keyRingProblem);
+}
+
+// D-B: this host sends e-mail too (codes, notices, invitations), so it needs Anjal like the identity server.
+string? emailProblem = EmailSenderGuard.Validate(builder.Environment.EnvironmentName, builder.Configuration);
+if (emailProblem is not null)
+{
+    throw new InvalidOperationException(emailProblem);
 }
 
 builder.Services.AddHttpContextAccessor();
@@ -71,9 +84,11 @@ builder.Services.AddAuthorization(o => o.FallbackPolicy = o.DefaultPolicy);
 builder.Services.AddSangamWebHosting(builder.Configuration);
 
 WebApplication app = builder.Build();
+app.Lifetime.ApplicationStarted.Register(StartupGuard.MarkStarted);
 
 // Behind Caddy: take the client address from trusted proxies only, before anything reads it (OI-037).
 app.UseForwardedHeaders();
+app.UseSangamRequestMetrics();
 
 if (!app.Environment.IsDevelopment())
 {
@@ -81,10 +96,12 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+app.UseSangamHttpsRedirection(app.Environment.EnvironmentName, app.Configuration);
 app.UseSangamClientContext();
 app.UseSangamRequestCulture();
 app.UseAuthentication();
+// PR-18: the signed-in person's profile language, unless they picked one for this browser.
+app.UseSangamProfileCulture();
 app.UseAuthorization();
 app.UseAntiforgery();
 app.MapStaticAssets();
@@ -99,6 +116,7 @@ app.MapGet("/signout", (HttpContext context) =>
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
+app.MapSangamLanguageSwitch();
 app.MapSangamHealth();
 
 await app.RunAsync().ConfigureAwait(false);

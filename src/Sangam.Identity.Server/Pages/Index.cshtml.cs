@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Sangam.Identity.Domain;
 using Sangam.Identity.Infrastructure.Seeding;
 
 namespace Sangam.Identity.Server.Pages;
@@ -52,7 +53,7 @@ public sealed class IndexModel : PageModel
         }
 
         Host = _configuration["Sangam:Host"] ?? "id.sangamid.in";
-        Operator = _configuration["Sangam:Operator"] ?? "imagiQa Healthcare Services Pvt Ltd";
+        Operator = _configuration["Sangam:Operator"] ?? PlatformOwner.Name;
         Version = (typeof(IndexModel).Assembly.GetName().Version ?? new Version(0, 0, 0)).ToString(3);
     }
 }

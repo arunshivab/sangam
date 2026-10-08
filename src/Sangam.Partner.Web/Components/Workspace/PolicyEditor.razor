@@ -5,34 +5,34 @@
 @if (ShowSignIn)
 {
   <fieldset class="sg-choices">
-    <legend class="sg-label">Sign-in rule</legend>
+    <legend class="sg-label">@L["Sign-in rule"]</legend>
     <label class="sg-check">
       <input type="radio" name="@($"{Key}-signin")" checked="@(_signIn is null)" @onchange="() => _signIn = null" />
-      Follow @InheritLabel <span class="sg-muted">— @SignInName(View.Inherited.SignIn)</span>
+      @L["Follow {0}", InheritLabel] <span class="sg-muted">— @SignInName(View.Inherited.SignIn)</span>
     </label>
     @if (SecurityRank(View.Inherited.SignIn) <= 2)
     {
       <label class="sg-check">
         <input type="radio" name="@($"{Key}-signin")" checked="@(_signIn == SignInPolicy.PasswordAndOtp)" @onchange="() => _signIn = SignInPolicy.PasswordAndOtp" />
-        Always two-step <span class="sg-muted">— password, then a code</span>
+        @L["Always two-step"] <span class="sg-muted">@L["— password, then a code"]</span>
       </label>
     }
     <label class="sg-check">
       <input type="radio" name="@($"{Key}-signin")" checked="@(_signIn == SignInPolicy.PasskeyOnly)" @onchange="() => _signIn = SignInPolicy.PasskeyOnly" />
-      Passkey only <span class="sg-muted">— fingerprint, face or device PIN; no password</span>
+      @L["Passkey only"] <span class="sg-muted">@L["— fingerprint, face or device PIN; no password"]</span>
     </label>
   </fieldset>
 }
 
 <div class="sg-form-row">
-  <label class="sg-label" for="@($"{Key}-minlen")">Shortest password allowed</label>
+  <label class="sg-label" for="@($"{Key}-minlen")">@L["Shortest password allowed"]</label>
   <input id="@($"{Key}-minlen")" class="sg-input sg-input--short" type="number" min="@View.Inherited.MinPasswordLength" max="64" placeholder="@View.Inherited.MinPasswordLength"
          value="@_minLength" @onchange="e => _minLength = int.TryParse(e.Value?.ToString(), out int n) ? n : null" />
-  <span class="sg-muted">characters — leave empty to follow @InheritLabel (@View.Inherited.MinPasswordLength). People whose password is shorter choose a new one at their next sign-in.</span>
+  <span class="sg-muted">@L["characters — leave empty to follow {0} ({1}). People whose password is shorter choose a new one at their next sign-in.", InheritLabel, View.Inherited.MinPasswordLength]</span>
 </div>
 
 <fieldset class="sg-choices">
-  <legend class="sg-label">Second factor (an authenticator app or a passkey)</legend>
+  <legend class="sg-label">@L["Second factor (an authenticator app or a passkey)"]</legend>
   @foreach (MfaRequirement option in Enum.GetValues<MfaRequirement>())
   {
     @if (option >= View.Inherited.Mfa)
@@ -40,7 +40,7 @@
       MfaRequirement? value = option == View.Inherited.Mfa ? null : option;
       <label class="sg-check">
         <input type="radio" name="@($"{Key}-mfa")" checked="@(_mfa == value)" @onchange="() => _mfa = value" />
-        <span>@MfaName(option)@if (value is null) { <span class="sg-muted"> — as @InheritLabel</span> }</span>
+        <span>@MfaName(option)@if (value is null) { <span class="sg-muted"> — @L["as {0}", InheritLabel]</span> }</span>
       </label>
     }
   }
@@ -50,20 +50,20 @@
   <input type="checkbox" checked="@(_breach == true || View.Inherited.BreachedPasswordCheck)" disabled="@(View.Inherited.BreachedPasswordCheck || !View.BreachCheckAvailable)"
          @onchange="e => _breach = e.Value is true ? true : null" />
   <span>
-    Refuse passwords found in known data breaches
+    @L["Refuse passwords found in known data breaches"]
     @if (View.Inherited.BreachedPasswordCheck)
     {
-      <span class="sg-muted">— already required by @InheritLabel</span>
+      <span class="sg-muted">— @L["already required by {0}", InheritLabel]</span>
     }
     else if (!View.BreachCheckAvailable)
     {
-      <span class="sg-muted">— not yet switched on for Sangam (imagiQa's decision)</span>
+      <span class="sg-muted">@L["— not yet switched on for Sangam (the Sangam team's decision)"]</span>
     }
   </span>
 </label>
 
 <div class="sg-actions">
-  <button type="button" class="sg-btn sg-btn--primary" @onclick="SaveAsync" disabled="@Busy">Save security policy</button>
+  <button type="button" class="sg-btn sg-btn--primary" @onclick="SaveAsync" disabled="@Busy">@L["Save security policy"]</button>
 </div>
 
 @code {
@@ -80,7 +80,7 @@
     [Parameter]
     public bool ShowSignIn { get; set; }
 
-    /// <summary>How the level above is named in the labels, for example "the application".</summary>
+    /// <summary>How the level above is named in the labels, already in the reader's language, for example "the application".</summary>
     [Parameter]
     public string InheritLabel { get; set; } = "Sangam";
 
@@ -113,19 +113,19 @@
 
     private static int SecurityRank(SignInPolicy policy) => Sangam.Identity.Domain.SecurityPolicy.Rank(policy);
 
-    private static string SignInName(SignInPolicy policy) => policy switch
+    private string SignInName(SignInPolicy policy) => policy switch
     {
-        SignInPolicy.Password => "password only",
-        SignInPolicy.OtpOnly => "an e-mailed code, no password",
-        SignInPolicy.PasswordAndOtp => "always two-step",
-        SignInPolicy.PasskeyOnly => "passkey only",
-        _ => "each person's own choice",
+        SignInPolicy.Password => L["password only"],
+        SignInPolicy.OtpOnly => L["an e-mailed code, no password"],
+        SignInPolicy.PasswordAndOtp => L["always two-step"],
+        SignInPolicy.PasskeyOnly => L["passkey only"],
+        _ => L["each person's own choice"],
     };
 
-    private static string MfaName(MfaRequirement mfa) => mfa switch
+    private string MfaName(MfaRequirement mfa) => mfa switch
     {
-        MfaRequirement.Required => "Required for everyone",
-        MfaRequirement.RequiredForAdministrators => "Required for this application's administrators",
-        _ => "Each person decides",
+        MfaRequirement.Required => L["Required for everyone"],
+        MfaRequirement.RequiredForAdministrators => L["Required for this application's administrators"],
+        _ => L["Each person decides"],
     };
 }

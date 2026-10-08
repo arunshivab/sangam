@@ -17,7 +17,7 @@ public sealed record SecurityPolicy(SignInPolicy SignIn, int MinPasswordLength, 
     public const int MaxMinPasswordLength = 64;
 
     /// <summary>
-    /// How strict a sign-in rule is. Password-only and code-only are weakenings imagiQa may set; each person's
+    /// How strict a sign-in rule is. Password-only and code-only are weakenings only the platform operators may set; each person's
     /// own choice comes next; then always two-step; then passkey only.
     /// </summary>
     /// <param name="policy">The rule.</param>

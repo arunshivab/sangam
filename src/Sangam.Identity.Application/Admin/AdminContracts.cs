@@ -69,7 +69,9 @@ public sealed record OperatorRow(Guid UserId, string DisplayName, string Email, 
 /// <param name="Organisations">Organisations registered through it.</param>
 /// <param name="PartnerOwners">How many of the partner's own staff can manage it on the partner console.</param>
 /// <param name="IsPlatform">Whether it is one of Sangam's own clients: never disabled here, never given partner owners.</param>
-public sealed record AdminAppRow(Guid Id, string ClientId, string DisplayName, string OwnerCompanyName, AppStatus Status, SignInPolicy SignInPolicy, int Users, int Organisations, int PartnerOwners, bool IsPlatform);
+/// <param name="BackChannelLogoutUri">Where Sangam posts a signed logout token when a session ends (PR-20); null for none.</param>
+/// <param name="FrontChannelLogoutUri">The page Sangam loads in a hidden frame when a session ends in the browser (PR-20); null for none.</param>
+public sealed record AdminAppRow(Guid Id, string ClientId, string DisplayName, string OwnerCompanyName, AppStatus Status, SignInPolicy SignInPolicy, int Users, int Organisations, int PartnerOwners, bool IsPlatform, string? BackChannelLogoutUri = null, string? FrontChannelLogoutUri = null);
 
 /// <summary>Outcome of a console action.</summary>
 /// <param name="Succeeded">Whether it was applied.</param>

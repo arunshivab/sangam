@@ -1,0 +1,40 @@
+@page "/sign/{requestId:guid}"
+@model SignModel
+@{
+    ViewData["Title"] = L["Sign a record"].Value;
+}
+
+<section class="sg-card">
+  @if (Model.Ceremony is null)
+  {
+    <h1 class="sg-card-title">@L["Signature request"]</h1>
+    <partial name="_Banner" model="@(("danger", Model.Problem ?? string.Empty))" />
+  }
+  else
+  {
+    <h1 class="sg-card-title">@L["Sign for {0}", Model.Ceremony.AppName]</h1>
+    <p class="sg-card-body">@L["{0} asks you to sign this record. Your signature records your name, the time and its meaning against this exact version of the record.", Model.Ceremony.AppName]</p>
+
+    <div class="sg-sign-record">
+      <p class="sg-sign-text">@Model.Ceremony.DisplayText</p>
+      <dl class="sg-facts">
+        <div><dt>@L["Record"]</dt><dd class="sg-mono">@Model.Ceremony.RecordId</dd></div>
+        <div><dt>@L["Fingerprint"]</dt><dd class="sg-mono sg-break">@Model.Ceremony.RecordHash</dd></div>
+      </dl>
+    </div>
+
+    <p class="sg-sign-meaning"><span class="sg-label">@L["Meaning of your signature"]</span><strong>@Model.Ceremony.Meaning</strong></p>
+    <dl class="sg-facts">
+      <div><dt>@L["Signed by"]</dt><dd>@Model.SignerName</dd></div>
+      <div><dt>@L["Time"]</dt><dd>@L["now, recorded by Sangam"]</dd></div>
+    </dl>
+
+    <form method="post" asp-page-handler="Sign">
+      <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Sign as {0}", Model.SignerName]</button>
+    </form>
+    <form method="post" asp-page-handler="Decline" class="sg-resend">
+      <button type="submit" class="sg-btn sg-btn--secondary sg-btn--block">@L["Decline"]</button>
+    </form>
+    <p class="sg-note">@L["You signed in again for this signature. If this is not what you expected to sign, decline and tell the person who sent you."]</p>
+  }
+</section>

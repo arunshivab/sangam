@@ -1,6 +1,7 @@
+using System.Globalization;
 using System.Text.Json;
-using Fido2NetLib;
-using Fido2NetLib.Objects;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Sangam.Identity.Application.Abstractions;
@@ -13,40 +14,47 @@ using Sangam.Identity.Infrastructure.Persistence;
 namespace Sangam.Identity.Infrastructure.Passkeys;
 
 /// <summary>
-/// Passkeys on Fido2NetLib (PR-14, SGM-205). User verification is required for every ceremony;
-/// attestation is not collected (privacy, SGM-205 §7). The WebAuthn user handle is the account id,
-/// never the e-mail address. Fido2NetLib is a pending vendor choice (ADR-0012) and sits behind
-/// <see cref="IPasskeyService"/>, so it can be replaced without touching the pages.
+/// Passkeys on ASP.NET Core Identity's built-in WebAuthn support (D-G; PR-14, SGM-205). Identity's passkey handler
+/// makes the options and verifies every answer — challenge, origin, relying party, user verification, signature and
+/// counter — and its store keeps the keys. Sangam keeps the ceremony state in its own table (so a challenge works
+/// once, across hosts), its record of each passkey (name, last use, removal) and the audit trail. The WebAuthn user
+/// handle is the account id, never the e-mail address.
 /// </summary>
 public sealed class EfPasskeyService : IPasskeyService
 {
-    /// <summary>How long a ceremony may take.</summary>
-    public static readonly TimeSpan ChallengeLifetime = TimeSpan.FromMinutes(5);
-
     private const string Register = "register";
     private const string Assert = "assert";
     private readonly SangamDbContext _db;
+    private readonly UserManager<SangamUser> _users;
+    private readonly IPasskeyHandler<SangamUser> _handler;
+    private readonly IHttpContextAccessor _http;
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
-    private readonly Fido2 _fido2;
 
     /// <summary>Initialises the service.</summary>
     /// <param name="db">Database.</param>
+    /// <param name="users">Identity's user manager (its passkey store).</param>
+    /// <param name="handler">Identity's passkey handler.</param>
+    /// <param name="http">The current request, which Identity's handler receives.</param>
     /// <param name="audit">Audit writer.</param>
     /// <param name="clock">Clock.</param>
-    /// <param name="configuration">Configuration (<c>Sangam:Passkeys</c>, <c>Sangam:Issuer</c>).</param>
-    public EfPasskeyService(SangamDbContext db, IAuditWriter audit, IClock clock, IConfiguration configuration)
+    /// <param name="configuration">Configuration (<c>Sangam:Passkeys:Enabled</c>).</param>
+    public EfPasskeyService(SangamDbContext db, UserManager<SangamUser> users, IPasskeyHandler<SangamUser> handler, IHttpContextAccessor http, IAuditWriter audit, IClock clock, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
         _db = db ?? throw new ArgumentNullException(nameof(db));
+        _users = users ?? throw new ArgumentNullException(nameof(users));
+        _handler = handler ?? throw new ArgumentNullException(nameof(handler));
+        _http = http ?? throw new ArgumentNullException(nameof(http));
         _audit = audit ?? throw new ArgumentNullException(nameof(audit));
         _clock = clock ?? throw new ArgumentNullException(nameof(clock));
         Enabled = configuration.GetValue("Sangam:Passkeys:Enabled", true);
-        _fido2 = new Fido2(PasskeySettings.ToFido2Configuration(configuration));
     }
 
     /// <inheritdoc />
     public bool Enabled { get; }
+
+    private HttpContext Http => _http.HttpContext ?? new DefaultHttpContext();
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<PasskeyRow>> ListAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -62,19 +70,16 @@ public sealed class EfPasskeyService : IPasskeyService
     public async Task<PasskeyCeremony> BeginRegistrationAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         SangamUser user = await _db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, cancellationToken).ConfigureAwait(false);
-        List<PublicKeyCredentialDescriptor> existing = await _db.PasskeyCredentials.AsNoTracking()
-            .Where(c => c.UserId == userId && c.RevokedAt == null)
-            .Select(c => new PublicKeyCredentialDescriptor(c.CredentialId))
-            .ToListAsync(cancellationToken).ConfigureAwait(false);
-        CredentialCreateOptions options = _fido2.RequestNewCredential(new RequestNewCredentialParams
-        {
-            User = new Fido2User { Id = userId.ToByteArray(), Name = user.Email ?? string.Empty, DisplayName = (user.FirstName + " " + user.LastName).Trim() },
-            ExcludeCredentials = existing,
-            AuthenticatorSelection = new AuthenticatorSelection { ResidentKey = ResidentKeyRequirement.Preferred, UserVerification = UserVerificationRequirement.Required },
-            AttestationPreference = AttestationConveyancePreference.None,
-        });
-        string json = options.ToJson();
-        return new PasskeyCeremony(await SaveChallengeAsync(userId, Register, json, cancellationToken).ConfigureAwait(false), json);
+        PasskeyCreationOptionsResult options = await _handler.MakeCreationOptionsAsync(
+            new PasskeyUserEntity
+            {
+                Id = userId.ToString("D", CultureInfo.InvariantCulture),
+                Name = user.Email ?? string.Empty,
+                DisplayName = (user.FirstName + " " + user.LastName).Trim(),
+            },
+            Http).ConfigureAwait(false);
+        Guid challengeId = await SaveChallengeAsync(userId, Register, options.AttestationState ?? string.Empty, cancellationToken).ConfigureAwait(false);
+        return new PasskeyCeremony(challengeId, options.CreationOptionsJson);
     }
 
     /// <inheritdoc />
@@ -82,42 +87,59 @@ public sealed class EfPasskeyService : IPasskeyService
     {
         ArgumentNullException.ThrowIfNull(attestationJson);
         ArgumentNullException.ThrowIfNull(name);
+        const string Refused = "This passkey could not be added. Please try again.";
         PasskeyChallenge? challenge = await TakeChallengeAsync(challengeId, Register, userId, cancellationToken).ConfigureAwait(false);
         if (challenge is null)
         {
             return new PasskeyResult(false, "That took too long or was already used. Please try again.");
         }
 
-        RegisteredPublicKeyCredential credential;
+        PasskeyAttestationResult attestation;
         try
         {
-            AuthenticatorAttestationRawResponse response = JsonSerializer.Deserialize<AuthenticatorAttestationRawResponse>(attestationJson)
-                ?? throw new JsonException("Empty attestation.");
-            credential = await _fido2.MakeNewCredentialAsync(new MakeNewCredentialParams
+            attestation = await _handler.PerformAttestationAsync(new PasskeyAttestationContext
             {
-                AttestationResponse = response,
-                OriginalOptions = CredentialCreateOptions.FromJson(challenge.OptionsJson),
-                IsCredentialIdUniqueToUserCallback = async (args, ct) => !await _db.PasskeyCredentials.AnyAsync(c => c.CredentialId == args.CredentialId, ct).ConfigureAwait(false),
-            }, cancellationToken).ConfigureAwait(false);
+                CredentialJson = attestationJson,
+                AttestationState = challenge.OptionsJson,
+                HttpContext = Http,
+            }).ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is Fido2VerificationException or JsonException or FormatException)
+        catch (Exception ex) when (ex is JsonException or FormatException or PasskeyException)
         {
-            return new PasskeyResult(false, "This passkey could not be added. Please try again.");
+            return new PasskeyResult(false, Refused);
         }
 
+        if (!attestation.Succeeded || attestation.Passkey is null
+            || !string.Equals(attestation.UserEntity?.Id, userId.ToString("D", CultureInfo.InvariantCulture), StringComparison.Ordinal))
+        {
+            return new PasskeyResult(false, Refused);
+        }
+
+        UserPasskeyInfo passkey = attestation.Passkey;
+        if (await _users.FindByPasskeyIdAsync(passkey.CredentialId).ConfigureAwait(false) is not null
+            || await _db.PasskeyCredentials.AnyAsync(c => c.CredentialId == passkey.CredentialId, cancellationToken).ConfigureAwait(false))
+        {
+            return new PasskeyResult(false, Refused);
+        }
+
+        SangamUser user = await _users.FindByIdAsync(userId.ToString("D")).ConfigureAwait(false)
+            ?? throw new InvalidOperationException("User not found.");
         string label = name.Trim();
+        label = label.Length == 0 ? "Passkey" : label[..Math.Min(label.Length, 60)];
+        passkey.Name = label;
+        IdentityResult stored = await _users.AddOrUpdatePasskeyAsync(user, passkey).ConfigureAwait(false);
+        if (!stored.Succeeded)
+        {
+            return new PasskeyResult(false, Refused);
+        }
+
         PasskeyCredential row = new()
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            CredentialId = credential.Id,
-            PublicKey = credential.PublicKey,
-            SignCount = credential.SignCount,
-            AaGuid = credential.AaGuid,
-            Transports = credential.Transports is null ? string.Empty : string.Join(',', credential.Transports.Select(t => t.ToString().ToLowerInvariant())),
-            IsBackupEligible = credential.IsBackupEligible,
-            IsBackedUp = credential.IsBackedUp,
-            Name = label.Length == 0 ? "Passkey" : label[..Math.Min(label.Length, 60)],
+            CredentialId = passkey.CredentialId,
+            IsBackupEligible = passkey.IsBackupEligible,
+            Name = label,
             CreatedAt = _clock.UtcNow,
         };
         _db.PasskeyCredentials.Add(row);
@@ -129,13 +151,10 @@ public sealed class EfPasskeyService : IPasskeyService
     /// <inheritdoc />
     public async Task<PasskeyCeremony> BeginSignInAsync(CancellationToken cancellationToken = default)
     {
-        AssertionOptions options = _fido2.GetAssertionOptions(new GetAssertionOptionsParams
-        {
-            AllowedCredentials = [],
-            UserVerification = UserVerificationRequirement.Required,
-        });
-        string json = options.ToJson();
-        return new PasskeyCeremony(await SaveChallengeAsync(null, Assert, json, cancellationToken).ConfigureAwait(false), json);
+        // Discoverable credentials: no account is named, so the options reveal nothing about who has passkeys.
+        PasskeyRequestOptionsResult options = await _handler.MakeRequestOptionsAsync(null!, Http).ConfigureAwait(false);
+        Guid challengeId = await SaveChallengeAsync(null, Assert, options.AssertionState ?? string.Empty, cancellationToken).ConfigureAwait(false);
+        return new PasskeyCeremony(challengeId, options.RequestOptionsJson);
     }
 
     /// <inheritdoc />
@@ -149,52 +168,49 @@ public sealed class EfPasskeyService : IPasskeyService
             return new PasskeyResult(false, "That took too long or was already used. Please try again.");
         }
 
-        AuthenticatorAssertionRawResponse? response;
+        PasskeyAssertionResult<SangamUser> assertion;
         try
         {
-            response = JsonSerializer.Deserialize<AuthenticatorAssertionRawResponse>(assertionJson);
-        }
-        catch (JsonException)
-        {
-            response = null;
-        }
-
-        PasskeyCredential? credential = response?.RawId is null ? null : await _db.PasskeyCredentials
-            .FirstOrDefaultAsync(c => c.CredentialId == response.RawId && c.RevokedAt == null, cancellationToken).ConfigureAwait(false);
-        if (response is null || credential is null)
-        {
-            await FailAsync(null, "unknown_credential", cancellationToken).ConfigureAwait(false);
-            return new PasskeyResult(false, Refused);
-        }
-
-        VerifyAssertionResult verified;
-        try
-        {
-            verified = await _fido2.MakeAssertionAsync(new MakeAssertionParams
+            assertion = await _handler.PerformAssertionAsync(new PasskeyAssertionContext
             {
-                AssertionResponse = response,
-                OriginalOptions = AssertionOptions.FromJson(challenge.OptionsJson),
-                StoredPublicKey = credential.PublicKey,
-                StoredSignatureCounter = (uint)credential.SignCount,
-                IsUserHandleOwnerOfCredentialIdCallback = (args, _) => Task.FromResult(args.UserHandle.AsSpan().SequenceEqual(credential.UserId.ToByteArray())),
-            }, cancellationToken).ConfigureAwait(false);
+                CredentialJson = assertionJson,
+                AssertionState = challenge.OptionsJson,
+                HttpContext = Http,
+            }).ConfigureAwait(false);
         }
-        catch (Fido2VerificationException ex)
+        catch (Exception ex) when (ex is JsonException or FormatException or PasskeyException)
         {
-            await FailAsync(credential.UserId, ex.Message.Contains("counter", StringComparison.OrdinalIgnoreCase) ? "counter_regression" : "verification_failed", cancellationToken).ConfigureAwait(false);
+            await FailAsync(null, "unreadable_answer", cancellationToken).ConfigureAwait(false);
             return new PasskeyResult(false, Refused);
         }
 
-        SangamUser? user = await _db.Users.FirstOrDefaultAsync(u => u.Id == credential.UserId, cancellationToken).ConfigureAwait(false);
-        if (user is null || user.Status != UserStatus.Active || !user.EmailConfirmed)
+        if (!assertion.Succeeded || assertion.User is null || assertion.Passkey is null)
         {
-            await FailAsync(credential.UserId, "account_not_active", cancellationToken).ConfigureAwait(false);
+            string reason = assertion.Failure?.Message is string message && message.Contains("count", StringComparison.OrdinalIgnoreCase)
+                ? "counter_regression"
+                : assertion.User is null ? "unknown_credential" : "verification_failed";
+            await FailAsync(assertion.User?.Id, reason, cancellationToken).ConfigureAwait(false);
             return new PasskeyResult(false, Refused);
         }
 
-        credential.SignCount = verified.SignCount;
-        credential.IsBackedUp = verified.IsBackedUp;
-        credential.LastUsedAt = _clock.UtcNow;
+        SangamUser user = assertion.User;
+        PasskeyCredential? record = await _db.PasskeyCredentials
+            .FirstOrDefaultAsync(c => c.CredentialId == assertion.Passkey.CredentialId && c.UserId == user.Id && c.RevokedAt == null, cancellationToken).ConfigureAwait(false);
+        if (record is null)
+        {
+            await FailAsync(user.Id, "unknown_credential", cancellationToken).ConfigureAwait(false);
+            return new PasskeyResult(false, Refused);
+        }
+
+        if (user.Status != UserStatus.Active || !user.EmailConfirmed)
+        {
+            await FailAsync(user.Id, "account_not_active", cancellationToken).ConfigureAwait(false);
+            return new PasskeyResult(false, Refused);
+        }
+
+        // The new signature counter and backup state, so a cloned authenticator is caught next time.
+        await _users.AddOrUpdatePasskeyAsync(user, assertion.Passkey).ConfigureAwait(false);
+        record.LastUsedAt = _clock.UtcNow;
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return new PasskeyResult(true, "Signed in.", user.Id);
     }
@@ -202,23 +218,28 @@ public sealed class EfPasskeyService : IPasskeyService
     /// <inheritdoc />
     public async Task<bool> RemoveAsync(Guid userId, Guid passkeyId, CancellationToken cancellationToken = default)
     {
-        PasskeyCredential? credential = await _db.PasskeyCredentials
+        PasskeyCredential? record = await _db.PasskeyCredentials
             .FirstOrDefaultAsync(c => c.Id == passkeyId && c.UserId == userId && c.RevokedAt == null, cancellationToken).ConfigureAwait(false);
-        if (credential is null)
+        if (record is null)
         {
             return false;
         }
 
-        credential.RevokedAt = _clock.UtcNow;
+        if (await _users.FindByIdAsync(userId.ToString("D")).ConfigureAwait(false) is SangamUser user)
+        {
+            await _users.RemovePasskeyAsync(user, record.CredentialId).ConfigureAwait(false);
+        }
+
+        record.RevokedAt = _clock.UtcNow;
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        await _audit.WriteAsync(new AuditEntry(AuditActions.UserPasskeyRemove, AuditActorType.User, userId, TargetType: "user", TargetId: userId, Metadata: JsonSerializer.Serialize(new Dictionary<string, string> { ["name"] = credential.Name })), cancellationToken).ConfigureAwait(false);
+        await _audit.WriteAsync(new AuditEntry(AuditActions.UserPasskeyRemove, AuditActorType.User, userId, TargetType: "user", TargetId: userId, Metadata: JsonSerializer.Serialize(new Dictionary<string, string> { ["name"] = record.Name })), cancellationToken).ConfigureAwait(false);
         return true;
     }
 
-    private async Task<Guid> SaveChallengeAsync(Guid? userId, string kind, string json, CancellationToken cancellationToken)
+    private async Task<Guid> SaveChallengeAsync(Guid? userId, string kind, string state, CancellationToken cancellationToken)
     {
         DateTimeOffset now = _clock.UtcNow;
-        PasskeyChallenge challenge = new() { Id = Guid.NewGuid(), UserId = userId, Kind = kind, OptionsJson = json, CreatedAt = now, ExpiresAt = now + ChallengeLifetime };
+        PasskeyChallenge challenge = new() { Id = Guid.NewGuid(), UserId = userId, Kind = kind, OptionsJson = state, CreatedAt = now, ExpiresAt = now + PasskeySettings.CeremonyLifetime };
         _db.PasskeyChallenges.Add(challenge);
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return challenge.Id;
@@ -236,6 +257,7 @@ public sealed class EfPasskeyService : IPasskeyService
 
     private Task FailAsync(Guid? userId, string reason, CancellationToken cancellationToken)
     {
+        Monitoring.SangamMetrics.SignInFailureCount.Add(1);
         return _audit.WriteAsync(new AuditEntry(AuditActions.UserPasskeyFail, userId is null ? AuditActorType.Anonymous : AuditActorType.User, userId, TargetType: userId is null ? null : "user", TargetId: userId,
             Metadata: JsonSerializer.Serialize(new Dictionary<string, string> { ["reason"] = reason })), cancellationToken);
     }

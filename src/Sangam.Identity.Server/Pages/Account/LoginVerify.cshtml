@@ -1,7 +1,7 @@
 @page
 @model LoginVerifyModel
 @{
-    ViewData["Title"] = "Enter your sign-in code";
+    ViewData["Title"] = L["Enter your sign-in code"].Value;
     if (Model.RefreshSeconds > 0) { ViewData["Refresh"] = Model.RefreshSeconds; }
 }
 
@@ -9,20 +9,20 @@
   <div class="sg-circle sg-circle--pending" aria-hidden="true"><span class="sg-cord-dot sg-cord-dot--solo"></span></div>
   @if (Model.ViaSms)
   {
-    <h1 class="sg-card-title sg-card-title--centre">Check your phone</h1>
+    <h1 class="sg-card-title sg-card-title--centre">@L["Check your phone"]</h1>
     @if (Model.MaskedMobile is not null)
     {
-      <p class="sg-card-body sg-card-body--centre">We texted a 6-digit sign-in code to <span class="sg-mono sg-nowrap">@Model.MaskedMobile</span>. It is valid for 10 minutes and can be used once.</p>
+      <p class="sg-card-body sg-card-body--centre">@L.Html("We texted a 6-digit sign-in code to {0}. It is valid for 10 minutes and can be used once.", LocalizedMarkup.Tag("span", Model.MaskedMobile, "sg-mono sg-nowrap"))</p>
     }
     else
     {
-      <p class="sg-card-body sg-card-body--centre">If your account has a verified mobile number, we have texted a 6-digit sign-in code to it. It is valid for 10 minutes and can be used once.</p>
+      <p class="sg-card-body sg-card-body--centre">@L["If your account has a verified mobile number, we have texted a 6-digit sign-in code to it. It is valid for 10 minutes and can be used once."]</p>
     }
   }
   else
   {
-    <h1 class="sg-card-title sg-card-title--centre">Check your email</h1>
-    <p class="sg-card-body sg-card-body--centre">We sent a 6-digit sign-in code. It is valid for 10 minutes and can be used once.</p>
+    <h1 class="sg-card-title sg-card-title--centre">@L["Check your email"]</h1>
+    <p class="sg-card-body sg-card-body--centre">@L["We sent a 6-digit sign-in code. It is valid for 10 minutes and can be used once."]</p>
   }
   <partial name="_Banner" model="@(("info", Model.Notice ?? string.Empty))" />
   <partial name="_Banner" model="@(("danger", Model.Error ?? string.Empty))" />
@@ -30,33 +30,33 @@
   <form method="post" novalidate>
     <input type="hidden" asp-for="ReturnUrl" />
     <div class="sg-field-group">
-      <label class="sg-label" asp-for="Code">Sign-in code</label>
+      <label class="sg-label" asp-for="Code">@L["Sign-in code"]</label>
       <input class="sg-field sg-field--code" asp-for="Code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]*" maxlength="7" autofocus required />
       <span class="sg-field-error" asp-validation-for="Code"></span>
     </div>
-    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">Continue</button>
+    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Continue"]</button>
   </form>
 
   <form method="post" asp-page-handler="Resend" class="sg-resend">
     <input type="hidden" asp-for="ReturnUrl" />
     @if (Model.ResendIn > 0)
     {
-      <button type="submit" class="sg-btn sg-btn--secondary sg-btn--block" disabled>Resend in @Model.ResendLabel</button>
+      <button type="submit" class="sg-btn sg-btn--secondary sg-btn--block" disabled>@L["Resend in {0}", Model.ResendLabel]</button>
     }
     else
     {
-      <button type="submit" class="sg-btn sg-btn--secondary sg-btn--block">Resend sign-in code</button>
+      <button type="submit" class="sg-btn sg-btn--secondary sg-btn--block">@L["Resend sign-in code"]</button>
     }
   </form>
 
   @if (Model.SmsOffered)
   {
-    <form method="post" asp-page-handler="@(Model.ViaSms ? "Email" : "Sms")" class="sg-switch-channel">
+    <form method="post" asp-page-handler="@(Model.ViaSms ? "email" : "sms")" class="sg-switch-channel">
       <input type="hidden" asp-for="ReturnUrl" />
-      <button type="submit" class="sg-link-button">@(Model.ViaSms ? "Email me the code instead" : "Text the code to my mobile instead")</button>
+      <button type="submit" class="sg-link-button">@(Model.ViaSms ? L["Email me the code instead"] : L["Text the code to my mobile instead"])</button>
     </form>
   }
 
   <div class="sg-cord-rule" role="presentation"></div>
-  <p class="sg-alt"><a href="/login">Use a different account</a> · Stuck? <a href="mailto:help@sangamid.in">help@sangamid.in</a></p>
+  <p class="sg-alt"><a href="/login">@L["Use a different account"]</a> @L["· Stuck?"] <a href="mailto:help@sangamid.in">help@sangamid.in</a></p>
 </section>

@@ -202,6 +202,13 @@ select.sg-field { appearance: auto; padding-right: 36px; }
 .sg-tertiary:hover { color: var(--sg-ochre); }
 .sg-resend { margin-top: var(--sg-space-3); }
 /* A text-styled button for switching between an e-mailed and a texted code: a form post, so it works without JavaScript. */
+/* Signature ceremony (PR-17): the record, then the meaning, unmistakably. */
+.sg-sign-record { border: 1px solid var(--sg-border); border-radius: var(--sg-radius-control); padding: var(--sg-space-3) var(--sg-space-4); background: var(--sg-surface-sunk); }
+.sg-sign-text { margin: 0 0 var(--sg-space-2); font: 400 15px/1.55 var(--sg-font-body); color: var(--sg-ink); white-space: pre-line; }
+.sg-sign-meaning { margin: var(--sg-space-4) 0 var(--sg-space-2); }
+.sg-sign-meaning .sg-label { display: block; }
+.sg-sign-meaning strong { font: 600 22px/1.3 var(--sg-font-display); color: var(--sg-ink); }
+.sg-break { overflow-wrap: anywhere; font-size: 12px; }
 .sg-steps { padding-left: 1.2em; }
 .sg-steps li + li { margin-top: var(--sg-space-2); }
 .sg-switch-channel { margin-top: var(--sg-space-3); text-align: center; }
@@ -371,3 +378,23 @@ select.sg-field { appearance: auto; padding-right: 36px; }
 .sg-passkeys li .sg-muted { grid-column: 1; font-size: 13px; }
 .sg-passkeys li .sg-inline-form { grid-column: 2; grid-row: 1 / span 2; margin: 0; }
 .sg-passkey-add { margin-top: 16px; }
+
+/* PR-20 front-channel logout */
+.sg-frontchannel { position: absolute; width: 0; height: 0; border: 0; visibility: hidden; }
+.sg-signout-apps { margin: 0 0 16px; padding-left: 20px; color: var(--sg-ink); }
+.sg-auth-lang { margin-top: var(--sg-space-2); }
+
+/* PR-19 partner branding: a logo in the partner chip, a welcome line, and an accent that recolours only the primary
+   button and links (checked for contrast with white). Structure never changes. */
+.sg-partner-logo { height: 28px; max-width: 140px; object-fit: contain; flex: none; }
+.sg-partner-welcome { max-width: var(--sg-auth-column); margin: calc(-1 * var(--sg-space-2)) auto var(--sg-space-4); padding: 0 var(--sg-space-4); text-align: center; font: 400 15px/1.5 var(--sg-font-body); color: var(--sg-ink); }
+.sg-auth--themed .sg-btn--primary { background: var(--sg-theme-accent); border-color: var(--sg-theme-accent); }
+.sg-auth--themed .sg-card a:not(.sg-btn) { color: var(--sg-theme-accent); }
+.sg-auth-partner-links { margin: var(--sg-space-2) 0 0; }
+
+/* PR-18: consent buttons wrap (row and text) rather than overflow when the words are long. */
+.sg-consent-actions { flex-wrap: wrap; }
+.sg-btn--consent { white-space: normal; height: auto; min-height: 48px; padding-top: var(--sg-space-2); padding-bottom: var(--sg-space-2); line-height: 1.3; text-align: center; }
+/* A plain list of facts in a card (the grievance contact): no browser indent, and long words wrap on a phone. */
+dl.sg-card-body dt { font-weight: 600; color: var(--sg-ink); }
+dl.sg-card-body dd { margin: 0 0 var(--sg-space-2); overflow-wrap: anywhere; }

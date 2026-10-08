@@ -1,14 +1,11 @@
 using Microsoft.Extensions.Configuration;
-using Sangam.Identity.Application.Abstractions;
 using Sangam.Identity.Infrastructure.Sms;
 
 namespace Sangam.Identity.Infrastructure.Tests.Sms;
 
-/// <summary>PR-15: DLT template rendering, masking and hashing, failover and the production start-up rule.</summary>
+/// <summary>PR-15: DLT template rendering, masking and hashing, and the production start-up rule (SMS through Anjal, D-M).</summary>
 public sealed class SmsBuildingBlocksTests
 {
-    private static readonly OutgoingSms Message = new("+919000000061", "sign_in", "1107000000000000001", "SANGAM", "123456 is your code");
-
     [Fact]
     public void Templates_FillEachVariableInOrder_ExactlyAsRegistered()
     {
@@ -33,17 +30,11 @@ public sealed class SmsBuildingBlocksTests
     }
 
     [Fact]
-    public async Task Failover_TriesTheNextProvider_WhenOneRefusesOrBreaks()
+    public void Production_AcceptsAnjal_OnlyWhenAnjalIsConfigured()
     {
-        FailoverSmsSender chain = new([new FakeSender("first", accept: false), new FakeSender("broken", accept: true, throws: true), new FakeSender("second", accept: true)]);
-        SmsSendResult result = await chain.SendAsync(Message);
-        Assert.True(result.Accepted);
-        Assert.Equal("second", result.Provider);
-
-        FailoverSmsSender none = new([new FakeSender("only", accept: false)]);
-        SmsSendResult refused = await none.SendAsync(Message);
-        Assert.False(refused.Accepted);
-        Assert.Equal("only", refused.Provider);
+        string? withoutAnjal = SmsGuard.Validate("Production", Config("anjal", "SANGAM", "a-production-hash-key-of-at-least-32-chars", "1107"));
+        Assert.Contains("Anjal's API is not configured", withoutAnjal, StringComparison.Ordinal);
+        Assert.Null(SmsGuard.Validate("Production", Config("anjal", "SANGAM", "a-production-hash-key-of-at-least-32-chars", "1107", anjal: true)));
     }
 
     [Theory]
@@ -76,8 +67,9 @@ public sealed class SmsBuildingBlocksTests
         Assert.Contains("sign_in", SmsGuard.Validate("Development", config), StringComparison.Ordinal);
     }
 
-    private static IConfiguration Config(string provider, string header, string hashKey, string templateId) => new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+    private static IConfiguration Config(string provider, string header, string hashKey, string templateId, bool anjal = false) => new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
     {
+        ["Sangam:Anjal:BaseUrl"] = anjal ? "https://api.anjalmail.com/" : null,
         ["Sangam:Sms:Enabled"] = "true",
         ["Sangam:Sms:Provider"] = provider,
         ["Sangam:Sms:SenderHeader"] = header,
@@ -85,23 +77,8 @@ public sealed class SmsBuildingBlocksTests
         ["Sangam:Sms:Templates:sign_in:Id"] = templateId,
         ["Sangam:Sms:Templates:mobile_verification:Id"] = templateId,
         ["Sangam:Sms:Templates:step_up:Id"] = templateId,
+        ["Sangam:Sms:Templates:registration_notice:Id"] = templateId,
+        ["Sangam:Sms:Templates:reset_notice:Id"] = templateId,
+        ["Sangam:Sms:Templates:operator_alert:Id"] = templateId,
     }).Build();
-
-    private sealed class FakeSender : ISmsSender
-    {
-        private readonly bool _accept;
-        private readonly bool _throws;
-
-        public FakeSender(string name, bool accept, bool throws = false)
-        {
-            Name = name;
-            _accept = accept;
-            _throws = throws;
-        }
-
-        public string Name { get; }
-
-        public Task<SmsSendResult> SendAsync(OutgoingSms message, CancellationToken cancellationToken = default)
-            => _throws ? throw new HttpRequestException("down") : Task.FromResult(new SmsSendResult(_accept, Name, _accept ? "id-" + Name : null, _accept ? null : "refused"));
-    }
 }

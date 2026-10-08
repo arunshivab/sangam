@@ -18,6 +18,9 @@ public sealed class PrivacyModel : PageModel
     /// <summary>The document's paragraphs, or <see langword="null"/> while it is pending.</summary>
     public IReadOnlyList<string>? Paragraphs { get; private set; }
 
+    /// <summary>Who owns and operates Sangam (D-C).</summary>
+    public string Operator => LegalDocuments.Operator(_configuration);
+
     /// <summary>The support address.</summary>
     public string SupportEmail => _configuration["Sangam:SupportEmail"] ?? "help@sangamid.in";
 

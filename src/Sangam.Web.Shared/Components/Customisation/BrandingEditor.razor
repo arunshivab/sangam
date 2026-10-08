@@ -1,0 +1,73 @@
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.Extensions.Localization
+@using Sangam.Identity.Application.Customisation
+@using Sangam.Identity.Domain.Enums
+@using Sangam.Web.Shared.Localization
+@inject ICustomisationService Customisation
+@inject IStringLocalizer<SangamText> L
+
+@* PR-19 (SGM-209 §3): one level's sign-in page branding. Blank fields follow the level above. *@
+<div class="sg-panel" data-panel="branding">
+  <h2 class="sg-h3">@Heading</h2>
+  @if (_settings is null)
+  {
+    <p class="sg-muted">@(_loaded ? L["You cannot change these."] : L["Loading…"])</p>
+  }
+  else
+  {
+    <p class="sg-muted">@L["Shown on Sangam's sign-in and registration screens for this application. Partner branding never changes the screens' layout. Leave a field empty to use the level above."]</p>
+
+    <div class="sg-form-row">
+      <span class="sg-label">@L["Logo"]</span>
+      @if (_settings.LogoUrl is string logo)
+      {
+        <p><img src="@(IdentityBaseUrl + logo)" alt="@L["Current logo"]" style="height:40px;max-width:200px;object-fit:contain;background:#fff;padding:4px;border-radius:4px" /></p>
+        <button type="button" class="sg-btn sg-btn--ghost" @onclick="RemoveLogoAsync" disabled="@_busy">@L["Remove logo"]</button>
+      }
+      <InputFile accept="image/png,image/svg+xml" OnChange="UploadAsync" disabled="@_busy" aria-label="@L["Upload a logo"]" />
+      <span class="sg-muted">@L["PNG or SVG, at most 200 KB. An SVG must be a plain picture: no scripts or outside links."]</span>
+    </div>
+
+    <div class="sg-form-row">
+      <label class="sg-label" for="@($"{Key}-accent")">@L["Accent colour (buttons and links)"]</label>
+      <span class="sg-colour">
+        <input type="color" aria-label="@L["Pick a colour"]" value="@(_accent ?? "#0F3B38")" @onchange="e => _accent = (e.Value?.ToString() ?? _accent)?.ToUpperInvariant()" />
+        <input id="@($"{Key}-accent")" class="sg-input sg-mono" @bind="_accent" @bind:event="oninput" maxlength="7" placeholder="#1D4E89" />
+      </span>
+      <span class="sg-muted">@L["Must be dark enough for white text on it (contrast at least 4.5:1)."]</span>
+    </div>
+
+    @foreach ((string culture, string name) in Languages)
+    {
+      <div class="sg-form-row">
+        <label class="sg-label" for="@($"{Key}-welcome-{culture}")">@L["Welcome line ({0})", name]</label>
+        <input id="@($"{Key}-welcome-{culture}")" class="sg-input" lang="@culture" value="@(_welcome.GetValueOrDefault(culture))" @onchange="e => _welcome[culture] = e.Value?.ToString()" maxlength="200" />
+      </div>
+    }
+
+    <div class="sg-form-row">
+      <label class="sg-label" for="@($"{Key}-help")">@L["Help link"]</label>
+      <input id="@($"{Key}-help")" class="sg-input" type="url" @bind="_help" placeholder="https://" />
+    </div>
+    <div class="sg-form-row">
+      <label class="sg-label" for="@($"{Key}-terms")">@L["Terms link"]</label>
+      <input id="@($"{Key}-terms")" class="sg-input" type="url" @bind="_terms" placeholder="https://" />
+    </div>
+    <div class="sg-form-row">
+      <label class="sg-label" for="@($"{Key}-privacy")">@L["Privacy notice link"]</label>
+      <input id="@($"{Key}-privacy")" class="sg-input" type="url" @bind="_privacy" placeholder="https://" />
+    </div>
+
+    <div class="sg-actions">
+      <button type="button" class="sg-btn sg-btn--primary" @onclick="SaveAsync" disabled="@_busy">@L["Save sign-in page"]</button>
+      @if (PreviewUrl is not null)
+      {
+        <a class="sg-btn sg-btn--ghost" href="@PreviewUrl" target="_blank" rel="noopener">@L["Preview the sign-in page"]</a>
+      }
+    </div>
+    @if (_message is not null)
+    {
+      <p class="@(_ok ? "sg-ok" : "sg-warn")" role="status">@_message</p>
+    }
+  }
+</div>

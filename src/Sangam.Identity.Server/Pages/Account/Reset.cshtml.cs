@@ -67,7 +67,7 @@ public sealed class ResetModel : AuthPageModel
 
         if (!string.Equals(NewPassword, ConfirmPassword, StringComparison.Ordinal))
         {
-            ModelState.AddModelError(nameof(ConfirmPassword), "The passwords do not match.");
+            ModelState.AddModelError(nameof(ConfirmPassword), L["The passwords do not match."]);
         }
 
         if (!ModelState.IsValid)
@@ -82,11 +82,11 @@ public sealed class ResetModel : AuthPageModel
             {
                 if (error.Field is null)
                 {
-                    Error = error.Message;
+                    Error = L[error.Message ?? string.Empty];
                 }
                 else
                 {
-                    ModelState.AddModelError(error.Field, error.Message);
+                    ModelState.AddModelError(error.Field, L[error.Message ?? string.Empty]);
                 }
             }
 

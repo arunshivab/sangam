@@ -1,16 +1,16 @@
 @page "/help"
 @model HelpModel
 @{
-    ViewData["Title"] = "Help";
+    ViewData["Title"] = L["Help"].Value;
 }
 
 <section class="sg-card sg-doc">
-  <h1 class="sg-card-title">Help</h1>
-  <p class="sg-card-body">Most things you can do yourself:</p>
+  <h1 class="sg-card-title">@L["Help"]</h1>
+  <p class="sg-card-body">@L["Most things you can do yourself:"]</p>
   <ul class="sg-card-body">
-    <li><a href="/forgot">Forgotten your password</a></li>
-    <li><a href="/account">Your account</a>: your details, your email, how you sign in, connected apps, devices and activity</li>
-    <li><a href="/privacy">Privacy notice</a> and <a href="/terms">terms of use</a></li>
+    <li><a href="/forgot">@L["Forgotten your password"]</a></li>
+    <li><a href="/account">@L["Your account"]</a>@L[": your details, your email, how you sign in, connected apps, devices and activity"]</li>
+    <li>@L.Html("{0} and {1}", LocalizedMarkup.Link("/privacy", L["Privacy notice"]), LocalizedMarkup.Link("/terms", L["terms of use"]))</li>
   </ul>
-  <p class="sg-card-body">Anything else: <a href="mailto:@Model.SupportEmail">@Model.SupportEmail</a>. For a privacy complaint, <a href="/privacy/grievance">raise a grievance</a>.</p>
+  <p class="sg-card-body">@L.Html("Anything else: {0}. For a privacy complaint, {1}.", LocalizedMarkup.Link("mailto:" + Model.SupportEmail, Model.SupportEmail), LocalizedMarkup.Link("/privacy/grievance", L["raise a grievance"]))</p>
 </section>

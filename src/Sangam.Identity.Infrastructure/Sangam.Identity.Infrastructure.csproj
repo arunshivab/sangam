@@ -17,8 +17,6 @@
   <ItemGroup>
     <PackageReference Include="EFCore.NamingConventions" />
     <PackageReference Include="Konscious.Security.Cryptography.Argon2" />
-    <PackageReference Include="Fido2" />
-    <PackageReference Include="MailKit" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
@@ -26,10 +24,6 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
-    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
-    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
     <PackageReference Include="QRCoder" />
     <PackageReference Include="OpenIddict.EntityFrameworkCore" />
   </ItemGroup>
@@ -42,6 +36,13 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Sangam.Identity.Infrastructure.Tests" />
+  </ItemGroup>
+
+  <!-- PR-19: Sangam's built-in e-mail texts in every language. -->
+  <ItemGroup>
+    <None Remove="Customisation\DefaultTemplates.json" />
+    <Content Remove="Customisation\DefaultTemplates.json" />
+    <EmbeddedResource Include="Customisation\DefaultTemplates.json" LogicalName="Sangam.Identity.Infrastructure.Customisation.DefaultTemplates.json" />
   </ItemGroup>
 
 </Project>

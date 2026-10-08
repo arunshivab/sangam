@@ -1,19 +1,19 @@
 @page "/account/mobile"
 @model MobileModel
 @{
-    ViewData["Title"] = "Verify your mobile";
+    ViewData["Title"] = L["Verify your mobile"].Value;
     if (Model.ResendIn > 0) { ViewData["Refresh"] = Model.ResendIn; }
 }
 
 <section class="sg-card">
-  <h1 class="sg-card-title">Your mobile number</h1>
-  <p class="sg-card-body"><span class="sg-mono sg-nowrap">@Model.MaskedMobile</span> · @(Model.Verified ? "verified" : "not yet verified")</p>
+  <h1 class="sg-card-title">@L["Your mobile number"]</h1>
+  <p class="sg-card-body"><span class="sg-mono sg-nowrap">@Model.MaskedMobile</span> · @(Model.Verified ? L["verified"] : L["not yet verified"])</p>
   <partial name="_Banner" model="@((Model.Verified ? "success" : "info", Model.Notice ?? string.Empty))" />
   <partial name="_Banner" model="@(("danger", Model.Error ?? string.Empty))" />
 
   @if (Model.Verified)
   {
-    <p class="sg-card-body">Sign-in codes can be texted to this number when you ask for them. If you change the number in your account portal, it will need verifying again.</p>
+    <p class="sg-card-body">@L["Sign-in codes can be texted to this number when you ask for them. If you change the number in your account portal, it will need verifying again."]</p>
   }
   else if (Model.Unavailable is not null)
   {
@@ -21,26 +21,26 @@
   }
   else
   {
-    <p class="sg-card-body">We will text a 6-digit code to this number. Typing it here proves the number is yours, so sign-in codes can be texted to it.</p>
+    <p class="sg-card-body">@L["We will text a 6-digit code to this number. Typing it here proves the number is yours, so sign-in codes can be texted to it."]</p>
     <form method="post" asp-page-handler="Send">
       @if (Model.ResendIn > 0)
       {
-        <button type="submit" class="sg-btn sg-btn--secondary sg-btn--block" disabled>Text another code in @Model.ResendLabel</button>
+        <button type="submit" class="sg-btn sg-btn--secondary sg-btn--block" disabled>@L["Text another code in {0}", Model.ResendLabel]</button>
       }
       else
       {
-        <button type="submit" class="sg-btn sg-btn--secondary sg-btn--block">Text me a code</button>
+        <button type="submit" class="sg-btn sg-btn--secondary sg-btn--block">@L["Text me a code"]</button>
       }
     </form>
     <form method="post" asp-page-handler="Verify" class="sg-resend" novalidate>
       <div class="sg-field-group">
-        <label class="sg-label" asp-for="Code">Code from the text message</label>
+        <label class="sg-label" asp-for="Code">@L["Code from the text message"]</label>
         <input class="sg-field sg-field--code" asp-for="Code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]*" maxlength="7" required />
         <span class="sg-field-error" asp-validation-for="Code"></span>
       </div>
-      <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">Verify my mobile</button>
+      <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Verify my mobile"]</button>
     </form>
   }
 
-  <a class="sg-tertiary" href="/account">Back to your account</a>
+  <a class="sg-tertiary" href="/account">@L["Back to your account"]</a>
 </section>

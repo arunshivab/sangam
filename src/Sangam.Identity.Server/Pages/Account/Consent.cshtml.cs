@@ -114,29 +114,29 @@ public sealed class ConsentModel : AuthPageModel
         List<(string, string)> shared = [];
         if (requested.Contains(SangamScopes.Profile))
         {
-            shared.Add(("Your name", user.DisplayName));
-            shared.Add(("Date of birth and gender", user.DateOfBirth.ToString("d MMM yyyy", CultureInfo.InvariantCulture) + " · " + Domain.Genders.ToCode(user.Gender).Replace('_', ' ')));
+            shared.Add((L["Your name"], user.DisplayName));
+            shared.Add((L["Date of birth and gender"], user.DateOfBirth.ToString("d MMM yyyy", CultureInfo.CurrentCulture) + " · " + GenderText.Label(L, user.Gender)));
         }
 
         if (requested.Contains(SangamScopes.Email))
         {
-            shared.Add(("Email address", user.Email));
+            shared.Add((L["Email address"], user.Email));
         }
 
         if (requested.Contains(SangamScopes.Phone))
         {
-            shared.Add(("Mobile number", user.Mobile ?? "—"));
+            shared.Add((L["Mobile number"], user.Mobile ?? "—"));
         }
 
         if (requested.Contains(SangamScopes.OrgsRead))
         {
             IReadOnlyList<OrgClaim> orgs = await _tenancy.GetOrgClaimsAsync(user.Id, app.Id, cancellationToken);
-            shared.Add(("Organisations and roles", orgs.Count == 0 ? "None yet" : string.Join(", ", orgs.Select(o => o.Name + " (" + o.Role + ")"))));
+            shared.Add((L["Organisations and roles"], orgs.Count == 0 ? L["None yet"] : string.Join(", ", orgs.Select(o => o.Name + " (" + o.Role + ")"))));
         }
 
         if (requested.Contains(SangamScopes.OfflineAccess))
         {
-            shared.Add(("Stay signed in", "The app can refresh its access without asking you again"));
+            shared.Add((L["Stay signed in"], L["The app can refresh its access without asking you again"]));
         }
 
         Shared = shared;

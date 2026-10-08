@@ -81,12 +81,12 @@ public sealed class LoginNewPasswordModel : AuthPageModel
         Strength = PasswordStrength.Evaluate(NewPassword);
         if (NewPassword.Length < MinimumLength)
         {
-            ModelState.AddModelError(nameof(NewPassword), $"Use at least {MinimumLength} characters.");
+            ModelState.AddModelError(nameof(NewPassword), L["Use at least {0} characters.", MinimumLength]);
         }
 
         if (!string.Equals(NewPassword, ConfirmPassword, StringComparison.Ordinal))
         {
-            ModelState.AddModelError(nameof(ConfirmPassword), "The two passwords do not match.");
+            ModelState.AddModelError(nameof(ConfirmPassword), L["The two passwords do not match."]);
         }
 
         if (!ModelState.IsValid)
@@ -99,7 +99,7 @@ public sealed class LoginNewPasswordModel : AuthPageModel
         {
             foreach (AccountError error in result.Errors)
             {
-                ModelState.AddModelError(nameof(NewPassword), error.Message);
+                ModelState.AddModelError(nameof(NewPassword), L[error.Message ?? string.Empty]);
             }
 
             return Page();

@@ -1,76 +1,80 @@
 @inject IPartnerService Partners
+@inject IConfiguration Configuration
+@inject Sangam.Identity.Application.Apps.IAppDirectory Apps
 
 @if (_settings is null)
 {
-  <p class="sg-muted">Loading…</p>
+  <p class="sg-muted">@L["Loading…"]</p>
 }
 else
 {
-  <p class="sg-lede">How @Info.AppName appears to people on Sangam, and how they must sign in to it. Its name, web addresses and secrets are set by imagiQa; ask them to change those.</p>
+  <p class="sg-lede">@L["How {0} appears to people on Sangam, and how they must sign in to it. Its name, web addresses and secrets are set by the Sangam team; ask them to change those.", Info.AppName]</p>
 
   <div class="sg-panel">
-    <h2 class="sg-h3">Appearance</h2>
+    <h2 class="sg-h3">@L["Appearance"]</h2>
     <dl class="sg-facts">
-      <div><dt>Name</dt><dd>@_settings.DisplayName <span class="sg-muted">(set by imagiQa)</span></dd></div>
+      <div><dt>@L["Name"]</dt><dd>@_settings.DisplayName <span class="sg-muted">@L["(set by Sangam)"]</span></dd></div>
     </dl>
     <div class="sg-form-row">
-      <label class="sg-label" for="app-desc">Description people see when they allow access</label>
+      <label class="sg-label" for="app-desc">@L["Description people see when they allow access"]</label>
       <input id="app-desc" class="sg-input" @bind="_description" @bind:event="oninput" maxlength="280" />
     </div>
     <div class="sg-form-row">
-      <label class="sg-label" for="app-colour">Brand colour</label>
+      <label class="sg-label" for="app-colour">@L["Brand colour"]</label>
       <span class="sg-colour">
-        <input type="color" aria-label="Pick a colour" value="@_colour" @onchange="e => _colour = (e.Value?.ToString() ?? _colour).ToUpperInvariant()" />
+        <input type="color" aria-label="@L["Pick a colour"]" value="@_colour" @onchange="e => _colour = (e.Value?.ToString() ?? _colour).ToUpperInvariant()" />
         <input id="app-colour" class="sg-input sg-mono" @bind="_colour" @bind:event="oninput" maxlength="7" />
       </span>
     </div>
     <div class="sg-form-row">
-      <label class="sg-label" for="app-glyph">Tile letter (one or two characters)</label>
+      <label class="sg-label" for="app-glyph">@L["Tile letter (one or two characters)"]</label>
       <input id="app-glyph" class="sg-input" @bind="_glyph" @bind:event="oninput" maxlength="4" />
     </div>
-    <p class="sg-muted">Preview: <span class="sg-tile-glyph" style="background:@_colour">@_glyph</span></p>
+    <p class="sg-muted">@L["Preview:"] <span class="sg-tile-glyph" style="background:@_colour">@_glyph</span></p>
   </div>
 
+  <BrandingEditor UserId="Info.UserId" Scope="CustomisationScope.App" ScopeId="Info.AppId" Heading="@L["Sign-in page"].Value" IdentityBaseUrl="@Authority" PreviewUrl="@PreviewUrl" Key="app-branding" />
+
   <div class="sg-panel">
-    <h2 class="sg-h3">How people sign in to @Info.AppName</h2>
+    <h2 class="sg-h3">@L["How people sign in to {0}", Info.AppName]</h2>
     <fieldset class="sg-choices">
-      <legend class="sg-label">Sign-in rule</legend>
+      <legend class="sg-label">@L["Sign-in rule"]</legend>
       @if (_settings.SignInPolicy is SignInPolicy.Password or SignInPolicy.OtpOnly)
       {
         <label class="sg-check">
           <input type="radio" name="policy" checked="@(_policy == _settings.SignInPolicy)" @onchange="() => _policy = _settings.SignInPolicy" />
-          @PolicyName(_settings.SignInPolicy) <span class="sg-muted">(set by imagiQa — you can only make it stricter)</span>
+          @PolicyName(_settings.SignInPolicy) <span class="sg-muted">@L["(set by Sangam — you can only make it stricter)"]</span>
         </label>
       }
       else
       {
         <label class="sg-check">
           <input type="radio" name="policy" checked="@(_policy == SignInPolicy.Default)" @onchange="() => _policy = SignInPolicy.Default" />
-          Each person's own choice <span class="sg-muted">— password, or password and a code, as they set in Sangam</span>
+          @L["Each person's own choice"] <span class="sg-muted">@L["— password, or password and a code, as they set in Sangam"]</span>
         </label>
       }
       <label class="sg-check">
         <input type="radio" name="policy" checked="@(_policy == SignInPolicy.PasswordAndOtp)" @onchange="() => _policy = SignInPolicy.PasswordAndOtp" />
-        Always two-step <span class="sg-muted">— password, then a code by email, for everyone</span>
+        @L["Always two-step"] <span class="sg-muted">@L["— password, then a code by email, for everyone"]</span>
       </label>
       <label class="sg-check">
         <input type="radio" name="policy" checked="@(_policy == SignInPolicy.PasskeyOnly)" @onchange="() => _policy = SignInPolicy.PasskeyOnly" />
-        Passkey only <span class="sg-muted">— fingerprint, face or device PIN, for everyone; no passwords</span>
+        @L["Passkey only"] <span class="sg-muted">@L["— fingerprint, face or device PIN, for everyone; no passwords"]</span>
       </label>
     </fieldset>
-    <p class="sg-muted">Partners can require two-step sign-in or passkeys, or leave it to each person. Rules that would weaken sign-in for people who chose two-step are set only by imagiQa. Organisations can tighten this rule for their own people.</p>
+    <p class="sg-muted">@L["Partners can require two-step sign-in or passkeys, or leave it to each person. Rules that would weaken sign-in for people who chose two-step are set only by Sangam. Organisations can tighten this rule for their own people."]</p>
   </div>
 
   <div class="sg-actions">
-    <button type="button" class="sg-btn sg-btn--primary" @onclick="SaveAsync" disabled="@_busy">Save settings</button>
+    <button type="button" class="sg-btn sg-btn--primary" @onclick="SaveAsync" disabled="@_busy">@L["Save settings"]</button>
   </div>
 
   @if (_security is not null)
   {
     <div class="sg-panel" data-panel="security-policy">
-      <h2 class="sg-h3">Passwords and second factor</h2>
+      <h2 class="sg-h3">@L["Passwords and second factor"]</h2>
       <PolicyEditor View="_security" Key="app" InheritLabel="Sangam" Busy="_busy" OnSave="SavePolicyAsync"
-                    Explanation="@($"Rules for everyone who signs in to {Info.AppName}. They can only be stricter than Sangam's own, and each organisation can tighten them further.")" />
+                    Explanation="@L["Rules for everyone who signs in to {0}. They can only be stricter than Sangam's own, and each organisation can tighten them further.", Info.AppName].Value" />
     </div>
   }
 }
@@ -78,6 +82,13 @@ else
 <StatusLine Ok="_ok" Message="@_message" />
 
 @code {
+    private string? _clientId;
+
+    private string Authority => Configuration["Sangam:Authority"] ?? "https://id.sangamid.in";
+
+    // PR-19: the application's own sign-in page, as people will see it.
+    private string? PreviewUrl => _clientId is null ? null : Authority + "/login?returnUrl=" + Uri.EscapeDataString("/connect/authorize?client_id=" + _clientId);
+
     /// <summary>The application being worked on.</summary>
     [Parameter]
     [EditorRequired]
@@ -98,6 +109,7 @@ else
     private async Task LoadAsync()
     {
         _settings = await Partners.GetSettingsAsync(Info.UserId, Info.AppId);
+        _clientId = (await Apps.FindByIdAsync(Info.AppId))?.ClientId;
         _security = await Partners.GetAppPolicyAsync(Info.UserId, Info.AppId);
         if (_settings is not null)
         {
@@ -108,13 +120,13 @@ else
         }
     }
 
-    private static string PolicyName(SignInPolicy policy) => policy switch
+    private string PolicyName(SignInPolicy policy) => policy switch
     {
-        SignInPolicy.Password => "Password only",
-        SignInPolicy.OtpOnly => "Email code only, no password",
-        SignInPolicy.PasswordAndOtp => "Always two-step",
-        SignInPolicy.PasskeyOnly => "Passkey only",
-        _ => "Each person's own choice",
+        SignInPolicy.Password => L["Password only"],
+        SignInPolicy.OtpOnly => L["Email code only, no password"],
+        SignInPolicy.PasswordAndOtp => L["Always two-step"],
+        SignInPolicy.PasskeyOnly => L["Passkey only"],
+        _ => L["Each person's own choice"],
     };
 
     private async Task SaveAsync()
@@ -123,7 +135,7 @@ else
         PartnerResult result = await Partners.UpdateSettingsAsync(Info.UserId, Info.AppId, _description, _colour, _glyph, _policy);
         _busy = false;
         _ok = result.Succeeded;
-        _message = result.Message;
+        _message = L[result.Message ?? string.Empty];
         if (result.Succeeded)
         {
             await LoadAsync();
@@ -136,7 +148,7 @@ else
         PartnerResult result = await Partners.UpdateAppPolicyAsync(Info.UserId, Info.AppId, input);
         _busy = false;
         _ok = result.Succeeded;
-        _message = result.Message;
+        _message = L[result.Message ?? string.Empty];
         if (result.Succeeded)
         {
             await LoadAsync();

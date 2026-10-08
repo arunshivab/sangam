@@ -1,15 +1,15 @@
 @inject IPartnerService Partners
 
-<p class="sg-lede">The roles this application understands. A role's code is what arrives in the sign-in token, so the application's own code decides what each one may do; here you only name them and give them to people.</p>
+<p class="sg-lede">@L["The roles this application understands. A role's code is what arrives in the sign-in token, so the application's own code decides what each one may do; here you only name them and give them to people."]</p>
 
 @if (_roles is null)
 {
-  <p class="sg-muted">Loading…</p>
+  <p class="sg-muted">@L["Loading…"]</p>
 }
 else
 {
   <table class="sg-table">
-    <thead><tr><th>Role</th><th>Code</th><th>Permissions</th><th></th></tr></thead>
+    <thead><tr><th>@L["Role"]</th><th>@L["Code"]</th><th>@L["Permissions"]</th><th></th></tr></thead>
     <tbody>
       @foreach (RoleDto role in _roles)
       {
@@ -20,12 +20,12 @@ else
           <td>
             @if (role.RetiredAt is not null)
             {
-              <span class="sg-pill sg-pill--disabled">retired</span>
+              <span class="sg-pill sg-pill--disabled">@L["retired"]</span>
             }
             else if (!role.IsSystem)
             {
-              <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => Edit(role)" disabled="@_busy">Edit</button>
-              <button type="button" class="sg-btn sg-btn--warn" @onclick="() => _retiring = role" disabled="@_busy">Retire</button>
+              <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => Edit(role)" disabled="@_busy">@L["Edit"]</button>
+              <button type="button" class="sg-btn sg-btn--warn" @onclick="() => _retiring = role" disabled="@_busy">@L["Retire"]</button>
             }
           </td>
         </tr>
@@ -37,34 +37,34 @@ else
 @if (_retiring is not null)
 {
   <div class="sg-confirm">
-    <p><strong>Retire @_retiring.DisplayName?</strong> Nobody can be given it any more, and it stops appearing in the sign-in tokens of people who hold it. This cannot be undone here.</p>
+    <p><strong>@L["Retire {0}?", _retiring.DisplayName]</strong> @L["Nobody can be given it any more, and it stops appearing in the sign-in tokens of people who hold it. This cannot be undone here."]</p>
     <div class="sg-actions">
-      <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => _retiring = null">Cancel</button>
-      <button type="button" class="sg-btn sg-btn--danger" @onclick="RetireAsync" disabled="@_busy">Retire it</button>
+      <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => _retiring = null">@L["Cancel"]</button>
+      <button type="button" class="sg-btn sg-btn--danger" @onclick="RetireAsync" disabled="@_busy">@L["Retire it"]</button>
     </div>
   </div>
 }
 
-<h2 class="sg-h2">@(_editingExisting ? "Edit role" : "Add a role")</h2>
+<h2 class="sg-h2">@(_editingExisting ? L["Edit role"] : L["Add a role"])</h2>
 <div class="sg-panel">
   <div class="sg-form-row">
-    <label class="sg-label" for="role-code">Code</label>
-    <input id="role-code" class="sg-input sg-mono" @bind="_code" @bind:event="oninput" disabled="@_editingExisting" placeholder="nurse" />
+    <label class="sg-label" for="role-code">@L["Code"]</label>
+    <input id="role-code" class="sg-input sg-mono" @bind="_code" @bind:event="oninput" disabled="@_editingExisting" placeholder="@L["nurse"]" />
   </div>
   <div class="sg-form-row">
-    <label class="sg-label" for="role-name">Name</label>
-    <input id="role-name" class="sg-input" @bind="_name" @bind:event="oninput" placeholder="Nurse" />
+    <label class="sg-label" for="role-name">@L["Name"]</label>
+    <input id="role-name" class="sg-input" @bind="_name" @bind:event="oninput" placeholder="@L["Nurse"]" />
   </div>
   <div class="sg-form-row">
-    <label class="sg-label" for="role-perms">Permissions, separated by commas</label>
-    <input id="role-perms" class="sg-input sg-mono" @bind="_permissions" @bind:event="oninput" placeholder="patient:read, vitals:write" />
+    <label class="sg-label" for="role-perms">@L["Permissions, separated by commas"]</label>
+    <input id="role-perms" class="sg-input sg-mono" @bind="_permissions" @bind:event="oninput" placeholder="@L["patient:read, vitals:write"]" />
   </div>
   <div class="sg-actions">
     @if (_editingExisting)
     {
-      <button type="button" class="sg-btn sg-btn--ghost" @onclick="Reset">Cancel</button>
+      <button type="button" class="sg-btn sg-btn--ghost" @onclick="Reset">@L["Cancel"]</button>
     }
-    <button type="button" class="sg-btn sg-btn--primary" @onclick="SaveAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_code) || string.IsNullOrWhiteSpace(_name))">Save role</button>
+    <button type="button" class="sg-btn sg-btn--primary" @onclick="SaveAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_code) || string.IsNullOrWhiteSpace(_name))">@L["Save role"]</button>
   </div>
 </div>
 
@@ -113,7 +113,7 @@ else
         PartnerResult result = await Partners.UpsertRoleAsync(Info.UserId, Info.AppId, _code.Trim(), new RoleUpsert(_name.Trim(), null, permissions, null));
         _busy = false;
         _ok = result.Succeeded;
-        _message = result.Message;
+        _message = L[result.Message ?? string.Empty];
         if (result.Succeeded)
         {
             Reset();
@@ -128,7 +128,7 @@ else
         _busy = false;
         _retiring = null;
         _ok = result.Succeeded;
-        _message = result.Message;
+        _message = L[result.Message ?? string.Empty];
         await LoadAsync();
     }
 }

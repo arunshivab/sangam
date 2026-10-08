@@ -21,12 +21,17 @@ internal sealed class SoftwareAuthenticator : IDisposable
 
     public uint Counter { get; set; }
 
+    /// <summary>The user handle the server gave at registration (options.user.id), returned at sign-in as a browser does.</summary>
+    public string? UserHandle { get; private set; }
+
     public void Dispose() => _key.Dispose();
 
     /// <summary>Answers a registration (navigator.credentials.create).</summary>
     public string Create(string optionsJson, string origin, string rpId, bool userVerified = true)
     {
-        string challenge = JsonNode.Parse(optionsJson)!["challenge"]!.GetValue<string>();
+        JsonNode options = JsonNode.Parse(optionsJson)!;
+        string challenge = options["challenge"]!.GetValue<string>();
+        UserHandle = options["user"]?["id"]?.GetValue<string>();
         byte[] clientData = ClientData("webauthn.create", challenge, origin);
         ECParameters p = _key.ExportParameters(false);
         CborWriter cose = new(CborConformanceMode.Lax);
@@ -80,7 +85,7 @@ internal sealed class SoftwareAuthenticator : IDisposable
             id = B64(CredentialId),
             rawId = B64(CredentialId),
             type = "public-key",
-            response = new { authenticatorData = B64(authData), clientDataJSON = B64(clientData), signature = B64(signature), userHandle = B64(userId.ToByteArray()) },
+            response = new { authenticatorData = B64(authData), clientDataJSON = B64(clientData), signature = B64(signature), userHandle = UserHandle ?? B64(userId.ToByteArray()) },
             clientExtensionResults = new { },
         });
     }

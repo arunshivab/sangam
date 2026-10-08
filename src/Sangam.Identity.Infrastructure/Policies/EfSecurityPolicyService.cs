@@ -8,18 +8,21 @@ namespace Sangam.Identity.Infrastructure.Policies;
 
 /// <summary>
 /// <see cref="ISecurityPolicyService"/> on the database. The application's sign-in rule replaces the platform's
-/// (imagiQa sets it, and may set a weaker one, D-092); everything else — and every organisation level — only tightens.
+/// (the platform operators set it, and may set a weaker one, D-092); everything else — and every organisation level — only tightens.
 /// </summary>
 public sealed class EfSecurityPolicyService : ISecurityPolicyService
 {
     private readonly SangamDbContext _db;
     private readonly PolicySettings _settings;
+    private readonly IBreachedPasswordChecker _breaches;
 
     /// <summary>Initialises the service.</summary>
     /// <param name="db">Database.</param>
     /// <param name="settings">Platform settings.</param>
-    public EfSecurityPolicyService(SangamDbContext db, PolicySettings settings)
+    /// <param name="breaches">The breached-password check, to say whether it is available (D-J).</param>
+    public EfSecurityPolicyService(SangamDbContext db, PolicySettings settings, IBreachedPasswordChecker breaches)
     {
+        _breaches = breaches ?? throw new ArgumentNullException(nameof(breaches));
         _db = db ?? throw new ArgumentNullException(nameof(db));
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
     }
@@ -28,7 +31,7 @@ public sealed class EfSecurityPolicyService : ISecurityPolicyService
     public SecurityPolicy Platform => _settings.Platform;
 
     /// <inheritdoc />
-    public bool BreachCheckAvailable => _settings.BreachCheckEnabled;
+    public bool BreachCheckAvailable => _breaches.Available;
 
     /// <inheritdoc />
     public async Task<SecurityPolicy> ForAppAsync(Guid? appId, CancellationToken cancellationToken = default)

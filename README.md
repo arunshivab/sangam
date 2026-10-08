@@ -3,7 +3,8 @@
 **One identity. Many homes.**
 
 Sangam is an open-source identity and tenancy platform for Indian healthcare software,
-built and operated by [imagiQa Healthcare Services Pvt Ltd](https://imagiqa.com). Users
+owned and operated by Dr. Arun Shiva Balasubramanian (it started under imagiQa Healthcare Services; a company
+will be formed to hold it). Users
 register once at `id.sangamid.in` and sign in across partner applications with the same
 OpenID Connect / OAuth 2.0 handshake that "Sign in with Google" uses — credentials stay
 with Sangam, partner applications receive only the claims the user consented to.
@@ -46,7 +47,7 @@ eight-PR delivery plan.
 ## Quick start
 
 Prerequisites: [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0),
-[PostgreSQL 16 or later](https://www.postgresql.org/download/) installed natively (needed from PR-02),
+[PostgreSQL 18](https://www.postgresql.org/download/) installed natively (needed from PR-02),
 PowerShell 5.1 or 7.
 
 ```powershell
@@ -77,7 +78,7 @@ console's Applications page (**Assign owner**); owners add the rest from the par
 In Development the server captures outgoing email instead of sending it; open
 `http://localhost:5100/dev/outbox` to read verification and reset codes.
 
-Docker is not required for local development. `deploy/docker-compose.dev.yml` (PostgreSQL 16 or later, pinned to 16 there, +
+Docker is not required for local development. `deploy/docker-compose.dev.yml` (PostgreSQL 18, +
 Caddy) is the server stack and an opt-in alternative: `.\scripts\bootstrap-dev.ps1 -WithDocker`.
 
 ## Repository layout
@@ -118,7 +119,7 @@ in prose write "Sangam"; `SangamID` is the domain and package namespace only.
 
 ## Database and migrations
 
-Local development uses a native PostgreSQL 16+ with the `sangam_identity` database created by
+Local development uses a native PostgreSQL 18 with the `sangam_identity` database created by
 `scripts/bootstrap-dev.ps1 -InitDatabase`. `Sangam.Identity.Server` applies migrations and
 seeds the development sample app on startup in Development. To add a migration:
 
@@ -160,4 +161,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 
 ## Licence
 
-Apache License 2.0 — see [LICENSE](LICENSE). Copyright © 2026 imagiQa Healthcare Services Pvt Ltd.
+Apache License 2.0 — see [LICENSE](LICENSE). Copyright © 2026 Dr. Arun Shiva Balasubramanian.
