@@ -22,7 +22,7 @@
     <spring-boot.version>4.1.1</spring-boot.version>
     <!-- R7 security pass: newer than Spring Boot 4.1.1 manages, for fixed CVEs (see docs/security/dependency-scan.md). -->
     <tomcat.version>11.0.26</tomcat.version>
-    <jackson3.version>3.1.7</jackson3.version>
+    <jackson3.version>3.2.3</jackson3.version>
     <nimbus.version>10.10</nimbus.version>
     <jackson.version>2.22.3</jackson.version>
     <junit.version>5.13.4</junit.version>
@@ -71,9 +71,9 @@
   <build>
     <pluginManagement>
       <plugins>
-        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId><version>3.14.0</version>
+        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId><version>3.16.0</version>
           <configuration><compilerArgs><arg>-parameters</arg><arg>-Xlint:all</arg><arg>-Werror</arg><arg>-Xlint:-processing</arg><arg>-Xlint:-serial</arg></compilerArgs></configuration></plugin>
-        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-surefire-plugin</artifactId><version>3.5.3</version></plugin>
+        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-surefire-plugin</artifactId><version>3.6.0</version></plugin>
       </plugins>
     </pluginManagement>
   </build>
