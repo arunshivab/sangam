@@ -13,6 +13,6 @@
     "test": "tsc -p tsconfig.test.json && node --test --test-reporter=spec \"dist-test/test/*.test.js\""
   },
   "dependencies": { "@sangam/client": "1.0.0-rc.2", "openid-client": "^6.8.8" },
-  "devDependencies": { "typescript": "^5.9.3", "@types/node": "^22.18.0", "jose": "^6.1.0" },
+  "devDependencies": { "typescript": "^5.9.3", "@types/node": "^26.6.4", "jose": "^6.1.0" },
   "engines": { "node": ">=20" }
 }
