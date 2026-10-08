@@ -1,0 +1,18 @@
+{
+  "name": "@sangam/node",
+  "version": "0.15.0",
+  "description": "Sign in with Sangam for Node.js back ends (Express or plain node:http): authorization code with PKCE kept server-side, step-up, permission and token guards, and the shared audit buffer.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "tsc -p tsconfig.test.json && node --test --test-reporter=spec \"dist-test/test/*.test.js\""
+  },
+  "dependencies": { "@sangam/client": "0.15.0", "openid-client": "^6.8.8" },
+  "devDependencies": { "typescript": "^5.9.3", "@types/node": "^22.18.0", "jose": "^6.1.0" },
+  "engines": { "node": ">=20" }
+}

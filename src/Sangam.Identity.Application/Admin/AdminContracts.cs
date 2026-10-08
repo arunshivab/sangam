@@ -37,6 +37,9 @@ public sealed record AdminUserRow(
 /// <param name="LinkedApps">Applications with live access, by name.</param>
 /// <param name="Organisations">Organisations they hold a role in, by name.</param>
 /// <param name="HoldReason">Why a hold was placed, if one was.</param>
+/// <param name="VerifiedBy">How the identity was verified (PR-26: <c>digilocker</c>), if it was.</param>
+/// <param name="VerifiedAt">When it was verified.</param>
+/// <param name="Attributes">The values applications keep about the person (PR-25).</param>
 public sealed record AdminUserDetail(
     AdminUserRow Row,
     DateOnly DateOfBirth,
@@ -46,7 +49,18 @@ public sealed record AdminUserDetail(
     int ActiveSessions,
     IReadOnlyList<string> LinkedApps,
     IReadOnlyList<string> Organisations,
-    string? HoldReason);
+    string? HoldReason,
+    string? VerifiedBy = null,
+    DateTimeOffset? VerifiedAt = null,
+    IReadOnlyList<AdminAttributeValue>? Attributes = null);
+
+/// <summary>A value an application keeps about a person, as the console shows it (PR-25).</summary>
+/// <param name="AppName">The application.</param>
+/// <param name="Label">The attribute's label.</param>
+/// <param name="Key">The attribute's key.</param>
+/// <param name="Value">The value.</param>
+/// <param name="EditableBy"><c>admin</c> or <c>person</c>.</param>
+public sealed record AdminAttributeValue(string AppName, string Label, string Key, string Value, string EditableBy);
 
 /// <summary>An operator of the console.</summary>
 /// <param name="UserId">Their user account.</param>

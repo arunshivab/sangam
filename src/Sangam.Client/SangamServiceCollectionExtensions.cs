@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Sangam.Shared.Constants;
 
@@ -25,6 +26,11 @@ public static class SangamServiceCollectionExtensions
         SangamOptions sangam = new();
         configure(sangam);
         sangam.Validate();
+
+        // R6: the management client (and the audit forwarder's tokens) use the same settings.
+        services.TryAddSingleton(sangam);
+        services.AddHttpClient(SangamManagementClient.HttpClientName);
+        services.TryAddSingleton<SangamManagementClient>();
 
         return services
             .AddAuthentication(o =>
@@ -84,5 +90,23 @@ public static class SangamServiceCollectionExtensions
                     return Task.CompletedTask;
                 };
             });
+    }
+
+    /// <summary>
+    /// Adds the shared audit helper (SGM-208): <see cref="Audit.ISangamAudit"/> builds events in schema 1.0 from the
+    /// signed-in person and the request and buffers them in a JSON Lines file; the forwarder sends them to the audit
+    /// service once <see cref="Audit.SangamAuditOptions.Endpoint"/> is set. Call after <see cref="AddSangam"/>.
+    /// </summary>
+    /// <param name="services">The application's services.</param>
+    /// <param name="configure">Sets the <see cref="Audit.SangamAuditOptions"/>.</param>
+    public static IServiceCollection AddSangamAudit(this IServiceCollection services, Action<Audit.SangamAuditOptions> configure)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configure);
+        services.Configure(configure);
+        services.AddHttpContextAccessor();
+        services.TryAddSingleton<Audit.ISangamAudit, Audit.SangamAuditRecorder>();
+        services.AddHostedService<Audit.SangamAuditForwarder>();
+        return services;
     }
 }

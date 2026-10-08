@@ -47,3 +47,6 @@ node_modules/
 # Production secrets: never committed (deploy/production/secrets/README.md)
 deploy/production/secrets/*
 !deploy/production/secrets/README.md
+
+# R6: the SDK samples buffer audit events here when run from the repository.
+sangam-audit/

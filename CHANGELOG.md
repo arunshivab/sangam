@@ -4,6 +4,68 @@ All notable changes to Sangam are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.15.0] - R6 SDK family and the shared audit event
+
+### Fixed — R5 verification finding (V-16)
+- **Back-channel logout goes through the outbound guard (V-16).** Its HTTP client is built from
+  `OutboundHttp.CreateHandler`: redirects are never followed and private-network addresses are refused when
+  connecting, unless `Sangam:Outbound:AllowPrivateNetworks`. A back-channel address is checked with
+  `OutboundHttp.Check` when an operator saves it.
+
+### Added — operator console
+- A person's detail page shows whether their identity is verified with DigiLocker (and when), and the values
+  applications keep about them, read only.
+
+### Fixed — operator console on a phone
+- The console fits a 390-pixel screen: the top bar wraps, with its sections on a row of their own that scrolls
+  sideways, and the tables on the users, applications and operators pages scroll inside their panel instead of
+  widening the page. The layout check behind the Hindi and Malayalam screenshots had missed this since R4: on a
+  mobile viewport the browser zooms out to fit a wide page, so the check compared the page with itself. It now
+  compares with the screen width.
+
+### Added — R6 (PR-30 shared audit event and conformance)
+- `sdk/schema/audit-event-1.0.schema.json`: the shared audit event schema 1.0 (SGM-208) as JSON Schema.
+- `sdk/conformance/vectors.json`: shared conformance vectors — permissions over `sangam_orgs` (inheritance, siblings,
+  case, malformed entries), step-up levels and ages (the five-minute signature cap), the RFC 9470 challenge, webhook
+  signatures (the published vector, tampering, clock, rotation) and audit validation and building. Every SDK runs them.
+- `sdk/conformance/live/check_samples.py`: drives each SDK's sample in a browser against a development Sangam: sign
+  in, a permission allowed and denied, a signature that makes Sangam ask for a fresh two-factor sign-in, and the
+  shared audit event checked against the JSON Schema. All four samples pass.
+- **.NET (`Sangam.Client`)**: `SangamWebhook.Verify`, `SangamManagementClient` (cached client-credentials tokens), and
+  the audit helper — `AddSangamAudit`, `ISangamAudit.RecordAsync` (person and request filled in, schema enforced,
+  sensitive changes masked, UUID v7), a JSON Lines buffer and a forwarder for the future audit service.
+  `samples/Sangam.Sample.AspNetCore` (port 5940).
+- The development seed registers `http://localhost:5910–5940/auth/callback` for the SDK samples.
+
+### Added — R6 (PR-27 JavaScript and TypeScript)
+- `@sangam/client` (browser and Node): memberships and `can`, step-up and the challenge, `verifyWebhook` (Web Crypto),
+  the audit builder and validator, `createTokenVerifier` (jose), `ManagementClient`.
+- `@sangam/node`: sign-in with PKCE on the server (openid-client), signed server-side sessions, `requireSignIn`,
+  `requireStepUp`, `requirePermission`, `requireToken` (RFC 9470), the audit buffer.
+- `@sangam/react`: `SangamProvider`, `useSangamUser`, `useCan`, `useStepUp`, `<Can>`, sign-in and sign-out buttons;
+  the browser never holds a token.
+- Sample: React + Node (port 5910).
+
+### Added — R6 (PR-28 Python)
+- `sangam-client` (Authlib, joserfc, httpx): the shared rules, `TokenVerifier`, `ManagementClient`, audit builder,
+  validator and buffer; FastAPI dependencies and a Flask blueprint with decorators; sessions kept on the server.
+- Sample: FastAPI (port 5920).
+
+### Added — R6 (PR-29 Java)
+- `in.sangamid:sangam-client` (Nimbus JOSE + JWT, Jackson) and `in.sangamid:sangam-spring` (Spring Boot 3.5, Spring
+  Security 6.5): PKCE for confidential clients, `@RequireStepUp`, `SangamUsers.current()`, `SangamAuditRecorder`.
+- Sample: Spring Boot (port 5930).
+
+### Changed
+- CI: a `sdks` job builds and tests the JavaScript, Python and Java SDKs (not yet a required check).
+- `.dockerignore` leaves `sdk/` out of image builds.
+
+### Notes
+- The SDKs are not yet published to npm, PyPI or Maven Central (OI-048).
+- Sangam answers a request for `urn:sangam:acr:sign` with a fresh two-factor sign-in reported as `urn:sangam:acr:2`;
+  every SDK accepts that for a signature within five minutes, as the shared rule says. Whether Sangam should issue
+  `acr:sign` itself is open (OI-049).
+
 ## [0.14.0] - R5 integrations: SCIM, webhooks, custom claims, time-limited roles and DigiLocker
 
 ### Fixed — R4 verification findings (V-14, V-15)

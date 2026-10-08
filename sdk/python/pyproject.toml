@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sangam-client"
+version = "0.15.0"
+description = "Sangam for Python: sign-in with PKCE kept on the server, permissions per organisation, step-up, webhook verification, the shared audit event, access-token checks and the management API; FastAPI and Flask adapters."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+dependencies = ["authlib>=1.6", "joserfc>=1.0", "httpx>=0.27"]
+
+[project.optional-dependencies]
+fastapi = ["fastapi>=0.110"]
+flask = ["flask>=3.0"]
+test = ["pytest>=8", "pytest-asyncio>=0.23", "fastapi>=0.110", "flask>=3.0", "jsonschema>=4"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

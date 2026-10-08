@@ -23,12 +23,14 @@ public sealed partial class EfAdminService : IAdminService
     private readonly UserManager<SangamUser> _users;
     private readonly EfMfaResetService _resets;
     private readonly IPlatformAlerts _alerts;
+    private readonly Provisioning.OutboundSettings _outbound;
 
     /// <summary>Initialises the service.</summary>
-    public EfAdminService(SangamDbContext db, IPortalService portal, IAuditWriter audit, IClock clock, UserManager<SangamUser> users, EfMfaResetService resets, IPlatformAlerts alerts)
+    public EfAdminService(SangamDbContext db, IPortalService portal, IAuditWriter audit, IClock clock, UserManager<SangamUser> users, EfMfaResetService resets, IPlatformAlerts alerts, Provisioning.OutboundSettings outbound)
     {
         _resets = resets ?? throw new ArgumentNullException(nameof(resets));
         _alerts = alerts ?? throw new ArgumentNullException(nameof(alerts));
+        _outbound = outbound ?? throw new ArgumentNullException(nameof(outbound));
         _db = db ?? throw new ArgumentNullException(nameof(db));
         _portal = portal ?? throw new ArgumentNullException(nameof(portal));
         _audit = audit ?? throw new ArgumentNullException(nameof(audit));
@@ -152,7 +154,19 @@ public sealed partial class EfAdminService : IAdminService
             user.PurgeAfter,
             user.HoldPlacedAt is not null);
 
-        return new AdminUserDetail(row, user.DateOfBirth, user.Gender, user.SignInPreference, lastSignIn, sessions, apps, orgs, user.HoldReason);
+        // PR-25/26: whether the identity is verified, and what applications keep about the person.
+        var verification = await _db.IdentityVerifications.AsNoTracking().Where(v => v.UserId == userId)
+            .Select(v => new { v.Method, v.VerifiedAt }).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        List<AdminAttributeValue> attributes = await _db.UserAttributeValues.AsNoTracking()
+            .Where(v => v.UserId == userId)
+            .Join(_db.UserAttributeDefinitions.Where(d => d.RetiredAt == null), v => v.DefinitionId, d => d.Id, (v, d) => new { v.Value, d.Label, d.Key, d.EditableBy, d.AppId, d.CreatedAt })
+            .Join(_db.Apps, x => x.AppId, a => a.Id, (x, a) => new { x.Value, x.Label, x.Key, x.EditableBy, x.CreatedAt, a.DisplayName })
+            .OrderBy(x => x.DisplayName).ThenBy(x => x.CreatedAt)
+            .Select(x => new AdminAttributeValue(x.DisplayName, x.Label, x.Key, x.Value, x.EditableBy))
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+
+        return new AdminUserDetail(row, user.DateOfBirth, user.Gender, user.SignInPreference, lastSignIn, sessions, apps, orgs, user.HoldReason,
+            verification?.Method, verification?.VerifiedAt, attributes);
     }
 
     /// <inheritdoc />
@@ -406,6 +420,12 @@ public sealed partial class EfAdminService : IAdminService
         if (backError is not null)
         {
             return AdminResult.Refused("Back-channel address: " + backError);
+        }
+
+        // V-16: Sangam calls the back-channel address itself, so it passes the same guard as SCIM and webhooks.
+        if (back is not null && Provisioning.OutboundHttp.Check(back, _outbound.AllowPrivate) is string guard)
+        {
+            return AdminResult.Refused("Back-channel address: " + guard);
         }
 
         string? front = NormaliseLogoutUri(frontChannelLogoutUri, out string? frontError);

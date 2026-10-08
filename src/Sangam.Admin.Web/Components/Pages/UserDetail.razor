@@ -30,6 +30,7 @@ else
         <div><dt>@L["Last sign-in"]</dt><dd>@((_detail.LastSignInAt is DateTimeOffset lastSignIn ? IndiaTime.Stamp(lastSignIn) : null) ?? L["never"])</dd></div>
         <div><dt>@L["Live sessions"]</dt><dd>@_detail.ActiveSessions</dd></div>
         <div><dt>@L["Joined"]</dt><dd>@IndiaTime.Date(_detail.Row.CreatedAt)</dd></div>
+        <div data-fact="identity"><dt>@L["Identity"]</dt><dd>@(_detail.VerifiedAt is DateTimeOffset verifiedAt ? L["verified with DigiLocker on {0}", IndiaTime.Date(verifiedAt)] : L["not verified"])</dd></div>
       </dl>
       @if (_detail.Row.PurgeAfter is not null)
       {
@@ -59,6 +60,22 @@ else
         <ul class="sg-list">@foreach (string org in _detail.Organisations) { <li>@org</li> }</ul>
       }
       <p class="sg-muted">@L["To change a role or a membership, the application does it through its own API. The console cannot reach inside an application's tenancy."]</p>
+      @if (_detail.Attributes is { Count: > 0 } attributes)
+      {
+        <h3 class="sg-h3">@L["Details applications keep"]</h3>
+        <div class="sg-table-wrap" data-panel="attribute-values">
+          <table class="sg-table">
+            <thead><tr><th>@L["Application"]</th><th>@L["Attribute"]</th><th>@L["Value"]</th><th>@L["Who may change it"]</th></tr></thead>
+            <tbody>
+              @foreach (AdminAttributeValue a in attributes)
+              {
+                <tr><td>@a.AppName</td><td>@a.Label <span class="sg-sub sg-mono">@a.Key</span></td><td class="@(a.Value.Length <= 24 ? "sg-keep" : null)">@a.Value</td><td>@(a.EditableBy == "person" ? L["the person, and administrators"] : L["administrators"])</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <p class="sg-muted">@L["Read only here: the application's administrators and the person change these."]</p>
+      }
     </div>
   </div>
 

@@ -39,6 +39,12 @@ public sealed partial class DevelopmentSeeder
         "https://localhost:5101/dev/callback",
     ];
 
+    /// <summary>
+    /// R6: the SDK samples (sdk/*/samples), which sign in as the development sample application: Node and React on 5910,
+    /// Python on 5920, Java on 5930, .NET on 5940, each at /auth/callback, and back to / after signing out.
+    /// </summary>
+    public static IReadOnlyList<string> SdkSampleBaseUrls { get; } = ["http://localhost:5910", "http://localhost:5920", "http://localhost:5930", "http://localhost:5940"];
+
     /// <summary>PKCE verifier the /dev/callback page uses, so a browser walkthrough needs no tooling.</summary>
     public const string DevCallbackVerifier = "sangam-dev-callback-verifier-0123456789abcdef";
 
@@ -225,7 +231,7 @@ public sealed partial class DevelopmentSeeder
             Permissions.ResponseTypes.Code,
             .. SangamScopes.All.Where(scope => scope != SangamScopes.OpenId && scope != SangamScopes.OfflineAccess).Select(scope => Permissions.Prefixes.Scope + scope),
         ];
-        bool changed = existing is null || !permissions.All(descriptor.Permissions.Contains) || descriptor.RedirectUris.Count < 1 + DevCallbackRedirectUris.Count;
+        bool changed = existing is null || !permissions.All(descriptor.Permissions.Contains) || descriptor.RedirectUris.Count < 1 + DevCallbackRedirectUris.Count + SdkSampleBaseUrls.Count;
         foreach (string permission in permissions)
         {
             descriptor.Permissions.Add(permission);
@@ -240,6 +246,11 @@ public sealed partial class DevelopmentSeeder
         }
 
         descriptor.PostLogoutRedirectUris.Add(new Uri(SamplePostLogoutRedirectUri));
+        foreach (string sample in SdkSampleBaseUrls)
+        {
+            descriptor.RedirectUris.Add(new Uri(sample + "/auth/callback"));
+            descriptor.PostLogoutRedirectUris.Add(new Uri(sample + "/"));
+        }
 
         if (existing is null)
         {

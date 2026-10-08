@@ -113,3 +113,39 @@ jobs:
 
       - name: Verify formatting and style
         run: dotnet format Sangam.sln --verify-no-changes --no-restore
+
+  # R6: the JavaScript/TypeScript, Python and Java SDKs, each running the shared conformance vectors
+  # (sdk/conformance/vectors.json) and its own tests. Not yet a required check: add "sdks" to the ruleset when ready.
+  sdks:
+    name: sdks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: JavaScript and TypeScript (@sangam/client, @sangam/node, @sangam/react, sample)
+        working-directory: sdk/js
+        run: |
+          npm ci
+          npm run build
+          npm test
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Python (sangam-client, FastAPI and Flask adapters)
+        working-directory: sdk/python
+        run: |
+          pip install -e ".[test]"
+          pytest -q
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Java (sangam-client, sangam-spring, sample)
+        working-directory: sdk/java
+        run: mvn -B -ntp verify

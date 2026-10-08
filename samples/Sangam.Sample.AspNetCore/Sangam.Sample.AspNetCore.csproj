@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- R6 (SGM-306 §6): the .NET sample that matches the JavaScript, Python and Java ones — sign-in, a permission check,
+       step-up for a signature and a shared audit event — with Sangam.Client only, as an application would. -->
+
+  <PropertyGroup>
+    <RootNamespace>Sangam.Sample.AspNetCore</RootNamespace>
+    <Description>Sample: ASP.NET Core minimal API signing in with Sangam.</Description>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sangam.Client\Sangam.Client.csproj" />
+  </ItemGroup>
+
+</Project>

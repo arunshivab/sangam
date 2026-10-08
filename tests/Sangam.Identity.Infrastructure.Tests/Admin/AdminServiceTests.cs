@@ -302,6 +302,54 @@ public sealed class AdminServiceTests : IAsyncLifetime
         Assert.Null(Assert.Single(await admin.ListAppsAsync(_viewer), a => a.Id == _appId).BackChannelLogoutUri);
     }
 
+    [PostgresFact]
+    public async Task TheUserDetail_ShowsVerification_AndTheValuesApplicationsKeep()
+    {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        Guid definition = Guid.NewGuid();
+        Guid retired = Guid.NewGuid();
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            db.UserAttributeDefinitions.AddRange(
+                new UserAttributeDefinition { Id = definition, AppId = _appId, Key = "employee_no", Label = "Employee number", Type = "text", EditableBy = "admin", CreatedAt = now },
+                new UserAttributeDefinition { Id = retired, AppId = _appId, Key = "old_badge", Label = "Old badge", Type = "text", EditableBy = "admin", CreatedAt = now, RetiredAt = now });
+            db.UserAttributeValues.AddRange(
+                new UserAttributeValue { DefinitionId = definition, UserId = _patient, Value = "E-1042", UpdatedAt = now },
+                new UserAttributeValue { DefinitionId = retired, UserId = _patient, Value = "B-9", UpdatedAt = now });
+            await db.SaveChangesAsync();
+        }
+
+        AdminUserDetail before = (await Service().OpenUserAsync(_viewer, _patient, null))!;
+        Assert.Null(before.VerifiedAt);
+        AdminAttributeValue value = Assert.Single(before.Attributes!);
+        Assert.Equal(("LiPi HIS", "Employee number", "E-1042"), (value.AppName, value.Label, value.Value));
+
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            db.IdentityVerifications.Add(new IdentityVerification { Id = Guid.NewGuid(), UserId = _patient, Method = "digilocker", SubjectHash = new string('a', 64), Name = "Patient", DateOfBirth = new DateOnly(1990, 1, 1), Gender = Gender.Female, VerifiedAt = now });
+            await db.SaveChangesAsync();
+        }
+
+        AdminUserDetail after = (await Service().OpenUserAsync(_viewer, _patient, null))!;
+        Assert.Equal("digilocker", after.VerifiedBy);
+        Assert.NotNull(after.VerifiedAt);
+    }
+
+    [PostgresFact]
+    public async Task ABackChannelAddress_OnAPrivateNetwork_IsRefused()
+    {
+        // V-16: Sangam itself calls this address, so it passes the outbound guard (production: no private networks).
+        IAdminService admin = Service();
+        foreach (string address in new[] { "https://10.0.0.5/bc", "https://192.168.1.20/bc", "https://127.0.0.1/bc", "https://[::1]/bc", "https://169.254.169.254/bc" })
+        {
+            AdminResult refused = await admin.SetAppLogoutUrisAsync(_appManager, _appId, address, null, null);
+            Assert.False(refused.Succeeded, address);
+            Assert.Contains("private network", refused.Message, StringComparison.Ordinal);
+        }
+
+        Assert.True((await admin.SetAppLogoutUrisAsync(_appManager, _appId, "https://his.example.in/bc", null, null)).Succeeded);
+    }
+
     [Theory]
     [InlineData(null, null, false)]
     [InlineData("   ", null, false)]
