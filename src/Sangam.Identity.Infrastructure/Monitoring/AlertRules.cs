@@ -91,6 +91,11 @@ public static class AlertRules
         {
             open.Add(new("backup", "backup overdue", string.Create(c, $"The last successful backup was {(s.At - backupAt).TotalHours:F0} hours ago.")));
         }
+        else if (s.Backup.Ok == true && s.Backup.Detail is string detail && detail.Contains("no off-site target", StringComparison.Ordinal))
+        {
+            // D-E: a backup that never leaves the server does not survive the server.
+            open.Add(new("backup_offsite", "backup not copied off-site", "The last backup stayed on the server: no off-site target is configured (D-E)."));
+        }
 
         if (s.RestoreDrill.Ok == false)
         {
@@ -114,6 +119,25 @@ public static class AlertRules
         else if (s.BreachList.Enabled && !s.BreachList.Loaded)
         {
             open.Add(new("breach_list", "breach check on, list missing", "The breached-password check is switched on but its list is not loaded, so passwords are not checked: " + s.BreachList.Problem));
+        }
+
+        // D-D: a grievance past either deadline.
+        if (s.Grievances.AcknowledgeOverdue > 0 || s.Grievances.ResolveOverdue > 0)
+        {
+            open.Add(new("grievance_overdue", "grievance overdue", string.Create(c, $"{s.Grievances.AcknowledgeOverdue} grievance(s) not acknowledged within two working days, {s.Grievances.ResolveOverdue} not resolved within thirty days. Open the console's grievance log.")));
+        }
+
+        // D-A: the archive runs hourly; behind by more than a few hours, or live events past their year plus a week.
+        if (s.AuditArchive is { Enabled: true } archive)
+        {
+            if (s.At - archive.LastRun > TimeSpan.FromHours(6))
+            {
+                open.Add(new("audit_archive", "audit archive not running", string.Create(c, $"The audit archive last ran {(s.At - archive.LastRun).TotalHours:F0} hours ago.")));
+            }
+            else if (archive.OldestLive is DateTimeOffset oldest && s.At - oldest > TimeSpan.FromDays(archive.LiveDays + 7))
+            {
+                open.Add(new("audit_archive", "audit archive behind", string.Create(c, $"The oldest live audit event is {(s.At - oldest).TotalDays:F0} days old; D-A keeps {archive.LiveDays} days live.")));
+            }
         }
 
         return open;

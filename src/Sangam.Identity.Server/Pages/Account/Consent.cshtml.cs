@@ -111,6 +111,22 @@ public sealed class ConsentModel : AuthPageModel
         HashSet<string> requested = [.. scopeParam.Split(' ', StringSplitOptions.RemoveEmptyEntries)];
         Scopes = [.. SangamScopes.UserScopes.Where(requested.Contains)];
 
+        Shared = await DescribeAsync(L, user, app, requested, _tenancy, cancellationToken);
+        return true;
+    }
+
+    /// <summary>What a person shares with an application for these scopes, with their real values (also the /device page).</summary>
+    /// <param name="text">The text catalogue.</param>
+    /// <param name="user">The person.</param>
+    /// <param name="app">The application.</param>
+    /// <param name="requested">The scopes asked for.</param>
+    /// <param name="tenancy">Tenancy, for organisations and roles.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    internal static async Task<IReadOnlyList<(string Label, string Value)>> DescribeAsync(Microsoft.Extensions.Localization.IStringLocalizer text, UserSummary user, AppSummary app, IReadOnlySet<string> requested, ITenancyQuery tenancy, CancellationToken cancellationToken)
+    {
+#pragma warning disable IDE1006 // Named L, as on every page, so the i18n lint finds the keys below.
+        Microsoft.Extensions.Localization.IStringLocalizer L = text;
+#pragma warning restore IDE1006
         List<(string, string)> shared = [];
         if (requested.Contains(SangamScopes.Profile))
         {
@@ -130,7 +146,7 @@ public sealed class ConsentModel : AuthPageModel
 
         if (requested.Contains(SangamScopes.OrgsRead))
         {
-            IReadOnlyList<OrgClaim> orgs = await _tenancy.GetOrgClaimsAsync(user.Id, app.Id, cancellationToken);
+            IReadOnlyList<OrgClaim> orgs = await tenancy.GetOrgClaimsAsync(user.Id, app.Id, cancellationToken);
             shared.Add((L["Organisations and roles"], orgs.Count == 0 ? L["None yet"] : string.Join(", ", orgs.Select(o => o.Name + " (" + o.Role + ")"))));
         }
 
@@ -139,7 +155,6 @@ public sealed class ConsentModel : AuthPageModel
             shared.Add((L["Stay signed in"], L["The app can refresh its access without asking you again"]));
         }
 
-        Shared = shared;
-        return true;
+        return shared;
     }
 }

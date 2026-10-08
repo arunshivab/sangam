@@ -27,3 +27,29 @@ internal sealed class MonitoringAlertConfiguration : IEntityTypeConfiguration<Mo
         b.Property(a => a.Summary).HasMaxLength(300).IsRequired();
     }
 }
+
+internal sealed class HostReportConfiguration : IEntityTypeConfiguration<HostReport>
+{
+    public void Configure(EntityTypeBuilder<HostReport> b)
+    {
+        b.ToTable("host_reports");
+        b.HasKey(r => new { r.Host, r.Subject });
+        b.Property(r => r.Host).HasMaxLength(40);
+        b.Property(r => r.Subject).HasMaxLength(40);
+        b.Property(r => r.Payload).HasMaxLength(4000).IsRequired();
+    }
+}
+
+internal sealed class DevOutboxMessageConfiguration : IEntityTypeConfiguration<DevOutboxMessage>
+{
+    public void Configure(EntityTypeBuilder<DevOutboxMessage> b)
+    {
+        b.ToTable("dev_outbox");
+        b.HasKey(m => m.Id);
+        b.Property(m => m.Id).UseIdentityAlwaysColumn();
+        b.Property(m => m.Host).HasMaxLength(40);
+        b.Property(m => m.Kind).HasMaxLength(10);
+        b.Property(m => m.Recipient).HasMaxLength(320);
+        b.Property(m => m.Subject).HasMaxLength(500);
+    }
+}

@@ -1,0 +1,20 @@
+# PR-22: switches on Sangam's SAML 2.0 identity provider. Use together with docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.saml.yml up -d
+# Without this file SAML stays off in production (no /saml addresses answer).
+services:
+  identity:
+    environment:
+      # A SAML-only signing key (SGM-803), never the OpenID Connect one. During a rotation, add the new one as 0 and
+      # keep the old one as 1 until every service provider has the new metadata.
+      Sangam__Saml__Certificates__0__Path: /run/secrets/saml_signing_current.pfx
+    secrets:
+      - source: saml_signing_current.pfx
+      - source: Sangam__Saml__Certificates__0__Password
+      # The key behind each service provider's private NameID. Never change it: every service provider would see
+      # every person as someone new.
+      - source: Sangam__Saml__PairwiseKey
+
+secrets:
+  saml_signing_current.pfx: { file: ./secrets/saml_signing_current.pfx }
+  Sangam__Saml__Certificates__0__Password: { file: ./secrets/Sangam__Saml__Certificates__0__Password }
+  Sangam__Saml__PairwiseKey: { file: ./secrets/Sangam__Saml__PairwiseKey }

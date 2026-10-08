@@ -88,6 +88,11 @@
   catalogue is the same idea in a form translators can review without tools). Branding and message templates by
   level — organisation, application, platform, built-in — with partner branding never changing structure
   (PR-19). Back- and front-channel logout, introspection and revocation (PR-20).
+- **Protocols, archive, backups, demo and grievances (R4).** Device authorization grant, PAR, token exchange and
+  native apps (PR-21, `native-and-mobile.md`); Sangam as a SAML 2.0 identity provider (PR-22, ADR-0016, which
+  replaces the proposed ADR-0016 of SGM-302); the encrypted audit archive (D-A); encrypted off-region backups under
+  object lock (D-E); the demo at `demo.sangamid.in` and client registration from settings (D-I); the grievance log
+  (D-D).
 - **Founder decisions D-A to D-M (R3).** Anjal is the single messaging gateway, by its API
   (`anjal-messaging-contract.md`); passkeys on ASP.NET Core Identity's own WebAuthn support (Fido2NetLib removed);
   self-hosted monitoring in the operator console with alerts through Anjal (OpenTelemetry removed); an offline

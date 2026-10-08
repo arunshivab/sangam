@@ -4,6 +4,87 @@ All notable changes to Sangam are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.13.0] - R4 protocols, audit archive, backups, demo and grievances
+
+### Fixed — R3 verification findings (V-10 to V-13)
+- **The breached-password state on /monitoring is the identity server's (V-10).** Each host reports what it sees
+  (`host_reports`); the page shows the identity server's state, says which host reported it, and flags any host that
+  sees the list differently. `Sangam__Passwords__BreachCheck__Enabled` now sits in the shared environment block of
+  `docker-compose.yml`, so it cannot be set for one service only (production README, SGM-303).
+- **One development outbox (V-11).** With `Sangam:Email:SharedOutbox` (on in every `appsettings.Development.json`),
+  e-mails and texts caught in development are also written to a `dev_outbox` table (last 500), and the identity
+  server's `/dev/outbox` lists them all, labelled by the host that raised them — the consoles' included.
+- **India time on every screen (V-12).** `IndiaTime` (Sangam.Shared) formats every date and time a person sees as IST
+  — console user detail, operators, monitoring, sessions, passkeys, connected applications, reset notices.
+- **Ordinary cooling-off is at least 24 hours (V-13).** `Sangam:Recovery:CoolingOffHours` below 24 is raised to 24; the
+  privileged period is never shorter than the ordinary one.
+- **Alerts still go out when the database is down.** The alert evaluator no longer stops when recording metrics fails,
+  and a database-down alert is sent as plain text, bypassing the templates and limits that need the database.
+
+### Added — R4 (D-A audit archive)
+- Audit events older than a year (`Sangam:Audit:LiveDays`, never under 365) are moved, hourly and by one host at a time
+  (advisory lock), into encrypted files under `Sangam:Audit:Directory`: format `SGMAUD01`, AES-256-GCM with the key
+  wrapped by RSA-OAEP-SHA256 for the founder's **public** certificate (`Sangam:Audit:CertificatePath`, RSA 3072+, no
+  private key accepted). IP addresses are shortened to /24 or /48, in metadata too; browser strings are dropped. The
+  file is written before the rows are deleted. Files whose newest event is over seven years old are deleted. Both are
+  audited (`audit.archive` with the file's SHA-256 and chain hashes, `audit.archive.purge`), and `AuditChain` verifies
+  across the archive boundary. `identity audit-archive keygen | list | read`. Monitoring panel and `audit_archive`
+  alert. `Sangam:Audit:RetentionDays` (which deleted without archiving) now refuses the start.
+
+### Added — R4 (D-D grievance log)
+- Operator console → **Grievances**: log a grievance the day it arrives (e-mail, letter, phone, in person), reference
+  `GRV-yyyy-NNNN`; acknowledge within two working days (IST, Monday to Friday less `Sangam:Grievance:Holidays`) and
+  answer within thirty days, each by e-mail from new templates in English, Hindi and Malayalam; notes; append-only
+  history enforced by database triggers; every step audited. Support or above acts; every operator reads. Monitoring
+  panel and `grievance_overdue` alert. Migration: `GrievanceLog`.
+
+### Added — R4 (D-E off-site backups)
+- `scripts/backup-db.sh`: the nightly dump, the day's container logs and each new audit-archive file are encrypted with
+  `age` for the founder's key and uploaded to S3-compatible storage in another region with **object lock in compliance
+  mode** — daily 14 days, Sunday 8 weeks, 1st of the month 12 months, logs 180 days, audit archive until seven years —
+  one env file per target in `/etc/sangam/backup-targets/`. It refuses to upload without recipients.
+  `scripts/restore-drill.sh --offsite <target>` restores from there. `backup/lifecycle.json`; `backup_offsite` alert.
+
+### Added — R4 (D-I demo, and registering clients in production)
+- The imagiQa sample runs at `demo.sangamid.in` (Compose service `demo`, Caddyfile, monitored TLS host) with a
+  "Demo, not for real patient data" banner on every page (`Imagiqa:Demo`), secrets from files, forwarded headers,
+  persisted data-protection keys and health checks.
+- **Production had no way to register any client.** The identity server now registers the applications in
+  `Sangam:Clients:<key>` at each start (kind, base address, secret of 32+ characters, names, PAR, exchange
+  audiences, native redirects), audited as `system.client.registered`; Compose registers the portal, both consoles
+  and the demo with the same secret files the hosts use.
+
+### Added — R4 (PR-21 device flow, PAR, token exchange, native apps)
+- **Device authorization grant**: `/connect/device`, and `/device` where the person enters the code and approves under
+  the application's sign-in rule, seeing what is shared (`device.approve`, `device.deny`).
+- **Pushed authorization requests**: `/connect/par`, and a per-client "PAR required"; the pushed scope, `acr_values`
+  and `ui_locales` survive the sign-in and consent steps.
+- **Token exchange (RFC 8693)**, justified by LiPi HIS calling LIS for the same person: an access token for exactly one
+  audience the caller is registered for (`ExchangeAudiences`), both applications active, the person's consent to the
+  target, scopes within those held and never `offline_access`; ten minutes, with an `act` claim; `token.exchange`.
+- **Native apps**: kind `native` (public, PKCE, claimed HTTPS, reverse-domain private-use scheme, or loopback by IP
+  literal; never `localhost` by name), refresh-token reuse leeway (`Sangam:Tokens:RefreshReuseLeewaySeconds`, 30 s);
+  `docs/native-and-mobile.md`. Rate limits on `/connect/device`, `/connect/par`, `/connect/introspect`, `/connect/revoke`.
+
+### Added — R4 (PR-22 SAML 2.0 identity provider; ADR-0016)
+- `/saml/metadata`, `/saml/sso` (HTTP-Redirect and HTTP-POST), `/saml/continue`, `/saml/launch/{id}` (IdP-initiated,
+  only where allowed), `/saml/slo` (SP-initiated). A service provider is also an application: sign-in rule, consent,
+  disabling and audit apply. Pairwise NameIDs (HMAC under `Sangam:Saml:PairwiseKey`) or the e-mail address; attributes
+  from a fixed list; assertions signed, encrypted (AES-256-GCM, RSA-OAEP) for an SP with an encryption certificate,
+  inside a signed response; replay, clock, address and signed-request checks; REFEDS MFA and Sangam's own levels.
+  Built on .NET's `SignedXml`/`EncryptedXml` with DTDs prohibited, size caps, and one root signature over the root's
+  unique ID. Operator console → Applications → **SAML service providers** (register, or import metadata). Off in
+  production until `docker-compose.saml.yml` and its secrets are in place. Migration: `Saml`.
+- The consent page now also serves a SAML sign-in (`PartnerContext` reads `/saml/continue` return addresses).
+- **Found in the R4 browser run:** once discovery advertises PAR, ASP.NET Core's OpenID Connect handler (and so
+  `Sangam.Client`, the portal, both consoles and imagiQa) pushes every sign-in to `/connect/par` first, and a client
+  without the PAR permission could sign no one in. Every client that signs people in now has it — the development
+  seeder heals existing development databases on start, and `Sangam:Clients` registration grants it — and a test checks
+  every such client and the handler's actual request.
+
+### Migrations
+- `HostReportsAndDevOutbox`, `GrievanceLog`, `Saml` (plus the audit-archive and client changes, which need none).
+
 ## [0.12.0] - R3 step-up and customisation, with founder decisions D-A to D-M
 
 ### Fixed — R2 verification findings (V-07 to V-09)

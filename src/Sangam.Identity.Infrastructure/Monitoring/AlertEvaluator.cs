@@ -40,7 +40,16 @@ public sealed partial class AlertEvaluator : BackgroundService
         await CheckAnjalAsync(cancellationToken).ConfigureAwait(false);
         using IServiceScope scope = _scopes.CreateScope();
         MetricsRecorder recorder = scope.ServiceProvider.GetRequiredService<MetricsRecorder>();
-        await recorder.FlushAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await recorder.FlushAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is Npgsql.NpgsqlException or InvalidOperationException or TimeoutException)
+        {
+            // The database is down: nothing can be recorded, but the founder must still be told (below).
+            LogFlushFailed(ex);
+        }
+
         EfMonitoringService monitoring = scope.ServiceProvider.GetRequiredService<EfMonitoringService>();
         MonitoringSnapshot snapshot = await monitoring.BuildAsync(cancellationToken).ConfigureAwait(false);
         IReadOnlyList<AlertCondition> open = AlertRules.Evaluate(snapshot, _options.Alerts, _options.ExpectedHostList, !string.IsNullOrWhiteSpace(_options.AnjalHealthUrl));
@@ -143,6 +152,9 @@ public sealed partial class AlertEvaluator : BackgroundService
 
         SangamMetrics.AnjalCheckCount.Add(1, new KeyValuePair<string, object?>("status", up ? "up" : "down"));
     }
+
+    [LoggerMessage(EventId = 1603, Level = LogLevel.Warning, Message = "Writing this minute's metrics before evaluating failed")]
+    private partial void LogFlushFailed(Exception exception);
 
     [LoggerMessage(EventId = 1602, Level = LogLevel.Error, Message = "Evaluating the monitoring thresholds failed")]
     private partial void LogFailed(Exception exception);

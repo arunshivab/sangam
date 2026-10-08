@@ -6,7 +6,7 @@ terminates TLS for the four Sangam hosts. Decisions still open are marked **FOUN
 
 ## 1. Prepare
 
-1. DNS: `id`, `account`, `admin` and `partners.sangamid.in` point at the VM.
+1. DNS: `id`, `account`, `admin`, `partners` and `demo.sangamid.in` point at the VM.
 2. Mail: `scripts/check-mail-dns.ps1 -Domain sangamid.in -DkimSelector <Anjal's selector>` passes. **FOUNDER (OI-027)**
 3. Secrets: create every file listed in `secrets/README.md`.
 
@@ -17,6 +17,13 @@ terminates TLS for the four Sangam hosts. Decisions still open are marked **FOUN
 Create two roles: the **owner** (runs migrations, owns the tables) and the **application** role (used by
 the hosts; can read and write, cannot alter `audit_events`). The application role's connection string
 goes in `secrets/ConnectionStrings__Sangam` (go-live checklist, "Added by R0").
+
+D-I, the demo at demo.sangamid.in: a database and role of its own, which never touch Sangam's:
+
+    CREATE ROLE imagiqa_demo LOGIN PASSWORD '<random>';
+    CREATE DATABASE imagiqa_demo OWNER imagiqa_demo;
+
+Its connection string goes in `secrets/ConnectionStrings__Imagiqa`; the demo creates its tables when it starts.
 
 ## 3. Migrations — once per release, as the owner
 
@@ -30,12 +37,35 @@ The bundle applies only migrations not yet applied; running it again does nothin
     docker compose up -d --build
     curl -fsS https://id.sangamid.in/health/ready
 
+The identity server registers the portal, both consoles and the demo from its settings each time it starts
+(`Sangam__Clients__…` in `docker-compose.yml`; R4): exactly the production redirect addresses, and the same secret files
+the hosts use. A missing or short secret, or a non-https address, refuses the start. To rotate a client secret, replace
+its file and restart the identity server and that host.
+
+The demo (D-I) shows "Demo, not for real patient data" on every page. Sign in with a Sangam account; with registration
+by invitation only (pilot), invite testers first. To give someone a role at a demo hospital, use the partner console.
+
 ## 5. Operate
 
-- **Backups:** `scripts/backup-db.sh` nightly from cron; `scripts/restore-drill.sh` monthly (SGM-603). Both write
-  their result to `/srv/sangam/status` (`backup.json`, `restore-drill.json`), which the hosts read for the monitoring
-  page. D-E (R4): encrypted before upload, to E2E Object Storage in another region with object lock; a second
-  provider before hospital go-live.
+- **Backups (D-E):** `scripts/backup-db.sh` nightly from cron; `scripts/restore-drill.sh` monthly (SGM-603). Both
+  write their result to `/srv/sangam/status` (`backup.json`, `restore-drill.json`), which the hosts read for the
+  monitoring page. Each night: a `pg_dump`, the day's container logs, and any new audit-archive file. Everything that
+  leaves the server is first encrypted with `age` for the founder's public key — the private key stays offline with
+  the founder — then uploaded to E2E Object Storage **in another region**, under S3 Object Lock (compliance mode):
+  daily copies 14 days, Sunday copies 8 weeks, 1st-of-month copies 12 months, logs 180 days, audit-archive files
+  until their events are seven years old. Set up once:
+  1. On the founder's own computer: `age-keygen -o sangam-backup-key.txt` (keep offline, two copies apart); put the
+     `age1…` public key line in `/etc/sangam/backup-recipients.txt` on the server.
+  2. In the E2E console, in the other region: a bucket **created with Object Lock enabled**, and an access key limited
+     to it. Apply the lifecycle rules: `aws s3api put-bucket-lifecycle-configuration --endpoint-url <EOS endpoint>
+     --bucket <bucket> --lifecycle-configuration file://backup/lifecycle.json`. **FOUNDER: confirm E2E Object Storage
+     supports Object Lock in that region before go-live; if it does not, the second provider must.**
+  3. `/etc/sangam/backup-targets/e2e-region2.env` (mode 600): `ENDPOINT`, `BUCKET`, `REGION`, `AWS_ACCESS_KEY_ID`,
+     `AWS_SECRET_ACCESS_KEY`. The second provider (before hospital go-live) is a second file there.
+  4. Install `age`, `awscli` and `openssl` on the VM.
+  The off-site restore drill brings the founder's key for its duration:
+  `AGE_IDENTITY=/root/drill-key.txt scripts/restore-drill.sh --offsite e2e-region2`, then delete the key file. The
+  monitoring page alerts when a backup did not go off-site, failed, or is overdue.
 - **Monitoring (D-H):** no third party. Every host records its metrics into the database; the operator console's
   *Monitoring* page shows them; the identity server (`Sangam__Monitoring__Evaluate=true`) alerts the founder by
   e-mail and SMS through Anjal. Anjal's server runs the outside watchdog against `/health/ready`; Sangam watches
@@ -51,10 +81,35 @@ The bundle applies only migrations not yet applied; running it again does nothin
         --output /var/lib/sangam/pwned/pwned-passwords.bin --date 2026-10-01
 
   The running hosts pick the new list up within a minute; the monitoring page shows its date. Switch the check on
-  with `Sangam__Passwords__BreachCheck__Enabled=true` only after the import. Refresh every few months.
-- **Audit retention:** `Sangam__Audit__RetentionDays` stays unset until D-A's archive (1 year live, then an
-  encrypted archive in India, purged at 7 years) is built in R4.
+  only after the import, by setting `Sangam__Passwords__BreachCheck__Enabled: "true"` in the shared environment
+  block at the top of `docker-compose.yml` (every host, never one service), then `docker compose up -d`. The
+  monitoring page shows the list as the identity server reports it, and flags any host that sees it differently
+  (V-10). Refresh every few months.
+- **Audit archive (D-A):** once, on the founder's own computer (never on the server):
+
+      docker run --rm -v "$PWD/keys:/keys" sangam/identity audit-archive keygen --out /keys --password '<long passphrase>'
+
+  Copy `keys/audit-archive.crt` to `secrets/audit_archive.crt`; keep `keys/audit-archive.key.pem` and its passphrase
+  offline (two copies, apart). Create `/srv/sangam/audit-archive` (owned by the container user). Every hour the identity
+  server moves audit events older than a year into encrypted files there — IP addresses shortened, browser details
+  dropped — and deletes files whose newest event is over seven years old; each step is itself an audit event, and the
+  monitoring page shows the archive. The archive directory is inside the encrypted backups (D-E). To read a file:
+  `audit-archive read --file <file> --key audit-archive.key.pem --password '<passphrase>' --out events.jsonl`.
 - **PostgreSQL:** 18 everywhere (D-F).
+- **SAML (PR-22):** off until it is needed. To switch it on, create a SAML-only signing key (RSA 3072, two years)
+  and a pairwise key, then start with the SAML file as well:
+
+      openssl req -x509 -newkey rsa:3072 -sha256 -days 730 -nodes -subj "/CN=Sangam SAML signing" \
+        -keyout saml.key -out saml.crt
+      openssl pkcs12 -export -inkey saml.key -in saml.crt -out secrets/saml_signing_current.pfx \
+        -passout file:secrets/Sangam__Saml__Certificates__0__Password && shred -u saml.key
+      openssl rand -base64 48 | tr -d '\n' > secrets/Sangam__Saml__PairwiseKey
+      docker compose -f docker-compose.yml -f docker-compose.saml.yml up -d
+
+  (Write a long random password into `secrets/Sangam__Saml__Certificates__0__Password` first.) Sangam's metadata is
+  then at `https://id.sangamid.in/saml/metadata`; register each service provider on the operator console's
+  *Applications → SAML service providers* page. Keep the pairwise key in the founder's offline copies: if it changes,
+  every service provider sees every person as someone new. A missing or short pairwise key refuses the start.
 
 Not verified in Claude's environment: the Caddyfile under Caddy, and Anjal's real API. The images build and the
 identity server starts in Production in Docker (release evidence); certificates, secret files, health checks and the

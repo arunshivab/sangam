@@ -33,3 +33,8 @@ admin.sangamid.in {
 partners.sangamid.in {
   import sangam partner
 }
+
+# D-I: the imagiQa demo (the first pilot application).
+demo.sangamid.in {
+  import sangam demo
+}

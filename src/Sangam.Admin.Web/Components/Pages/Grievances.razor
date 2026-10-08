@@ -1,0 +1,166 @@
+@page "/grievances"
+@using Sangam.Identity.Application.Grievances
+@inject IGrievanceService Log
+@inject NavigationManager Nav
+
+<PageTitle>@L["Grievances · Sangam console"]</PageTitle>
+
+<h1 class="sg-h1">@L["Grievances"]</h1>
+<p class="sg-lede">@L["Every grievance under the Digital Personal Data Protection Act, 2023, from the day it arrives to the answer given. Acknowledge within two working days; resolve within thirty days of receipt. Times are in India time."]</p>
+
+@if (_rows is null)
+{
+  <p class="sg-muted">@(_loaded ? L["The grievance log is for platform operators only."] : L["Loading…"])</p>
+}
+else
+{
+  <div class="sg-mon-head">
+    <label class="sg-check"><input type="checkbox" checked="@_openOnly" @onchange="ToggleOpenAsync" /> @L["Open ones only"]</label>
+    <span class="sg-muted">@L["{0} open, {1} overdue", _rows.Count(r => r.Status is GrievanceStatus.Received or GrievanceStatus.Acknowledged), _rows.Count(r => r.AcknowledgeOverdue || r.ResolveOverdue)]</span>
+  </div>
+
+  @if (_rows.Count == 0)
+  {
+    <p class="sg-muted">@L["No grievances."]</p>
+  }
+  else
+  {
+    <div class="sg-table-wrap">
+      <table class="sg-table">
+        <thead><tr><th>@L["Reference"]</th><th>@L["Received"]</th><th>@L["Person"]</th><th>@L["About"]</th><th>@L["State"]</th><th>@L["Due"]</th></tr></thead>
+        <tbody>
+          @foreach (GrievanceRow row in _rows)
+          {
+            <tr>
+              <td class="sg-mono"><a href="/grievances/@row.Id">@row.Reference</a></td>
+              <td class="sg-mono">@IndiaTime.Date(row.ReceivedAt)</td>
+              <td>@row.Name</td>
+              <td>@GrievanceText.Category(row.Category)</td>
+              <td>@GrievanceText.Status(row.Status)</td>
+              <td>@if (row.Status is GrievanceStatus.Resolved or GrievanceStatus.Declined)
+                  {
+                    <span class="sg-muted">—</span>
+                  }
+                  else if (row.Status == GrievanceStatus.Received)
+                  {
+                    <span class="@(row.AcknowledgeOverdue ? "sg-warn-text" : null)">@L["acknowledge by {0}", IndiaTime.Compact(row.AcknowledgeBy)]</span>
+                  }
+                  else
+                  {
+                    <span class="@(row.ResolveOverdue ? "sg-warn-text" : null)">@L["answer by {0}", IndiaTime.Date(row.ResolveBy)]</span>
+                  }</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (Context?.CanAct == true)
+  {
+    <section class="sg-panel" data-panel="log-grievance">
+      <h2 class="sg-h2">@L["Log a grievance"]</h2>
+      <p class="sg-muted">@L["Log it the day it arrives, by e-mail to grievance@sangamid.in, by letter or by phone. The deadlines run from the date received. Record no identity-document numbers."]</p>
+      <div class="sg-form-row">
+        <label class="sg-label" for="g-received">@L["Date received"]</label>
+        <input id="g-received" type="date" class="sg-input" @bind="_received" />
+      </div>
+      <div class="sg-form-row">
+        <label class="sg-label" for="g-channel">@L["How it arrived"]</label>
+        <select id="g-channel" class="sg-input" @bind="_channel">
+          @foreach (string channel in GrievanceLists.Channels)
+          {
+            <option value="@channel">@GrievanceText.Channel(channel)</option>
+          }
+        </select>
+      </div>
+      <div class="sg-form-row">
+        <label class="sg-label" for="g-category">@L["What it is about"]</label>
+        <select id="g-category" class="sg-input" @bind="_category">
+          @foreach (string category in GrievanceLists.Categories)
+          {
+            <option value="@category">@GrievanceText.Category(category)</option>
+          }
+        </select>
+      </div>
+      <div class="sg-form-row">
+        <label class="sg-label" for="g-name">@L["Their name"]</label>
+        <input id="g-name" class="sg-input" @bind="_name" @bind:event="oninput" maxlength="200" />
+      </div>
+      <div class="sg-form-row">
+        <label class="sg-label" for="g-contact">@L["E-mail address or mobile number"]</label>
+        <input id="g-contact" class="sg-input" @bind="_contact" @bind:event="oninput" maxlength="320" />
+      </div>
+      <div class="sg-form-row">
+        <label class="sg-label" for="g-summary">@L["The grievance"]</label>
+        <textarea id="g-summary" class="sg-input" rows="4" @bind="_summary" @bind:event="oninput" maxlength="4000"></textarea>
+      </div>
+      <div class="sg-actions">
+        <button type="button" class="sg-btn sg-btn--primary" @onclick="LogAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_contact) || _summary.Trim().Length < 10)">@L["Log it"]</button>
+      </div>
+    </section>
+  }
+
+  @if (_message is not null)
+  {
+    <p class="@(_ok ? "sg-ok" : "sg-warn")">@_message</p>
+  }
+}
+
+@code {
+    [CascadingParameter]
+    public ConsoleContext? Context { get; set; }
+
+    private IReadOnlyList<GrievanceRow>? _rows;
+    private bool _loaded;
+    private bool _openOnly;
+    private bool _busy;
+    private bool _ok;
+    private string? _message;
+    private DateOnly _received = DateOnly.FromDateTime(IndiaTime.ToIndia(DateTimeOffset.UtcNow).DateTime);
+    private string _channel = GrievanceLists.Channels[0];
+    private string _category = GrievanceLists.Categories[0];
+    private string _name = string.Empty;
+    private string _contact = string.Empty;
+    private string _summary = string.Empty;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        if (Context is null)
+        {
+            return;
+        }
+
+        _rows = await Log.ListAsync(Context.UserId, _openOnly);
+        _loaded = true;
+    }
+
+    private async Task ToggleOpenAsync(ChangeEventArgs e)
+    {
+        _openOnly = e.Value is true;
+        await LoadAsync();
+    }
+
+    private async Task LogAsync()
+    {
+        _busy = true;
+        // The date received, at noon India time unless it is today (then now), so the deadlines count from that day.
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        DateTimeOffset received = _received == DateOnly.FromDateTime(IndiaTime.ToIndia(now).DateTime)
+            ? now
+            : new DateTimeOffset(_received.ToDateTime(new TimeOnly(12, 0)), IndiaTime.Offset);
+        (AdminResult result, Guid? id) = await Log.LogAsync(Context!.UserId, new GrievanceInput(received, _channel, _category, _name, _contact, _summary), null);
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = L[result.Message ?? string.Empty];
+        if (result.Succeeded && id is Guid created)
+        {
+            Nav.NavigateTo($"/grievances/{created}");
+            return;
+        }
+
+        await LoadAsync();
+    }
+}

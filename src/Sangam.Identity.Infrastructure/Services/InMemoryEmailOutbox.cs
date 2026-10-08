@@ -16,12 +16,15 @@ public sealed partial class InMemoryEmailOutbox : IEmailSender
     private readonly Lock _gate = new();
     private readonly LinkedList<SentEmail> _messages = new();
     private readonly ILogger<InMemoryEmailOutbox> _logger;
+    private readonly DevOutboxStore? _shared;
 
     /// <summary>Initialises the outbox.</summary>
     /// <param name="logger">Logger.</param>
-    public InMemoryEmailOutbox(ILogger<InMemoryEmailOutbox> logger)
+    /// <param name="shared">The outbox all hosts share in Development (V-11), when switched on.</param>
+    public InMemoryEmailOutbox(ILogger<InMemoryEmailOutbox> logger, DevOutboxStore? shared = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _shared = shared;
     }
 
     /// <summary>Gets the kept messages, newest first.</summary>
@@ -37,7 +40,7 @@ public sealed partial class InMemoryEmailOutbox : IEmailSender
     }
 
     /// <inheritdoc />
-    public Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default)
+    public async Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(message);
         SentEmail sent = new(DateTimeOffset.UtcNow, message);
@@ -56,7 +59,10 @@ public sealed partial class InMemoryEmailOutbox : IEmailSender
             LogEmail(masked);
         }
 
-        return Task.CompletedTask;
+        if (_shared is not null)
+        {
+            await _shared.RecordAsync("email", message.ToEmail, message.Subject, message.TextBody, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>The newest message sent to <paramref name="email"/>, or <see langword="null"/>.</summary>

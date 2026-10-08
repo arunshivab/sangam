@@ -7,13 +7,14 @@ using Sangam.Identity.Application.Abstractions;
 using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Entities;
 using Sangam.Identity.Domain.Enums;
+using Sangam.Identity.Infrastructure.Audit;
 using Sangam.Identity.Infrastructure.Persistence;
 
 namespace Sangam.Identity.Infrastructure.Maintenance;
 
 /// <summary>
-/// Hourly housekeeping: hard-deletes accounts whose 30-day grace period has passed, and prunes
-/// session rows that have been revoked for more than 90 days.
+/// Hourly housekeeping: hard-deletes accounts whose 30-day grace period has passed, prunes
+/// session rows that have been revoked for more than 90 days, and runs the audit archive (D-A).
 /// <para>
 /// A hard delete pseudonymises the user row — name, email, mobile and password hash are
 /// destroyed and the email is replaced with an unusable placeholder — but the row and the audit
@@ -25,25 +26,20 @@ public sealed partial class AccountPurgeService : BackgroundService
     /// <summary>How long a revoked session row is kept before it is deleted.</summary>
     public static readonly TimeSpan SessionRetention = TimeSpan.FromDays(90);
 
-    /// <summary>
-    /// Days to keep audit events. Unset, or zero, means keep everything: no audit event is ever
-    /// purged until the founder decides the retention periods (OI-039).
-    /// </summary>
-    public const string AuditRetentionKey = "Sangam:Audit:RetentionDays";
-
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IClock _clock;
     private readonly ILogger<AccountPurgeService> _logger;
     private readonly TimeSpan _interval;
     private readonly bool _enabled;
-    private readonly TimeSpan? _auditRetention;
+    private readonly AuditArchiver _archiver;
 
     /// <summary>Initialises the service.</summary>
     /// <param name="scopeFactory">Scope factory for the scoped database context.</param>
     /// <param name="clock">Clock.</param>
     /// <param name="configuration">Reads <c>Sangam:Maintenance:Enabled</c> and <c>Sangam:Maintenance:Interval</c>.</param>
     /// <param name="logger">Logger.</param>
-    public AccountPurgeService(IServiceScopeFactory scopeFactory, IClock clock, IConfiguration configuration, ILogger<AccountPurgeService> logger)
+    /// <param name="archiver">The audit archive (D-A).</param>
+    public AccountPurgeService(IServiceScopeFactory scopeFactory, IClock clock, IConfiguration configuration, ILogger<AccountPurgeService> logger, AuditArchiver archiver)
     {
         ArgumentNullException.ThrowIfNull(configuration);
         _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
@@ -51,8 +47,7 @@ public sealed partial class AccountPurgeService : BackgroundService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _enabled = configuration.GetValue("Sangam:Maintenance:Enabled", true);
         _interval = configuration.GetValue("Sangam:Maintenance:Interval", TimeSpan.FromHours(1));
-        int? retentionDays = configuration.GetValue<int?>(AuditRetentionKey);
-        _auditRetention = retentionDays is > 0 ? TimeSpan.FromDays(retentionDays.Value) : null;
+        _archiver = archiver ?? throw new ArgumentNullException(nameof(archiver));
     }
 
     /// <inheritdoc />
@@ -75,11 +70,7 @@ public sealed partial class AccountPurgeService : BackgroundService
                     LogSwept(purged, sessions);
                 }
 
-                int audited = await PurgeAuditAsync(stoppingToken).ConfigureAwait(false);
-                if (audited > 0)
-                {
-                    LogAuditPurged(audited);
-                }
+                await _archiver.RunOnceAsync(stoppingToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -131,49 +122,6 @@ public sealed partial class AccountPurgeService : BackgroundService
     }
 
     /// <summary>
-    /// Removes audit events older than the configured retention, and records the removal as an
-    /// audit event of its own with the count and the last removed hash. Does nothing when no
-    /// retention is configured (the default).
-    /// </summary>
-    /// <param name="cancellationToken">Cancellation.</param>
-    /// <returns>The number of events removed.</returns>
-    public async Task<int> PurgeAuditAsync(CancellationToken cancellationToken = default)
-    {
-        if (_auditRetention is not TimeSpan retention)
-        {
-            return 0;
-        }
-
-        using IServiceScope scope = _scopeFactory.CreateScope();
-        SangamDbContext db = scope.ServiceProvider.GetRequiredService<SangamDbContext>();
-        IAuditWriter audit = scope.ServiceProvider.GetRequiredService<IAuditWriter>();
-        DateTimeOffset cutoff = _clock.UtcNow - retention;
-        int removed;
-        string? lastHash;
-        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction tx = await db.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-        await using (tx.ConfigureAwait(false))
-        {
-            await db.Database.ExecuteSqlRawAsync("SELECT set_config('sangam.audit_maintenance', 'on', true);", cancellationToken).ConfigureAwait(false);
-            lastHash = await db.AuditEvents.Where(e => e.OccurredAt < cutoff).OrderByDescending(e => e.Id).Select(e => e.Hash).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
-            removed = await db.AuditEvents.Where(e => e.OccurredAt < cutoff).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
-            await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
-        }
-
-        if (removed > 0)
-        {
-            string metadata = System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string>
-            {
-                ["removed"] = removed.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                ["before"] = cutoff.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
-                ["last_removed_hash"] = lastHash ?? string.Empty,
-            });
-            await audit.WriteAsync(new AuditEntry(AuditActions.AuditRetentionPurge, AuditActorType.System, Metadata: metadata), cancellationToken).ConfigureAwait(false);
-        }
-
-        return removed;
-    }
-
-    /// <summary>
     /// Destroys the personal data on a user row while keeping the row itself, so foreign keys and
     /// the audit trail stay intact.
     /// </summary>
@@ -205,9 +153,6 @@ public sealed partial class AccountPurgeService : BackgroundService
 
     [LoggerMessage(EventId = 1200, Level = LogLevel.Information, Message = "Maintenance sweep: purged {Accounts} account(s), removed {Sessions} old session row(s).")]
     private partial void LogSwept(int accounts, int sessions);
-
-    [LoggerMessage(EventId = 1203, Level = LogLevel.Information, Message = "Audit retention removed {Count} event(s) older than the configured period.")]
-    private partial void LogAuditPurged(int count);
 
     [LoggerMessage(EventId = 1201, Level = LogLevel.Information, Message = "Maintenance sweep is disabled (Sangam:Maintenance:Enabled = false).")]
     private partial void LogDisabled();

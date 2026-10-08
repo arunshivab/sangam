@@ -13,7 +13,9 @@ namespace Sangam.Identity.Infrastructure.Monitoring;
 /// <summary>
 /// Sends alerts to the founder (D-H, D-K). Recipients come from <c>Sangam:Alerts:Emails</c> and
 /// <c>Sangam:Alerts:Mobiles</c> (comma-separated); when none are set, every active Owner operator's e-mail and
-/// verified mobile. E-mail always; SMS when SMS is switched on (until DLT is registered, e-mail only).
+/// verified mobile. E-mail always; SMS when SMS is switched on (until DLT is registered, e-mail only). When the
+/// database itself is down — the alert that matters most — the alert still goes out: plain English text, no
+/// template lookup, no SMS limits or record, and the audit line is skipped.
 /// </summary>
 public sealed partial class PlatformAlerts : IPlatformAlerts
 {
@@ -53,11 +55,23 @@ public sealed partial class PlatformAlerts : IPlatformAlerts
         Dictionary<string, string> values = new(StringComparer.Ordinal) { ["summary"] = summary, ["details"] = details };
         int emailed = 0;
         int texted = 0;
+        bool databaseDown = false;
         foreach (string address in emails)
         {
+            EmailMessage message;
             try
             {
-                await _email.SendAsync(await _templates.EmailAsync(MessageTemplateKinds.OperatorAlert, "en-IN", null, null, values, address, "Sangam operations", cancellationToken).ConfigureAwait(false), cancellationToken).ConfigureAwait(false);
+                message = await _templates.EmailAsync(MessageTemplateKinds.OperatorAlert, "en-IN", null, null, values, address, "Sangam operations", cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (IsDatabaseFailure(ex))
+            {
+                databaseDown = true;
+                message = new EmailMessage(address, "Sangam operations", "Sangam alert: " + summary, summary + "\n\n" + details); // i18n-ignore: alerts to the founder are English (D-H)
+            }
+
+            try
+            {
+                await _email.SendAsync(message, cancellationToken).ConfigureAwait(false);
                 emailed++;
             }
             catch (InvalidOperationException)
@@ -68,17 +82,40 @@ public sealed partial class PlatformAlerts : IPlatformAlerts
 
         foreach (string mobile in mobiles)
         {
-            if (await _sms.TrySendAlertAsync(mobile, summary, cancellationToken).ConfigureAwait(false))
+            bool sent;
+            try
+            {
+                sent = !databaseDown && await _sms.TrySendAlertAsync(mobile, summary, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (IsDatabaseFailure(ex))
+            {
+                databaseDown = true;
+                sent = false;
+            }
+
+            if (!sent && databaseDown)
+            {
+                sent = await _sms.TrySendAlertDirectAsync(mobile, summary, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (sent)
             {
                 texted++;
             }
         }
 
         LogAlert(summary, emailed, texted);
-        await _audit.WriteAsync(
-            new AuditEntry(AuditActions.PlatformAlert, AuditActorType.System,
-                Metadata: System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, object> { ["summary"] = summary, ["emailed"] = emailed, ["texted"] = texted })),
-            cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await _audit.WriteAsync(
+                new AuditEntry(AuditActions.PlatformAlert, AuditActorType.System,
+                    Metadata: System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, object> { ["summary"] = summary, ["emailed"] = emailed, ["texted"] = texted })),
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (IsDatabaseFailure(ex))
+        {
+            // The database is down; the log line above is the record.
+        }
     }
 
     private async Task<(IReadOnlyList<string> Emails, IReadOnlyList<string> Mobiles)> RecipientsAsync(CancellationToken cancellationToken)
@@ -90,13 +127,28 @@ public sealed partial class PlatformAlerts : IPlatformAlerts
             return (emails, mobiles);
         }
 
-        var owners = await _db.PlatformOperators
-            .Where(o => o.RevokedAt == null && o.Role == PlatformRole.Owner)
-            .Join(_db.Users, o => o.UserId, u => u.Id, (o, u) => new { u.Email, u.PhoneNumber, u.PhoneNumberConfirmed })
-            .ToListAsync(cancellationToken).ConfigureAwait(false);
-        return ([.. owners.Where(o => !string.IsNullOrEmpty(o.Email)).Select(o => o.Email!)],
-                [.. owners.Where(o => o.PhoneNumberConfirmed && !string.IsNullOrEmpty(o.PhoneNumber)).Select(o => o.PhoneNumber!)]);
+        try
+        {
+            var owners = await _db.PlatformOperators
+                .Where(o => o.RevokedAt == null && o.Role == PlatformRole.Owner)
+                .Join(_db.Users, o => o.UserId, u => u.Id, (o, u) => new { u.Email, u.PhoneNumber, u.PhoneNumberConfirmed })
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
+            return ([.. owners.Where(o => !string.IsNullOrEmpty(o.Email)).Select(o => o.Email!)],
+                    [.. owners.Where(o => o.PhoneNumberConfirmed && !string.IsNullOrEmpty(o.PhoneNumber)).Select(o => o.PhoneNumber!)]);
+        }
+        catch (Exception ex) when (IsDatabaseFailure(ex))
+        {
+            // Without the database the owners cannot be looked up: Sangam:Alerts:Emails must be set in production.
+            return ([], []);
+        }
     }
+
+    /// <summary>Whether an exception means the database could not be reached.</summary>
+    /// <param name="exception">The exception.</param>
+    internal static bool IsDatabaseFailure(Exception exception)
+        => exception is Npgsql.NpgsqlException or DbUpdateException or TimeoutException
+            || exception.InnerException is Npgsql.NpgsqlException or TimeoutException
+            || (exception is InvalidOperationException && exception.Message.Contains("transient", StringComparison.OrdinalIgnoreCase));
 
     private static string[] Split(string? value)
         => string.IsNullOrWhiteSpace(value) ? [] : value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

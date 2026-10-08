@@ -20,7 +20,7 @@
       {
         <li>
           <strong>@passkey.Name</strong>
-          <span class="sg-muted">@L["added {0}", passkey.CreatedAt.ToString("d MMM yyyy", System.Globalization.CultureInfo.CurrentCulture)]@(passkey.LastUsedAt is DateTimeOffset used ? ", " + L["last used {0}", used.ToString("d MMM yyyy", System.Globalization.CultureInfo.CurrentCulture)] : string.Empty)@(passkey.Synced ? " · " + L["synced"] : string.Empty)</span>
+          <span class="sg-muted">@L["added {0}", Sangam.Shared.IndiaTime.Date(passkey.CreatedAt)]@(passkey.LastUsedAt is DateTimeOffset used ? ", " + L["last used {0}", Sangam.Shared.IndiaTime.Date(used)] : string.Empty)@(passkey.Synced ? " · " + L["synced"] : string.Empty)</span>
           <form method="post" asp-page-handler="Remove" class="sg-inline-form">
             <input type="hidden" name="id" value="@passkey.Id" />
             <button type="submit" class="sg-btn sg-btn--secondary">@L["Remove"]</button>

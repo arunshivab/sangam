@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Sangam.Identity.Application;
 using Sangam.Identity.Domain;
 using Sangam.Identity.Infrastructure;
+using Sangam.Identity.Infrastructure.Audit;
 using Sangam.Identity.Infrastructure.Persistence;
 using Sangam.Identity.Infrastructure.Policies;
 using Sangam.Identity.Infrastructure.Seeding;
@@ -10,6 +11,7 @@ using Sangam.Identity.Infrastructure.Sms;
 using Sangam.Identity.Server.Api;
 using Sangam.Identity.Server.Authentication;
 using Sangam.Identity.Server.Endpoints;
+using Sangam.Identity.Server.Saml;
 using Sangam.Shared.Constants;
 using Sangam.Web.Shared.Localization;
 using static OpenIddict.Abstractions.OpenIddictConstants;
@@ -18,6 +20,12 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 if (args.Length > 0 && args[0] == BreachListCommand.Verb)
 {
     Environment.Exit(await BreachListCommand.RunAsync(args[1..], Console.Out));
+}
+
+// D-A: the audit archive's key generation, listing and reading tool, likewise.
+if (args.Length > 0 && args[0] == AuditArchiveCommand.Verb)
+{
+    Environment.Exit(await AuditArchiveCommand.RunAsync(args[1..], Console.Out));
 }
 
 // A refused start is logged at Critical and exits with code 1 (V-08).
@@ -37,6 +45,7 @@ builder.Services.AddRazorPages(o =>
     o.Conventions.AddPageRoute("/Account/Forgot", "/forgot");
     o.Conventions.AddPageRoute("/Account/Reset", "/reset");
     o.Conventions.AddPageRoute("/Account/Consent", "/consent");
+    o.Conventions.AddPageRoute("/Account/Device", "/device");
     o.Conventions.AddPageRoute("/Account/Home", "/account");
     o.Conventions.AddPageRoute("/Account/Logout", "/logout");
     o.Conventions.AddPageRoute("/Account/Logout", "/connect/endsession");
@@ -48,6 +57,8 @@ builder.Services.AddHttpClient();
 
 builder.Services.AddSangamApplication();
 builder.Services.AddSangamInfrastructure(builder.Configuration);
+// PR-22: the SAML identity provider's keys (a throwaway one in Development and Testing).
+builder.Services.AddSingleton(Sangam.Identity.Infrastructure.Saml.SamlOptions.From(builder.Configuration, builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing")));
 // PR-17: the identity server holds the token-signing keys, so it alone issues signature tokens.
 builder.Services.AddSingleton<Sangam.Identity.Application.Signatures.ISignatureTokenIssuer, Sangam.Identity.Server.Signatures.SignatureTokenIssuer>();
 // PR-20: deliver queued back-channel logouts (only the identity server holds the signing keys).
@@ -80,6 +91,21 @@ if (smsProblem is not null)
     throw new InvalidOperationException(smsProblem);
 }
 
+// R4: the deployment's own applications (portal, consoles, the demo) are registered from settings; bad settings refuse.
+IReadOnlyList<ClientSpec> clients = ClientRegistration.Read(builder.Configuration);
+
+string? samlProblem = Sangam.Identity.Infrastructure.Saml.SamlOptions.Validate(builder.Environment.EnvironmentName, builder.Configuration);
+if (samlProblem is not null)
+{
+    throw new InvalidOperationException(samlProblem);
+}
+
+string? auditProblem = AuditArchiveOptions.Validate(builder.Environment.EnvironmentName, builder.Configuration);
+if (auditProblem is not null)
+{
+    throw new InvalidOperationException(auditProblem);
+}
+
 builder.Services.AddOpenIddict()
     .AddServer(o =>
     {
@@ -94,12 +120,29 @@ builder.Services.AddOpenIddict()
          .SetEndSessionEndpointUris("connect/endsession")
          // PR-20: RFC 7662 introspection and RFC 7009 revocation, for applications' own back ends.
          .SetIntrospectionEndpointUris("connect/introspect")
-         .SetRevocationEndpointUris("connect/revoke");
+         .SetRevocationEndpointUris("connect/revoke")
+         // PR-21 (SGM-219): the device authorization grant (RFC 8628) for TVs, kiosks and command lines, with the
+         // code entered at /device; and pushed authorization requests (RFC 9126).
+         .SetDeviceAuthorizationEndpointUris("connect/device")
+         .SetEndUserVerificationEndpointUris("device")
+         .SetPushedAuthorizationEndpointUris("connect/par");
 
         o.AllowAuthorizationCodeFlow()
          .AllowRefreshTokenFlow()
          .AllowClientCredentialsFlow()
+         .AllowDeviceAuthorizationFlow()
+         // PR-21: token exchange (RFC 8693) — an application's back end trades a person's access token for one
+         // addressed to another Sangam application, only where it holds that audience's permission.
+         .AllowTokenExchangeFlow()
          .RequireProofKeyForCodeExchange();
+
+        // Audiences are applications' client ids, registered at any time: each exchange is checked against the
+        // caller's own audience permissions (aud:<client id>) instead of a fixed list.
+        o.DisableAudienceValidation();
+
+        // PR-21: refresh tokens rotate on every use (OpenIddict's default); reusing a spent one after this leeway
+        // revokes the whole sign-in — the theft signal RFC 8252 and SGM-219 ask native applications to rely on.
+        o.SetRefreshTokenReuseLeeway(TimeSpan.FromSeconds(Math.Max(0, builder.Configuration.GetValue("Sangam:Tokens:RefreshReuseLeewaySeconds", 30))));
 
         o.RegisterScopes([.. SangamScopes.All]);
         o.RegisterClaims(Claims.Name, Claims.GivenName, Claims.FamilyName, Claims.Birthdate, Claims.Gender, Claims.Locale, Claims.Zoneinfo, Claims.UpdatedAt,
@@ -150,7 +193,8 @@ builder.Services.AddOpenIddict()
             .EnableAuthorizationEndpointPassthrough()
             .EnableTokenEndpointPassthrough()
             .EnableUserInfoEndpointPassthrough()
-            .EnableEndSessionEndpointPassthrough();
+            .EnableEndSessionEndpointPassthrough()
+            .EnableEndUserVerificationEndpointPassthrough();
 
         if (developmentCertificates)
         {
@@ -187,6 +231,12 @@ if (app.Configuration.GetValue<bool>("Sangam:Database:MigrateOnStartup"))
     }
 }
 
+if (clients.Count > 0)
+{
+    using IServiceScope scope = app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<ClientRegistration>().ApplyAsync(clients).ConfigureAwait(false);
+}
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
@@ -207,6 +257,7 @@ app.MapRazorPages().WithStaticAssets().RequireRateLimiting(AuthRateLimiting.Poli
 app.MapSangamLanguageSwitch();
 app.MapBrandingEndpoints();
 app.MapConnectEndpoints();
+app.MapSamlEndpoints();
 app.MapManagementEndpoints();
 app.MapSmsEndpoints();
 

@@ -89,6 +89,24 @@ public sealed class SangamDbContext : IdentityUserContext<SangamUser, Guid>, IDa
     /// <summary>Monitoring: alert conditions, open and resolved (D-H).</summary>
     public DbSet<MonitoringAlert> MonitoringAlerts => Set<MonitoringAlert>();
 
+    /// <summary>Monitoring: what each host reports about itself, such as the breached-password list (V-10).</summary>
+    public DbSet<HostReport> HostReports => Set<HostReport>();
+
+    /// <summary>Development only: every host's captured e-mails and texts, for <c>/dev/outbox</c> (V-11).</summary>
+    public DbSet<DevOutboxMessage> DevOutbox => Set<DevOutboxMessage>();
+
+    /// <summary>The grievance log (D-D): every DPDP grievance, with its deadlines and history.</summary>
+    public DbSet<Grievance> Grievances => Set<Grievance>();
+
+    /// <summary>The steps of each grievance (D-D).</summary>
+    public DbSet<GrievanceEntry> GrievanceEntries => Set<GrievanceEntry>();
+
+    /// <summary>SAML service providers (PR-22).</summary>
+    public DbSet<SamlServiceProvider> SamlServiceProviders => Set<SamlServiceProvider>();
+
+    /// <summary>SAML requests being answered, and answered ones for replay detection (PR-22).</summary>
+    public DbSet<SamlRequest> SamlRequests => Set<SamlRequest>();
+
     /// <summary>Support requests to reset two-step sign-in, with their cooling-off period (D-K).</summary>
     public DbSet<MfaResetRequest> MfaResetRequests => Set<MfaResetRequest>();
 
