@@ -14,6 +14,6 @@
   },
   "peerDependencies": { "react": ">=18" },
   "dependencies": { "@sangam/client": "1.0.0-rc.2" },
-  "devDependencies": { "typescript": "^5.9.3", "@types/node": "^22.18.0", "@types/react": "^19.1.0", "@types/react-dom": "^19.1.0", "react": "^19.1.0", "react-dom": "^19.1.0" },
+  "devDependencies": { "typescript": "^7.0.2", "@types/node": "^22.18.0", "@types/react": "^19.1.0", "@types/react-dom": "^19.1.0", "react": "^19.1.0", "react-dom": "^19.1.0" },
   "engines": { "node": ">=20" }
 }
