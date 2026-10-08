@@ -57,7 +57,7 @@ public sealed partial class LanguageTests
         Assert.False(unknown.Headers.TryGetValues("Set-Cookie", out IEnumerable<string>? cookies) && cookies.Any(c => c.Contains("fr-FR", StringComparison.Ordinal)));
     }
 
-    [Fact]
+    [PostgresFact]
     public async Task AnApplication_CanOpenSangamInThePersonsLanguage_WithUiLocales()
     {
         using HttpClient client = NewClient();
@@ -102,7 +102,7 @@ public sealed partial class LanguageTests
         Assert.Contains("lang=\"hi-IN\"", picked, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [PostgresFact]
     public async Task AServiceMessage_ShownOnAScreen_IsTranslatedToo()
     {
         using BrowserSession s = new(_factory);
