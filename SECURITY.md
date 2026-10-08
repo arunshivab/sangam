@@ -30,7 +30,7 @@ physical access to a user's device.
 
 Good-faith research that respects users' privacy, avoids data destruction and service
 disruption, and does not access data beyond what is needed to demonstrate the issue will not
-be met with legal action by imagiQa Healthcare Services Pvt Ltd. Do not access, modify or
+be met with legal action by Sangam's owner, Dr. Arun Shiva Balasubramanian. Do not access, modify or
 retain personal data belonging to other users; if you encounter such data, stop and report.
 
 ## Supported versions
@@ -40,6 +40,6 @@ tag; there are no long-term support branches yet.
 
 ## Data protection
 
-imagiQa Healthcare Services Pvt Ltd is the data fiduciary for Sangam under India's Digital
+Sangam's owner, Dr. Arun Shiva Balasubramanian, is the data fiduciary for Sangam under India's Digital
 Personal Data Protection Act, 2023. Privacy enquiries that are not security vulnerabilities go
 to **privacy@sangamid.in**.

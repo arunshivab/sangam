@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Sangam.Identity.Application.Abstractions;
 using Sangam.Identity.Application.Accounts;
+using Sangam.Identity.Application.Customisation;
 using Sangam.Identity.Application.Sms;
 using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Entities;
@@ -27,6 +28,7 @@ public sealed partial class EfSmsCodeService : ISmsCodeService
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
     private readonly SmsSettings _settings;
+    private readonly IMessageTemplates _templates;
     private readonly ILogger<EfSmsCodeService> _logger;
 
     /// <summary>Initialises the service.</summary>
@@ -38,6 +40,7 @@ public sealed partial class EfSmsCodeService : ISmsCodeService
     /// <param name="clock">Clock.</param>
     /// <param name="settings">SMS settings.</param>
     /// <param name="logger">Logger.</param>
+    /// <param name="templates">Message templates, for the person's language (PR-19).</param>
     public EfSmsCodeService(
         SangamDbContext db,
         OneTimeCodeService codes,
@@ -46,8 +49,10 @@ public sealed partial class EfSmsCodeService : ISmsCodeService
         IAuditWriter audit,
         IClock clock,
         SmsSettings settings,
-        ILogger<EfSmsCodeService> logger)
+        ILogger<EfSmsCodeService> logger,
+        IMessageTemplates templates)
     {
+        _templates = templates ?? throw new ArgumentNullException(nameof(templates));
         _db = db ?? throw new ArgumentNullException(nameof(db));
         _codes = codes ?? throw new ArgumentNullException(nameof(codes));
         _accounts = accounts ?? throw new ArgumentNullException(nameof(accounts));
@@ -179,8 +184,15 @@ public sealed partial class EfSmsCodeService : ISmsCodeService
             return new SmsIssueResult(issued.Status == OtpIssueStatus.TooSoon ? SmsIssueStatus.TooSoon : SmsIssueStatus.RateLimited, issued.RetryAfter);
         }
 
+        // PR-19: the person's language when that version is registered under DLT; otherwise the registered English.
         SmsTemplateSettings template = _settings.Templates[templateKey];
-        OutgoingSms message = new(user.PhoneNumber, templateKey, template.Id ?? string.Empty, _settings.SenderHeader, DltTemplate.Render(template.Text, code));
+        (string text, string dltId) = (template.Text, template.Id ?? string.Empty);
+        if (await _templates.SmsAsync(SmsKind(templateKey), user.Locale, cancellationToken).ConfigureAwait(false) is (string localText, string localId))
+        {
+            (text, dltId) = (localText, localId);
+        }
+
+        OutgoingSms message = new(user.PhoneNumber, templateKey, dltId, _settings.SenderHeader, DltTemplate.Render(text, code));
         SmsSendResult result = await _sender.SendAsync(message, cancellationToken).ConfigureAwait(false);
 
         _db.SmsMessages.Add(new SmsMessage
@@ -239,4 +251,11 @@ public sealed partial class EfSmsCodeService : ISmsCodeService
 
     [LoggerMessage(EventId = 1102, Level = LogLevel.Warning, Message = "SMS volume alert: {Count} messages today reached the threshold of {Threshold}. Check for SMS pumping.")]
     private partial void LogVolumeAlert(int count, int threshold);
+
+    private static string SmsKind(string templateKey) => templateKey switch
+    {
+        SmsSettings.SignInTemplate => MessageTemplateKinds.SmsSignIn,
+        SmsSettings.MobileVerificationTemplate => MessageTemplateKinds.SmsMobileVerification,
+        _ => MessageTemplateKinds.SmsStepUp,
+    };
 }

@@ -66,6 +66,23 @@ public sealed class ConsoleGateTests : IClassFixture<ConsoleFactory>
     }
 
     [PostgresFact]
+    public async Task EveryOperator_SeesTheMonitoringPage_AndOthersDoNot()
+    {
+        Guid viewer = await _factory.SeedAsync(PlatformRole.Viewer, mfa: true, "Watcher");
+        string html = System.Net.WebUtility.HtmlDecode(await GetAsync(viewer, "/monitoring"));
+        Assert.Contains("href=\"/monitoring\"", html, StringComparison.Ordinal);
+        foreach (string panel in new[] { "health", "last-hour", "hours", "anjal", "breach-list", "storage", "certificates", "backups" })
+        {
+            Assert.Contains($"data-panel=\"{panel}\"", html, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("Hosts and database", html, StringComparison.Ordinal);
+
+        Guid patient = await _factory.SeedAsync(role: null, mfa: true, "Patient");
+        Assert.DoesNotContain("data-panel=\"health\"", await GetAsync(patient, "/monitoring"), StringComparison.Ordinal);
+    }
+
+    [PostgresFact]
     public async Task Support_SeesTheActions_ButNotDeleteNow()
     {
         Guid support = await _factory.SeedAsync(PlatformRole.Support, mfa: true, "Support");
@@ -77,10 +94,11 @@ public sealed class ConsoleGateTests : IClassFixture<ConsoleFactory>
         Assert.DoesNotContain(">Delete now<", detail, StringComparison.Ordinal);
 
         // PR-16: the lost-authenticator reset appears only for someone who has an authenticator.
-        Assert.DoesNotContain("Reset two-step sign-in", detail, StringComparison.Ordinal);
+        Assert.DoesNotContain("Request a reset of two-step sign-in", detail, StringComparison.Ordinal);
         Guid enrolled = await _factory.SeedAsync(role: null, mfa: true, "Enrolled");
         string enrolledDetail = await GetAsync(support, $"/users/{enrolled:D}");
-        Assert.Contains("Reset two-step sign-in", enrolledDetail, StringComparison.Ordinal);
+        Assert.Contains("Request a reset of two-step sign-in", enrolledDetail, StringComparison.Ordinal);
+        Assert.Contains("72 for operators", enrolledDetail, StringComparison.Ordinal);
         Assert.Contains("Never record identity-document numbers", enrolledDetail, StringComparison.Ordinal);
     }
 
@@ -146,10 +164,25 @@ public sealed class ConsoleGateTests : IClassFixture<ConsoleFactory>
     }
 
     [PostgresFact]
+    public async Task Defaults_AreEditedFromAppManagerUp_AndOfferTheTextMessages()
+    {
+        Guid manager = await _factory.SeedAsync(PlatformRole.AppManager, mfa: true, "Manager");
+        string html = System.Net.WebUtility.HtmlDecode(await GetAsync(manager, "/customisation"));
+        Assert.Contains("data-panel=\"branding\"", html, StringComparison.Ordinal);
+        Assert.Contains("Text message: sign-in code", html, StringComparison.Ordinal);
+        Assert.Contains("E-mail: notice that two-step sign-in was reset", html, StringComparison.Ordinal);
+
+        Guid viewer = await _factory.SeedAsync(PlatformRole.Viewer, mfa: true, "Viewer");
+        string denied = System.Net.WebUtility.HtmlDecode(await GetAsync(viewer, "/customisation"));
+        Assert.True(denied.Contains("You cannot change these.", StringComparison.Ordinal), denied[Math.Max(0, denied.IndexOf("sg-main", StringComparison.Ordinal))..][..Math.Min(1500, denied.Length - Math.Max(0, denied.IndexOf("sg-main", StringComparison.Ordinal)))]);
+        Assert.DoesNotContain("Save message", denied, StringComparison.Ordinal);
+    }
+
+    [PostgresFact]
     public async Task NoConsolePage_LoadsAnythingFromAnotherHost()
     {
         Guid owner = await _factory.SeedAsync(PlatformRole.Owner, mfa: true, "Owner");
-        foreach (string path in new[] { "/", "/apps", "/operators" })
+        foreach (string path in new[] { "/", "/apps", "/operators", "/customisation" })
         {
             string html = await GetAsync(owner, path);
             Assert.DoesNotContain("src=\"http", html, StringComparison.OrdinalIgnoreCase);
@@ -166,7 +199,7 @@ public sealed class ConsoleGateTests : IClassFixture<ConsoleFactory>
     public async Task PagesAreInteractive_SoButtonsActuallyWork()
     {
         Guid owner = await _factory.SeedAsync(PlatformRole.Owner, mfa: true, "Live");
-        foreach (string path in new[] { "/", "/apps", "/operators" })
+        foreach (string path in new[] { "/", "/apps", "/operators", "/customisation" })
         {
             string html = await GetAsync(owner, path);
             // Look only in the body: the <head> outlet is interactive too and carries the same

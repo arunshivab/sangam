@@ -1,43 +1,43 @@
 @page "/operators"
 @inject IAdminService Admin
 
-<PageTitle>Operators · Sangam console</PageTitle>
+<PageTitle>@L["Operators · Sangam console"]</PageTitle>
 
-<h1 class="sg-h1">Operators</h1>
+<h1 class="sg-h1">@L["Operators"]</h1>
 
 @if (Context?.IsOwner != true)
 {
-  <p class="sg-lede">Only an owner can see and manage console access. Your rank is @Context?.RoleLabel.</p>
+  <p class="sg-lede">@L["Only an owner can see and manage console access. Your rank is {0}.", L[Context?.RoleLabel ?? string.Empty]]</p>
 }
 else
 {
-  <p class="sg-lede">Who may use this console, and how much they may do. Everyone here must have an authenticator app; without one the console refuses them, whatever their rank.</p>
+  <p class="sg-lede">@L["Who may use this console, and how much they may do. Everyone here must have an authenticator app; without one the console refuses them, whatever their rank."]</p>
 
   @if (_rows is null)
   {
-    <p class="sg-muted">Loading…</p>
+    <p class="sg-muted">@L["Loading…"]</p>
   }
   else
   {
     <table class="sg-table">
-      <thead><tr><th>Person</th><th>Rank</th><th>Two-step</th><th>Since</th><th>Granted by</th><th></th></tr></thead>
+      <thead><tr><th>@L["Person"]</th><th>@L["Rank"]</th><th>@L["Two-step"]</th><th>@L["Since"]</th><th>@L["Granted by"]</th><th></th></tr></thead>
       <tbody>
         @foreach (OperatorRow row in _rows)
         {
           <tr>
             <td><span class="sg-name">@row.DisplayName</span><span class="sg-sub sg-mono">@row.Email</span></td>
-            <td><span class="sg-rank sg-rank--@row.Role.ToString().ToLowerInvariant()">@PlatformRanks.Label(row.Role)</span></td>
+            <td><span class="sg-rank sg-rank--@row.Role.ToString().ToLowerInvariant()">@L[PlatformRanks.Label(row.Role)]</span></td>
             <td>@(row.MfaEnrolled ? "on" : Blocked)</td>
-            <td class="sg-mono">@row.GrantedAt.ToString("d MMM yyyy", CultureInfo.InvariantCulture)</td>
-            <td>@(row.GrantedByName ?? "bootstrap")</td>
+            <td class="sg-mono">@row.GrantedAt.ToString("d MMM yyyy", CultureInfo.CurrentCulture)</td>
+            <td>@(row.GrantedByName ?? L["bootstrap"])</td>
             <td>
               @if (row.UserId != Context.UserId)
               {
-                <button type="button" class="sg-btn sg-btn--warn" @onclick="() => RevokeAsync(row)" disabled="@_busy">Revoke</button>
+                <button type="button" class="sg-btn sg-btn--warn" @onclick="() => RevokeAsync(row)" disabled="@_busy">@L["Revoke"]</button>
               }
               else
               {
-                <span class="sg-muted">you</span>
+                <span class="sg-muted">@L["you"]</span>
               }
             </td>
           </tr>
@@ -46,19 +46,19 @@ else
     </table>
 
     <div class="sg-panel">
-      <h2 class="sg-h2">Give someone console access</h2>
-      <p class="sg-muted">They need a Sangam account already, verified and active. Granting does not create one.</p>
+      <h2 class="sg-h2">@L["Give someone console access"]</h2>
+      <p class="sg-muted">@L["They need a Sangam account already, verified and active. Granting does not create one."]</p>
       <div class="sg-grant">
-        <input class="sg-input" placeholder="their@email.in" @bind="_email" @bind:event="oninput" aria-label="Email address" />
-        <select class="sg-input" @bind="_role" aria-label="Rank">
+        <input class="sg-input" placeholder="their@email.in" @bind="_email" @bind:event="oninput" aria-label="@L["Email address"]" />
+        <select class="sg-input" @bind="_role" aria-label="@L["Rank"]">
           @foreach (PlatformRole role in PlatformRanks.All)
           {
-            <option value="@role">@PlatformRanks.Label(role)</option>
+            <option value="@role">@L[PlatformRanks.Label(role)]</option>
           }
         </select>
-        <button type="button" class="sg-btn sg-btn--primary" @onclick="GrantAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_email))">Grant</button>
+        <button type="button" class="sg-btn sg-btn--primary" @onclick="GrantAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_email))">@L["Grant"]</button>
       </div>
-      <p class="sg-muted">@PlatformRanks.Describe(_role)</p>
+      <p class="sg-muted">@L[PlatformRanks.Describe(_role)]</p>
     </div>
   }
 
@@ -97,7 +97,7 @@ else
         AdminResult result = await Admin.GrantOperatorAsync(Context!.UserId, _email, _role, null);
         _busy = false;
         _ok = result.Succeeded;
-        _message = result.Message;
+        _message = L[result.Message ?? string.Empty];
         if (result.Succeeded)
         {
             _email = string.Empty;
@@ -112,7 +112,7 @@ else
         AdminResult result = await Admin.RevokeOperatorAsync(Context!.UserId, row.UserId, null);
         _busy = false;
         _ok = result.Succeeded;
-        _message = result.Message;
+        _message = L[result.Message ?? string.Empty];
         await LoadAsync();
     }
 }

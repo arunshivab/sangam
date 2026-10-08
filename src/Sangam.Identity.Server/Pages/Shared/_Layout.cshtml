@@ -17,23 +17,49 @@
   <link rel="stylesheet" href="/_content/Sangam.Web.Shared/css/sangam-tokens.css" />
   <link rel="stylesheet" href="/_content/Sangam.Web.Shared/css/sangam-brand.css" />
   <link rel="stylesheet" href="/css/site.css" />
+  <link rel="stylesheet" href="/_content/Sangam.Web.Shared/css/sangam-i18n.css" />
 </head>
 <body>
-  <main class="sg-auth@(ViewData["Wide"] is true ? " sg-auth--wide" : "")">
+  @{
+      // PR-19: an application's (or organisation's) checked accent recolours the primary button and links only.
+      var branding = ViewData["Branding"] as Sangam.Identity.Application.Customisation.LoginBranding;
+  }
+  <main class="sg-auth@(ViewData["Wide"] is true ? " sg-auth--wide" : "")@(branding?.Accent is null ? "" : " sg-auth--themed")" style="@(branding?.Accent is null ? null : "--sg-theme-accent:" + branding.Accent)">
     <div class="sg-auth-lockup">
-      <a href="/" aria-label="Sangam home"><component type="typeof(SangamLockup)" render-mode="Static" param-MarkSize="26" /></a>
+      <a href="/" aria-label="@L["Sangam home"]"><component type="typeof(SangamLockup)" render-mode="Static" param-MarkSize="26" /></a>
     </div>
     @if (ViewData["Partner"] is Sangam.Identity.Application.Apps.AppSummary partner)
     {
-      <div class="sg-partner-chip" style="border-left-color:@partner.BrandColour">
-        <span class="sg-partner-glyph" style="background:@partner.BrandColour" aria-hidden="true">@partner.Glyph</span>
-        <span class="sg-partner-text">@(ViewData["PartnerText"] as string ?? $"Signing in to {partner.DisplayName}")</span>
+      <div class="sg-partner-chip" style="border-left-color:@(branding?.Accent ?? partner.BrandColour)">
+        @if (branding?.LogoUrl is string logo)
+        {
+          <img class="sg-partner-logo" src="@logo" alt="" />
+        }
+        else
+        {
+          <span class="sg-partner-glyph" style="background:@partner.BrandColour" aria-hidden="true">@partner.Glyph</span>
+        }
+        <span class="sg-partner-text">@(ViewData["PartnerText"] as string ?? L["Signing in to {0}", partner.DisplayName].Value)</span>
       </div>
+      @if (branding?.Welcome is string welcome)
+      {
+        <p class="sg-partner-welcome">@welcome</p>
+      }
     }
     @RenderBody()
   </main>
   <footer class="sg-auth-footer">
-    <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/privacy/grievance">Grievances</a> · <a href="/help">Help</a> · <span class="sg-auth-footer-host">id.sangamid.in</span>
+    <a href="/terms">@L["Terms"]</a> · <a href="/privacy">@L["Privacy"]</a> · <a href="/privacy/grievance">@L["Grievances"]</a> · <a href="/help">@L["Help"]</a> · <span class="sg-auth-footer-host">id.sangamid.in</span>
+    @if (ViewData["Partner"] is Sangam.Identity.Application.Apps.AppSummary linksFor && (branding?.HelpUrl ?? branding?.TermsUrl ?? branding?.PrivacyUrl) is not null)
+    {
+      <p class="sg-auth-partner-links">
+        @linksFor.DisplayName:
+        @if (branding!.HelpUrl is string help) { <a href="@help" rel="noopener">@L["Help"]</a> }
+        @if (branding.TermsUrl is string terms) { <text> · </text><a href="@terms" rel="noopener">@L["Terms"]</a> }
+        @if (branding.PrivacyUrl is string privacy) { <text> · </text><a href="@privacy" rel="noopener">@L["Privacy"]</a> }
+      </p>
+    }
+    <component type="typeof(LanguagePicker)" render-mode="Static" param-ReturnUrl="@(Context.Request.Path + Context.Request.QueryString)" param-Class="@("sg-auth-lang")" />
   </footer>
 </body>
 </html>

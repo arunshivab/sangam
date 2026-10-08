@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,7 +12,7 @@ using Sangam.Identity.Infrastructure.Tests.Postgres;
 
 namespace Sangam.Identity.Infrastructure.Tests.Passkeys;
 
-/// <summary>PR-14: passkeys — real WebAuthn messages through the real verifier, and every refusal that matters.</summary>
+/// <summary>PR-14 and D-G: passkeys — real WebAuthn messages through ASP.NET Core Identity's verifier, and every refusal that matters.</summary>
 [Collection("postgres")]
 public sealed class PasskeyServiceTests : IAsyncLifetime
 {
@@ -86,8 +87,10 @@ public sealed class PasskeyServiceTests : IAsyncLifetime
         Assert.Equal(_userId, signedIn.UserId);
         await using SangamDbContext db = _pg.CreateContext();
         PasskeyCredential stored = await db.PasskeyCredentials.AsNoTracking().SingleAsync();
-        Assert.Equal(7, stored.SignCount);
         Assert.NotNull(stored.LastUsedAt);
+        IdentityUserPasskey<Guid> key = await db.UserPasskeys.AsNoTracking().SingleAsync();
+        Assert.Equal(7u, key.Data.SignCount);
+        Assert.Equal("My phone", key.Data.Name);
         Assert.Contains(AuditActions.UserPasskeyAdd, await db.AuditEvents.Select(e => e.Action).ToListAsync());
     }
 

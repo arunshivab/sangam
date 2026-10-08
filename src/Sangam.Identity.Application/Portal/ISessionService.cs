@@ -29,4 +29,22 @@ public interface ISessionService
     /// <param name="reason">Why it ended.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     Task EndAsync(Guid sessionId, string reason, CancellationToken cancellationToken = default);
+
+    /// <summary>Records that an application received tokens in a session, so it is told when the session ends (PR-20).</summary>
+    /// <param name="sessionId">The session.</param>
+    /// <param name="appId">The application.</param>
+    /// <param name="userId">The person.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task RecordAppAsync(Guid sessionId, Guid appId, Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>The applications that took part in a session and have a front-channel logout page (PR-20).</summary>
+    /// <param name="sessionId">The session.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<IReadOnlyList<FrontChannelLogout>> FrontChannelLogoutsAsync(Guid sessionId, CancellationToken cancellationToken = default);
 }
+
+/// <summary>An application's front-channel logout page (PR-20).</summary>
+/// <param name="AppName">The application's name.</param>
+/// <param name="Uri">Its front-channel logout address.</param>
+public sealed record FrontChannelLogout(string AppName, string Uri);
+

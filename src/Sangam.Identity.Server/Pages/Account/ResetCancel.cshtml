@@ -1,0 +1,26 @@
+@page "/account/reset/cancel/{token}"
+@model ResetCancelModel
+@{
+    ViewData["Title"] = L["Cancel the reset of your two-step sign-in"].Value;
+}
+
+<section class="sg-card">
+  <h1 class="sg-card-title">@L["Cancel the reset of your two-step sign-in"]</h1>
+  @if (Model.Done)
+  {
+    <p class="sg-card-body">@L["The reset is cancelled. Nothing about your account has changed."]</p>
+    <p class="sg-card-body">@L["Someone may have tried to take over your account. Consider changing your password, and write to help@sangamid.in if you want us to look into it."]</p>
+  }
+  else if (Model.Pending is null)
+  {
+    <p class="sg-card-body">@L["This link no longer works: the reset was already cancelled, or has already been applied."]</p>
+    <p class="sg-card-body">@L["If your authenticator was removed and you did not ask for it, write to help@sangamid.in at once."]</p>
+  }
+  else
+  {
+    <p class="sg-card-body">@L["Sangam support was asked to remove the authenticator app from your account. Unless you stop it, this happens on {0}.", Model.EffectiveText]</p>
+    <form method="post">
+      <button type="submit" class="sg-btn sg-btn--danger sg-btn--block">@L["This wasn't me — cancel the reset"]</button>
+    </form>
+  }
+</section>

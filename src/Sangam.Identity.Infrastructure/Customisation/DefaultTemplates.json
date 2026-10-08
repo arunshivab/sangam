@@ -1,0 +1,156 @@
+{
+  "email_verification": {
+    "en-IN": {
+      "subject": "{{code}} is your Sangam verification code",
+      "body": "Hello {{name}},\n\nYour Sangam verification code is:\n\n    {{code}}\n\nEnter it on the page where you created your account. It is valid for {{minutes}} minutes and can be used once.\n\nIf you did not create a Sangam account, ignore this email; nothing will happen.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "{{code}} आपका Sangam सत्यापन कोड है",
+      "body": "नमस्ते {{name}},\n\nआपका Sangam सत्यापन कोड है:\n\n    {{code}}\n\nइसे उसी पेज पर दर्ज करें जहाँ आपने अपना खाता बनाया था। यह {{minutes}} मिनट के लिए मान्य है और केवल एक बार उपयोग किया जा सकता है।\n\nयदि आपने Sangam खाता नहीं बनाया है, तो इस ईमेल को अनदेखा करें; कुछ नहीं होगा।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "{{code}} ആണ് നിങ്ങളുടെ Sangam സ്ഥിരീകരണ കോഡ്",
+      "body": "നമസ്കാരം {{name}},\n\nനിങ്ങളുടെ Sangam സ്ഥിരീകരണ കോഡ്:\n\n    {{code}}\n\nനിങ്ങൾ അക്കൗണ്ട് സൃഷ്ടിച്ച പേജിൽ ഇത് നൽകുക. ഇത് {{minutes}} മിനിറ്റ് നേരത്തേക്ക് സാധുവാണ്, ഒരു തവണ മാത്രം ഉപയോഗിക്കാം.\n\nനിങ്ങൾ Sangam അക്കൗണ്ട് സൃഷ്ടിച്ചിട്ടില്ലെങ്കിൽ, ഈ ഇമെയിൽ അവഗണിക്കുക; ഒന്നും സംഭവിക്കില്ല.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
+  "email_change_code": {
+    "en-IN": {
+      "subject": "{{code}} is your code to confirm this address for Sangam",
+      "body": "Hello {{name}},\n\nYou asked to use this address for your Sangam account. Your confirmation code is:\n\n    {{code}}\n\nEnter it in your Sangam account page. It is valid for {{minutes}} minutes and can be used once.\nUntil you do, your account keeps its current address.\n\nIf you did not ask for this, ignore this email; nothing will change.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "{{code}} इस पते की पुष्टि के लिए आपका Sangam कोड है",
+      "body": "नमस्ते {{name}},\n\nआपने अपने Sangam खाते के लिए इस पते का उपयोग करने का अनुरोध किया है। आपका पुष्टि कोड है:\n\n    {{code}}\n\nइसे अपने Sangam खाता पेज में दर्ज करें। यह {{minutes}} मिनट के लिए मान्य है और केवल एक बार उपयोग किया जा सकता है।\nजब तक आप ऐसा नहीं करते, आपके खाते में मौजूदा पता ही बना रहेगा।\n\nयदि आपने यह अनुरोध नहीं किया है, तो इस ईमेल को अनदेखा करें; कुछ नहीं बदलेगा।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "{{code}} ആണ് ഈ വിലാസം സ്ഥിരീകരിക്കാനുള്ള നിങ്ങളുടെ Sangam കോഡ്",
+      "body": "നമസ്കാരം {{name}},\n\nനിങ്ങളുടെ Sangam അക്കൗണ്ടിനായി ഈ വിലാസം ഉപയോഗിക്കാൻ നിങ്ങൾ ആവശ്യപ്പെട്ടു. നിങ്ങളുടെ സ്ഥിരീകരണ കോഡ്:\n\n    {{code}}\n\nനിങ്ങളുടെ Sangam അക്കൗണ്ട് പേജിൽ ഇത് നൽകുക. ഇത് {{minutes}} മിനിറ്റ് നേരത്തേക്ക് സാധുവാണ്, ഒരു തവണ മാത്രം ഉപയോഗിക്കാം.\nഅതുവരെ നിങ്ങളുടെ അക്കൗണ്ടിൽ നിലവിലുള്ള വിലാസം തന്നെ തുടരും.\n\nനിങ്ങൾ ഇത് ആവശ്യപ്പെട്ടിട്ടില്ലെങ്കിൽ, ഈ ഇമെയിൽ അവഗണിക്കുക; ഒന്നും മാറില്ല.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
+  "password_reset": {
+    "en-IN": {
+      "subject": "{{code}} is your Sangam password reset code",
+      "body": "Hello {{name}},\n\nSomeone asked to reset the password for your Sangam account. Your reset code is:\n\n    {{code}}\n\nIt is valid for {{minutes}} minutes and can be used once. Setting a new password signs you out of Sangam on all devices.\n\nIf this was not you, ignore this email; your password will not change.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "{{code}} आपका Sangam पासवर्ड रीसेट कोड है",
+      "body": "नमस्ते {{name}},\n\nकिसी ने आपके Sangam खाते का पासवर्ड रीसेट करने का अनुरोध किया है। आपका रीसेट कोड है:\n\n    {{code}}\n\nयह {{minutes}} मिनट के लिए मान्य है और केवल एक बार उपयोग किया जा सकता है। नया पासवर्ड सेट करने पर आप सभी डिवाइस पर Sangam से साइन आउट हो जाएँगे।\n\nयदि यह आप नहीं थे, तो इस ईमेल को अनदेखा करें; आपका पासवर्ड नहीं बदलेगा।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "{{code}} ആണ് നിങ്ങളുടെ Sangam പാസ്‌വേഡ് റീസെറ്റ് കോഡ്",
+      "body": "നമസ്കാരം {{name}},\n\nനിങ്ങളുടെ Sangam അക്കൗണ്ടിന്റെ പാസ്‌വേഡ് റീസെറ്റ് ചെയ്യാൻ ആരോ ആവശ്യപ്പെട്ടു. നിങ്ങളുടെ റീസെറ്റ് കോഡ്:\n\n    {{code}}\n\nഇത് {{minutes}} മിനിറ്റ് നേരത്തേക്ക് സാധുവാണ്, ഒരു തവണ മാത്രം ഉപയോഗിക്കാം. പുതിയ പാസ്‌വേഡ് സജ്ജമാക്കുമ്പോൾ എല്ലാ ഉപകരണങ്ങളിലും നിങ്ങൾ Sangam-ൽ നിന്ന് സൈൻ ഔട്ട് ആകും.\n\nഇത് നിങ്ങളല്ലെങ്കിൽ, ഈ ഇമെയിൽ അവഗണിക്കുക; നിങ്ങളുടെ പാസ്‌വേഡ് മാറില്ല.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
+  "sign_in_code": {
+    "en-IN": {
+      "subject": "{{code}} is your Sangam sign-in code",
+      "body": "Hello {{name}},\n\nYour Sangam sign-in code is:\n\n    {{code}}\n\nIt is valid for {{minutes}} minutes and can be used once.\n\nIf you did not try to sign in, ignore this email and consider changing your password.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "{{code}} आपका Sangam साइन इन कोड है",
+      "body": "नमस्ते {{name}},\n\nआपका Sangam साइन इन कोड है:\n\n    {{code}}\n\nयह {{minutes}} मिनट के लिए मान्य है और केवल एक बार उपयोग किया जा सकता है।\n\nयदि आपने साइन इन करने का प्रयास नहीं किया, तो इस ईमेल को अनदेखा करें और अपना पासवर्ड बदलने पर विचार करें।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "{{code}} ആണ് നിങ്ങളുടെ Sangam സൈൻ ഇൻ കോഡ്",
+      "body": "നമസ്കാരം {{name}},\n\nനിങ്ങളുടെ Sangam സൈൻ ഇൻ കോഡ്:\n\n    {{code}}\n\nഇത് {{minutes}} മിനിറ്റ് നേരത്തേക്ക് സാധുവാണ്, ഒരു തവണ മാത്രം ഉപയോഗിക്കാം.\n\nനിങ്ങൾ സൈൻ ഇൻ ചെയ്യാൻ ശ്രമിച്ചിട്ടില്ലെങ്കിൽ, ഈ ഇമെയിൽ അവഗണിക്കുക, നിങ്ങളുടെ പാസ്‌വേഡ് മാറ്റുന്നത് പരിഗണിക്കുക.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
+  "email_changed_notice": {
+    "en-IN": {
+      "subject": "Your Sangam email address was changed",
+      "body": "Hello {{name}},\n\nThe email address of your Sangam account was changed to {{new_email}}. This address will no\nlonger be used to sign in.\n\nIf this was you, there is nothing to do. If it was not, write to help@sangamid.in at once from this\naddress so we can secure your account.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "आपके Sangam खाते का ईमेल पता बदल दिया गया",
+      "body": "नमस्ते {{name}},\n\nआपके Sangam खाते का ईमेल पता बदलकर {{new_email}} कर दिया गया है। अब इस पते से\nसाइन इन नहीं किया जा सकेगा।\n\nयदि यह बदलाव आपने किया है, तो आपको कुछ करने की आवश्यकता नहीं है। यदि नहीं, तो अपने खाते को सुरक्षित करने के लिए\nतुरंत इसी पते से help@sangamid.in पर लिखें।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "നിങ്ങളുടെ Sangam ഇമെയിൽ വിലാസം മാറ്റി",
+      "body": "നമസ്കാരം {{name}},\n\nനിങ്ങളുടെ Sangam അക്കൗണ്ടിന്റെ ഇമെയിൽ വിലാസം {{new_email}} എന്നാക്കി മാറ്റി. ഈ വിലാസം ഇനി\nസൈൻ ഇൻ ചെയ്യാൻ ഉപയോഗിക്കില്ല.\n\nഇത് നിങ്ങൾ ചെയ്തതാണെങ്കിൽ, ഒന്നും ചെയ്യേണ്ടതില്ല. അല്ലെങ്കിൽ, നിങ്ങളുടെ അക്കൗണ്ട് സുരക്ഷിതമാക്കാൻ ഉടൻ തന്നെ\nഈ വിലാസത്തിൽ നിന്ന് help@sangamid.in എന്ന വിലാസത്തിലേക്ക് എഴുതുക.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
+  "registration_attempt_notice": {
+    "en-IN": {
+      "subject": "Someone tried to create a Sangam account with your address",
+      "body": "Hello,\n\nSomeone just tried to create a new Sangam account with this email address. You already have one, so no\nnew account was created and nothing about your account has changed.\n\nIf it was you: sign in at id.sangamid.in, or use \"Forgot password?\" there if you cannot remember it.\nIf it was not you: there is nothing to do. Your account is safe.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "किसी ने आपके पते से Sangam खाता बनाने का प्रयास किया",
+      "body": "नमस्ते,\n\nकिसी ने अभी इस ईमेल पते से नया Sangam खाता बनाने का प्रयास किया। आपका पहले से एक खाता है, इसलिए\nकोई नया खाता नहीं बनाया गया और आपके खाते में कुछ भी नहीं बदला है।\n\nयदि यह आप थे: id.sangamid.in पर साइन इन करें, या पासवर्ड याद न होने पर वहाँ \"पासवर्ड भूल गए?\" का उपयोग करें।\nयदि यह आप नहीं थे: आपको कुछ करने की आवश्यकता नहीं है। आपका खाता सुरक्षित है।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "നിങ്ങളുടെ വിലാസത്തിൽ ആരോ Sangam അക്കൗണ്ട് സൃഷ്ടിക്കാൻ ശ്രമിച്ചു",
+      "body": "നമസ്കാരം,\n\nഈ ഇമെയിൽ വിലാസം ഉപയോഗിച്ച് ആരോ ഇപ്പോൾ ഒരു പുതിയ Sangam അക്കൗണ്ട് സൃഷ്ടിക്കാൻ ശ്രമിച്ചു. നിങ്ങൾക്ക് ഇതിനകം\nഒരു അക്കൗണ്ട് ഉള്ളതിനാൽ പുതിയ അക്കൗണ്ട് സൃഷ്ടിച്ചിട്ടില്ല, നിങ്ങളുടെ അക്കൗണ്ടിൽ ഒന്നും മാറിയിട്ടുമില്ല.\n\nഅത് നിങ്ങളാണെങ്കിൽ: id.sangamid.in എന്ന സൈറ്റിൽ സൈൻ ഇൻ ചെയ്യുക, പാസ്‌വേഡ് ഓർമ്മയില്ലെങ്കിൽ അവിടെയുള്ള \"പാസ്‌വേഡ് മറന്നോ?\" ഉപയോഗിക്കുക.\nഅത് നിങ്ങളല്ലെങ്കിൽ: ഒന്നും ചെയ്യേണ്ടതില്ല. നിങ്ങളുടെ അക്കൗണ്ട് സുരക്ഷിതമാണ്.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
+  "mobile_attempt_notice": {
+    "en-IN": {
+      "subject": "Someone tried to create a Sangam account with your mobile number",
+      "body": "Hello,\n\nSomeone just tried to create a new Sangam account with the mobile number on your account. You already have\nan account, so no new account was created and nothing about your account has changed.\n\nIf it was you: sign in at id.sangamid.in, or use \"Forgot password?\" there if you cannot remember it.\nIf it was not you: there is nothing to do. Your account is safe.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "किसी ने आपके मोबाइल नंबर से Sangam खाता बनाने का प्रयास किया",
+      "body": "नमस्ते,\n\nकिसी ने अभी आपके खाते के मोबाइल नंबर से नया Sangam खाता बनाने का प्रयास किया। आपका पहले से एक खाता है,\nइसलिए कोई नया खाता नहीं बनाया गया और आपके खाते में कुछ भी नहीं बदला है।\n\nयदि यह आप थे: id.sangamid.in पर साइन इन करें, या पासवर्ड याद न होने पर वहाँ \"पासवर्ड भूल गए?\" का उपयोग करें।\nयदि यह आप नहीं थे: आपको कुछ करने की आवश्यकता नहीं है। आपका खाता सुरक्षित है।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "നിങ്ങളുടെ മൊബൈൽ നമ്പർ ഉപയോഗിച്ച് ആരോ Sangam അക്കൗണ്ട് സൃഷ്ടിക്കാൻ ശ്രമിച്ചു",
+      "body": "നമസ്കാരം,\n\nനിങ്ങളുടെ അക്കൗണ്ടിലെ മൊബൈൽ നമ്പർ ഉപയോഗിച്ച് ആരോ ഇപ്പോൾ ഒരു പുതിയ Sangam അക്കൗണ്ട് സൃഷ്ടിക്കാൻ ശ്രമിച്ചു.\nനിങ്ങൾക്ക് ഇതിനകം ഒരു അക്കൗണ്ട് ഉള്ളതിനാൽ പുതിയ അക്കൗണ്ട് സൃഷ്ടിച്ചിട്ടില്ല, നിങ്ങളുടെ അക്കൗണ്ടിൽ ഒന്നും മാറിയിട്ടുമില്ല.\n\nഅത് നിങ്ങളാണെങ്കിൽ: id.sangamid.in എന്ന സൈറ്റിൽ സൈൻ ഇൻ ചെയ്യുക, പാസ്‌വേഡ് ഓർമ്മയില്ലെങ്കിൽ അവിടെയുള്ള \"പാസ്‌വേഡ് മറന്നോ?\" ഉപയോഗിക്കുക.\nഅത് നിങ്ങളല്ലെങ്കിൽ: ഒന്നും ചെയ്യേണ്ടതില്ല. നിങ്ങളുടെ അക്കൗണ്ട് സുരക്ഷിതമാണ്.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
+  "two_step_reset_notice": {
+    "en-IN": {
+      "subject": "Your Sangam two-step sign-in was reset",
+      "body": "Hello {{name}},\n\nSangam support has removed the authenticator app from your account, after confirming who you are,\nbecause you told us you had lost it and your recovery codes. Every device has been signed out.\n\nSign in with your password, then set up an authenticator app again in your account. Keep the new\nrecovery codes somewhere safe, away from your phone.\n\nIf you did not ask for this, write to help@sangamid.in at once from this address.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "आपका Sangam दो-चरणीय साइन इन रीसेट किया गया",
+      "body": "नमस्ते {{name}},\n\nआपकी पहचान की पुष्टि करने के बाद, Sangam सहायता टीम ने आपके खाते से ऑथेंटिकेटर ऐप हटा दिया है,\nक्योंकि आपने हमें बताया था कि आपका ऐप और आपके रिकवरी कोड खो गए हैं। सभी डिवाइस से साइन आउट कर दिया गया है।\n\nअपने पासवर्ड से साइन इन करें, फिर अपने खाते में ऑथेंटिकेटर ऐप दोबारा सेट करें। नए रिकवरी कोड\nअपने फ़ोन से अलग, किसी सुरक्षित जगह पर रखें।\n\nयदि आपने यह अनुरोध नहीं किया था, तो तुरंत इसी पते से help@sangamid.in पर लिखें।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "നിങ്ങളുടെ Sangam രണ്ട്-ഘട്ട സൈൻ-ഇൻ റീസെറ്റ് ചെയ്തു",
+      "body": "നമസ്കാരം {{name}},\n\nനിങ്ങളുടെ ഓതന്റിക്കേറ്റർ ആപ്പും റിക്കവറി കോഡുകളും നഷ്ടപ്പെട്ടതായി നിങ്ങൾ അറിയിച്ചതിനാൽ, നിങ്ങൾ ആരാണെന്ന്\nസ്ഥിരീകരിച്ച ശേഷം Sangam സപ്പോർട്ട് ടീം നിങ്ങളുടെ അക്കൗണ്ടിൽ നിന്ന് ഓതന്റിക്കേറ്റർ ആപ്പ് നീക്കം ചെയ്തു. എല്ലാ ഉപകരണങ്ങളിൽ നിന്നും\nസൈൻ ഔട്ട് ചെയ്തിട്ടുണ്ട്.\n\nനിങ്ങളുടെ പാസ്‌വേഡ് ഉപയോഗിച്ച് സൈൻ ഇൻ ചെയ്യുക, തുടർന്ന് അക്കൗണ്ടിൽ ഓതന്റിക്കേറ്റർ ആപ്പ് വീണ്ടും സജ്ജമാക്കുക.\nപുതിയ റിക്കവറി കോഡുകൾ ഫോണിൽ നിന്ന് മാറി സുരക്ഷിതമായ ഒരിടത്ത് സൂക്ഷിക്കുക.\n\nനിങ്ങൾ ഇത് ആവശ്യപ്പെട്ടിട്ടില്ലെങ്കിൽ, ഉടൻ തന്നെ ഈ വിലാസത്തിൽ നിന്ന് help@sangamid.in എന്ന വിലാസത്തിലേക്ക് എഴുതുക.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
+  "two_step_reset_requested": {
+    "en-IN": {
+      "subject": "Sangam support was asked to reset your two-step sign-in",
+      "body": "Hello {{name}},\n\nSangam support was asked to remove the authenticator app from your account, because someone told us you\nhad lost it and your recovery codes. For your safety, nothing happens for {{hours}} hours: the reset takes\neffect at {{effective}}, and only if you do not stop it.\n\nIf this wasn't you, cancel it now with one click:\n\n    {{link}}\n\nIf it was you, there is nothing to do; you will be told when it is done.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "Sangam सहायता टीम से आपका दो-चरणीय साइन इन रीसेट करने का अनुरोध किया गया",
+      "body": "नमस्ते {{name}},\n\nSangam सहायता टीम से आपके खाते से ऑथेंटिकेटर ऐप हटाने का अनुरोध किया गया है, क्योंकि किसी ने हमें बताया कि आपका\nऐप और रिकवरी कोड खो गए हैं। आपकी सुरक्षा के लिए {{hours}} घंटे तक कुछ नहीं होगा: रीसेट {{effective}} पर लागू होगा,\nऔर केवल तभी जब आप इसे न रोकें।\n\nयदि यह आप नहीं थे, तो एक क्लिक में इसे अभी रद्द करें:\n\n    {{link}}\n\nयदि यह आप थे, तो कुछ करने की आवश्यकता नहीं है; काम पूरा होने पर आपको बताया जाएगा।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "നിങ്ങളുടെ രണ്ട്-ഘട്ട സൈൻ-ഇൻ റീസെറ്റ് ചെയ്യാൻ Sangam സപ്പോർട്ടിനോട് ആവശ്യപ്പെട്ടു",
+      "body": "നമസ്കാരം {{name}},\n\nനിങ്ങളുടെ ഓതന്റിക്കേറ്റർ ആപ്പും റിക്കവറി കോഡുകളും നഷ്ടപ്പെട്ടതായി ആരോ അറിയിച്ചതിനാൽ, നിങ്ങളുടെ അക്കൗണ്ടിൽ നിന്ന്\nഓതന്റിക്കേറ്റർ ആപ്പ് നീക്കം ചെയ്യാൻ Sangam സപ്പോർട്ടിനോട് ആവശ്യപ്പെട്ടു. നിങ്ങളുടെ സുരക്ഷയ്ക്കായി {{hours}} മണിക്കൂർ ഒന്നും\nസംഭവിക്കില്ല: റീസെറ്റ് {{effective}}-ന് പ്രാബല്യത്തിൽ വരും, നിങ്ങൾ തടഞ്ഞില്ലെങ്കിൽ മാത്രം.\n\nഇത് നിങ്ങളല്ലെങ്കിൽ, ഒറ്റ ക്ലിക്കിൽ ഇപ്പോൾ റദ്ദാക്കുക:\n\n    {{link}}\n\nഇത് നിങ്ങളാണെങ്കിൽ, ഒന്നും ചെയ്യേണ്ടതില്ല; പൂർത്തിയാകുമ്പോൾ അറിയിക്കും.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
+  "operator_alert": {
+    "en-IN": {
+      "subject": "SangamID alert: {{summary}}",
+      "body": "SangamID alert: {{summary}}\n\n{{details}}\n\nCheck the operator console's monitoring page: admin.sangamid.in/monitoring\n\nSangam operations"
+    },
+    "hi-IN": {
+      "subject": "SangamID चेतावनी: {{summary}}",
+      "body": "SangamID चेतावनी: {{summary}}\n\n{{details}}\n\nऑपरेटर कंसोल का मॉनिटरिंग पेज देखें: admin.sangamid.in/monitoring\n\nSangam संचालन"
+    },
+    "ml-IN": {
+      "subject": "SangamID മുന്നറിയിപ്പ്: {{summary}}",
+      "body": "SangamID മുന്നറിയിപ്പ്: {{summary}}\n\n{{details}}\n\nഓപ്പറേറ്റർ കൺസോളിലെ മോണിറ്ററിംഗ് പേജ് പരിശോധിക്കുക: admin.sangamid.in/monitoring\n\nSangam പ്രവർത്തനങ്ങൾ"
+    }
+  },
+  "invitation": {
+    "en-IN": {
+      "subject": "You are invited to {{application}}",
+      "body": "Hello,\n\nYou are invited to join {{organisation}} in {{application}} as {{role}}.\n\nTo accept, open this link and sign in to Sangam with this email address (or create a Sangam\naccount with it):\n\n    {{link}}\n\nThe link works once and for {{days}} days. If you were not expecting this, ignore this\nemail; nothing will happen and {{application}} will not see your account.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "आपको {{application}} में आमंत्रित किया गया है",
+      "body": "नमस्ते,\n\nआपको {{application}} में {{organisation}} से {{role}} के रूप में जुड़ने के लिए आमंत्रित किया गया है।\n\nस्वीकार करने के लिए, यह लिंक खोलें और इसी ईमेल पते से Sangam में साइन इन करें (या इस पते से\nSangam खाता बनाएँ):\n\n    {{link}}\n\nयह लिंक केवल एक बार और {{days}} दिनों तक काम करेगा। यदि आप इसकी अपेक्षा नहीं कर रहे थे, तो इस\nईमेल को अनदेखा करें; कुछ नहीं होगा और {{application}} आपका खाता नहीं देख पाएगा।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "{{application}}-ലേക്ക് നിങ്ങളെ ക്ഷണിച്ചിരിക്കുന്നു",
+      "body": "നമസ്കാരം,\n\n{{application}}-ൽ {{organisation}} എന്ന സ്ഥാപനത്തിൽ {{role}} ആയി ചേരാൻ നിങ്ങളെ ക്ഷണിച്ചിരിക്കുന്നു.\n\nസ്വീകരിക്കാൻ, ഈ ലിങ്ക് തുറന്ന് ഈ ഇമെയിൽ വിലാസം ഉപയോഗിച്ച് Sangam-ൽ സൈൻ ഇൻ ചെയ്യുക (അല്ലെങ്കിൽ ഇത്\nഉപയോഗിച്ച് ഒരു Sangam അക്കൗണ്ട് സൃഷ്ടിക്കുക):\n\n    {{link}}\n\nഈ ലിങ്ക് ഒരു തവണ മാത്രം, {{days}} ദിവസത്തേക്ക് പ്രവർത്തിക്കും. നിങ്ങൾ ഇത് പ്രതീക്ഷിച്ചിരുന്നില്ലെങ്കിൽ, ഈ\nഇമെയിൽ അവഗണിക്കുക; ഒന്നും സംഭവിക്കില്ല, {{application}}-ന് നിങ്ങളുടെ അക്കൗണ്ട് കാണാനാകില്ല.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  }
+}

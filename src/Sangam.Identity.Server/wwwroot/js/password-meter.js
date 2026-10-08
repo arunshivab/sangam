@@ -20,6 +20,11 @@
         return;
     }
 
+    // PR-18: the verdicts in the reader's language, rendered by the server; English is the fallback.
+    function label(name, fallback) {
+        return verdictText.getAttribute("data-label-" + name) || fallback;
+    }
+
     function evaluate(value) {
         var rules = {
             "8+": value.length >= 8,
@@ -33,11 +38,11 @@
         var notBlocked = value.length > 0 && !repeated;
 
         if (!rules["8+"] || !allClasses || !notBlocked) {
-            return { level: "weak", label: value.length === 0 ? "" : "Too weak", filled: value.length === 0 ? 0 : 1, rules: rules };
+            return { level: "weak", label: value.length === 0 ? "" : label("weak", "Too weak"), filled: value.length === 0 ? 0 : 1, rules: rules };
         }
 
         var filled = 2 + (value.length >= 11 ? 1 : 0) + (value.length >= 14 ? 1 : 0);
-        return { level: filled >= 4 ? "strong" : "fair", label: filled >= 4 ? "Strong" : "Fair", filled: filled, rules: rules };
+        return { level: filled >= 4 ? "strong" : "fair", label: filled >= 4 ? label("strong", "Strong") : label("fair", "Fair"), filled: filled, rules: rules };
     }
 
     function render() {

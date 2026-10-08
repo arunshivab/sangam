@@ -40,6 +40,12 @@ public static class SangamAuthentication
     /// <summary>Claim on the session: the person passed an authenticator step (PR-16); a passkey session needs none.</summary>
     public const string SessionSecondFactorClaim = "sangam:second_factor";
 
+    /// <summary>Claim on the session: the RFC 8176 methods used, space-separated (PR-17).</summary>
+    public const string SessionMethodsClaim = "sangam:amr";
+
+    /// <summary>Claim on a concealed pending registration: when its notice was sent, for the countdown (V-09).</summary>
+    public const string PendingIssuedClaim = "sangam:issued";
+
     /// <summary>Claim marking a pending code sign-in whose code was texted rather than e-mailed (PR-15).</summary>
     public const string PendingChannelClaim = "sangam:channel";
 
@@ -127,7 +133,8 @@ public static class SangamAuthentication
     /// <param name="appId">The app that started the flow, if any.</param>
     /// <param name="deviceLabel">Label the app supplied on the authorization request, if any.</param>
     /// <param name="secondFactor">Whether the person passed an authenticator step (PR-16).</param>
-    public static async Task SignInSessionAsync(HttpContext httpContext, UserSummary user, SignInMode mode, Guid? appId = null, string? deviceLabel = null, bool secondFactor = false)
+    /// <param name="codeBySms">Whether the sign-in code was texted (PR-15), for the methods recorded (PR-17).</param>
+    public static async Task SignInSessionAsync(HttpContext httpContext, UserSummary user, SignInMode mode, Guid? appId = null, string? deviceLabel = null, bool secondFactor = false, bool codeBySms = false)
     {
         ArgumentNullException.ThrowIfNull(httpContext);
         ArgumentNullException.ThrowIfNull(user);
@@ -150,6 +157,7 @@ public static class SangamAuthentication
         identity.AddClaim(new Claim(Claims.FamilyName, user.LastName));
         identity.AddClaim(new Claim(Claims.Email, user.Email));
         identity.AddClaim(new Claim(Claims.EmailVerified, user.EmailVerified ? "true" : "false"));
+        identity.AddClaim(new Claim(Claims.Locale, user.Locale));
         identity.AddClaim(new Claim(SessionModeClaim, SignInModes.ToCode(mode)));
         identity.AddClaim(new Claim(SessionStampClaim, user.SecurityStamp));
         identity.AddClaim(new Claim(SessionIdClaim, sessionId.ToString("D")));
@@ -159,6 +167,9 @@ public static class SangamAuthentication
         {
             identity.AddClaim(new Claim(SessionSecondFactorClaim, "totp"));
         }
+
+        // PR-17: how the person authenticated (RFC 8176), for acr, amr and step-up decisions.
+        identity.AddClaim(new Claim(SessionMethodsClaim, string.Join(' ', AuthenticationAssurance.Methods(mode, secondFactor, codeBySms))));
 
         await httpContext.SignOutAsync(PendingScheme).ConfigureAwait(false);
         await httpContext.SignInAsync(IdentityConstants.ApplicationScheme, new ClaimsPrincipal(identity)).ConfigureAwait(false);
@@ -258,6 +269,34 @@ public static class SangamAuthentication
         return httpContext.SignInAsync(PendingScheme, new ClaimsPrincipal(identity));
     }
 
+    /// <summary>
+    /// Stores a pending e-mail verification for a registration that was concealed because the address or mobile
+    /// already had an account (V-09). The next screen looks exactly like a real one; no code will ever match.
+    /// </summary>
+    /// <param name="httpContext">Current request.</param>
+    /// <param name="email">The address that was typed.</param>
+    public static Task StorePendingConcealedRegistrationAsync(HttpContext httpContext, string email)
+    {
+        ArgumentNullException.ThrowIfNull(httpContext);
+        ClaimsIdentity identity = new(PendingScheme);
+        identity.AddClaim(new Claim(Claims.Subject, Guid.Empty.ToString("D")));
+        identity.AddClaim(new Claim(PendingPurposeClaim, Pending.EmailVerification));
+        identity.AddClaim(new Claim(PendingEmailClaim, email));
+        identity.AddClaim(new Claim(PendingIssuedClaim, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture)));
+        return httpContext.SignInAsync(PendingScheme, new ClaimsPrincipal(identity));
+    }
+
+    /// <summary>When the (concealed) code was "sent", for the resend countdown (V-09).</summary>
+    /// <param name="httpContext">Current request.</param>
+    public static async Task<DateTimeOffset?> ReadPendingIssuedAsync(HttpContext httpContext)
+    {
+        ArgumentNullException.ThrowIfNull(httpContext);
+        AuthenticateResult result = await httpContext.AuthenticateAsync(PendingScheme).ConfigureAwait(false);
+        return long.TryParse(result.Principal?.FindFirstValue(PendingIssuedClaim), NumberStyles.None, CultureInfo.InvariantCulture, out long seconds)
+            ? DateTimeOffset.FromUnixTimeSeconds(seconds)
+            : null;
+    }
+
     /// <summary>Parks a consent denial for <paramref name="clientId"/> so the authorization endpoint can answer the app.</summary>
     /// <param name="httpContext">Current request.</param>
     /// <param name="clientId">The app that was declined.</param>
@@ -309,6 +348,25 @@ public static class SangamAuthentication
         ArgumentNullException.ThrowIfNull(principal);
         return principal.HasClaim(c => c.Type == SessionSecondFactorClaim)
             || principal.FindFirstValue(SessionModeClaim) == SignInModes.ToCode(SignInMode.Passkey);
+    }
+
+    /// <summary>The RFC 8176 methods the session was established with (PR-17); empty for a session from before R3.</summary>
+    /// <param name="principal">The session principal.</param>
+    public static IReadOnlyList<string> SessionMethods(ClaimsPrincipal principal)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        string? value = principal.FindFirstValue(SessionMethodsClaim);
+        return string.IsNullOrWhiteSpace(value) ? [] : value.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+    }
+
+    /// <summary>When the person last authenticated in this session, or <see langword="null"/>.</summary>
+    /// <param name="principal">The session principal.</param>
+    public static DateTimeOffset? AuthenticatedAt(ClaimsPrincipal principal)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        return long.TryParse(principal.FindFirstValue(Claims.AuthenticationTime), NumberStyles.None, CultureInfo.InvariantCulture, out long seconds)
+            ? DateTimeOffset.FromUnixTimeSeconds(seconds)
+            : null;
     }
 
     /// <summary>The session row id from the cookie, or <see langword="null"/>.</summary>

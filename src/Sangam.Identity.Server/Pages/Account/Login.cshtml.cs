@@ -62,7 +62,7 @@ public sealed class LoginModel : AuthPageModel
     public bool PasskeysEnabled => _passkeys.Enabled;
 
     /// <summary>Whether the application in the flow accepts only passkeys (PR-16): the password form is not offered.</summary>
-    public bool PasskeyOnly => Partner?.SignInPolicy == SignInPolicy.PasskeyOnly && _passkeys.Enabled;
+    public bool PasskeyOnly => (Partner?.SignInPolicy == SignInPolicy.PasskeyOnly || RequiredLevel(ReturnUrl) >= 3) && _passkeys.Enabled;
 
     /// <summary>Renders the form.</summary>
     /// <param name="signedout">Set after sign-out.</param>
@@ -84,11 +84,11 @@ public sealed class LoginModel : AuthPageModel
 
         if (signedout)
         {
-            Notice = "You have been signed out.";
+            Notice = L["You have been signed out."];
         }
         else if (reset)
         {
-            Notice = "Your password has been updated. Sign in with the new one.";
+            Notice = L["Your password has been updated. Sign in with the new one."];
         }
 
         return Page();
@@ -117,15 +117,15 @@ public sealed class LoginModel : AuthPageModel
                 return RedirectToPage("/Account/Verify", new { returnUrl = ReturnUrl });
 
             case SignInStatus.LockedOut:
-                Error = "Too many failed attempts. Try again in 15 minutes, or reset your password.";
+                Error = L["Too many failed attempts. Try again in 15 minutes, or reset your password."];
                 return Page();
 
             case SignInStatus.NotAllowed:
-                Error = "This account cannot sign in. Contact help@sangamid.in if you think this is a mistake.";
+                Error = L["This account cannot sign in. Contact help@sangamid.in if you think this is a mistake."];
                 return Page();
 
             default:
-                Error = "That email and password do not match.";
+                Error = L["That email and password do not match."];
                 return Page();
         }
     }
@@ -138,14 +138,18 @@ public sealed class LoginModel : AuthPageModel
     private async Task<IActionResult> ApplyPolicyAsync(UserSummary user, SignInMode mode, CancellationToken cancellationToken)
     {
         PersonPolicy person = await _policies.ForPersonAsync(user.Id, Partner?.Id, cancellationToken);
-        if (person.Policy.SignIn == SignInPolicy.PasskeyOnly || mode == SignInMode.Passkey)
+        int stepUp = RequiredLevel(ReturnUrl);
+        if (person.Policy.SignIn == SignInPolicy.PasskeyOnly || mode == SignInMode.Passkey || stepUp >= 3)
         {
-            Error = $"{Partner?.DisplayName ?? "This application"} requires you to sign in with a passkey. Use “Sign in with a passkey”, or add one to your account first.";
+            Error = L["{0} requires you to sign in with a passkey. Use “Sign in with a passkey”, or add one to your account first.", Partner?.DisplayName ?? L["This application"]];
             return Page();
         }
 
         SignInMode required = SignInModes.Resolve(person.Policy.SignIn, user.SignInPreference);
-        if (required == SignInMode.PasswordAndOtp && mode != SignInMode.PasswordAndOtp)
+        // An organisation's two-step rule, or an application's step-up request (PR-17) that the person's
+        // authenticator will not already satisfy, adds the code step here.
+        bool stepUpNeedsCode = stepUp >= 2 && !user.MfaEnrolled && mode is SignInMode.Password;
+        if ((required == SignInMode.PasswordAndOtp || stepUpNeedsCode) && mode != SignInMode.PasswordAndOtp)
         {
             // An organisation tightened the application's rule: the code step is added here.
             await _accounts.IssueCodeAsync(user.Id, OneTimeCodePurpose.SignIn, cancellationToken);

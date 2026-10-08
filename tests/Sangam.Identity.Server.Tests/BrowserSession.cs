@@ -69,6 +69,17 @@ internal sealed partial class BrowserSession : IDisposable
         return (response.StatusCode, response.Headers.Location?.ToString(), await response.Content.ReadAsStringAsync());
     }
 
+    /// <summary>Submits a form on a page already in hand (as a browser does), lifting its antiforgery token.</summary>
+    public async Task<(HttpStatusCode Status, string? Location, string Html)> SubmitAsync(string path, string page, Dictionary<string, string> fields)
+    {
+        Match token = TokenRegex().Match(page);
+        Assert.True(token.Success, "No antiforgery token on the page for " + path);
+        Dictionary<string, string> form = new(fields) { ["__RequestVerificationToken"] = token.Groups[1].Value };
+        using FormUrlEncodedContent content = new(form);
+        using HttpResponseMessage response = await _client.PostAsync(new Uri(path, UriKind.Relative), content);
+        return (response.StatusCode, response.Headers.Location?.ToString(), await response.Content.ReadAsStringAsync());
+    }
+
     public void Dispose() => _client.Dispose();
 
     [GeneratedRegex("name=\"__RequestVerificationToken\" type=\"hidden\" value=\"([^\"]+)\"")]

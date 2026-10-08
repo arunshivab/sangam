@@ -14,13 +14,16 @@
 
 ## Corrections to the planning documents
 
-- **Ownership.** The planning documents assume a joint LLP of three founders. Sangam is
-  **solo-built and owned by imagiQa Healthcare Services Pvt Ltd**. The Founder Agreement
-  (legal scaffolding, Part A) and the cost-sharing sections no longer apply; each partner
-  company gets a short service MoU instead. The end-user Terms and the Privacy Policy name
-  imagiQa Healthcare Services Pvt Ltd as operator and data fiduciary.
-- **PostgreSQL.** The documents say PostgreSQL 16; any 16-or-later release works, and
-  developers' local installs may be newer. The server image is pinned in PR-10.
+- **Ownership (D-C, 7 October 2026).** The planning documents assume a joint LLP of three founders. Sangam is
+  **solo-built and owned personally by Dr. Arun Shiva Balasubramanian**. It started under imagiQa Healthcare
+  Services Pvt Ltd, but all of its resources are his; a new company will be formed later and Sangam
+  transferred to it. Jurisdiction: Ahmedabad. The Founder Agreement (legal scaffolding, Part A) and the
+  cost-sharing sections no longer apply; each partner company gets a short service MoU instead. The end-user
+  Terms and the Privacy Policy name Dr. Arun Shiva Balasubramanian as owner, operator and data fiduciary
+  (`Sangam:Operator`, `Sangam:Jurisdiction`; the texts are with counsel).
+- **PostgreSQL (D-F, 7 October 2026).** The documents say PostgreSQL 16. Sangam runs **PostgreSQL 18
+  everywhere**: production (18.6 at the time of the decision), CI (`postgres:18`) and local development
+  (update local installs to the current 18.x).
 - **Target framework.** The planning documents say .NET 8 LTS. The build targets **.NET 10 (LTS)**
   — .NET 8 support ends in November 2026 — in line with the rest of the imagiQa portfolio.
 - **Hosting.** Oracle Cloud Free Tier was the v0 recommendation. Phase 1 is a single E2E Networks
@@ -36,7 +39,7 @@
 - **UI component library.** MudBlazor was pencilled in for the Blazor hosts. That decision is
   deferred to PR-05; the design system is hand-rolled on `sangam-tokens.css` and may not need it.
 - **Local development.** The planning documents assume Docker Compose on the developer
-  machine. Local development uses a native PostgreSQL 16 install; Compose (PostgreSQL + Caddy)
+  machine. Local development uses a native PostgreSQL 18 install; Compose (PostgreSQL + Caddy)
   is the server stack for the E2E Networks VM and an opt-in alternative locally
   (`scripts/bootstrap-dev.ps1 -WithDocker`). Caddy is a server concern — TLS termination with
   automatic certificates, one port 443 shared by the three hosts and by Anjal — and has no role
@@ -77,6 +80,21 @@
 - **Partner facts.** The handoff's placeholder copy says LiPi is operated by "Lipi Systems Pvt Ltd,
   Bengaluru". LiPi is an imagiQa product (Ahmedabad). This is runtime data in the app registry,
   not a design change.
+
+- **Step-up, signatures, languages, branding and logout (R3).** Assurance levels as `acr` values
+  (`urn:sangam:acr:1`, `:2`, `:3`, `:sign`) with `amr` and `auth_time` in every token; electronic signatures as
+  JWS tokens over a record hash after a fresh two-factor sign-in (PR-17). Screens in Hindi and Malayalam from one
+  JSON text catalogue keyed by the English, with a build-time lint (PR-18; SGM-209 named resource files — the
+  catalogue is the same idea in a form translators can review without tools). Branding and message templates by
+  level — organisation, application, platform, built-in — with partner branding never changing structure
+  (PR-19). Back- and front-channel logout, introspection and revocation (PR-20).
+- **Founder decisions D-A to D-M (R3).** Anjal is the single messaging gateway, by its API
+  (`anjal-messaging-contract.md`); passkeys on ASP.NET Core Identity's own WebAuthn support (Fido2NetLib removed);
+  self-hosted monitoring in the operator console with alerts through Anjal (OpenTelemetry removed); an offline
+  breached-password list; a cooling-off period on support resets of two-step sign-in; existing accounts concealed at
+  registration; invitation-only registration for the pilot; PostgreSQL 18; ownership by the founder personally.
+  Sangam → Anjal is machine-to-machine (an API key); Anjal → Sangam is an ordinary relying party (Anjal's users sign
+  in with SangamID). Whether an Anjal mailbox maps to a SangamID e-mail address (OI-029) is decided later.
 
 ## Delivery plan
 

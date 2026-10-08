@@ -67,6 +67,22 @@ public static class SangamServiceCollectionExtensions
                 }
 
                 o.TokenValidationParameters.NameClaimType = SangamUser.NameClaim;
+
+                // PR-17: keep how and when the person authenticated, for SangamStepUp.Satisfies.
+                o.ClaimActions.Remove("acr");
+                o.ClaimActions.Remove("amr");
+                o.ClaimActions.Remove("auth_time");
+
+                // PR-17: SangamStepUp.ChallengeAsync carries the level asked for as acr_values.
+                o.Events.OnRedirectToIdentityProvider = context =>
+                {
+                    if (context.Properties.Items.TryGetValue(SangamStepUp.AcrValuesItem, out string? acr) && !string.IsNullOrEmpty(acr))
+                    {
+                        context.ProtocolMessage.AcrValues = acr;
+                    }
+
+                    return Task.CompletedTask;
+                };
             });
     }
 }

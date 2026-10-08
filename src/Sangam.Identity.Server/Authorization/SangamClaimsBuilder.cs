@@ -5,6 +5,7 @@ using OpenIddict.Abstractions;
 using Sangam.Identity.Application.Accounts;
 using Sangam.Identity.Application.Tenancy;
 using Sangam.Identity.Domain;
+using Sangam.Identity.Server.Authentication;
 using Sangam.Shared.Constants;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -25,7 +26,8 @@ public static class SangamClaimsBuilder
     /// <param name="orgs">The user's memberships in the requesting app (may be empty).</param>
     /// <param name="authenticationScheme">Identity authentication type.</param>
     /// <param name="sessionId">The Sangam browser session the token is issued from (the OIDC <c>sid</c>), when known.</param>
-    public static ClaimsIdentity Build(UserSummary user, IReadOnlyCollection<string> scopes, IReadOnlyList<OrgClaim> orgs, string authenticationScheme, string? sessionId = null)
+    /// <param name="proof">How and when the person authenticated (PR-17): <c>acr</c>, <c>amr</c>, <c>auth_time</c>.</param>
+    public static ClaimsIdentity Build(UserSummary user, IReadOnlyCollection<string> scopes, IReadOnlyList<OrgClaim> orgs, string authenticationScheme, string? sessionId = null, AuthenticationProof? proof = null)
     {
         ArgumentNullException.ThrowIfNull(user);
         ArgumentNullException.ThrowIfNull(scopes);
@@ -71,6 +73,16 @@ public static class SangamClaimsBuilder
             identity.SetClaim(SangamClaims.SessionId, sessionId);
         }
 
+        if (proof is not null)
+        {
+            identity.SetClaim(Claims.AuthenticationContextReference, proof.Acr);
+            identity.SetClaims(Claims.AuthenticationMethodReference, [.. proof.Methods]);
+            if (proof.AuthenticatedAt is DateTimeOffset at)
+            {
+                identity.SetClaim(Claims.AuthenticationTime, at.ToUnixTimeSeconds());
+            }
+        }
+
         identity.SetScopes(scopes);
 
         // Destinations are assigned to the claims present now: every claim must be set above this line.
@@ -86,6 +98,7 @@ public static class SangamClaimsBuilder
         return claim.Type switch
         {
             Claims.Subject or Claims.Name or Claims.Email or Claims.EmailVerified or SangamClaims.SessionId or SangamClaims.Orgs
+                or Claims.AuthenticationContextReference or Claims.AuthenticationMethodReference or Claims.AuthenticationTime
                 => [Destinations.AccessToken, Destinations.IdentityToken],
             "AspNet.Identity.SecurityStamp" => [],
             _ => [Destinations.AccessToken],
@@ -102,4 +115,37 @@ public static class SangamClaimsBuilder
         [SangamOrgClaim.Permissions] = o.Permissions,
         [SangamOrgClaim.Inherits] = o.Inherits,
     };
+}
+
+/// <summary>How and when a person authenticated, as tokens carry it (PR-17, OpenID Connect Core §2).</summary>
+/// <param name="Acr">The assurance level reached.</param>
+/// <param name="Methods">The RFC 8176 methods.</param>
+/// <param name="AuthenticatedAt">When, if known.</param>
+public sealed record AuthenticationProof(string Acr, IReadOnlyList<string> Methods, DateTimeOffset? AuthenticatedAt)
+{
+    /// <summary>The proof carried by a Sangam browser session.</summary>
+    /// <param name="session">The session principal.</param>
+    public static AuthenticationProof FromSession(ClaimsPrincipal session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        IReadOnlyList<string> methods = SangamAuthentication.SessionMethods(session);
+        return new AuthenticationProof(AuthenticationAssurance.AcrFor(methods), methods, SangamAuthentication.AuthenticatedAt(session));
+    }
+
+    /// <summary>The proof already in a token's principal (refresh: it never changes after the sign-in).</summary>
+    /// <param name="principal">The stored principal.</param>
+    public static AuthenticationProof? FromToken(ClaimsPrincipal principal)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        string? acr = principal.GetClaim(Claims.AuthenticationContextReference);
+        if (acr is null)
+        {
+            return null;
+        }
+
+        DateTimeOffset? at = long.TryParse(principal.GetClaim(Claims.AuthenticationTime), NumberStyles.None, CultureInfo.InvariantCulture, out long seconds)
+            ? DateTimeOffset.FromUnixTimeSeconds(seconds)
+            : null;
+        return new AuthenticationProof(acr, [.. principal.GetClaims(Claims.AuthenticationMethodReference)], at);
+    }
 }

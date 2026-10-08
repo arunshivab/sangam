@@ -1,18 +1,18 @@
 @page
 @model LoginModel
 @{
-    ViewData["Title"] = "Sign in";
+    ViewData["Title"] = L["Sign in"].Value;
 }
 
 <section class="sg-card">
-  <h1 class="sg-card-title">Sign in</h1>
+  <h1 class="sg-card-title">@L["Sign in"]</h1>
   <partial name="_Banner" model="@(("danger", Model.Error ?? string.Empty))" />
   <partial name="_Banner" model="@(("success", Model.Notice ?? string.Empty))" />
 
   @if (Model.PasskeyOnly)
   {
-    <p class="sg-card-body">@Model.Partner!.DisplayName accepts only passkeys — your fingerprint, face or device PIN — so a stolen password is never enough.</p>
-    <p class="sg-note">No passkey yet? <a href="/login">Sign in to your Sangam account</a> without @Model.Partner!.DisplayName, add one under “manage your passkeys”, then come back.</p>
+    <p class="sg-card-body">@L["{0} accepts only passkeys — your fingerprint, face or device PIN — so a stolen password is never enough.", Model.Partner!.DisplayName]</p>
+    <p class="sg-note">@L.Html("No passkey yet? {0} without {1}, add one under “manage your passkeys”, then come back.", LocalizedMarkup.Link("/login", L["Sign in to your Sangam account"]), Model.Partner!.DisplayName)</p>
   }
   else
   {
@@ -20,19 +20,19 @@
     <partial name="_Antibot" />
     <input type="hidden" asp-for="ReturnUrl" />
     <div class="sg-field-group">
-      <label class="sg-label" asp-for="Email">Email</label>
+      <label class="sg-label" asp-for="Email">@L["Email"]</label>
       <input class="sg-field" asp-for="Email" type="email" autocomplete="username" inputmode="email" autofocus required />
       <span class="sg-field-error" asp-validation-for="Email"></span>
     </div>
     <div class="sg-field-group">
       <div class="sg-label-row">
-        <label class="sg-label" asp-for="Password">Password</label>
-        <a class="sg-label-link" href="/forgot">Forgot password?</a>
+        <label class="sg-label" asp-for="Password">@L["Password"]</label>
+        <a class="sg-label-link" href="/forgot">@L["Forgot password?"]</a>
       </div>
       <input class="sg-field" asp-for="Password" type="password" autocomplete="current-password" required />
       <span class="sg-field-error" asp-validation-for="Password"></span>
     </div>
-    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">Sign in</button>
+    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Sign in"]</button>
   </form>
   }
 
@@ -40,16 +40,16 @@
   {
     <button type="button" class="sg-btn @(Model.PasskeyOnly ? "sg-btn--primary" : "sg-btn--secondary") sg-btn--block sg-passkey-signin" hidden data-passkey-signin
             data-options-url="/login/passkey?handler=Options" data-verify-url="/login/passkey?handler=Verify@(string.IsNullOrEmpty(Model.ReturnUrl) ? "" : "&returnUrl=" + Uri.EscapeDataString(Model.ReturnUrl))"
-            data-message="passkey-message">Sign in with a passkey</button>
+            data-message="passkey-message" data-text-failed="@L["That passkey could not sign you in."]" data-text-cancelled="@L["The passkey request was cancelled or is not available on this device."]">@L["Sign in with a passkey"]</button>
     <p class="sg-field-error" id="passkey-message" hidden></p>
     <script src="/js/passkeys.js" defer></script>
   }
 
   @if (Model.Partner?.SignInPolicy is not (Sangam.Identity.Domain.Enums.SignInPolicy.Password or Sangam.Identity.Domain.Enums.SignInPolicy.PasskeyOnly))
   {
-    <a class="sg-tertiary" href="/login/code@(string.IsNullOrEmpty(Model.ReturnUrl) ? "" : "?returnUrl=" + Uri.EscapeDataString(Model.ReturnUrl))">Email me a sign-in code instead</a>
+    <a class="sg-tertiary" href="/login/code@(string.IsNullOrEmpty(Model.ReturnUrl) ? "" : "?returnUrl=" + Uri.EscapeDataString(Model.ReturnUrl))">@L["Email me a sign-in code instead"]</a>
   }
 
   <div class="sg-cord-rule" role="presentation"></div>
-  <p class="sg-alt">New to Sangam? <a href="@(string.IsNullOrEmpty(Model.ReturnUrl) ? "/register" : "/register?returnUrl=" + Uri.EscapeDataString(Model.ReturnUrl))">Create an account</a></p>
+  <p class="sg-alt">@L["New to Sangam?"] <a href="@(string.IsNullOrEmpty(Model.ReturnUrl) ? "/register" : "/register?returnUrl=" + Uri.EscapeDataString(Model.ReturnUrl))">@L["Create an account"]</a></p>
 </section>

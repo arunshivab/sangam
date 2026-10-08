@@ -53,7 +53,7 @@ public sealed class ProductionStartTests : IDisposable
     }
 
     [Fact]
-    public async Task TheServer_StartsInProduction_WithCertificatesAndAMailServer()
+    public async Task TheServer_StartsInProduction_WithCertificatesAndAnjal()
     {
         string signing = Pfx("prod-signing", withKey: true);
         string encryption = Pfx("prod-encryption", withKey: true);
@@ -62,7 +62,8 @@ public sealed class ProductionStartTests : IDisposable
         {
             b.UseEnvironment("Production");
             b.UseSetting("Sangam:Email:UseOutbox", "false");
-            b.UseSetting("Sangam:Email:Smtp:Host", "smtp.example.invalid");
+            b.UseSetting("Sangam:Anjal:BaseUrl", "https://anjal.example.invalid/");
+            b.UseSetting("Sangam:Anjal:ApiKey", "anjal-test-key-0123456789");
             b.UseSetting("Sangam:Certificates:Signing:0:Path", signing);
             b.UseSetting("Sangam:Certificates:Signing:0:Password", Password);
             b.UseSetting("Sangam:Certificates:Encryption:0:Path", encryption);
@@ -89,7 +90,8 @@ public sealed class ProductionStartTests : IDisposable
         {
             b.UseEnvironment("Production");
             b.UseSetting("Sangam:Email:UseOutbox", "false");
-            b.UseSetting("Sangam:Email:Smtp:Host", "smtp.example.invalid");
+            b.UseSetting("Sangam:Anjal:BaseUrl", "https://anjal.example.invalid/");
+            b.UseSetting("Sangam:Anjal:ApiKey", "anjal-test-key-0123456789");
             b.UseSetting("Sangam:Certificates:Signing:0:Path", signing);
             b.UseSetting("Sangam:Certificates:Signing:0:Password", Password);
             b.UseSetting("Sangam:Certificates:Encryption:0:Path", encryption);

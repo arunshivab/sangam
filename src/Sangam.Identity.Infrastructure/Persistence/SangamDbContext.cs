@@ -50,6 +50,24 @@ public sealed class SangamDbContext : IdentityUserContext<SangamUser, Guid>, IDa
     /// <summary>Audit events (append-only).</summary>
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
+    /// <summary>Which applications received tokens in which session (PR-20).</summary>
+    public DbSet<SessionApp> SessionApps => Set<SessionApp>();
+
+    /// <summary>Back-channel logouts waiting to be delivered (PR-20).</summary>
+    public DbSet<LogoutNotification> LogoutNotifications => Set<LogoutNotification>();
+
+    /// <summary>Electronic-signature requests and their outcomes (PR-17).</summary>
+    public DbSet<SignatureRequest> SignatureRequests => Set<SignatureRequest>();
+
+    /// <summary>Customisation settings by level (PR-19).</summary>
+    public DbSet<CustomisationSetting> Customisations => Set<CustomisationSetting>();
+
+    /// <summary>Uploaded logos (PR-19).</summary>
+    public DbSet<BrandingAsset> BrandingAssets => Set<BrandingAsset>();
+
+    /// <summary>E-mail and SMS templates by level and language (PR-19).</summary>
+    public DbSet<MessageTemplate> MessageTemplates => Set<MessageTemplate>();
+
     /// <summary>SMS sent by Sangam, without numbers or codes (PR-15).</summary>
     public DbSet<SmsMessage> SmsMessages => Set<SmsMessage>();
 
@@ -64,6 +82,15 @@ public sealed class SangamDbContext : IdentityUserContext<SangamUser, Guid>, IDa
 
     /// <summary>Pending and completed changes of e-mail address (OI-022).</summary>
     public DbSet<EmailChangeRequest> EmailChangeRequests => Set<EmailChangeRequest>();
+
+    /// <summary>Monitoring: one row per minute, host, metric and tag (D-H).</summary>
+    public DbSet<MetricPoint> MetricPoints => Set<MetricPoint>();
+
+    /// <summary>Monitoring: alert conditions, open and resolved (D-H).</summary>
+    public DbSet<MonitoringAlert> MonitoringAlerts => Set<MonitoringAlert>();
+
+    /// <summary>Support requests to reset two-step sign-in, with their cooling-off period (D-K).</summary>
+    public DbSet<MfaResetRequest> MfaResetRequests => Set<MfaResetRequest>();
 
     /// <summary>The ASP.NET Core data-protection key ring, shared by every host (OI-037).</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();

@@ -1,0 +1,92 @@
+@using Microsoft.Extensions.Localization
+@using Sangam.Identity.Application.Customisation
+@using Sangam.Identity.Domain.Enums
+@using Sangam.Web.Shared.Localization
+@inject ICustomisationService Customisation
+@inject IStringLocalizer<SangamText> L
+
+@* PR-19 (SGM-209 §4): one level's e-mail (and, for the platform, SMS) templates, per language, with a preview. *@
+<div class="sg-panel" data-panel="templates">
+  <h2 class="sg-h3">@Heading</h2>
+  @if (_rows is null)
+  {
+    <p class="sg-muted">@(_loaded ? L["You cannot change these."] : L["Loading…"])</p>
+  }
+  else
+  {
+    <p class="sg-muted">@L["The words of the messages Sangam sends. Write {{name}}-style variables where the person's details go. Each language is separate; a message nobody changed here uses the level above, or Sangam's own text."]</p>
+    <div class="sg-form-row sg-template-pick">
+      <label class="sg-label" for="@($"{Key}-kind")">@L["Message"]</label>
+      <select id="@($"{Key}-kind")" class="sg-input" value="@_kind" @onchange="e => Pick(e.Value?.ToString(), _language)">
+        @foreach (string kind in _rows.Select(r => r.Kind).Distinct())
+        {
+          <option value="@kind">@KindName(kind)</option>
+        }
+      </select>
+      <label class="sg-label" for="@($"{Key}-language")">@L["Language"]</label>
+      <select id="@($"{Key}-language")" class="sg-input" value="@_language" @onchange="e => Pick(_kind, e.Value?.ToString())">
+        <option value="en-IN">English</option>
+        <option value="hi-IN">हिन्दी</option>
+        <option value="ml-IN">മലയാളം</option>
+      </select>
+    </div>
+
+    @if (_current is not null)
+    {
+      <p class="sg-muted" data-source="@_current.Source">@SourceText(_current.Source)</p>
+      @if (_current.Source == "configuration")
+      {
+        <p class="sg-note">@L["The English text messages are registered with the SMS operator and set in configuration."] <span class="sg-mono">@_current.Body</span> (@_current.DltTemplateId)</p>
+      }
+      else
+      {
+        @if (!IsSms)
+        {
+          <div class="sg-form-row">
+            <label class="sg-label" for="@($"{Key}-subject")">@L["Subject"]</label>
+            <input id="@($"{Key}-subject")" class="sg-input" lang="@_language" @bind="_subject" @bind:event="oninput" maxlength="200" />
+          </div>
+        }
+
+        <div class="sg-form-row">
+          <label class="sg-label" for="@($"{Key}-body")">@L["Text"]</label>
+          <textarea id="@($"{Key}-body")" class="sg-input sg-template-body" lang="@_language" rows="12" @bind="_body" @bind:event="oninput"></textarea>
+          <span class="sg-muted">@(IsSms ? L["Use {#var#} where the code goes, exactly as registered."].Value : L["You can use: {0}", string.Join(", ", _current.Variables.Select(v => "{{" + v + "}}"))].Value)</span>
+        </div>
+
+        @if (IsSms)
+        {
+          <div class="sg-form-row">
+            <label class="sg-label" for="@($"{Key}-dlt")">@L["DLT template id"]</label>
+            <input id="@($"{Key}-dlt")" class="sg-input sg-mono" @bind="_dlt" maxlength="30" />
+          </div>
+        }
+
+        <div class="sg-actions">
+          <button type="button" class="sg-btn sg-btn--primary" @onclick="SaveAsync" disabled="@_busy">@L["Save message"]</button>
+          @if (!IsSms)
+          {
+            <button type="button" class="sg-btn sg-btn--ghost" @onclick="PreviewNow" disabled="@_busy">@L["Preview"]</button>
+          }
+          @if (_current.Source == "here")
+          {
+            <button type="button" class="sg-btn sg-btn--warn" @onclick="ResetAsync" disabled="@_busy">@L["Use the level above"]</button>
+          }
+        </div>
+      }
+    }
+
+    @if (_message is not null)
+    {
+      <p class="@(_ok ? "sg-ok" : "sg-warn")" role="status">@_message</p>
+    }
+
+    @if (_preview is not null)
+    {
+      <div class="sg-template-preview" data-preview>
+        <p class="sg-label">@L["Subject"]: <span lang="@_language">@_preview.Subject</span></p>
+        <iframe title="@L["Preview"]" sandbox="" srcdoc="@_preview.Html" style="width:100%;height:420px;border:1px solid rgba(255,255,255,.15);border-radius:6px;background:#fff"></iframe>
+      </div>
+    }
+  }
+</div>

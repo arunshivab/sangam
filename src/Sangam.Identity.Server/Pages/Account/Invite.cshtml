@@ -1,28 +1,28 @@
 @page "/invite/{token}"
 @model InviteModel
 @{
-    ViewData["Title"] = "Invitation";
+    ViewData["Title"] = L["Invitation"].Value;
 }
 
 <section class="sg-card">
   @if (Model.View is null)
   {
-    <h1 class="sg-card-title">Invitation not found</h1>
-    <p class="sg-card-body">This invitation link is not valid. Ask the person who invited you to send a new one.</p>
+    <h1 class="sg-card-title">@L["Invitation not found"]</h1>
+    <p class="sg-card-body">@L["This invitation link is not valid. Ask the person who invited you to send a new one."]</p>
   }
   else
   {
-    <h1 class="sg-card-title">Join @Model.View.OrgName</h1>
-    <p class="sg-card-body">You are invited to join <strong>@Model.View.OrgName</strong> in <strong>@Model.View.AppName</strong> as <strong>@Model.View.RoleName</strong>.</p>
+    <h1 class="sg-card-title">@L["Join {0}", Model.View.OrgName]</h1>
+    <p class="sg-card-body">@L.Html("You are invited to join {0} in {1} as {2}.", LocalizedMarkup.Tag("strong", Model.View.OrgName), LocalizedMarkup.Tag("strong", Model.View.AppName), LocalizedMarkup.Tag("strong", Model.View.RoleName))</p>
     @if (Model.Message is not null)
     {
       <partial name="_Banner" model="@((Model.Succeeded ? "success" : "danger", Model.Message))" />
     }
     @if (!Model.Succeeded && Model.View.State == Sangam.Identity.Application.Partners.InvitationState.Open)
     {
-      <p class="sg-card-body">Accepting links your Sangam account to @Model.View.AppName and gives you this role. @Model.View.AppName will ask for your permission to see your details the first time you sign in to it.</p>
+      <p class="sg-card-body">@L["Accepting links your Sangam account to {0} and gives you this role. {0} will ask for your permission to see your details the first time you sign in to it.", Model.View.AppName]</p>
       <form method="post">
-        <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">Accept the invitation</button>
+        <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Accept the invitation"]</button>
       </form>
     }
     else if (!Model.Succeeded)
@@ -30,5 +30,5 @@
       <p class="sg-card-body">@Model.StateText</p>
     }
   }
-  <a class="sg-tertiary" href="/account">Go to your Sangam account</a>
+  <a class="sg-tertiary" href="/account">@L["Go to your Sangam account"]</a>
 </section>

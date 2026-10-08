@@ -28,7 +28,7 @@ public sealed class EmailSafetyTests
     [Fact]
     public void Guard_RefusesTheOutbox_InProduction()
     {
-        string? problem = EmailSenderGuard.Validate("Production", Config((EmailSenderGuard.OutboxKey, "true"), (EmailSenderGuard.SmtpHostKey, "smtp.example")));
+        string? problem = EmailSenderGuard.Validate("Production", Config((EmailSenderGuard.OutboxKey, "true"), (EmailSenderGuard.AnjalBaseUrlKey, "https://api.anjalmail.com/")));
         Assert.NotNull(problem);
         Assert.Contains("outbox", problem, StringComparison.OrdinalIgnoreCase);
     }
@@ -38,13 +38,26 @@ public sealed class EmailSafetyTests
     {
         string? problem = EmailSenderGuard.Validate("Production", Config());
         Assert.NotNull(problem);
-        Assert.Contains(EmailSenderGuard.SmtpHostKey, problem, StringComparison.Ordinal);
+        Assert.Contains(EmailSenderGuard.AnjalBaseUrlKey, problem, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void Guard_AllowsProduction_WithARealSender()
+    [Theory]
+    [InlineData("https://api.anjalmail.com/", "a-real-anjal-api-key-0123456789", null)]
+    [InlineData("http://anjal:8080/", "a-real-anjal-api-key-0123456789", null)]
+    [InlineData("http://api.anjalmail.com/", "a-real-anjal-api-key-0123456789", "must be https")]
+    [InlineData("https://api.anjalmail.com/", "short", "API key")]
+    [InlineData("https://api.anjalmail.com/", "", "API key")]
+    public void Guard_InProduction_WantsAnjalOverHttps_WithAKey(string baseUrl, string apiKey, string? expected)
     {
-        Assert.Null(EmailSenderGuard.Validate("Production", Config((EmailSenderGuard.SmtpHostKey, "smtp.example"))));
+        string? problem = EmailSenderGuard.Validate("Production", Config((EmailSenderGuard.AnjalBaseUrlKey, baseUrl), (EmailSenderGuard.AnjalApiKeyKey, apiKey)));
+        if (expected is null)
+        {
+            Assert.Null(problem);
+        }
+        else
+        {
+            Assert.Contains(expected, problem, StringComparison.Ordinal);
+        }
     }
 
     [Fact]

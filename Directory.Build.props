@@ -21,9 +21,9 @@
 
   <PropertyGroup>
     <Product>Sangam</Product>
-    <Authors>imagiQa Healthcare Services Pvt Ltd</Authors>
-    <Company>imagiQa Healthcare Services Pvt Ltd</Company>
-    <Copyright>Copyright (c) 2026 imagiQa Healthcare Services Pvt Ltd</Copyright>
+    <Authors>Dr. Arun Shiva Balasubramanian</Authors>
+    <Company>Dr. Arun Shiva Balasubramanian</Company>
+    <Copyright>Copyright (c) 2026 Dr. Arun Shiva Balasubramanian</Copyright>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageProjectUrl>https://sangamid.in</PackageProjectUrl>
     <RepositoryUrl>https://github.com/arunshivab/sangam</RepositoryUrl>

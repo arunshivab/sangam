@@ -9,7 +9,7 @@
   <partial name="_Banner" model="@(("danger", refusal))" />
 }
 <div aria-hidden="true" style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden">
-  <label for="@Antibot.HoneypotField">Leave this field empty</label>
+  <label for="@Antibot.HoneypotField">@L["Leave this field empty"]</label>
   <input id="@Antibot.HoneypotField" name="@Antibot.HoneypotField" type="text" tabindex="-1" autocomplete="off" value="" />
 </div>
 <input type="hidden" name="@Antibot.TimestampField" value="@Antibot.CreateToken(Protection, Clock.UtcNow)" />

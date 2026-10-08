@@ -94,13 +94,32 @@ public sealed class PartnerGateTests : IClassFixture<PartnerFactory>
     }
 
     [PostgresFact]
+    public async Task Settings_HaveTheSignInPageEditor_AndMessagesHaveTheTemplates()
+    {
+        Guid app = await _factory.SeedAppAsync("Brand HIS");
+        Guid admin = await _factory.SeedUserAsync(mfa: true, "Admin");
+        await _factory.MakeAdminAsync(app, admin, AppAdminRole.Admin);
+
+        string settings = System.Net.WebUtility.HtmlDecode(await GetAsync(admin, $"/apps/{app:D}/settings"));
+        Assert.Contains("data-panel=\"branding\"", settings, StringComparison.Ordinal);
+        Assert.Contains("Accent colour (buttons and links)", settings, StringComparison.Ordinal);
+
+        string messages = System.Net.WebUtility.HtmlDecode(await GetAsync(admin, $"/apps/{app:D}/messages"));
+        Assert.Contains("data-panel=\"templates\"", messages, StringComparison.Ordinal);
+        Assert.Contains("E-mail: sign-in code", messages, StringComparison.Ordinal);
+        Assert.DoesNotContain("two-step sign-in was reset", messages, StringComparison.Ordinal);
+        Assert.Contains("data-source=\"default\"", messages, StringComparison.Ordinal);
+    }
+
+    [PostgresFact]
     public async Task Settings_OfferOnlyTheRulesAPartnerMaySet()
     {
         Guid app = await _factory.SeedAppAsync("Rules HIS");
         Guid admin = await _factory.SeedUserAsync(mfa: true, "Admin");
         await _factory.MakeAdminAsync(app, admin, AppAdminRole.Admin);
 
-        string html = await GetAsync(admin, $"/apps/{app:D}/settings");
+        // Text now comes from the catalogue and is HTML-encoded ("person&#x27;s"); compare what a reader sees.
+        string html = System.Net.WebUtility.HtmlDecode(await GetAsync(admin, $"/apps/{app:D}/settings"));
         Assert.Contains("Each person's own choice", html, StringComparison.Ordinal);
         Assert.Contains("Always two-step", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Password only", html, StringComparison.Ordinal);
@@ -115,7 +134,7 @@ public sealed class PartnerGateTests : IClassFixture<PartnerFactory>
     }
 
     [PostgresFact]
-    public async Task Settings_ShowARuleImagiQaSet_AndOfferOnlyToTightenIt()
+    public async Task Settings_ShowARuleThePlatformSet_AndOfferOnlyToTightenIt()
     {
         Guid app = await _factory.SeedAppAsync("Otp HIS", SignInPolicy.OtpOnly);
         Guid admin = await _factory.SeedUserAsync(mfa: true, "Admin");
@@ -123,7 +142,7 @@ public sealed class PartnerGateTests : IClassFixture<PartnerFactory>
 
         string html = await GetAsync(admin, $"/apps/{app:D}/settings");
         Assert.Contains("Email code only, no password", html, StringComparison.Ordinal);
-        Assert.Contains("set by imagiQa", html, StringComparison.Ordinal);
+        Assert.Contains("set by Sangam", html, StringComparison.Ordinal);
         Assert.Contains("Always two-step", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Each person's own choice", html, StringComparison.Ordinal);
     }
@@ -137,7 +156,8 @@ public sealed class PartnerGateTests : IClassFixture<PartnerFactory>
 
         foreach (string path in Paths(app))
         {
-            string html = await GetAsync(owner, path);
+            // Sangam's own identity server is first-party: the sign-in page preview links there, and a logo is served from there (PR-19).
+            string html = (await GetAsync(owner, path)).Replace("=\"https://id.example.invalid/", "=\"/", StringComparison.Ordinal);
             Assert.DoesNotContain("src=\"http", html, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("href=\"http", html, StringComparison.OrdinalIgnoreCase);
         }
@@ -163,7 +183,7 @@ public sealed class PartnerGateTests : IClassFixture<PartnerFactory>
     }
 
     private static string[] Paths(Guid app)
-        => ["/", $"/apps/{app:D}", $"/apps/{app:D}/roles", $"/apps/{app:D}/admins", $"/apps/{app:D}/settings"];
+        => ["/", $"/apps/{app:D}", $"/apps/{app:D}/roles", $"/apps/{app:D}/admins", $"/apps/{app:D}/settings", $"/apps/{app:D}/messages"];
 
     private async Task<string> GetAsync(Guid userId, string path)
     {

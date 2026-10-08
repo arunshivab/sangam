@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Sangam.Identity.Application.Abstractions;
 using Sangam.Identity.Application.Accounts;
+using Sangam.Identity.Application.Customisation;
 using Sangam.Identity.Application.Portal;
 using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Entities;
@@ -22,6 +23,7 @@ public sealed class EfEmailChangeService : IEmailChangeService
     private readonly UserManager<SangamUser> _users;
     private readonly OneTimeCodeService _codes;
     private readonly IEmailSender _email;
+    private readonly IMessageTemplates _templates;
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
     private readonly OtpOptions _otp;
@@ -34,12 +36,14 @@ public sealed class EfEmailChangeService : IEmailChangeService
     /// <param name="audit">Audit writer.</param>
     /// <param name="clock">Clock.</param>
     /// <param name="otp">Code settings.</param>
-    public EfEmailChangeService(SangamDbContext db, UserManager<SangamUser> users, OneTimeCodeService codes, IEmailSender email, IAuditWriter audit, IClock clock, OtpOptions otp)
+    /// <param name="templates">Message templates (PR-19).</param>
+    public EfEmailChangeService(SangamDbContext db, UserManager<SangamUser> users, OneTimeCodeService codes, IEmailSender email, IAuditWriter audit, IClock clock, OtpOptions otp, IMessageTemplates templates)
     {
         _db = db ?? throw new ArgumentNullException(nameof(db));
         _users = users ?? throw new ArgumentNullException(nameof(users));
         _codes = codes ?? throw new ArgumentNullException(nameof(codes));
         _email = email ?? throw new ArgumentNullException(nameof(email));
+        _templates = templates ?? throw new ArgumentNullException(nameof(templates));
         _audit = audit ?? throw new ArgumentNullException(nameof(audit));
         _clock = clock ?? throw new ArgumentNullException(nameof(clock));
         _otp = otp ?? throw new ArgumentNullException(nameof(otp));
@@ -98,7 +102,13 @@ public sealed class EfEmailChangeService : IEmailChangeService
         _db.EmailChangeRequests.Add(new EmailChangeRequest { Id = Guid.NewGuid(), UserId = user.Id, NewEmail = email, NormalizedNewEmail = normalized, CreatedAt = now });
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        await _email.SendAsync(AccountEmails.ForCode(email, user.FirstName, OneTimeCodePurpose.EmailChange, code, _otp.Lifetime), cancellationToken).ConfigureAwait(false);
+        Dictionary<string, string> values = new(StringComparer.Ordinal)
+        {
+            ["name"] = user.FirstName,
+            ["code"] = code,
+            ["minutes"] = ((int)Math.Round(_otp.Lifetime.TotalMinutes)).ToString(System.Globalization.CultureInfo.InvariantCulture),
+        };
+        await _email.SendAsync(await _templates.EmailAsync(MessageTemplateKinds.EmailChangeCode, user.Locale, null, null, values, email, user.FirstName, cancellationToken).ConfigureAwait(false), cancellationToken).ConfigureAwait(false);
         await _audit.WriteAsync(new AuditEntry(AuditActions.UserEmailChangeRequest, AuditActorType.User, user.Id, TargetType: "user", TargetId: user.Id, Metadata: Masked("new", email)), cancellationToken).ConfigureAwait(false);
         return new EmailChangeResult(EmailChangeStatus.CodeSent, $"We sent a code to {email}. Enter it here to finish.");
     }
@@ -145,7 +155,8 @@ public sealed class EfEmailChangeService : IEmailChangeService
 
         if (oldEmail.Length > 0)
         {
-            await _email.SendAsync(AccountEmails.EmailChangedNotice(oldEmail, user.FirstName, LogRedaction.MaskEmail(pending.NewEmail)), cancellationToken).ConfigureAwait(false);
+            Dictionary<string, string> values = new(StringComparer.Ordinal) { ["name"] = user.FirstName, ["new_email"] = LogRedaction.MaskEmail(pending.NewEmail) };
+            await _email.SendAsync(await _templates.EmailAsync(MessageTemplateKinds.EmailChangedNotice, user.Locale, null, null, values, oldEmail, user.FirstName, cancellationToken).ConfigureAwait(false), cancellationToken).ConfigureAwait(false);
         }
 
         await _audit.WriteAsync(new AuditEntry(AuditActions.UserEmailChange, AuditActorType.User, user.Id, TargetType: "user", TargetId: user.Id, Metadata: JsonSerializer.Serialize(new Dictionary<string, string> { ["old"] = LogRedaction.MaskEmail(oldEmail), ["new"] = LogRedaction.MaskEmail(pending.NewEmail) })), cancellationToken).ConfigureAwait(false);

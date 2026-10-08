@@ -1,41 +1,41 @@
 @page
 @model HomeModel
 @{
-    ViewData["Title"] = "Your account";
+    ViewData["Title"] = L["Your account"].Value;
 }
 
 <section class="sg-card">
-  <h1 class="sg-card-title">Namaste, @Model.User.FirstName</h1>
-  <p class="sg-card-body">You are signed in to Sangam. Your applications, sessions, consents and data are in your account portal.</p>
+  <h1 class="sg-card-title">@L["Namaste, {0}", Model.User.FirstName]</h1>
+  <p class="sg-card-body">@L["You are signed in to Sangam. Your applications, sessions, consents and data are in your account portal."]</p>
   <partial name="_Banner" model="@(("success", Model.Notice ?? string.Empty))" />
 
   <dl class="sg-facts">
-    <div><dt>Name</dt><dd>@Model.User.DisplayName</dd></div>
-    <div><dt>Email</dt><dd><span class="sg-mono">@Model.User.Email</span> @(Model.User.EmailVerified ? "· verified" : "· not verified")</dd></div>
-    <div><dt>Mobile</dt><dd><span class="sg-mono">@Model.User.Mobile</span> @(Model.User.MobileVerified ? "· verified" : "· not yet verified")@if (Model.OfferMobileVerification) { <text> · </text><a href="/account/mobile">Verify it now</a> }</dd></div>
-    <div><dt>Date of birth</dt><dd>@Model.User.DateOfBirth.ToString("d MMMM yyyy", System.Globalization.CultureInfo.InvariantCulture)</dd></div>
-    <div><dt>Signed in with</dt><dd>@Model.SessionMode</dd></div>
+    <div><dt>@L["Name"]</dt><dd>@Model.User.DisplayName</dd></div>
+    <div><dt>@L["Email"]</dt><dd><span class="sg-mono">@Model.User.Email</span> · @(Model.User.EmailVerified ? L["verified"] : L["not verified"])</dd></div>
+    <div><dt>@L["Mobile"]</dt><dd><span class="sg-mono">@Model.User.Mobile</span> · @(Model.User.MobileVerified ? L["verified"] : L["not yet verified"])@if (Model.OfferMobileVerification) { <text> · </text><a href="/account/mobile">@L["Verify it now"]</a> }</dd></div>
+    <div><dt>@L["Date of birth"]</dt><dd>@Model.User.DateOfBirth.ToString("d MMMM yyyy", System.Globalization.CultureInfo.CurrentCulture)</dd></div>
+    <div><dt>@L["Signed in with"]</dt><dd>@Model.SessionMode</dd></div>
   </dl>
 
   <form method="post" asp-page-handler="Preference">
     <div class="sg-field-group">
-      <label class="sg-label" asp-for="SignInPreference">How you sign in (unless an app decides otherwise)</label>
+      <label class="sg-label" asp-for="SignInPreference">@L["How you sign in (unless an app decides otherwise)"]</label>
       <select class="sg-field" asp-for="SignInPreference">
-        <option value="password">Email and password</option>
-        <option value="password_and_otp">Password, then an emailed code</option>
-        <option value="otp_only">Emailed code only (no password)</option>
+        <option value="password">@L["Email and password"]</option>
+        <option value="password_and_otp">@L["Password, then an emailed code"]</option>
+        <option value="otp_only">@L["Emailed code only (no password)"]</option>
       </select>
     </div>
-    <button type="submit" class="sg-btn sg-btn--secondary sg-btn--block">Save preference</button>
+    <button type="submit" class="sg-btn sg-btn--secondary sg-btn--block">@L["Save preference"]</button>
   </form>
 
   @if (Model.OfferPasskeys)
   {
-    <a class="sg-tertiary" href="/account/passkeys">Sign in without a password: manage your passkeys</a>
+    <a class="sg-tertiary" href="/account/passkeys">@L["Sign in without a password: manage your passkeys"]</a>
   }
 
   <div class="sg-cord-rule" role="presentation"></div>
   <form method="post" asp-page="/Account/Logout">
-    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">Sign out</button>
+    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Sign out"]</button>
   </form>
 </section>

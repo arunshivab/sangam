@@ -27,8 +27,11 @@ public sealed class GrievanceModel : PageModel
     /// <summary>Postal address, if published.</summary>
     public string? Address => Value(LegalDocuments.OfficerAddressKey);
 
-    /// <summary>Response time in days, once decided.</summary>
+    /// <summary>Days within which a grievance is resolved (D-D: 30).</summary>
     public string? ResponseDays => Value(LegalDocuments.ResponseDaysKey);
+
+    /// <summary>Working days within which a grievance is acknowledged (D-D: 2).</summary>
+    public string? AcknowledgeDays => Value(LegalDocuments.AcknowledgeDaysKey);
 
     private string? Value(string key)
     {

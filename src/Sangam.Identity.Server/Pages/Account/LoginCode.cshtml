@@ -1,24 +1,24 @@
 @page
 @model LoginCodeModel
 @{
-    ViewData["Title"] = "Sign in with a code";
+    ViewData["Title"] = L["Sign in with a code"].Value;
 }
 
 <section class="sg-card">
-  <h1 class="sg-card-title">Sign in with a code</h1>
-  <p class="sg-card-body">If your account is set to sign in with an emailed code, we will send one to this address.</p>
+  <h1 class="sg-card-title">@L["Sign in with a code"]</h1>
+  <p class="sg-card-body">@L["If your account is set to sign in with an emailed code, we will send one to this address."]</p>
 
   <form method="post" novalidate>
     <partial name="_Antibot" />
     <input type="hidden" asp-for="ReturnUrl" />
     <div class="sg-field-group">
-      <label class="sg-label" asp-for="Email">Email</label>
+      <label class="sg-label" asp-for="Email">@L["Email"]</label>
       <input class="sg-field" asp-for="Email" type="email" autocomplete="username" inputmode="email" autofocus required />
       <span class="sg-field-error" asp-validation-for="Email"></span>
     </div>
-    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">Email me a code</button>
+    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Email me a code"]</button>
   </form>
 
   <div class="sg-cord-rule" role="presentation"></div>
-  <p class="sg-alt"><a href="/login">Back to sign in</a></p>
+  <p class="sg-alt"><a href="/login">@L["Back to sign in"]</a></p>
 </section>

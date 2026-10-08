@@ -1,22 +1,22 @@
 @inherits LayoutComponentBase
 
 <header class="sg-topbar">
-  <a class="sg-topbar-brand" href="/" aria-label="Sangam account home">
+  <a class="sg-topbar-brand" href="/" aria-label="@L["Sangam account home"]">
     <SangamLockup MarkSize="24" />
   </a>
-  <nav class="sg-tabs" aria-label="Account sections">
-    <NavLink class="sg-tab" ActiveClass="sg-tab--active" href="/" Match="NavLinkMatch.All">Overview</NavLink>
-    <NavLink class="sg-tab" ActiveClass="sg-tab--active" href="/apps">Connected apps</NavLink>
-    <NavLink class="sg-tab" ActiveClass="sg-tab--active" href="/devices">Devices</NavLink>
-    <NavLink class="sg-tab" ActiveClass="sg-tab--active" href="/audit">Audit log</NavLink>
-    <NavLink class="sg-tab" ActiveClass="sg-tab--active" href="/profile">Personal details</NavLink>
+  <nav class="sg-tabs" aria-label="@L["Account sections"]">
+    <NavLink class="sg-tab" ActiveClass="sg-tab--active" href="/" Match="NavLinkMatch.All">@L["Overview"]</NavLink>
+    <NavLink class="sg-tab" ActiveClass="sg-tab--active" href="/apps">@L["Connected apps"]</NavLink>
+    <NavLink class="sg-tab" ActiveClass="sg-tab--active" href="/devices">@L["Devices"]</NavLink>
+    <NavLink class="sg-tab" ActiveClass="sg-tab--active" href="/audit">@L["Audit log"]</NavLink>
+    <NavLink class="sg-tab" ActiveClass="sg-tab--active" href="/profile">@L["Personal details"]</NavLink>
   </nav>
   <div class="sg-topbar-user">
     <AuthorizeView>
       <Authorized>
         <span class="sg-topbar-name">@PortalUser.Name(context.User)</span>
         <span class="sg-avatar sg-avatar--initials" aria-hidden="true">@PortalUser.Initials(context.User)</span>
-        <a class="sg-topbar-signout" href="/signout">Sign out</a>
+        <a class="sg-topbar-signout" href="/signout">@L["Sign out"]</a>
       </Authorized>
     </AuthorizeView>
   </div>
@@ -25,3 +25,4 @@
 <main class="sg-portal">
   @Body
 </main>
+<footer class="sg-lang-footer"><LanguagePicker /></footer>

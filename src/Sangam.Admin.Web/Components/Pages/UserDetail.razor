@@ -4,50 +4,50 @@
 @inject PersistentComponentState ApplicationState
 @implements IDisposable
 
-<PageTitle>@(_detail?.Row.DisplayName ?? "User") · Sangam console</PageTitle>
+<PageTitle>@(_detail?.Row.DisplayName ?? L["User"]) · @L["Sangam console"]</PageTitle>
 
 @if (_detail is null)
 {
-  <p class="sg-muted">@(_loaded ? "That account does not exist." : "Loading…")</p>
+  <p class="sg-muted">@(_loaded ? L["That account does not exist."] : L["Loading…"])</p>
 }
 else
 {
-  <a class="sg-back" href="/">← Users</a>
+  <a class="sg-back" href="/">@L["← Users"]</a>
   <h1 class="sg-h1">@_detail.Row.DisplayName</h1>
   <p class="sg-lede sg-mono">@_detail.Row.Email@(_detail.Row.Mobile is null ? "" : " · " + _detail.Row.Mobile)</p>
 
-  <p class="sg-read-note">You opened this record. It appears in this person's own audit log, with your name.</p>
+  <p class="sg-read-note">@L["You opened this record. It appears in this person's own audit log, with your name."]</p>
 
   <div class="sg-grid">
     <div class="sg-panel">
-      <h2 class="sg-h2">Account</h2>
+      <h2 class="sg-h2">@L["Account"]</h2>
       <dl class="sg-facts">
-        <div><dt>Status</dt><dd>@_detail.Row.Status.ToString().ToLowerInvariant()</dd></div>
-        <div><dt>Email</dt><dd>@(_detail.Row.EmailVerified ? "verified" : "not verified")</dd></div>
-        <div><dt>Two-step</dt><dd>@(_detail.Row.MfaEnrolled ? "authenticator enrolled" : "none")</dd></div>
-        <div><dt>Date of birth</dt><dd>@_detail.DateOfBirth.ToString("d MMM yyyy", CultureInfo.InvariantCulture)</dd></div>
-        <div><dt>Signs in with</dt><dd>@_detail.SignInPreference.ToString().ToLowerInvariant()</dd></div>
-        <div><dt>Last sign-in</dt><dd>@(_detail.LastSignInAt?.ToString("d MMM yyyy, HH:mm 'UTC'", CultureInfo.InvariantCulture) ?? "never")</dd></div>
-        <div><dt>Live sessions</dt><dd>@_detail.ActiveSessions</dd></div>
-        <div><dt>Joined</dt><dd>@_detail.Row.CreatedAt.ToString("d MMM yyyy", CultureInfo.InvariantCulture)</dd></div>
+        <div><dt>@L["Status"]</dt><dd>@StatusText(_detail.Row.Status)</dd></div>
+        <div><dt>@L["Email"]</dt><dd>@(_detail.Row.EmailVerified ? L["verified"] : L["not verified"])</dd></div>
+        <div><dt>@L["Two-step"]</dt><dd>@(_detail.Row.MfaEnrolled ? L["authenticator enrolled"] : L["none"])</dd></div>
+        <div><dt>@L["Date of birth"]</dt><dd>@_detail.DateOfBirth.ToString("d MMM yyyy", CultureInfo.CurrentCulture)</dd></div>
+        <div><dt>@L["Signs in with"]</dt><dd>@ModeText(_detail.SignInPreference)</dd></div>
+        <div><dt>@L["Last sign-in"]</dt><dd>@(_detail.LastSignInAt?.ToString("d MMM yyyy, HH:mm 'UTC'", CultureInfo.CurrentCulture) ?? L["never"])</dd></div>
+        <div><dt>@L["Live sessions"]</dt><dd>@_detail.ActiveSessions</dd></div>
+        <div><dt>@L["Joined"]</dt><dd>@_detail.Row.CreatedAt.ToString("d MMM yyyy", CultureInfo.CurrentCulture)</dd></div>
       </dl>
       @if (_detail.Row.PurgeAfter is not null)
       {
         <p class="sg-warn">
-          Deletion requested — purge on @_detail.Row.PurgeAfter.Value.ToString("d MMM yyyy", CultureInfo.InvariantCulture).
+          @L["Deletion requested — purge on {0}.", _detail.Row.PurgeAfter.Value.ToString("d MMM yyyy", CultureInfo.CurrentCulture)]
           @if (_detail.Row.OnHold)
           {
-            <span>Held: @_detail.HoldReason</span>
+            <span>@L["Held: {0}", _detail.HoldReason ?? string.Empty]</span>
           }
         </p>
       }
     </div>
 
     <div class="sg-panel">
-      <h2 class="sg-h2">Applications and organisations</h2>
+      <h2 class="sg-h2">@L["Applications and organisations"]</h2>
       @if (_detail.LinkedApps.Count == 0)
       {
-        <p class="sg-muted">No application has access.</p>
+        <p class="sg-muted">@L["No application has access."]</p>
       }
       else
       {
@@ -55,81 +55,105 @@ else
       }
       @if (_detail.Organisations.Count > 0)
       {
-        <h3 class="sg-h3">Organisations</h3>
+        <h3 class="sg-h3">@L["Organisations"]</h3>
         <ul class="sg-list">@foreach (string org in _detail.Organisations) { <li>@org</li> }</ul>
       }
-      <p class="sg-muted">To change a role or a membership, the application does it through its own API. The console cannot reach inside an application's tenancy.</p>
+      <p class="sg-muted">@L["To change a role or a membership, the application does it through its own API. The console cannot reach inside an application's tenancy."]</p>
     </div>
   </div>
 
   <div class="sg-panel">
-    <h2 class="sg-h2">Actions</h2>
+    <h2 class="sg-h2">@L["Actions"]</h2>
     @if (Context?.CanAct != true)
     {
-      <p class="sg-muted">Your rank (@Context?.RoleLabel) can look, but not act on an account.</p>
+      <p class="sg-muted">@L["Your rank ({0}) can look, but not act on an account.", L[Context?.RoleLabel ?? string.Empty]]</p>
     }
     else
     {
       <div class="sg-form-row">
-        <label class="sg-label" for="reason">Reason — recorded in the audit log</label>
-        <input id="reason" class="sg-input" @bind="_reason" @bind:event="oninput" placeholder="Why are you doing this?" />
+        <label class="sg-label" for="reason">@L["Reason — recorded in the audit log"]</label>
+        <input id="reason" class="sg-input" @bind="_reason" @bind:event="oninput" placeholder="@L["Why are you doing this?"]" />
       </div>
       <div class="sg-actions">
         @if (_detail.Row.Status == UserStatus.Suspended)
         {
-          <button type="button" class="sg-btn sg-btn--primary" @onclick="ReinstateAsync" disabled="@_busy">Reinstate</button>
+          <button type="button" class="sg-btn sg-btn--primary" @onclick="ReinstateAsync" disabled="@_busy">@L["Reinstate"]</button>
         }
         else
         {
-          <button type="button" class="sg-btn sg-btn--warn" @onclick="SuspendAsync" disabled="@(_busy || !HasReason)">Suspend</button>
+          <button type="button" class="sg-btn sg-btn--warn" @onclick="SuspendAsync" disabled="@(_busy || !HasReason)">@L["Suspend"]</button>
         }
-        <button type="button" class="sg-btn sg-btn--ghost" @onclick="SignOutAsync" disabled="@_busy">Sign out everywhere</button>
+        <button type="button" class="sg-btn sg-btn--ghost" @onclick="SignOutAsync" disabled="@_busy">@L["Sign out everywhere"]</button>
         @if (_detail.Row.OnHold)
         {
-          <button type="button" class="sg-btn sg-btn--ghost" @onclick="ClearHoldAsync" disabled="@_busy">Clear hold</button>
+          <button type="button" class="sg-btn sg-btn--ghost" @onclick="ClearHoldAsync" disabled="@_busy">@L["Clear hold"]</button>
         }
         else
         {
-          <button type="button" class="sg-btn sg-btn--ghost" @onclick="PlaceHoldAsync" disabled="@(_busy || !HasReason)">Hold deletion</button>
+          <button type="button" class="sg-btn sg-btn--ghost" @onclick="PlaceHoldAsync" disabled="@(_busy || !HasReason)">@L["Hold deletion"]</button>
         }
         @if (Context.IsOwner)
         {
-          <button type="button" class="sg-btn sg-btn--danger" @onclick="() => _confirmDelete = true" disabled="@(_busy || !HasReason)">Delete now</button>
+          <button type="button" class="sg-btn sg-btn--danger" @onclick="() => _confirmDelete = true" disabled="@(_busy || !HasReason)">@L["Delete now"]</button>
         }
       </div>
       @if (!HasReason)
       {
-        <p class="sg-muted">Suspending, holding and deleting need a reason.</p>
+        <p class="sg-muted">@L["Suspending, holding and deleting need a reason."]</p>
       }
-      @if (_detail.Row.MfaEnrolled)
+      @if (_pendingReset is not null)
       {
         <div class="sg-panel sg-panel--inset" data-panel="mfa-reset">
-          <h3 class="sg-h3">Lost authenticator: reset two-step sign-in</h3>
-          <p class="sg-muted">Only after you have proven who this is — they lost their phone <em>and</em> their recovery codes. The authenticator is removed, every session ends, and they are told by e-mail. Never record identity-document numbers.</p>
+          <h3 class="sg-h3">@L["A reset of two-step sign-in is waiting"]</h3>
+          <p class="sg-muted">@L["Requested {0}. It takes effect {1} unless the person cancels it; they were alerted by e-mail, by SMS where possible, and at their next sign-in.", When(_pendingReset.RequestedAt), When(_pendingReset.EffectiveAt)]
+            @if (_pendingReset.Privileged)
+            {
+              <strong>@L["Privileged account: 72-hour cooling-off."]</strong>
+            }
+          </p>
+          <div class="sg-actions">
+            <button type="button" class="sg-btn sg-btn--ghost" @onclick="WithdrawResetAsync" disabled="@_busy">@L["Withdraw the request"]</button>
+          </div>
           <div class="sg-form-row">
-            <label class="sg-label" for="proof-method">How you confirmed their identity</label>
+            <label class="sg-label" for="urgent-reason">@L["Urgent override: why it cannot wait"]</label>
+            <input id="urgent-reason" class="sg-input" @bind="_urgentReason" @bind:event="oninput" maxlength="500" placeholder="@L["e.g. doctor locked out during a night shift; verified by video call"]" />
+          </div>
+          <p class="sg-muted">@L["Applies the reset now, skipping the cooling-off period. It is audited separately and the platform owner is alerted at once."]</p>
+          <div class="sg-actions">
+            <button type="button" class="sg-btn sg-btn--danger" @onclick="ApplyNowAsync" disabled="@(_busy || _urgentReason.Trim().Length < 10)">@L["Apply now (urgent override)"]</button>
+          </div>
+        </div>
+      }
+      else if (_detail.Row.MfaEnrolled)
+      {
+        <div class="sg-panel sg-panel--inset" data-panel="mfa-reset">
+          <h3 class="sg-h3">@L["Lost authenticator: reset two-step sign-in"]</h3>
+          <p class="sg-muted">@L.Markup("Only after you have proven who this is — they lost their phone {0} their recovery codes. The authenticator is removed, every session ends, and they are told by e-mail. Never record identity-document numbers.", LocalizedMarkup.Tag("em", L["and"]))</p>
+          <p class="sg-muted">@L["Nothing happens at once: the person is alerted with a one-click cancel link, and the reset takes effect after 24 hours (72 for operators and application or organisation administrators) if nobody cancels it."]</p>
+          <div class="sg-form-row">
+            <label class="sg-label" for="proof-method">@L["How you confirmed their identity"]</label>
             <select id="proof-method" class="sg-input" @bind="_proofMethod">
-              <option value="@IdentityProofingMethod.VideoCall">Video call, photo identification matching name and date of birth</option>
-              <option value="@IdentityProofingMethod.InPerson">In person, with photo identification</option>
-              <option value="@IdentityProofingMethod.VerifiedMobileCallback">Call back to their verified mobile</option>
+              <option value="@IdentityProofingMethod.VideoCall">@L["Video call, photo identification matching name and date of birth"]</option>
+              <option value="@IdentityProofingMethod.InPerson">@L["In person, with photo identification"]</option>
+              <option value="@IdentityProofingMethod.VerifiedMobileCallback">@L["Call back to their verified mobile"]</option>
             </select>
           </div>
           <div class="sg-form-row">
-            <label class="sg-label" for="proof-ref">Support ticket or note</label>
-            <input id="proof-ref" class="sg-input" @bind="_proofReference" @bind:event="oninput" maxlength="200" placeholder="e.g. HELP-1042, video call 7 Oct" />
+            <label class="sg-label" for="proof-ref">@L["Support ticket or note"]</label>
+            <input id="proof-ref" class="sg-input" @bind="_proofReference" @bind:event="oninput" maxlength="200" placeholder="@L["e.g. HELP-1042, video call 7 Oct"]" />
           </div>
           <div class="sg-actions">
-            <button type="button" class="sg-btn sg-btn--warn" @onclick="ResetTwoStepAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_proofReference))">Reset two-step sign-in</button>
+            <button type="button" class="sg-btn sg-btn--warn" @onclick="ResetTwoStepAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_proofReference))">@L["Request a reset of two-step sign-in"]</button>
           </div>
         </div>
       }
       @if (_confirmDelete)
       {
         <div class="sg-confirm">
-          <p><strong>Destroy this person's data now?</strong> Name, email, mobile, password and date of birth are overwritten permanently. The audit trail survives. The 30-day grace period is skipped.</p>
+          <p><strong>@L["Destroy this person's data now?"]</strong> @L["Name, email, mobile, password and date of birth are overwritten permanently. The audit trail survives. The 30-day grace period is skipped."]</p>
           <div class="sg-actions">
-            <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => _confirmDelete = false">Cancel</button>
-            <button type="button" class="sg-btn sg-btn--danger" @onclick="DeleteAsync" disabled="@_busy">Yes, delete permanently</button>
+            <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => _confirmDelete = false">@L["Cancel"]</button>
+            <button type="button" class="sg-btn sg-btn--danger" @onclick="DeleteAsync" disabled="@_busy">@L["Yes, delete permanently"]</button>
           </div>
         </div>
       }
@@ -142,6 +166,22 @@ else
 }
 
 @code {
+    private string StatusText(UserStatus status) => status switch
+    {
+        UserStatus.Active => L["active"],
+        UserStatus.Suspended => L["suspended"],
+        UserStatus.DeletedSoft => L["deleting"],
+        _ => L["deleted"],
+    };
+
+    private string ModeText(SignInMode mode) => mode switch
+    {
+        SignInMode.PasswordAndOtp => L["password and emailed code"],
+        SignInMode.OtpOnly => L["emailed code"],
+        SignInMode.Passkey => L["passkey"],
+        _ => L["email and password"],
+    };
+
     /// <summary>The account being looked at.</summary>
     [Parameter]
     public Guid UserId { get; set; }
@@ -172,6 +212,7 @@ else
         {
             _detail = carried;
             _loaded = true;
+            _pendingReset = Context is null ? null : await Admin.PendingTwoStepResetAsync(UserId);
             return;
         }
 
@@ -201,6 +242,7 @@ else
         }
 
         _detail = await Admin.OpenUserAsync(Context.UserId, UserId, null);
+        _pendingReset = await Admin.PendingTwoStepResetAsync(UserId);
         _loaded = true;
     }
 
@@ -211,7 +253,7 @@ else
         _busy = false;
         _confirmDelete = false;
         _ok = result.Succeeded;
-        _message = result.Message;
+        _message = L[result.Message ?? string.Empty];
         if (result.Succeeded)
         {
             _reason = string.Empty;
@@ -226,14 +268,30 @@ else
     private IdentityProofingMethod _proofMethod = IdentityProofingMethod.VideoCall;
     private string _proofReference = string.Empty;
 
+    private Sangam.Identity.Application.Accounts.PendingTwoStepReset? _pendingReset;
+    private string _urgentReason = string.Empty;
+
     private async Task ResetTwoStepAsync()
     {
-        await RunAsync(() => Admin.ResetTwoStepAsync(Context!.UserId, UserId, _proofMethod, _proofReference, null));
+        await RunAsync(() => Admin.RequestTwoStepResetAsync(Context!.UserId, UserId, _proofMethod, _proofReference, null));
         if (_ok)
         {
             _proofReference = string.Empty;
         }
     }
+
+    private Task WithdrawResetAsync() => RunAsync(() => Admin.WithdrawTwoStepResetAsync(Context!.UserId, UserId, null));
+
+    private async Task ApplyNowAsync()
+    {
+        await RunAsync(() => Admin.ApplyTwoStepResetNowAsync(Context!.UserId, UserId, _proofMethod, _proofReference.Length > 0 ? _proofReference : "urgent override", _urgentReason, null)); // i18n-ignore (an audit reference, not shown)
+        if (_ok)
+        {
+            _urgentReason = string.Empty;
+        }
+    }
+
+    private static string When(DateTimeOffset at) => at.ToOffset(TimeSpan.FromHours(5.5)).ToString("f", CultureInfo.CurrentCulture) + " IST";
 
     private Task SignOutAsync() => RunAsync(() => Admin.ForceSignOutAsync(Context!.UserId, UserId, null));
 

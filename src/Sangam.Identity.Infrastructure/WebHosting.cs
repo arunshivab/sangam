@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using Microsoft.AspNetCore.Builder;
@@ -9,9 +10,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
 using Sangam.Identity.Infrastructure.Persistence;
 
 namespace Sangam.Identity.Infrastructure;
@@ -27,9 +25,6 @@ public static class WebHosting
 
     /// <summary>Configuration key: comma-separated networks (CIDR) whose forwarded headers are trusted.</summary>
     public const string KnownNetworksKey = "Sangam:ForwardedHeaders:KnownNetworks";
-
-    /// <summary>Configuration key: OTLP collector endpoint. Unset means no telemetry is exported.</summary>
-    public const string OtlpEndpointKey = "Sangam:Telemetry:OtlpEndpoint";
 
     /// <summary>Environment variable naming the secrets directory (default <c>/run/secrets</c>).</summary>
     public const string SecretsDirectoryVariable = "SANGAM_SECRETS_DIR";
@@ -65,20 +60,68 @@ public static class WebHosting
         });
         services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
 
-        // Observability (PR-10, SGM-307): traces and metrics over OTLP to any collector, only when
-        // an endpoint is configured. The collector and dashboards are the founder's choice.
-        string? otlp = configuration[OtlpEndpointKey];
-        if (!string.IsNullOrWhiteSpace(otlp))
-        {
-            Uri endpoint = new(otlp, UriKind.Absolute);
-            string serviceName = configuration["Sangam:Telemetry:ServiceName"] ?? System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name ?? "sangam";
-            services.AddOpenTelemetry()
-                .ConfigureResource(r => r.AddService(serviceName))
-                .WithTracing(t => t.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddOtlpExporter(o => o.Endpoint = endpoint))
-                .WithMetrics(m => m.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation().AddOtlpExporter(o => o.Endpoint = endpoint));
-        }
-
+        // D-H: no third party and no OpenTelemetry. Each host records its own metrics into Sangam's database
+        // (Monitoring/MetricsRecorder); the operator console's monitoring page reads them.
         return services;
+    }
+
+    /// <summary>
+    /// Counts every request by status class and times it (D-H), for the monitoring page's error rate, response times
+    /// and rate-limit hits (429). The health endpoints are left out, so a watchdog's calls do not drown the numbers.
+    /// Put it first, so it sees the final status of everything after it.
+    /// </summary>
+    /// <param name="app">The application.</param>
+    public static IApplicationBuilder UseSangamRequestMetrics(this IApplicationBuilder app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+        return app.Use(async (context, next) =>
+        {
+            if (context.Request.Path.StartsWithSegments("/health", StringComparison.OrdinalIgnoreCase))
+            {
+                await next(context).ConfigureAwait(false);
+                return;
+            }
+
+            long started = Stopwatch.GetTimestamp();
+            try
+            {
+                await next(context).ConfigureAwait(false);
+            }
+            finally
+            {
+                int status = context.Response.StatusCode;
+                Monitoring.SangamMetrics.RequestCount.Add(1, new KeyValuePair<string, object?>("status", Monitoring.SangamMetrics.StatusClass(status)));
+                Monitoring.SangamMetrics.RequestMilliseconds.Record(Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+            }
+        });
+    }
+
+    /// <summary>
+    /// Whether the app should redirect plain HTTP to HTTPS itself (V-07). Not in Development or Testing, which
+    /// serve plain HTTP on localhost; and not behind a trusted reverse proxy (Caddy), which terminates TLS,
+    /// redirects HTTP itself and health-checks the app over plain HTTP — there the middleware could only warn
+    /// "Failed to determine the https port for redirect".
+    /// </summary>
+    /// <param name="environmentName">The host environment name.</param>
+    /// <param name="configuration">Configuration.</param>
+    public static bool ShouldRedirectToHttps(string environmentName, IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(environmentName);
+        ArgumentNullException.ThrowIfNull(configuration);
+        bool local = string.Equals(environmentName, "Development", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(environmentName, "Testing", StringComparison.OrdinalIgnoreCase);
+        bool behindProxy = Split(configuration[KnownProxiesKey]).Length > 0 || Split(configuration[KnownNetworksKey]).Length > 0;
+        return !local && !behindProxy;
+    }
+
+    /// <summary>Redirects HTTP to HTTPS only where <see cref="ShouldRedirectToHttps"/> says the app should (V-07).</summary>
+    /// <param name="app">The application.</param>
+    /// <param name="environmentName">The host environment name.</param>
+    /// <param name="configuration">Configuration.</param>
+    public static IApplicationBuilder UseSangamHttpsRedirection(this IApplicationBuilder app, string environmentName, IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+        return ShouldRedirectToHttps(environmentName, configuration) ? app.UseHttpsRedirection() : app;
     }
 
     /// <summary>
@@ -108,12 +151,19 @@ public static class WebHosting
     /// <summary>The culture used when the request names none Sangam supports: English (India), so dates read dd/mm/yyyy (V-05).</summary>
     public const string DefaultCulture = "en-IN";
 
-    /// <summary>Cultures a request may select (by culture cookie, query string or Accept-Language). Translations arrive in R3 (SGM-209).</summary>
-    public static readonly IReadOnlyList<string> SupportedCultures = ["en-IN", "hi-IN", "ta-IN"];
+    /// <summary>
+    /// Cultures a request may select (by query string, culture cookie, the OpenID Connect <c>ui_locales</c> an
+    /// application sends, or Accept-Language). Hindi and Malayalam have translated screens (PR-18); Tamil is accepted
+    /// for its date and number formats and shows English text until its catalogue is written.
+    /// </summary>
+    public static readonly IReadOnlyList<string> SupportedCultures = ["en-IN", "hi-IN", "ml-IN", "ta-IN"];
 
     /// <summary>
     /// Sets each request's culture: one Sangam supports if the request asks for it, otherwise
     /// <see cref="DefaultCulture"/>. A browser sending only en-US therefore gets en-IN, not US dates.
+    /// In order: <c>?culture=</c>, the language picker's cookie, the signed-in person's profile language
+    /// (applied after authentication by <see cref="UseSangamProfileCulture"/>), an application's <c>ui_locales</c>,
+    /// then Accept-Language.
     /// </summary>
     /// <param name="app">The application.</param>
     public static IApplicationBuilder UseSangamRequestCulture(this IApplicationBuilder app)
@@ -127,6 +177,39 @@ public static class WebHosting
             SupportedUICultures = cultures,
             FallBackToParentCultures = false,
             FallBackToParentUICultures = false,
+            RequestCultureProviders =
+            [
+                new QueryStringRequestCultureProvider(),
+                new CookieRequestCultureProvider(),
+                new UiLocalesRequestCultureProvider(),
+                new AcceptLanguageHeaderRequestCultureProvider(),
+            ],
+        });
+    }
+
+    /// <summary>
+    /// After authentication: when the language was not chosen explicitly (by <c>?culture=</c> or the language
+    /// picker's cookie), uses the signed-in person's profile language, the <c>locale</c> claim (PR-18).
+    /// </summary>
+    /// <param name="app">The application.</param>
+    public static IApplicationBuilder UseSangamProfileCulture(this IApplicationBuilder app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+        return app.Use(async (context, next) =>
+        {
+            IRequestCultureFeature? chosen = context.Features.Get<IRequestCultureFeature>();
+            bool explicitChoice = chosen?.Provider is QueryStringRequestCultureProvider or CookieRequestCultureProvider;
+            string? locale = context.User.FindFirst("locale")?.Value;
+            string? match = locale is null ? null : SupportedCultures.FirstOrDefault(c => string.Equals(c, locale, StringComparison.OrdinalIgnoreCase));
+            if (!explicitChoice && match is not null)
+            {
+                CultureInfo culture = new(match);
+                CultureInfo.CurrentCulture = culture;
+                CultureInfo.CurrentUICulture = culture;
+                context.Features.Set<IRequestCultureFeature>(new RequestCultureFeature(new RequestCulture(culture), provider: null));
+            }
+
+            await next(context).ConfigureAwait(false);
         });
     }
 

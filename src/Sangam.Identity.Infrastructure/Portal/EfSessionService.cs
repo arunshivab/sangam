@@ -87,9 +87,51 @@ public sealed class EfSessionService : ISessionService
         SangamDbContext db = await _contextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         await using (db.ConfigureAwait(false))
         {
-            await db.UserSessions
+            int ended = await db.UserSessions
                 .Where(s => s.Id == sessionId && s.RevokedAt == null)
                 .ExecuteUpdateAsync(u => u.SetProperty(s => s.RevokedAt, now).SetProperty(s => s.RevokedReason, reason), cancellationToken)
+                .ConfigureAwait(false);
+            if (ended > 0)
+            {
+                await LogoutQueue.EnqueueAsync(db, [sessionId], now, cancellationToken).ConfigureAwait(false);
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task RecordAppAsync(Guid sessionId, Guid appId, Guid userId, CancellationToken cancellationToken = default)
+    {
+        SangamDbContext db = await _contextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        await using (db.ConfigureAwait(false))
+        {
+            if (await db.SessionApps.AnyAsync(x => x.SessionId == sessionId && x.AppId == appId, cancellationToken).ConfigureAwait(false)
+                || !await db.UserSessions.AnyAsync(s => s.Id == sessionId, cancellationToken).ConfigureAwait(false))
+            {
+                return;
+            }
+
+            db.SessionApps.Add(new SessionApp { SessionId = sessionId, AppId = appId, UserId = userId, FirstSeenAt = _clock.UtcNow });
+            try
+            {
+                await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (DbUpdateException)
+            {
+                // Another request recorded it first: nothing to do.
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<FrontChannelLogout>> FrontChannelLogoutsAsync(Guid sessionId, CancellationToken cancellationToken = default)
+    {
+        SangamDbContext db = await _contextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        await using (db.ConfigureAwait(false))
+        {
+            return await db.SessionApps.AsNoTracking()
+                .Where(x => x.SessionId == sessionId)
+                .Join(db.Apps.Where(a => a.FrontChannelLogoutUri != null), x => x.AppId, a => a.Id, (x, a) => new FrontChannelLogout(a.DisplayName, a.FrontChannelLogoutUri!))
+                .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
         }
     }

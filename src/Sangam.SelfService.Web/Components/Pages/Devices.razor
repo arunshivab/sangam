@@ -2,31 +2,29 @@
 @inject IPortalService Portal
 @inject AuthenticationStateProvider AuthProvider
 
-<PageTitle>Devices · sangam</PageTitle>
+<PageTitle>@L["Devices · sangam"]</PageTitle>
 
-<PageHeader Title="Where you're signed in" Subtitle="Every browser session on your account. End one, or sign out everywhere.">
+<PageHeader Title="@L["Where you're signed in"].Value" Subtitle="@L["Every browser session on your account. End one, or sign out everywhere."].Value">
   <Actions>
-    <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _confirmingAll = true" disabled="@(_sessions is null || _sessions.Count == 0)">Sign out of all devices</button>
+    <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _confirmingAll = true" disabled="@(_sessions is null || _sessions.Count == 0)">@L["Sign out of all devices"]</button>
   </Actions>
 </PageHeader>
 
 <p class="sg-note sg-note--wide">
-  Sangam shows only what your browser tells it: the browser, the address you connected from, and the time.
-  It never guesses a location. A name like "First Floor Radiology" appears only when the application you
-  signed in to supplied it.
+  @L["Sangam shows only what your browser tells it: the browser, the address you connected from, and the time. It never guesses a location. A name like \"First Floor Radiology\" appears only when the application you signed in to supplied it."]
 </p>
 
 @if (_sessions is null)
 {
-  <p class="sg-note">Loading…</p>
+  <p class="sg-note">@L["Loading…"]</p>
 }
 else
 {
   <div class="sg-table sg-table--devices" role="table">
     <div class="sg-tr sg-tr--head" role="row">
-      <span role="columnheader">DEVICE</span>
-      <span role="columnheader">SIGNED IN</span>
-      <span role="columnheader">LAST SEEN</span>
+      <span role="columnheader">@L["DEVICE"]</span>
+      <span role="columnheader">@L["SIGNED IN"]</span>
+      <span role="columnheader">@L["LAST SEEN"]</span>
       <span role="columnheader"></span>
     </div>
     @foreach (PortalSession session in _sessions)
@@ -37,7 +35,7 @@ else
             @(session.DeviceLabel ?? session.Browser)
             @if (session.IsCurrent)
             {
-              <span class="sg-badge">This device</span>
+              <span class="sg-badge">@L["This device"]</span>
             }
           </span>
           <span class="sg-device-meta">
@@ -45,10 +43,10 @@ else
             {
               <span>@session.Browser · </span>
             }
-            <span class="sg-mono">@(session.IpAddress ?? "address unknown")</span>
+            <span class="sg-mono">@(session.IpAddress ?? L["address unknown"])</span>
             @if (session.AppName is not null)
             {
-              <span> · via @session.AppName</span>
+              <span> · @L["via {0}", session.AppName]</span>
             }
           </span>
         </span>
@@ -56,7 +54,7 @@ else
         <span role="cell" title="@Relative.Full(session.LastSeenAt)">@Relative.Describe(session.LastSeenAt, _now)</span>
         <span role="cell">
           <button type="button" class="sg-btn sg-btn--secondary sg-btn--row" @onclick="() => EndAsync(session)" disabled="@_working">
-            @(session.IsCurrent ? "Sign out here" : "End session")
+            @(session.IsCurrent ? L["Sign out here"] : L["End session"])
           </button>
         </span>
       </div>
@@ -67,14 +65,13 @@ else
 @if (_confirmingAll)
 {
   <div class="sg-confirm" role="alertdialog" aria-labelledby="all-title">
-    <h2 class="sg-confirm-title" id="all-title">Sign out of all devices?</h2>
+    <h2 class="sg-confirm-title" id="all-title">@L["Sign out of all devices?"]</h2>
     <p class="sg-confirm-body">
-      Every session ends, including this one, and applications holding access on your behalf are asked to sign you in again.
-      Your password does not change. Use this if you have lost a device.
+      @L["Every session ends, including this one, and applications holding access on your behalf are asked to sign you in again. Your password does not change. Use this if you have lost a device."]
     </p>
     <div class="sg-confirm-actions">
-      <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _confirmingAll = false">Cancel</button>
-      <button type="button" class="sg-btn sg-btn--danger" @onclick="EndAllAsync" disabled="@_working">Sign out everywhere</button>
+      <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _confirmingAll = false">@L["Cancel"]</button>
+      <button type="button" class="sg-btn sg-btn--danger" @onclick="EndAllAsync" disabled="@_working">@L["Sign out everywhere"]</button>
     </div>
   </div>
 }
@@ -113,8 +110,8 @@ else
         await Portal.RevokeSessionAsync(_userId, session.Id, null);
         _working = false;
         _message = session.IsCurrent
-            ? "That session has ended. You will be signed out here shortly."
-            : $"The session on {session.DeviceLabel ?? session.Browser} has ended.";
+            ? L["That session has ended. You will be signed out here shortly."]
+            : L["The session on {0} has ended.", session.DeviceLabel ?? session.Browser];
         await LoadAsync();
     }
 
@@ -124,7 +121,7 @@ else
         await Portal.RevokeAllSessionsAsync(_userId, null);
         _working = false;
         _confirmingAll = false;
-        _message = "All sessions have ended. You will be signed out of this one shortly.";
+        _message = L["All sessions have ended. You will be signed out of this one shortly."];
         await LoadAsync();
     }
 }

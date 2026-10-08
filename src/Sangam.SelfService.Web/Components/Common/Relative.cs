@@ -1,11 +1,15 @@
 using System.Globalization;
+using Microsoft.Extensions.Localization;
+using Sangam.Web.Shared.Localization;
 
 namespace Sangam.SelfService.Web.Components.Common;
 
-/// <summary>Human-friendly timestamps for the portal.</summary>
+/// <summary>Human-friendly timestamps for the portal, in the reader's language (PR-18).</summary>
 public static class Relative
 {
-    /// <summary>"just now", "12 minutes ago", "Yesterday", "14 Mar 2026".</summary>
+    private static IStringLocalizer L => CatalogueStringLocalizer.Shared;
+
+    /// <summary>"just now", "12 minutes ago", "yesterday", "14 Mar 2026".</summary>
     /// <param name="value">The instant.</param>
     /// <param name="now">Current time.</param>
     public static string Describe(DateTimeOffset value, DateTimeOffset now)
@@ -13,16 +17,16 @@ public static class Relative
         TimeSpan age = now - value;
         return age switch
         {
-            { TotalSeconds: < 90 } => "just now",
-            { TotalMinutes: < 60 } => $"{(int)age.TotalMinutes} minutes ago",
-            { TotalHours: < 24 } => $"{(int)age.TotalHours} hours ago",
-            { TotalDays: < 2 } => "yesterday",
-            { TotalDays: < 30 } => $"{(int)age.TotalDays} days ago",
-            _ => value.ToString("d MMM yyyy", CultureInfo.InvariantCulture),
+            { TotalSeconds: < 90 } => L["just now"],
+            { TotalMinutes: < 60 } => L["{0} minutes ago", (int)age.TotalMinutes],
+            { TotalHours: < 24 } => L["{0} hours ago", (int)age.TotalHours],
+            { TotalDays: < 2 } => L["yesterday"],
+            { TotalDays: < 30 } => L["{0} days ago", (int)age.TotalDays],
+            _ => value.ToString("d MMM yyyy", CultureInfo.CurrentCulture),
         };
     }
 
     /// <summary>A full timestamp for titles and tables.</summary>
     /// <param name="value">The instant.</param>
-    public static string Full(DateTimeOffset value) => value.ToString("d MMM yyyy, HH:mm 'UTC'", CultureInfo.InvariantCulture);
+    public static string Full(DateTimeOffset value) => value.ToString("d MMM yyyy, HH:mm 'UTC'", CultureInfo.CurrentCulture); // i18n-ignore: a format
 }

@@ -26,7 +26,7 @@ public static class Antibot
     public const string MinimumSecondsKey = "Sangam:Antibot:MinimumSeconds";
 
     /// <summary>The message shown on refusal: the same for every reason, revealing nothing.</summary>
-    public const string Refusal = "We could not accept that form. Please wait a moment and try again.";
+    public const string Refusal = "We could not accept that form. Please wait a moment and try again."; // i18n-key: translated by the banner that shows it
 
     private const string Purpose = "Sangam.Antibot.FormTimestamp";
     private static readonly TimeSpan TokenLifetime = TimeSpan.FromHours(24);

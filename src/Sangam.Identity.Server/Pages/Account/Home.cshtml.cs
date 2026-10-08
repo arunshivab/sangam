@@ -57,7 +57,7 @@ public sealed class HomeModel : AuthPageModel
 
         if (saved)
         {
-            Notice = "Your sign-in preference has been saved.";
+            Notice = L["Your sign-in preference has been saved."];
         }
 
         return Page();
@@ -93,9 +93,9 @@ public sealed class HomeModel : AuthPageModel
         User = user;
         SessionMode = base.User.FindFirst(SangamAuthentication.SessionModeClaim)?.Value switch
         {
-            "password_and_otp" => "password and emailed code",
-            "otp_only" => "emailed code",
-            _ => "email and password",
+            "password_and_otp" => L["password and emailed code"],
+            "otp_only" => L["emailed code"],
+            _ => L["email and password"],
         };
         SignInPreference = SignInModes.ToCode(user.SignInPreference);
         return true;

@@ -28,6 +28,8 @@ internal sealed class AppConfiguration : IEntityTypeConfiguration<App>
         b.Property(a => a.SignInPolicy).HasConversion(new SnakeCaseEnumConverter<SignInPolicy>()).HasMaxLength(20).IsRequired();
         b.Property(a => a.MfaRequirement).HasConversion(new SnakeCaseEnumConverter<MfaRequirement>()).HasMaxLength(40).HasDefaultValue(MfaRequirement.Optional).IsRequired();
         b.Property(a => a.BreachedPasswordCheck).HasDefaultValue(false).IsRequired();
+        b.Property(a => a.BackChannelLogoutUri).HasMaxLength(500);
+        b.Property(a => a.FrontChannelLogoutUri).HasMaxLength(500);
 
         b.HasIndex(a => a.ClientId).IsUnique().HasDatabaseName("ux_apps_client_id");
         b.HasIndex(a => a.Slug).IsUnique().HasDatabaseName("ux_apps_slug");

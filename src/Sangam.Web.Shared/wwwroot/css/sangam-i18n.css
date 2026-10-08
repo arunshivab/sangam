@@ -1,0 +1,28 @@
+/* PR-18 (SGM-209): what every Sangam host needs to show Hindi and Malayalam well. Linked after the host's own CSS. */
+
+/* The language picker: each language in its own script; wraps rather than overflows on a phone. */
+.sg-lang { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; font-size: 13px; line-height: 1.6; }
+.sg-lang-item { color: var(--sg-slate); text-decoration: none; white-space: nowrap; }
+a.sg-lang-item:hover { color: var(--sg-ochre); text-decoration: underline; }
+.sg-lang-item--current { color: var(--sg-ink); font-weight: 600; }
+.sg-lang-footer { padding: 24px 16px 40px; }
+.sg-lang-footer .sg-lang-item--current { color: inherit; }
+
+/* Indic scripts join letters into clusters; tracking (letter-spacing) pulls them apart. Captions keep their size. */
+:lang(hi) *, :lang(ml) * { letter-spacing: normal !important; }
+
+/* Longer words: rows of buttons and of choices wrap onto a second line instead of leaving their card. */
+.sg-btn-row { flex-wrap: wrap; }
+.sg-btn-row > * { flex: 1 1 auto; }
+.sg-check { flex-wrap: wrap; }
+.sg-check > .sg-muted { flex: 1 1 12rem; }
+h1, h2, h3, .sg-card-title, label, .sg-btn { overflow-wrap: break-word; }
+
+@media (max-width: 640px) {
+  /* The portal's row-tables stack on a phone; the action button moves under the row. */
+  .sg-tr { grid-template-columns: 1fr !important; }
+  .sg-tr--head { display: none; }
+  /* The consoles' inline forms (search, grant access) wrap. */
+  .sg-search, .sg-grant { flex-wrap: wrap; }
+  .sg-grant select.sg-input { flex: 1 1 140px; }
+}

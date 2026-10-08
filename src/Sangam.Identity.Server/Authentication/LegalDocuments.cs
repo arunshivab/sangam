@@ -22,8 +22,35 @@ public static class LegalDocuments
     /// <summary>Configuration key: postal address for grievances.</summary>
     public const string OfficerAddressKey = "Sangam:Grievance:Address";
 
-    /// <summary>Configuration key: days within which a grievance is answered.</summary>
+    /// <summary>Configuration key: days within which a grievance is resolved (D-D: 30).</summary>
     public const string ResponseDaysKey = "Sangam:Grievance:ResponseDays";
+
+    /// <summary>Configuration key: working days within which a grievance is acknowledged (D-D: 2).</summary>
+    public const string AcknowledgeDaysKey = "Sangam:Grievance:AcknowledgeWorkingDays";
+
+    /// <summary>Configuration key: who owns and operates Sangam (D-C).</summary>
+    public const string OperatorKey = "Sangam:Operator";
+
+    /// <summary>Configuration key: the jurisdiction for the terms (D-C).</summary>
+    public const string JurisdictionKey = "Sangam:Jurisdiction";
+
+    /// <summary>Who owns and operates Sangam: configuration, or the founder (D-C).</summary>
+    /// <param name="configuration">Configuration.</param>
+    public static string Operator(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        string? value = configuration[OperatorKey];
+        return string.IsNullOrWhiteSpace(value) ? Sangam.Identity.Domain.PlatformOwner.Name : value;
+    }
+
+    /// <summary>The jurisdiction for the terms: configuration, or Ahmedabad (D-C).</summary>
+    /// <param name="configuration">Configuration.</param>
+    public static string Jurisdiction(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        string? value = configuration[JurisdictionKey];
+        return string.IsNullOrWhiteSpace(value) ? Sangam.Identity.Domain.PlatformOwner.Jurisdiction : value;
+    }
 
     /// <summary>Reads a document as paragraphs, or <see langword="null"/> when none is configured.</summary>
     /// <param name="configuration">Configuration.</param>

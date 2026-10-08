@@ -1,19 +1,19 @@
 @page "/apps"
 @inject IAdminService Admin
 
-<PageTitle>Applications · Sangam console</PageTitle>
+<PageTitle>@L["Applications · Sangam console"]</PageTitle>
 
-<h1 class="sg-h1">Applications</h1>
-<p class="sg-lede">Every application registered with Sangam. Disabling one stops all of its sign-ins at once; it does not reach inside the application's own data. <em>Partner owners</em> are the application's own staff who manage it on the partner console; an application with none cannot be managed by its partner yet. Those marked <em>platform</em> are Sangam's own and can neither be disabled nor handed to a partner here.</p>
+<h1 class="sg-h1">@L["Applications"]</h1>
+<p class="sg-lede">@L.Markup("Every application registered with Sangam. Disabling one stops all of its sign-ins at once; it does not reach inside the application's own data. {0} are the application's own staff who manage it on the partner console; an application with none cannot be managed by its partner yet. Those marked {1} are Sangam's own and can neither be disabled nor handed to a partner here.", LocalizedMarkup.Tag("em", L["Partner owners"]), LocalizedMarkup.Tag("em", L["platform"]))</p>
 
 @if (_rows is null)
 {
-  <p class="sg-muted">Loading…</p>
+  <p class="sg-muted">@L["Loading…"]</p>
 }
 else
 {
   <table class="sg-table">
-    <thead><tr><th>Application</th><th>Client id</th><th>Sign-in rule</th><th>Users</th><th>Orgs</th><th>Partner owners</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>@L["Application"]</th><th>@L["Client id"]</th><th>@L["Sign-in rule"]</th><th>@L["Users"]</th><th>@L["Orgs"]</th><th>@L["Partner owners"]</th><th>@L["Status"]</th><th></th></tr></thead>
     <tbody>
       @foreach (AdminAppRow row in _rows)
       {
@@ -23,23 +23,27 @@ else
           <td>@PolicyName(row.SignInPolicy)</td>
           <td>@row.Users</td>
           <td>@row.Organisations</td>
-          <td>@if (row.IsPlatform) { <span class="sg-muted">—</span> } else if (row.PartnerOwners == 0) { <span class="sg-warn-text">none</span> } else { @row.PartnerOwners }</td>
-          <td><span class="sg-pill sg-pill--@row.Status.ToString().ToLowerInvariant()">@row.Status.ToString().ToLowerInvariant()</span></td>
+          <td>@if (row.IsPlatform) { <span class="sg-muted">—</span> } else if (row.PartnerOwners == 0) { <span class="sg-warn-text">@L["none"]</span> } else { @row.PartnerOwners }</td>
+          <td><span class="sg-pill sg-pill--@row.Status.ToString().ToLowerInvariant()">@(row.Status == AppStatus.Active ? L["active"] : L["disabled"])</span></td>
           <td>
             @if (row.IsPlatform)
             {
-              <span class="sg-pill sg-pill--platform" title="Part of Sangam itself: never disabled here, never given partner owners">platform</span>
+              <span class="sg-pill sg-pill--platform" title="@L["Part of Sangam itself: never disabled here, never given partner owners"]">@L["platform"]</span>
             }
-            else if (Context?.CanManageApps == true)
+            @if (Context?.CanManageApps == true)
             {
-              <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => StartAssign(row)" disabled="@_busy">Assign owner</button>
+              <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => StartLogout(row)" disabled="@_busy" title="@L["Where this application is told that a session has ended"]">@L["Logout"]@(row.BackChannelLogoutUri is null && row.FrontChannelLogoutUri is null ? "" : " ✓")</button>
+            }
+            @if (!row.IsPlatform && Context?.CanManageApps == true)
+            {
+              <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => StartAssign(row)" disabled="@_busy">@L["Assign owner"]</button>
               @if (row.Status == AppStatus.Active)
               {
-                <button type="button" class="sg-btn sg-btn--warn" @onclick="() => _confirming = row" disabled="@_busy">Disable</button>
+                <button type="button" class="sg-btn sg-btn--warn" @onclick="() => _confirming = row" disabled="@_busy">@L["Disable"]</button>
               }
               else
               {
-                <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => SetAsync(row, AppStatus.Active)" disabled="@_busy">Enable</button>
+                <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => SetAsync(row, AppStatus.Active)" disabled="@_busy">@L["Enable"]</button>
               }
             }
           </td>
@@ -50,17 +54,17 @@ else
 
   @if (Context?.CanManageApps != true)
   {
-    <p class="sg-muted">Your rank (@Context?.RoleLabel) can see the registry but not change it.</p>
+    <p class="sg-muted">@L["Your rank ({0}) can see the registry but not change it.", L[Context?.RoleLabel ?? string.Empty]]</p>
   }
 }
 
 @if (_confirming is not null)
 {
   <div class="sg-confirm">
-    <p><strong>Disable @_confirming.DisplayName?</strong> Every sign-in to it stops immediately, for all @_confirming.Users users who have granted it access. Tokens it already holds stay valid until they expire.</p>
+    <p><strong>@L["Disable {0}?", _confirming.DisplayName]</strong> @L["Every sign-in to it stops immediately, for all {0} users who have granted it access. Tokens it already holds stay valid until they expire.", _confirming.Users]</p>
     <div class="sg-actions">
-      <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => _confirming = null">Cancel</button>
-      <button type="button" class="sg-btn sg-btn--danger" @onclick="() => SetAsync(_confirming, AppStatus.Disabled)" disabled="@_busy">Disable it</button>
+      <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => _confirming = null">@L["Cancel"]</button>
+      <button type="button" class="sg-btn sg-btn--danger" @onclick="() => SetAsync(_confirming, AppStatus.Disabled)" disabled="@_busy">@L["Disable it"]</button>
     </div>
   </div>
 }
@@ -68,14 +72,33 @@ else
 @if (_assigning is not null)
 {
   <div class="sg-confirm">
-    <p><strong>Make someone an owner of @_assigning.DisplayName.</strong> They will be able to manage its roles, organisations, people, administrators and branding on the partner console — not its redirect addresses or secrets. They need an active, verified Sangam account, and must set up an authenticator app before the partner console opens.</p>
+    <p><strong>@L["Make someone an owner of {0}.", _assigning.DisplayName]</strong> @L["They will be able to manage its roles, organisations, people, administrators and branding on the partner console — not its redirect addresses or secrets. They need an active, verified Sangam account, and must set up an authenticator app before the partner console opens."]</p>
     <div class="sg-form-row">
-      <label class="sg-label" for="owner-email">Their Sangam email address</label>
+      <label class="sg-label" for="owner-email">@L["Their Sangam email address"]</label>
       <input id="owner-email" class="sg-input" type="email" autocomplete="off" @bind="_ownerEmail" @bind:event="oninput" />
     </div>
     <div class="sg-actions">
-      <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => _assigning = null">Cancel</button>
-      <button type="button" class="sg-btn sg-btn--primary" @onclick="AssignAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_ownerEmail))">Make owner</button>
+      <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => _assigning = null">@L["Cancel"]</button>
+      <button type="button" class="sg-btn sg-btn--primary" @onclick="AssignAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_ownerEmail))">@L["Make owner"]</button>
+    </div>
+  </div>
+}
+
+@if (_logout is not null)
+{
+  <div class="sg-confirm">
+    <p><strong>@L["Tell {0} when a session ends.", _logout.DisplayName]</strong> @L["When someone signs out of Sangam, or an operator or the person ends a session, Sangam lets every application used in that session know, so it can sign them out too. Leave a box empty for none."]</p>
+    <div class="sg-form-row">
+      <label class="sg-label" for="bc-uri">@L["Back-channel address"] <span class="sg-muted">@L.Markup("(server to server; receives a signed {0})", LocalizedMarkup.Tag("code", "logout_token"))</span></label>
+      <input id="bc-uri" class="sg-input" type="url" autocomplete="off" placeholder="https://app.example.in/signout/backchannel" @bind="_backChannel" @bind:event="oninput" />
+    </div>
+    <div class="sg-form-row">
+      <label class="sg-label" for="fc-uri">@L["Front-channel page"] <span class="sg-muted">@L.Markup("(loaded in a hidden frame with {0} and {1}; the page must allow Sangam to frame it)", LocalizedMarkup.Tag("code", "iss"), LocalizedMarkup.Tag("code", "sid"))</span></label>
+      <input id="fc-uri" class="sg-input" type="url" autocomplete="off" placeholder="https://app.example.in/signout/frontchannel" @bind="_frontChannel" @bind:event="oninput" />
+    </div>
+    <div class="sg-actions">
+      <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => _logout = null">@L["Cancel"]</button>
+      <button type="button" class="sg-btn sg-btn--primary" @onclick="SaveLogoutAsync" disabled="@_busy">@L["Save"]</button>
     </div>
   </div>
 }
@@ -92,6 +115,9 @@ else
     private IReadOnlyList<AdminAppRow>? _rows;
     private AdminAppRow? _confirming;
     private AdminAppRow? _assigning;
+    private AdminAppRow? _logout;
+    private string? _backChannel;
+    private string? _frontChannel;
     private string _ownerEmail = string.Empty;
     private bool _busy;
     private bool _ok;
@@ -107,8 +133,34 @@ else
         }
     }
 
+    private void StartLogout(AdminAppRow row)
+    {
+        _confirming = null;
+        _assigning = null;
+        _logout = row;
+        _backChannel = row.BackChannelLogoutUri;
+        _frontChannel = row.FrontChannelLogoutUri;
+        _message = null;
+    }
+
+    private async Task SaveLogoutAsync()
+    {
+        _busy = true;
+        AdminResult result = await Admin.SetAppLogoutUrisAsync(Context!.UserId, _logout!.Id, _backChannel, _frontChannel, null);
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = L[result.Message ?? string.Empty];
+        if (result.Succeeded)
+        {
+            _logout = null;
+        }
+
+        await LoadAsync();
+    }
+
     private void StartAssign(AdminAppRow row)
     {
+        _logout = null;
         _confirming = null;
         _assigning = row;
         _ownerEmail = string.Empty;
@@ -121,7 +173,7 @@ else
         AdminResult result = await Admin.AssignAppOwnerAsync(Context!.UserId, _assigning!.Id, _ownerEmail, null);
         _busy = false;
         _ok = result.Succeeded;
-        _message = result.Message;
+        _message = L[result.Message ?? string.Empty];
         if (result.Succeeded)
         {
             _assigning = null;
@@ -137,16 +189,16 @@ else
         _busy = false;
         _confirming = null;
         _ok = result.Succeeded;
-        _message = result.Message;
+        _message = L[result.Message ?? string.Empty];
         await LoadAsync();
     }
 
     // The same words the partner console uses for the same rules.
-    private static string PolicyName(SignInPolicy policy) => policy switch
+    private string PolicyName(SignInPolicy policy) => policy switch
     {
-        SignInPolicy.Password => "Password only",
-        SignInPolicy.OtpOnly => "Email code only",
-        SignInPolicy.PasswordAndOtp => "Always two-step",
-        _ => "Each person's choice",
+        SignInPolicy.Password => L["Password only"],
+        SignInPolicy.OtpOnly => L["Email code only"],
+        SignInPolicy.PasswordAndOtp => L["Always two-step"],
+        _ => L["Each person's choice"],
     };
 }

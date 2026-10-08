@@ -11,6 +11,9 @@ namespace Sangam.Identity.Server.Pages.Account;
 [Authorize]
 public sealed class PasskeysModel : PageModel
 {
+    /// <summary>The text catalogue, in the request's language (PR-18).</summary>
+    private Microsoft.Extensions.Localization.IStringLocalizer L => PageText.For(HttpContext);
+
     private readonly IPasskeyService _passkeys;
 
     /// <summary>Initialises the page.</summary>
@@ -47,7 +50,7 @@ public sealed class PasskeysModel : PageModel
     {
         if (await _passkeys.RemoveAsync(UserId(), id, cancellationToken))
         {
-            Notice = "Passkey removed.";
+            Notice = L["Passkey removed."];
         }
 
         return RedirectToPage();
@@ -69,16 +72,16 @@ public sealed class PasskeysModel : PageModel
         if (answer is null)
         {
             // A body that does not bind is a broken or forged request, not a server fault.
-            return new BadRequestObjectResult(new { error = "That passkey answer could not be read. Please try again." });
+            return new BadRequestObjectResult(new { error = L["That passkey answer could not be read. Please try again."].Value });
         }
 
         PasskeyResult result = await _passkeys.CompleteRegistrationAsync(UserId(), answer.ChallengeId, answer.Credential, answer.Name ?? string.Empty, cancellationToken);
         if (!result.Succeeded)
         {
-            return new JsonResult(new { error = result.Message });
+            return new JsonResult(new { error = L[result.Message ?? string.Empty].Value });
         }
 
-        Notice = result.Message;
+        Notice = L[result.Message ?? string.Empty];
         return new JsonResult(new { redirect = "/account/passkeys" }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
     }
 

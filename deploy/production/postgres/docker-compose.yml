@@ -1,5 +1,5 @@
 # Sangam - PostgreSQL, its own stack (OI-013), on the E2E VM (D-023).
-# The version is the founder's choice (OI-014): 18 is pinned here because local development runs 18.
+# D-F (founder's decision, 7 October 2026): PostgreSQL 18 everywhere - production, CI and local.
 name: sangam-db
 
 services:

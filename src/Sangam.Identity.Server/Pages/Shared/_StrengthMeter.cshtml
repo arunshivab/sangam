@@ -8,9 +8,9 @@
     };
     string verdict = Model.Verdict switch
     {
-        PasswordVerdict.Strong => "Strong",
-        PasswordVerdict.Fair => "Fair",
-        _ => Model.Segments == 0 ? "" : "Too weak",
+        PasswordVerdict.Strong => L["Strong"].Value,
+        PasswordVerdict.Fair => L["Fair"].Value,
+        _ => Model.Segments == 0 ? "" : L["Too weak"].Value,
     };
 }
 <div class="sg-meter sg-meter--@level" data-sg-meter aria-hidden="true">
@@ -20,9 +20,21 @@
   }
 </div>
 <p class="sg-meter-caption" data-sg-caption>
-  <span class="sg-meter-verdict sg-meter-verdict--@level" data-sg-verdict>@verdict</span>
+  <span class="sg-meter-verdict sg-meter-verdict--@level" data-sg-verdict data-label-strong="@L["Strong"]" data-label-fair="@L["Fair"]" data-label-weak="@L["Too weak"]">@verdict</span>
   @foreach ((string label, bool met) in Model.Tokens)
   {
-    <span class="sg-token @(met ? "sg-token--met" : "")" data-sg-token="@label"><span class="sg-token-mark" aria-hidden="true">@(met ? "✓" : "·")</span>@label</span>
+    <span class="sg-token @(met ? "sg-token--met" : "")" data-sg-token="@label"><span class="sg-token-mark" aria-hidden="true">@(met ? "✓" : "·")</span>@TokenText(label)</span>
   }
 </p>
+
+@functions {
+    // The rule tokens keep their codes (the script matches on them); people read them in their language.
+    private string TokenText(string code) => code switch
+    {
+        "8+" => L["8+ characters"],
+        "upper" => L["A–Z"],
+        "lower" => L["a–z"],
+        "number" => L["0–9"],
+        _ => L["symbol"],
+    };
+}

@@ -59,7 +59,7 @@ public sealed class LoginPasskeyModel : AuthPageModel
         if (answer is null)
         {
             // A body that does not bind is a broken or forged request, not a server fault.
-            return new BadRequestObjectResult(new { error = "That passkey answer could not be read. Please try again." });
+            return new BadRequestObjectResult(new { error = L["That passkey answer could not be read. Please try again."].Value });
         }
 
         if (!_passkeys.Enabled)
@@ -71,12 +71,12 @@ public sealed class LoginPasskeyModel : AuthPageModel
         UserSummary? user = result.Succeeded && result.UserId is Guid id ? await _accounts.FindByIdAsync(id, cancellationToken) : null;
         if (user is null)
         {
-            return new JsonResult(new { error = result.Message });
+            return new JsonResult(new { error = L[result.Message ?? string.Empty].Value });
         }
 
         await ResolvePartnerAsync(_apps, ReturnUrl, cancellationToken);
         await SangamAuthentication.SignInSessionAsync(HttpContext, user, SignInMode.Passkey, Partner?.Id, PartnerContext.DeviceLabelFromReturnUrl(ReturnUrl));
         await _accounts.RecordSignInAsync(user.Id, SignInMode.Passkey, ClientIp, ClientUserAgent, cancellationToken);
-        return new JsonResult(new { redirect = SafeReturnUrl(ReturnUrl) }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        return new JsonResult(new { redirect = await AfterSignInAsync(user.Id, ReturnUrl, cancellationToken) }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
     }
 }

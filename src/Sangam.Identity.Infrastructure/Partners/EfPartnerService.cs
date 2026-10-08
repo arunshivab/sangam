@@ -352,7 +352,7 @@ public sealed class EfPartnerService : IPartnerService
         if (!MayMoveTo(app.SignInPolicy, signInPolicy))
         {
             return PartnerResult.Refused(
-                "Partners can require two-step sign-in, or leave the choice to each user. Password-only and email-code-only are set by imagiQa, because they would weaken sign-in for people who chose two-step.");
+                "Partners can require two-step sign-in, or leave the choice to each user. Password-only and email-code-only are set by Sangam, because they would weaken sign-in for people who chose two-step.");
         }
 
         SignInPolicy before = app.SignInPolicy;
@@ -379,7 +379,7 @@ public sealed class EfPartnerService : IPartnerService
     /// Sangam's floor is <see cref="SignInPolicy.Default"/> — each person's own choice. A partner may
     /// require two-step, or return to the floor; never below it. <see cref="SignInPolicy.Password"/>
     /// would override people who chose two-step, and <see cref="SignInPolicy.OtpOnly"/> makes the
-    /// mailbox the whole account; both are imagiQa's decision. A platform-set value of either can
+    /// mailbox the whole account; both are the platform operators' decision. A platform-set value of either can
     /// only be tightened from here: to two-step, or to passkey only (PR-16).
     /// </summary>
     internal static bool MayMoveTo(SignInPolicy from, SignInPolicy to)

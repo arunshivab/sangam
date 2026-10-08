@@ -15,7 +15,7 @@
 
 .PARAMETER WithDocker
     Instead of a native PostgreSQL, start deploy/docker-compose.dev.yml
-    (PostgreSQL 16 or later + Caddy). Not needed for laptop development.
+    (PostgreSQL 18 + Caddy). Not needed for laptop development.
 
 .PARAMETER PgHost / PgPort
     Where to look for PostgreSQL. Defaults: localhost, 5432.
@@ -80,7 +80,7 @@ if ($WithDocker) {
     & docker info *> $null
     if ($LASTEXITCODE -ne 0) { throw "Docker daemon is not running." }
 
-    Write-Step "Starting PostgreSQL 16 + Caddy (deploy/docker-compose.dev.yml)"
+    Write-Step "Starting PostgreSQL 18 + Caddy (deploy/docker-compose.dev.yml)"
     & docker compose -f deploy/docker-compose.dev.yml up -d
     if ($LASTEXITCODE -ne 0) { throw "docker compose up failed." }
 
@@ -105,7 +105,7 @@ else {
         }
     }
     else {
-        Write-Warning "No PostgreSQL server answered on ${PgHost}:${PgPort}. PR-01 builds without one; PR-02 onwards needs PostgreSQL 16 or later (native install: https://www.postgresql.org/download/windows/ , or re-run with -WithDocker). Use -PgPort if your instance listens elsewhere."
+        Write-Warning "No PostgreSQL server answered on ${PgHost}:${PgPort}. PR-01 builds without one; PR-02 onwards needs PostgreSQL (18 recommended; 16 or later works) (native install: https://www.postgresql.org/download/windows/ , or re-run with -WithDocker). Use -PgPort if your instance listens elsewhere."
     }
 
     if ($InitDatabase) {

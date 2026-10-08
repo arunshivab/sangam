@@ -1,15 +1,16 @@
 @page "/privacy"
 @model PrivacyModel
 @{
-    ViewData["Title"] = "Privacy notice";
+    ViewData["Title"] = L["Privacy notice"].Value;
 }
 
 <section class="sg-card sg-doc">
-  <h1 class="sg-card-title">Privacy notice</h1>
+  <h1 class="sg-card-title">@L["Privacy notice"]</h1>
   @if (Model.Paragraphs is null)
   {
-    <p class="sg-card-body">This document is being reviewed by counsel and will be published here before Sangam opens to the public.</p>
-    <p class="sg-card-body">Questions in the meantime: <a href="mailto:@Model.SupportEmail">@Model.SupportEmail</a>.</p>
+    <p class="sg-card-body">@L["This document is being reviewed by counsel and will be published here before Sangam opens to the public."]</p>
+    <p class="sg-card-body">@L["Owner and operator, and data fiduciary under the Digital Personal Data Protection Act, 2023: {0}.", Model.Operator]</p>
+    <p class="sg-card-body">@L["Questions in the meantime:"] <a href="mailto:@Model.SupportEmail">@Model.SupportEmail</a>.</p>
   }
   else
   {
@@ -18,5 +19,5 @@
       <p class="sg-card-body">@paragraph</p>
     }
   }
-  <a class="sg-tertiary" href="/privacy/grievance">Raise a grievance</a>
+  <a class="sg-tertiary" href="/privacy/grievance">@L["Raise a grievance"]</a>
 </section>
