@@ -2,6 +2,11 @@
 // supports WebAuthn, so password and code sign-in keep working with no JavaScript at all (D-063).
 (function () {
   'use strict';
+  // The "add a passkey" form only holds the name; Enter in that field must not post the page (R7: no inline handler,
+  // so the Content-Security-Policy can forbid inline script).
+  document.querySelectorAll('form.sg-passkey-add').forEach(function (form) {
+    form.addEventListener('submit', function (e) { e.preventDefault(); });
+  });
   if (!window.PublicKeyCredential || !navigator.credentials) { return; }
 
   function fromB64url(s) {

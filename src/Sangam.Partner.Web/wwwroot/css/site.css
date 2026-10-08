@@ -45,7 +45,7 @@ h1[tabindex="-1"]:focus { outline: none; box-shadow: none; }
   padding: 3px 7px;
   border-radius: 3px;
   background: var(--sg-ochre);
-  color: #1A1206;
+  color: #FFFFFF; /* R7: 5.0:1 (dark text was 3.7:1; WCAG 1.4.3) */
   font: 600 10px/1 var(--sg-font-mono);
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -229,7 +229,7 @@ h1[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 .sg-panel .sg-list { list-style: none; padding-left: 0; }
 
 /* A heading straight after a table or a confirmation box must not sit flush against it. */
-.sg-table + .sg-h2, .sg-confirm + .sg-h2 { margin-top: 28px; }
+.sg-table + .sg-h2, .sg-table-wrap + .sg-h2, .sg-confirm + .sg-h2 { margin-top: 28px; }
 
 /* PR-19 branding and message editors (shared components). */
 .sg-panel[data-panel=branding], .sg-panel[data-panel=templates] { margin-top: 18px; }
@@ -242,3 +242,7 @@ h1[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 .sg-small { font-size: 12.5px; word-break: break-word; }
 .sg-secret { display: block; padding: 10px 12px; border: 1px dashed var(--c-sand, #d9c9a8); border-radius: 6px; word-break: break-all; }
 .sg-table-wrap { overflow-x: auto; }
+
+/* R7 (WCAG 1.4.3): the language picker on the dark console reads at 8.5:1 (the shared slate was too dark). */
+.sg-lang-footer .sg-lang-item { color: var(--c-muted); }
+.sg-lang-footer .sg-lang-item--current { color: var(--c-text); }

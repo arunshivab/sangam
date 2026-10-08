@@ -43,6 +43,19 @@ public sealed class PasswordStrengthTests
     }
 
     [Fact]
+    public void SixtyFourCharacters_AreAccepted_ButMoreThan128_AreRefused()
+    {
+        // R7 (ASVS V2.1.2).
+        string sixtyFour = "Kaveri-River-1!" + new string('x', 49);
+        Assert.Equal(64, sixtyFour.Length);
+        Assert.True(PasswordStrength.Evaluate(sixtyFour).MeetsPolicy);
+        Assert.True(PasswordStrength.Evaluate(sixtyFour + new string('y', 64)).MeetsPolicy);
+        PasswordStrengthResult tooLong = PasswordStrength.Evaluate(sixtyFour + new string('y', 65));
+        Assert.False(tooLong.MeetsPolicy);
+        Assert.False(tooLong.IsNotTooLong);
+    }
+
+    [Fact]
     public void FourteenPlusAllClasses_IsStrong()
     {
         PasswordStrengthResult r = PasswordStrength.Evaluate("Correct-Horse-2026!");

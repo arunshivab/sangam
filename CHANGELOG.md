@@ -4,6 +4,132 @@ All notable changes to Sangam are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [1.0.0-rc.1] - R7 certification readiness (first release candidate)
+
+Sangam 1.0.0-rc.1 is the first release candidate for 1.0.0. Version 1.0.0 is kept for the day Sangam goes live,
+after product testing. This candidate is ready for an external penetration test and an ISO/IEC 27001 audit to be
+commissioned. Neither has happened yet, and nothing in this release claims either.
+
+### Security — internal assessment (SGM-503)
+- **OWASP ASVS 4.0.3 Level 2 self-assessment** of all 259 requirements, each with evidence and a note
+  (`docs/security/asvs-l2.md`, `.csv`):
+  - 152 met, 79 partly, 6 not met (each awaiting a founder decision), 8 for the founder, 14 not applicable;
+  - R7 fixes changed 32 of them.
+- **OWASP ZAP:**
+  - baseline and authenticated full scans of all four hosts, before and after the fixes (`docs/security/zap.md`);
+  - no failures in either round;
+  - remaining warnings: the CSP allowances accepted in SGM-908 (R-14), expected SameSite=None OpenID Connect
+    cookies, and one path-traversal false positive.
+- **Dependency and container scans** (`docs/security/dependency-scan.md`): NuGet, npm, pip-audit, Maven and
+  Trivy on the repository and every image, plus CycloneDX SBOMs.
+  - The Java SDK moved to Spring Boot 4.1.1, fixing 4 critical and 5 high findings in Tomcat, Spring MVC and Jackson.
+  - The images take Ubuntu's updates at build time and report their health.
+- **CI:**
+  - a `security` job fails on any high or critical finding in dependencies, the repository (including the
+    Kubernetes manifests) or the identity image;
+  - it reports the caddy and postgres images;
+  - it validates the Kubernetes manifests.
+- **Penetration-test pack** (`docs/security/pentest-scope.md`, SGM-506): scope, rules of engagement, test accounts,
+  method, deliverables and a quoting basis for an outside tester.
+
+### Security — fixes
+- **Headers on every host:**
+  - a full Content-Security-Policy with no inline script (OpenIddict's form_post script is allowed by its hash);
+  - `frame-ancestors 'none'` and `X-Frame-Options: DENY`, `nosniff`, Referrer-Policy, Permissions-Policy and
+    Cross-Origin-Opener-Policy;
+  - Blazor's own `frame-ancestors 'self'` header no longer replaces the policy;
+  - the portal and consoles submit forms only to themselves and the origins they name.
+- **Caching and sign-out:**
+  - pages and JSON answers are `Cache-Control: no-store`;
+  - JSON answers are `Content-Disposition: attachment`;
+  - sign-out sends `Clear-Site-Data`.
+- **Cookies** are always Secure outside Development and Testing, antiforgery cookies included.
+- **Sessions:**
+  - every session (identity server, portal, consoles) ends 12 hours after sign-in, however active;
+  - refresh tokens stop working when the sign-in session ends, the person signs out everywhere, their security
+    stamp changes or the account is suspended.
+- **Two-step secrets:**
+  - authenticator secrets are encrypted with Data Protection;
+  - recovery codes are stored hashed;
+  - each authenticator code is accepted once (RFC 6238, the last step recorded atomically);
+  - plain values from before R7 still work.
+- **One-time codes** are counted and consumed atomically, so parallel wrong guesses cannot exceed the attempt limit.
+- **Passwords:**
+  - a signed-in person can change their password, giving the current one (`/account/password`, linked from the
+    account page and the portal);
+  - over 128 characters is refused when a password is set;
+  - every password field has a show/hide button.
+- **Security notices by e-mail** after a password change or reset, an authenticator added or removed, and a
+  passkey added or removed, in English, Hindi and Malayalam. Templates are editable like the others.
+- **Audit:**
+  - `access.denied` for management API refusals;
+  - `token.refused` for refused clients and grants at the token, introspection and revocation endpoints (no
+    secret or token is recorded).
+- **Input:**
+  - limits on management API names, descriptions, permissions and organisation metadata, so a bad value gets a
+    reason, not a database error;
+  - the portal accepts only supported locales;
+  - control characters cannot split an e-mail subject.
+
+### Added — PR-32 evidence packs and SIEM streaming
+- **Evidence packs (CAP-110):**
+  - an application's owners and administrators download a zip for any period of up to a year, from the partner
+    console's new Evidence tab;
+  - the zip holds the registration, sign-in rules, administrators, roles, organisations, the access list,
+    joiners and leavers, the audit trail in the shared schema with the hash-chain check, and integrations (no
+    secrets), with a SHA-256 manifest;
+  - each download is audited, and an administrator may build six in ten minutes;
+  - `docs/evidence-packs.md`; the imagiQa demo's pack is in the release evidence.
+- **SIEM streaming (CAP-084):**
+  - the audit log is streamed as RFC 5424 syslog with CEF, or as JSON lines in the shared schema, over TLS
+    (optional client certificate);
+  - streaming is off by default, resumes after a restart, and runs on one host at a time;
+  - the Monitoring page shows its state;
+  - `docs/siem.md`.
+
+### Added — PR-31 accessibility
+- WCAG 2.2 AA checked with axe 4.14 on every screen (56 per language) in Hindi, Malayalam and English, with a
+  layout check at phone width and a CSP-violation check.
+- Fixes:
+  - contrast;
+  - underlined links in running text;
+  - no automatic refresh on the code screens (the resend countdown is now script);
+  - labels;
+  - target spacing;
+  - buttons and tables that wrap or scroll inside the screen on a phone.
+- The report is SGM-507.
+
+### Added — PR-33 Kubernetes and high availability (CAP-106)
+- `deploy/kubernetes` (kustomize):
+  - two replicas of every host, spread across nodes;
+  - PodDisruptionBudgets, rolling updates with no unavailable pod, and startup, liveness and readiness probes;
+  - non-root, read-only pods that meet the Pod Security Standard *restricted*;
+  - cookie affinity for Blazor;
+  - a migration job and a NetworkPolicy.
+- **Proven on a three-node kind cluster** (`overlays/kind/ha-proof.py`, 14 of 14 checks):
+  - pods deleted with the person still signed in;
+  - a rolling restart of every host with no failed request;
+  - a worker node stopped, with every host answering from the other node within 40 seconds.
+- **Safe to replicate:**
+  - background rounds (SCIM, webhooks, back-channel logout, membership expiry, account purge, alerts) take a
+    PostgreSQL advisory lock, so no replica repeats another's work (OI-047 closed);
+  - the lockout for addresses with no account is kept in the database, so it is the same on every replica
+    (migration `UnknownAddressAttempts`).
+- The account purge also ran on every host before R7; it now sweeps on one host at a time.
+
+### Changed
+- Version 1.0.0-rc.1 for every .NET assembly and every SDK: npm and Maven `1.0.0-rc.1`, PyPI `1.0.0rc1`
+  (the same version in Python's own notation). Later candidates are rc.2, rc.3 and so on; 1.0.0 is tagged on the day
+  of go-live.
+- The Java SDK needs Spring Boot 4.1 and Spring Security 7.1 (Java 17 or later).
+- Anjal may be addressed as a Kubernetes service name inside the cluster
+  (`http://anjal.<namespace>.svc.cluster.local`).
+
+### ISMS drafts (document set)
+- SGM-907 statement of applicability (93 Annex A controls), SGM-908 risk assessment and treatment plan (21 risks),
+  SGM-909 core policies. All are drafts for the founder to adopt, with status Partial or Format. They are not a
+  certification.
+
 ## [0.15.0] - R6 SDK family and the shared audit event
 
 ### Fixed — R5 verification finding (V-16)

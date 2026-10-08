@@ -78,25 +78,27 @@ else
         }
         else
         {
-          <table class="sg-table">
-            <thead><tr><th>@L["Person"]</th><th>@L["Role"]</th><th>@L["Reaches"]</th><th></th></tr></thead>
-            <tbody>
-              @foreach (PartnerMemberRow member in _members)
-              {
-                <tr>
-                  <td><span class="sg-name">@member.DisplayName</span><span class="sg-sub">@member.Email</span></td>
-                  <td class="sg-mono">@member.Role
-                    @if (member.ExpiresAt is DateTimeOffset until)
-                    {
-                      <span class="sg-sub">@L["until {0}", IndiaTime.Date(until)]</span>
-                    }
-                  </td>
-                  <td>@(member.AppliesToDescendants ? L["this and everything under it"] : L["only this"])</td>
-                  <td><button type="button" class="sg-btn sg-btn--ghost" @onclick="() => RevokeAsync(member)" disabled="@_busy">@L["Remove"]</button></td>
-                </tr>
-              }
-            </tbody>
-          </table>
+          <div class="sg-table-wrap">
+            <table class="sg-table">
+              <thead><tr><th>@L["Person"]</th><th>@L["Role"]</th><th>@L["Reaches"]</th><th></th></tr></thead>
+              <tbody>
+                @foreach (PartnerMemberRow member in _members)
+                {
+                  <tr>
+                    <td><span class="sg-name">@member.DisplayName</span><span class="sg-sub">@member.Email</span></td>
+                    <td class="sg-mono">@member.Role
+                      @if (member.ExpiresAt is DateTimeOffset until)
+                      {
+                        <span class="sg-sub">@L["until {0}", IndiaTime.Date(until)]</span>
+                      }
+                    </td>
+                    <td>@(member.AppliesToDescendants ? L["this and everything under it"] : L["only this"])</td>
+                    <td><button type="button" class="sg-btn sg-btn--ghost" @onclick="() => RevokeAsync(member)" disabled="@_busy">@L["Remove"]</button></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
         }
 
         <h3 class="sg-h3">@L["Give someone a role here"]</h3>
@@ -171,10 +173,11 @@ else
                         Explanation="@L["Applies to everyone with a role in {0} and in every organisation under it, when they sign in to {1}. It can only be stricter than what {0} already has to follow.", _selected.Name, Info.AppName].Value" />
         }
 
-        @* PR-19: tenant overrides — this organisation's sign-in page and messages, for it and everything under it. *@
-        <BrandingEditor @key="_selected.Id" UserId="Info.UserId" Scope="CustomisationScope.Organisation" ScopeId="_selected.Id" Heading="@L["Sign-in page for {0}", _selected.Name].Value"
+        @* PR-19: tenant overrides — this organisation's sign-in page and messages, for it and everything under it.
+           The two editors are siblings, so their keys must differ (one shared key ended the circuit on every click). *@
+        <BrandingEditor @key="@($"branding-{_selected.Id:N}")" UserId="Info.UserId" Scope="CustomisationScope.Organisation" ScopeId="_selected.Id" Heading="@L["Sign-in page for {0}", _selected.Name].Value"
                         IdentityBaseUrl="@Authority" PreviewUrl="@OrgPreviewUrl" Key="@($"org-branding-{_selected.Id:N}")" />
-        <TemplateEditor @key="_selected.Id" UserId="Info.UserId" Scope="CustomisationScope.Organisation" ScopeId="_selected.Id" Heading="@L["Messages for {0}", _selected.Name].Value"
+        <TemplateEditor @key="@($"templates-{_selected.Id:N}")" UserId="Info.UserId" Scope="CustomisationScope.Organisation" ScopeId="_selected.Id" Heading="@L["Messages for {0}", _selected.Name].Value"
                         PreviewHeading="@Info.AppName" Key="@($"org-templates-{_selected.Id:N}")" />
       }
     </section>

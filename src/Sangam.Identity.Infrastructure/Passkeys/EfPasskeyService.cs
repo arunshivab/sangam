@@ -30,6 +30,7 @@ public sealed class EfPasskeyService : IPasskeyService
     private readonly IHttpContextAccessor _http;
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
+    private readonly Accounts.SecurityNotices? _notices;
 
     /// <summary>Initialises the service.</summary>
     /// <param name="db">Database.</param>
@@ -39,8 +40,10 @@ public sealed class EfPasskeyService : IPasskeyService
     /// <param name="audit">Audit writer.</param>
     /// <param name="clock">Clock.</param>
     /// <param name="configuration">Configuration (<c>Sangam:Passkeys:Enabled</c>).</param>
-    public EfPasskeyService(SangamDbContext db, UserManager<SangamUser> users, IPasskeyHandler<SangamUser> handler, IHttpContextAccessor http, IAuditWriter audit, IClock clock, IConfiguration configuration)
+    /// <param name="notices">Security notices to the person (R7); none when null.</param>
+    public EfPasskeyService(SangamDbContext db, UserManager<SangamUser> users, IPasskeyHandler<SangamUser> handler, IHttpContextAccessor http, IAuditWriter audit, IClock clock, IConfiguration configuration, Accounts.SecurityNotices? notices = null)
     {
+        _notices = notices;
         ArgumentNullException.ThrowIfNull(configuration);
         _db = db ?? throw new ArgumentNullException(nameof(db));
         _users = users ?? throw new ArgumentNullException(nameof(users));
@@ -145,6 +148,11 @@ public sealed class EfPasskeyService : IPasskeyService
         _db.PasskeyCredentials.Add(row);
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await _audit.WriteAsync(new AuditEntry(AuditActions.UserPasskeyAdd, AuditActorType.User, userId, TargetType: "user", TargetId: userId, Metadata: JsonSerializer.Serialize(new Dictionary<string, string> { ["name"] = row.Name, ["synced"] = row.IsBackupEligible ? "yes" : "no" })), cancellationToken).ConfigureAwait(false);
+        if (_notices is not null)
+        {
+            await _notices.SendAsync(MessageTemplateKinds.PasskeyAddedNotice, user, cancellationToken).ConfigureAwait(false);
+        }
+
         return new PasskeyResult(true, $"Passkey “{row.Name}” added. You can now sign in with it.", userId);
     }
 
@@ -225,7 +233,8 @@ public sealed class EfPasskeyService : IPasskeyService
             return false;
         }
 
-        if (await _users.FindByIdAsync(userId.ToString("D")).ConfigureAwait(false) is SangamUser user)
+        SangamUser? user = await _users.FindByIdAsync(userId.ToString("D")).ConfigureAwait(false);
+        if (user is not null)
         {
             await _users.RemovePasskeyAsync(user, record.CredentialId).ConfigureAwait(false);
         }
@@ -233,6 +242,11 @@ public sealed class EfPasskeyService : IPasskeyService
         record.RevokedAt = _clock.UtcNow;
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await _audit.WriteAsync(new AuditEntry(AuditActions.UserPasskeyRemove, AuditActorType.User, userId, TargetType: "user", TargetId: userId, Metadata: JsonSerializer.Serialize(new Dictionary<string, string> { ["name"] = record.Name })), cancellationToken).ConfigureAwait(false);
+        if (_notices is not null && user is not null)
+        {
+            await _notices.SendAsync(MessageTemplateKinds.PasskeyRemovedNotice, user, cancellationToken).ConfigureAwait(false);
+        }
+
         return true;
     }
 

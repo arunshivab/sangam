@@ -23,26 +23,28 @@ else
   {
     <section class="sg-panel" data-panel="alerts">
       <h2 class="sg-h2">@L["Alerts"]</h2>
-      <table class="sg-table">
-        <thead><tr><th>@L["Condition"]</th><th>@L["Opened"]</th><th>@L["State"]</th></tr></thead>
-        <tbody>
-          @foreach (AlertRow alert in s.Alerts)
-          {
-            <tr>
-              <td>@alert.Summary<span class="sg-sub sg-mono">@alert.Key</span></td>
-              <td class="sg-mono">@When(alert.OpenedAt)</td>
-              <td>@if (alert.ResolvedAt is DateTimeOffset resolved)
-                  {
-                    <span class="sg-ok">@L["resolved {0}", When(resolved)]</span>
-                  }
-                  else
-                  {
-                    <span class="sg-warn">@L["open"]</span>
-                  }</td>
-            </tr>
-          }
-        </tbody>
-      </table>
+      <div class="sg-table-wrap">
+        <table class="sg-table">
+          <thead><tr><th>@L["Condition"]</th><th>@L["Opened"]</th><th>@L["State"]</th></tr></thead>
+          <tbody>
+            @foreach (AlertRow alert in s.Alerts)
+            {
+              <tr>
+                <td>@alert.Summary<span class="sg-sub sg-mono">@alert.Key</span></td>
+                <td class="sg-mono">@When(alert.OpenedAt)</td>
+                <td>@if (alert.ResolvedAt is DateTimeOffset resolved)
+                    {
+                      <span class="sg-ok">@L["resolved {0}", When(resolved)]</span>
+                    }
+                    else
+                    {
+                      <span class="sg-warn">@L["open"]</span>
+                    }</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
     </section>
   }
 
@@ -246,6 +248,27 @@ else
       else
       {
         <dt>@L["State"]</dt><dd class="sg-muted">@L["not set up: every audit event stays live until the archive is configured"]</dd>
+      }
+    </dl>
+  </section>
+
+  <section class="sg-panel" data-panel="siem">
+    <h2 class="sg-h2">@L["SIEM streaming"]</h2>
+    <dl class="sg-facts">
+      @if (s.Siem is SiemStatus siem)
+      {
+        <dt>@L["Receiver"]</dt><dd><span class="sg-mono">@siem.Receiver</span> · @siem.Format.ToUpperInvariant() · @(siem.Tls ? L["TLS"] : L["no TLS"])</dd>
+        <dt>@L["Sent"]</dt><dd>@L["{0} events, up to audit event {1}", siem.Sent.ToString("N0", CultureInfo.CurrentCulture), siem.LastId.ToString(CultureInfo.InvariantCulture)]</dd>
+        <dt>@L["Waiting"]</dt><dd class="@(siem.Lag > 1000 ? "sg-warn-text" : null)">@L["{0} events", siem.Lag.ToString("N0", CultureInfo.CurrentCulture)]</dd>
+        <dt>@L["Last checked"]</dt><dd>@When(siem.CheckedAt)</dd>
+        @if (siem.LastError is string error)
+        {
+          <dt>@L["Last error"]</dt><dd class="sg-warn-text">@(siem.LastErrorAt is DateTimeOffset at ? When(at) + " · " : string.Empty)<span class="sg-mono">@error</span></dd>
+        }
+      }
+      else
+      {
+        <dt>@L["State"]</dt><dd class="sg-muted">@L["off: audit events stay in Sangam's audit log only (Sangam:Siem)"]</dd>
       }
     </dl>
   </section>

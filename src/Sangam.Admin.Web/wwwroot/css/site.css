@@ -43,7 +43,7 @@ h1[tabindex="-1"]:focus { outline: none; box-shadow: none; }
   padding: 3px 7px;
   border-radius: 3px;
   background: var(--sg-ochre);
-  color: #1A1206;
+  color: #FFFFFF; /* R7: 5.0:1 (dark text was 3.7:1; WCAG 1.4.3) */
   font: 600 10px/1 var(--sg-font-mono);
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -225,3 +225,7 @@ h1[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 .sg-timeline .sg-sub { display: block; margin-top: 2px; }
 .sg-check { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; margin: 6px 0 10px; }
 textarea.sg-input { width: 100%; min-height: 4.5em; resize: vertical; font: inherit; }
+
+/* R7 (WCAG 1.4.3): the language picker on the dark console reads at 7.2:1 (the shared slate was 2.8:1). */
+.sg-lang-footer .sg-lang-item { color: var(--c-muted); }
+.sg-lang-footer .sg-lang-item--current { color: var(--c-text); }

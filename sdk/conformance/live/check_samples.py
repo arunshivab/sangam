@@ -29,10 +29,17 @@ def sql(q):
     return r.stdout.strip()
 
 
+_last_step = [-1]
+
+
 def totp():
     if 30 - time.time() % 30 < 4:
         time.sleep(5)
-    h = hmac.new(base64.b32decode(KEY), struct.pack('>Q', int(time.time()) // 30), hashlib.sha1).digest()
+    # Since R7 Sangam accepts each authenticator code once (ASVS V2.8.4): wait for a step not used yet.
+    while int(time.time()) // 30 <= _last_step[0]:
+        time.sleep(1)
+    _last_step[0] = int(time.time()) // 30
+    h = hmac.new(base64.b32decode(KEY), struct.pack('>Q', _last_step[0]), hashlib.sha1).digest()
     o = h[-1] & 15
     return '%06d' % ((struct.unpack('>I', h[o:o + 4])[0] & 0x7fffffff) % 1000000)
 

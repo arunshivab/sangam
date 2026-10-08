@@ -75,6 +75,20 @@ public sealed class ManagementServiceTests : IAsyncLifetime
     }
 
     [PostgresFact]
+    public async Task OverLongOrMissingValues_AreRefusedWithAReason_NotADatabaseError()
+    {
+        // R7 (ASVS V5.1.3): these used to reach the database and come back as a 500.
+        EfManagementService mgmt = Create(out _);
+        Assert.Equal(ManagementStatus.Invalid, (await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor with { DisplayName = new string('x', 201) }, ManagementActor.Api)).Status);
+        Assert.Equal(ManagementStatus.Invalid, (await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor with { Description = new string('x', 501) }, ManagementActor.Api)).Status);
+        Assert.Equal(ManagementStatus.Invalid, (await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor with { Permissions = null! }, ManagementActor.Api)).Status);
+        Assert.Equal(ManagementStatus.Invalid, (await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor with { Permissions = [.. Enumerable.Range(0, 101).Select(i => "p" + i)] }, ManagementActor.Api)).Status);
+        Assert.Equal(ManagementStatus.Invalid, (await mgmt.UpsertOrganisationAsync(_appId, Guid.NewGuid(), new OrganisationUpsert(new string('x', 201), "hospital", null, null), ManagementActor.Api)).Status);
+        Assert.Equal(ManagementStatus.Invalid, (await mgmt.UpsertOrganisationAsync(_appId, Guid.NewGuid(), new OrganisationUpsert("Big", "hospital", null, "{\"x\":\"" + new string('x', 9000) + "\"}"), ManagementActor.Api)).Status);
+        Assert.Equal(ManagementStatus.Ok, (await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor with { DisplayName = new string('x', 200) }, ManagementActor.Api)).Status);
+    }
+
+    [PostgresFact]
     public async Task Roles_AreInvisibleToOtherApps()
     {
         EfManagementService mgmt = Create(out _);

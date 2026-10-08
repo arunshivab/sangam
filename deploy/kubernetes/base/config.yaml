@@ -1,0 +1,53 @@
+# Settings every Sangam host shares; the same keys as deploy/production/docker-compose.yml. Secrets are never here:
+# they are files mounted at /run/secrets (README, "Secrets").
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sangam-common
+  namespace: sangam
+data:
+  ASPNETCORE_ENVIRONMENT: Production
+  SANGAM_SECRETS_DIR: /run/secrets
+  # The ingress controller's pods forward the client address; trust only the cluster's pod network.
+  Sangam__ForwardedHeaders__KnownNetworks: 10.0.0.0/8
+  Sangam__Authority: https://id.sangamid.in
+  Sangam__PortalUrl: https://account.sangamid.in
+  Sangam__DataProtection__Certificates__0__Path: /run/secrets/keyring_current.pfx
+  Sangam__Sms__Enabled: "false"
+  Sangam__Anjal__BaseUrl: SET-ANJAL-API-URL
+  Sangam__Anjal__FromAddress: no-reply@sangamid.in
+  Sangam__Passwords__BreachCheck__Enabled: "false"
+  Sangam__Passwords__BreachCheck__ListPath: /var/lib/sangam/pwned/pwned-passwords.bin
+---
+# The identity server's own settings (deploy/production/docker-compose.yml, service "identity").
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sangam-identity
+  namespace: sangam
+data:
+  Sangam__Issuer: https://id.sangamid.in
+  Sangam__Monitoring__HostName: identity
+  # Each replica evaluates; one at a time keeps the alert books (ClusterLock, R7).
+  Sangam__Monitoring__Evaluate: "true"
+  Sangam__Monitoring__ExpectedHosts: identity,portal,admin,partner
+  Sangam__Monitoring__TlsHosts: id.sangamid.in,account.sangamid.in,admin.sangamid.in,partners.sangamid.in
+  Sangam__Monitoring__AnjalHealthUrl: SET-ANJAL-HEALTH-URL
+  Sangam__Alerts__Emails: SET-FOUNDER-ALERT-EMAIL
+  Sangam__Alerts__Mobiles: SET-FOUNDER-ALERT-MOBILE
+  Sangam__Passkeys__RpId: id.sangamid.in
+  Sangam__Passkeys__Origins: https://id.sangamid.in
+  Sangam__Certificates__Signing__0__Path: /run/secrets/signing_current.pfx
+  Sangam__Certificates__Encryption__0__Path: /run/secrets/encryption_current.pfx
+  Sangam__Audit__Directory: /var/lib/sangam/audit-archive
+  Sangam__Audit__CertificatePath: /run/secrets/audit_archive.crt
+  Sangam__Clients__portal__ClientId: sangam-portal
+  Sangam__Clients__portal__Kind: portal
+  Sangam__Clients__portal__BaseUrl: https://account.sangamid.in/
+  Sangam__Clients__admin__ClientId: sangam-admin
+  Sangam__Clients__admin__Kind: console
+  Sangam__Clients__admin__BaseUrl: https://admin.sangamid.in/
+  Sangam__Clients__partner__ClientId: sangam-partner
+  Sangam__Clients__partner__Kind: partner
+  Sangam__Clients__partner__BaseUrl: https://partners.sangamid.in/
+  Sangam__Registration__InvitationOnly: "true"

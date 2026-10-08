@@ -149,3 +149,90 @@ jobs:
       - name: Java (sangam-client, sangam-spring, sample)
         working-directory: sdk/java
         run: mvn -B -ntp verify
+
+  # R7 (SGM-503): known vulnerabilities in every dependency and in the container image. Fails on high or critical.
+  # Not yet a required check: add "security" to the ruleset once it has passed on main.
+  security:
+    name: security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up .NET (from global.json)
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: NuGet packages, direct and transitive
+        run: |
+          dotnet restore Sangam.sln
+          bash tools/security/dotnet-vulnerable.sh Sangam.sln
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: npm (sdk/js)
+        working-directory: sdk/js
+        run: |
+          npm ci
+          npm audit --audit-level=high
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Python (sdk/python, with every extra)
+        working-directory: sdk/python
+        run: |
+          pip install pip-audit -e ".[test,fastapi,flask]"
+          pip-audit --skip-editable
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Java dependencies resolved for the scanner
+        working-directory: sdk/java
+        # install first: the sibling modules (sangam-client) are not on Maven Central, only in this reactor.
+        run: mvn -B -ntp -q -DskipTests install dependency:resolve dependency:resolve-plugins
+
+      # Reviewed exceptions are in .trivyignore.yaml; the kind overlay's test-only services are not scanned.
+      - name: Trivy, the repository (every lockfile and pom, secrets, Dockerfile, Kubernetes manifests)
+        run: >
+          docker run --rm -v "$PWD:/src:ro" -v "$HOME/.m2/repository:/root/.m2/repository:ro" -w /src
+          ghcr.io/aquasecurity/trivy:0.75.0 fs --exit-code 1 --severity HIGH,CRITICAL
+          --scanners vuln,secret,misconfig --offline-scan --ignorefile .trivyignore.yaml
+          --skip-dirs deploy/kubernetes/overlays/kind .
+
+      - name: Trivy, the identity image (fixable high and critical)
+        run: |
+          docker build --target app -t sangam/identity:ci .
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock ghcr.io/aquasecurity/trivy:0.75.0 \
+            image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed sangam/identity:ci
+
+      # ASVS V1.14.3: the third-party images the production stack runs, reported (not failing: fixes are upstream's).
+      - name: Trivy, the caddy and postgres images (report)
+        run: |
+          for image in caddy:2 postgres:18; do
+            docker run --rm ghcr.io/aquasecurity/trivy:0.75.0 image --severity HIGH,CRITICAL --ignore-unfixed "$image"
+          done
+
+      # PR-33: the Kubernetes manifests render and match the Kubernetes schemas.
+      - name: Kubernetes manifests (kustomize and kubeconform)
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz | tar xz kubeconform
+          for overlay in deploy/kubernetes/base deploy/kubernetes/overlays/kind; do
+            kubectl kustomize "$overlay" | ./kubeconform -strict -summary -ignore-missing-schemas
+          done
+
+      # ASVS V14.2.5: a software bill of materials (CycloneDX) for the repository and for the identity image.
+      - name: SBOM (CycloneDX)
+        run: |
+          mkdir -p sbom
+          docker run --rm -v "$PWD:/src:ro" -v "$PWD/sbom:/out" -v "$HOME/.m2/repository:/root/.m2/repository:ro" \
+            ghcr.io/aquasecurity/trivy:0.75.0 fs --offline-scan --format cyclonedx --output /out/sangam-repository.cdx.json /src
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/sbom:/out" \
+            ghcr.io/aquasecurity/trivy:0.75.0 image --format cyclonedx --output /out/sangam-identity-image.cdx.json sangam/identity:ci
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sbom
+          path: sbom

@@ -60,6 +60,9 @@ h1[tabindex="-1"]:focus { outline: none; }
 .sg-greeting { margin: 0 0 var(--sg-space-2); font: 400 38px/1.15 var(--sg-font-display); color: var(--sg-teal); }
 .sg-subtitle { margin: 0 0 var(--sg-space-6); font: 400 15px/1.6 var(--sg-font-body); color: var(--sg-slate); max-width: 62ch; }
 .sg-page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sg-space-6); margin-bottom: var(--sg-space-6); }
+/* R7: on a phone the page actions go under the title, so a long label (Malayalam) wraps inside the screen. */
+.sg-page-actions { min-width: 0; max-width: 100%; }
+@media (max-width: 640px) { .sg-page-head { flex-direction: column; gap: var(--sg-space-3); } }
 .sg-page-title { margin: 0; font: 400 30px/1.2 var(--sg-font-display); color: var(--sg-teal); }
 .sg-page-subtitle { margin: 6px 0 0; font: 400 14px/1.6 var(--sg-font-body); color: var(--sg-slate); }
 .sg-note { font: 400 13px/1.6 var(--sg-font-body); color: var(--sg-slate); }
@@ -202,14 +205,17 @@ h1[tabindex="-1"]:focus { outline: none; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: var(--sg-control-height);
-  padding: 0 var(--sg-space-4);
+  /* R7: a minimum height, so a long label (Malayalam on a phone) wraps inside the button instead of leaving the screen. */
+  min-height: var(--sg-control-height);
+  max-width: 100%;
+  padding: 6px var(--sg-space-4);
+  text-align: center;
   border-radius: var(--sg-radius-control);
   font: 500 var(--sg-body-14) var(--sg-font-body);
   cursor: pointer;
   border: 1px solid transparent;
 }
-.sg-btn--row { height: 36px; padding: 0 var(--sg-space-3); }
+.sg-btn--row { min-height: 36px; padding: 4px var(--sg-space-3); }
 .sg-btn--primary { background: var(--sg-teal); color: var(--sg-cream); }
 .sg-btn--secondary { background: var(--sg-surface); border-color: var(--sg-teal); color: var(--sg-teal); }
 .sg-btn--danger { background: var(--sg-surface); border-color: var(--sg-danger); color: var(--sg-danger); }

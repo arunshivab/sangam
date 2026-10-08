@@ -531,7 +531,7 @@ public sealed partial class EfAdminService : IAdminService
             // Platform capacity: no actor app, or the person's log would call a Sangam operator
             // "an administrator of" the application. The application is named in the metadata.
             new AuditEntry(AuditActions.AppAdminGrant, AuditActorType.Admin, operatorUserId, null, "user", user.Id,
-                Metadata: OwnerGrantMetadata(app.DisplayName), IpAddress: ipAddress),
+                Metadata: OwnerGrantMetadata(app.DisplayName, app.Id), IpAddress: ipAddress),
             cancellationToken).ConfigureAwait(false);
 
         return AdminResult.Ok(user.TwoFactorEnabled
@@ -811,6 +811,7 @@ public sealed partial class EfAdminService : IAdminService
     private static string Reason(string reason)
         => System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string> { ["reason"] = reason.Trim() });
 
-    private static string OwnerGrantMetadata(string appName)
-        => System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string> { ["role"] = "owner", ["app"] = appName });
+    /// <summary>The application is named, and identified (R7) so its evidence pack can include the grant.</summary>
+    private static string OwnerGrantMetadata(string appName, Guid appId)
+        => System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string> { ["role"] = "owner", ["app"] = appName, ["app_id"] = appId.ToString("D") });
 }

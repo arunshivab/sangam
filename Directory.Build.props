@@ -16,7 +16,8 @@
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <IsPackable>false</IsPackable>
-    <VersionPrefix>0.1.0</VersionPrefix>
+    <VersionPrefix>1.0.0</VersionPrefix>
+    <VersionSuffix>rc.1</VersionSuffix>
   </PropertyGroup>
 
   <PropertyGroup>

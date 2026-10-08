@@ -172,6 +172,9 @@ public sealed class PasskeyServiceTests : IAsyncLifetime
 
         IPasskeyService passkeys = Service();
         Assert.True(await passkeys.RemoveAsync(_userId, (await passkeys.ListAsync(_userId))[0].Id));
+
+        // R7 (ASVS V2.5.5): the person is told.
+        Assert.Equal("A passkey was removed from your Sangam account", _provider.GetRequiredService<Infrastructure.Services.InMemoryEmailOutbox>().LatestFor("kaveri@example.in")!.Message.Subject);
         phone.Counter = 2;
         Assert.False((await SignInAsync(Service(), phone)).Succeeded);
     }

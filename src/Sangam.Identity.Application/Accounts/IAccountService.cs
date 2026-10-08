@@ -103,6 +103,18 @@ public interface IAccountService
     /// <param name="cancellationToken">Cancellation token.</param>
     Task<AccountResult> ReplacePasswordAsync(Guid userId, string newPassword, string reason, string? ipAddress, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// A signed-in person changes their password (R7, ASVS V2.1.6): the current one must be right — a wrong one counts
+    /// towards the account's lockout like a wrong sign-in — and the new one must differ and meet every policy. Other
+    /// sessions end and the person is told by e-mail.
+    /// </summary>
+    /// <param name="userId">The person.</param>
+    /// <param name="currentPassword">The password they have now.</param>
+    /// <param name="newPassword">The new password.</param>
+    /// <param name="ipAddress">Client IP.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<AccountResult> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword, string? ipAddress, CancellationToken cancellationToken = default);
+
     /// <summary>Changes the user's own sign-in preference.</summary>
     /// <param name="userId">The user.</param>
     /// <param name="preference">New preference.</param>

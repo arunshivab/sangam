@@ -34,6 +34,39 @@ public sealed class ManagementApiTests
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", plain);
         using HttpResponseMessage forbidden = await client.SendAsync(request);
         Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+
+        // R7 (ASVS V7.2.2): the refusal is in the audit log, with the client and the path; the anonymous call is not.
+        using IServiceScope scope = _factory.Services.CreateScope();
+        Infrastructure.Persistence.SangamDbContext db = scope.ServiceProvider.GetRequiredService<Infrastructure.Persistence.SangamDbContext>();
+        Domain.Entities.AuditEvent denied = await db.AuditEvents.AsNoTracking().OrderByDescending(e => e.Id).FirstAsync(e => e.Action == Domain.AuditActions.AccessDenied);
+        using JsonDocument detail = JsonDocument.Parse(denied.Metadata);
+        Assert.Equal("/api/v1/roles", detail.RootElement.GetProperty("path").GetString());
+        Assert.Equal(DevelopmentSeeder.SampleClientId, detail.RootElement.GetProperty("client_id").GetString());
+    }
+
+    [PostgresFact]
+    public async Task AWrongClientSecret_IsRefused_AndAudited_WithoutTheSecret()
+    {
+        // R7 (ASVS V7.2.1): client authentication failures inside OpenIddict reach the audit log.
+        using HttpClient client = _factory.CreateClient();
+        using FormUrlEncodedContent form = new(new Dictionary<string, string>
+        {
+            ["grant_type"] = "client_credentials",
+            ["client_id"] = DevelopmentSeeder.SampleClientId,
+            ["client_secret"] = "not-the-secret-r7",
+            ["scope"] = "sangam.manage",
+        });
+        using HttpResponseMessage response = await client.PostAsync(new Uri("/connect/token", UriKind.Relative), form);
+        Assert.False(response.IsSuccessStatusCode);
+        Assert.Contains("invalid_client", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+
+        using IServiceScope scope = _factory.Services.CreateScope();
+        Infrastructure.Persistence.SangamDbContext db = scope.ServiceProvider.GetRequiredService<Infrastructure.Persistence.SangamDbContext>();
+        Domain.Entities.AuditEvent refused = await db.AuditEvents.AsNoTracking().OrderByDescending(e => e.Id).FirstAsync(e => e.Action == Domain.AuditActions.TokenRefused);
+        using JsonDocument detail = JsonDocument.Parse(refused.Metadata);
+        Assert.Equal("invalid_client", detail.RootElement.GetProperty("error").GetString());
+        Assert.Equal(DevelopmentSeeder.SampleClientId, detail.RootElement.GetProperty("client_id").GetString());
+        Assert.DoesNotContain("not-the-secret-r7", refused.Metadata, StringComparison.Ordinal);
     }
 
     [PostgresFact]

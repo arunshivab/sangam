@@ -29,24 +29,34 @@ public sealed partial class ProvisioningWorker : BackgroundService
     /// <summary>One round: hand out events, deliver what is due, and (when <paramref name="reconcile"/>) reconcile.</summary>
     /// <param name="reconcile">Whether to reconcile targets that are due.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    public async Task RunOnceAsync(bool reconcile, CancellationToken cancellationToken)
+    /// <returns>Whether this process ran the round (false when another replica holds it, R7).</returns>
+    public async Task<bool> RunOnceAsync(bool reconcile, CancellationToken cancellationToken)
     {
         using IServiceScope scope = _scopes.CreateScope();
+        return await Sangam.Identity.Infrastructure.Maintenance.ClusterLock.TryRunAsync(
+            scope.ServiceProvider.GetRequiredService<Sangam.Identity.Infrastructure.Persistence.SangamDbContext>(),
+            Sangam.Identity.Infrastructure.Maintenance.ClusterLock.Provisioning,
+            ct => RoundAsync(scope.ServiceProvider, reconcile, ct),
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task RoundAsync(IServiceProvider services, bool reconcile, CancellationToken cancellationToken)
+    {
         if (reconcile)
         {
             // PR-25: time-limited memberships end within a minute of their time (they stop counting at once).
-            await scope.ServiceProvider.GetRequiredService<Sangam.Identity.Infrastructure.Tenancy.MembershipExpiry>().RunAsync(cancellationToken).ConfigureAwait(false);
+            await services.GetRequiredService<Sangam.Identity.Infrastructure.Tenancy.MembershipExpiry>().RunAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        await scope.ServiceProvider.GetRequiredService<AppEventDispatcher>().DispatchAsync(cancellationToken).ConfigureAwait(false);
-        ScimProvisioner scim = scope.ServiceProvider.GetRequiredService<ScimProvisioner>();
+        await services.GetRequiredService<AppEventDispatcher>().DispatchAsync(cancellationToken).ConfigureAwait(false);
+        ScimProvisioner scim = services.GetRequiredService<ScimProvisioner>();
         if (reconcile)
         {
             await scim.ReconcileDueAsync(cancellationToken).ConfigureAwait(false);
         }
 
         await scim.DeliverDueAsync(cancellationToken).ConfigureAwait(false);
-        await scope.ServiceProvider.GetRequiredService<WebhookSender>().DeliverDueAsync(cancellationToken).ConfigureAwait(false);
+        await services.GetRequiredService<WebhookSender>().DeliverDueAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

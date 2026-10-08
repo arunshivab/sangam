@@ -5,10 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light" />
   <meta name="robots" content="noindex" />
-  @if (ViewData["Refresh"] is int refresh && refresh > 0)
-  {
-    <meta http-equiv="refresh" content="@refresh" />
-  }
   <title>@ViewData["Title"] · sangam</title>
   <link rel="icon" href="/_content/Sangam.Web.Shared/icons/favicon.ico" sizes="16x16 32x32" />
   <link rel="icon" type="image/svg+xml" href="/_content/Sangam.Web.Shared/icons/favicon.svg" />
@@ -19,7 +15,7 @@
   <link rel="stylesheet" href="/css/site.css" />
   <link rel="stylesheet" href="/_content/Sangam.Web.Shared/css/sangam-i18n.css" />
 </head>
-<body>
+<body data-reveal-show="@L["Show password"]" data-reveal-hide="@L["Hide password"]" data-reveal-show-short="@L["Show"]" data-reveal-hide-short="@L["Hide"]">
   @{
       // PR-19: an application's (or organisation's) checked accent recolours the primary button and links only.
       var branding = ViewData["Branding"] as Sangam.Identity.Application.Customisation.LoginBranding;
@@ -61,5 +57,6 @@
     }
     <component type="typeof(LanguagePicker)" render-mode="Static" param-ReturnUrl="@(Context.Request.Path + Context.Request.QueryString)" param-Class="@("sg-auth-lang")" />
   </footer>
+  <script src="/js/password-reveal.js" defer></script>
 </body>
 </html>

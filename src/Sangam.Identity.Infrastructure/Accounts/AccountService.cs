@@ -34,6 +34,7 @@ public sealed class AccountService : IAccountService
     private readonly CurrentApplication _current;
     private readonly SmsNoticeSender _smsNotices;
     private readonly UnknownAddressLockout _unknownLockout;
+    private readonly SecurityNotices? _notices;
     private static string? _dummyHash;
     private static readonly Dictionary<string, string> NoValues = new(StringComparer.Ordinal);
 
@@ -50,6 +51,7 @@ public sealed class AccountService : IAccountService
     /// <param name="current">The application this request acts for, if any (PR-19).</param>
     /// <param name="smsNotices">Texts notices that carry no code (D-L).</param>
     /// <param name="unknownLockout">Lockout for addresses with no account (D-L).</param>
+    /// <param name="notices">Security notices to the person (R7); none when null.</param>
     public AccountService(
         UserManager<SangamUser> users,
         SangamDbContext db,
@@ -62,8 +64,10 @@ public sealed class AccountService : IAccountService
         IMessageTemplates templates,
         CurrentApplication current,
         SmsNoticeSender smsNotices,
-        UnknownAddressLockout unknownLockout)
+        UnknownAddressLockout unknownLockout,
+        SecurityNotices? notices = null)
     {
+        _notices = notices;
         _unknownLockout = unknownLockout ?? throw new ArgumentNullException(nameof(unknownLockout));
         _smsNotices = smsNotices ?? throw new ArgumentNullException(nameof(smsNotices));
         _templates = templates ?? throw new ArgumentNullException(nameof(templates));
@@ -120,7 +124,7 @@ public sealed class AccountService : IAccountService
         PasswordStrengthResult strength = PasswordStrength.Evaluate(command.Password);
         if (!strength.MeetsPolicy)
         {
-            errors.Add(new AccountError("Password", PasswordPolicyMessage));
+            errors.Add(new AccountError("Password", PolicyMessage(strength)));
         }
 
         if (string.IsNullOrWhiteSpace(command.TermsVersion))
@@ -317,12 +321,12 @@ public sealed class AccountService : IAccountService
         {
             // D-L: an address with no account behaves like one with a wrong password — the same hashing time, and
             // the same lockout after the same number of tries — so neither reveals whether an account exists.
-            bool locked = _unknownLockout.IsLockedOut(email);
+            bool locked = await _unknownLockout.IsLockedOutAsync(email, cancellationToken).ConfigureAwait(false);
             if (!locked)
             {
                 _dummyHash ??= _users.PasswordHasher.HashPassword(new SangamUser(), "Sangam-timing-equaliser-1!");
                 _ = _users.PasswordHasher.VerifyHashedPassword(new SangamUser(), _dummyHash, password);
-                locked = _unknownLockout.RecordFailure(email);
+                locked = await _unknownLockout.RecordFailureAsync(email, cancellationToken).ConfigureAwait(false);
                 if (locked)
                 {
                     SangamMetrics.LockoutCount.Add(1);
@@ -447,9 +451,10 @@ public sealed class AccountService : IAccountService
     {
         ArgumentNullException.ThrowIfNull(newPassword);
         ArgumentNullException.ThrowIfNull(reason);
-        if (!PasswordStrength.Evaluate(newPassword).MeetsPolicy)
+        PasswordStrengthResult replacement = PasswordStrength.Evaluate(newPassword);
+        if (!replacement.MeetsPolicy)
         {
-            return AccountResult.Failed(new AccountError("NewPassword", PasswordPolicyMessage));
+            return AccountResult.Failed(new AccountError("NewPassword", PolicyMessage(replacement)));
         }
 
         SangamUser? user = await _users.FindByIdAsync(userId.ToString("D")).ConfigureAwait(false);
@@ -477,9 +482,40 @@ public sealed class AccountService : IAccountService
 
         await _audit.WriteAsync(
             new AuditEntry(AuditActions.UserPasswordChange, AuditActorType.User, user.Id, TargetType: "user", TargetId: user.Id,
-                Metadata: reason is "too_short" or "breached" ? $"{{\"reason\":\"{reason}\"}}" : "{}", IpAddress: ipAddress),
+                Metadata: reason is "too_short" or "breached" or "changed" ? $"{{\"reason\":\"{reason}\"}}" : "{}", IpAddress: ipAddress),
             cancellationToken).ConfigureAwait(false);
+        await NoticeAsync(MessageTemplateKinds.PasswordChangedNotice, user, cancellationToken).ConfigureAwait(false);
         return AccountResult.Success;
+    }
+
+    /// <inheritdoc />
+    public async Task<AccountResult> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword, string? ipAddress, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(currentPassword);
+        ArgumentNullException.ThrowIfNull(newPassword);
+        SangamUser? user = await _users.FindByIdAsync(userId.ToString("D")).ConfigureAwait(false);
+        if (user is null || user.Status != UserStatus.Active)
+        {
+            return AccountResult.Failed(new AccountError("CurrentPassword", "Your password could not be changed. Sign in again and retry."));
+        }
+
+        if (await _users.IsLockedOutAsync(user).ConfigureAwait(false))
+        {
+            return AccountResult.Failed(new AccountError("CurrentPassword", "Too many failed attempts. Try again in 15 minutes, or reset your password."));
+        }
+
+        if (!await _users.CheckPasswordAsync(user, currentPassword).ConfigureAwait(false))
+        {
+            await _users.AccessFailedAsync(user).ConfigureAwait(false);
+            await _audit.WriteAsync(
+                new AuditEntry(AuditActions.UserPasswordChange, AuditActorType.User, user.Id, TargetType: "user", TargetId: user.Id,
+                    Metadata: "{\"reason\":\"changed\",\"outcome\":\"wrong_current_password\"}", IpAddress: ipAddress),
+                cancellationToken).ConfigureAwait(false);
+            return AccountResult.Failed(new AccountError("CurrentPassword", "That is not your current password."));
+        }
+
+        await _users.ResetAccessFailedCountAsync(user).ConfigureAwait(false);
+        return await ReplacePasswordAsync(userId, newPassword, "changed", ipAddress, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -492,7 +528,7 @@ public sealed class AccountService : IAccountService
         PasswordStrengthResult strength = PasswordStrength.Evaluate(newPassword);
         if (!strength.MeetsPolicy)
         {
-            return AccountResult.Failed(new AccountError("NewPassword", PasswordPolicyMessage));
+            return AccountResult.Failed(new AccountError("NewPassword", PolicyMessage(strength)));
         }
 
         SangamUser? user = await _users.FindByEmailAsync(email.Trim()).ConfigureAwait(false);
@@ -526,8 +562,15 @@ public sealed class AccountService : IAccountService
         await _audit.WriteAsync(
             new AuditEntry(AuditActions.UserPasswordResetComplete, AuditActorType.User, user.Id, TargetType: "user", TargetId: user.Id, IpAddress: ipAddress),
             cancellationToken).ConfigureAwait(false);
+        await NoticeAsync(MessageTemplateKinds.PasswordChangedNotice, user, cancellationToken).ConfigureAwait(false);
         return AccountResult.Success;
     }
+
+    private static string PolicyMessage(PasswordStrengthResult strength)
+        => strength.IsNotTooLong ? PasswordPolicyMessage : "Use at most 128 characters.";
+
+    private Task NoticeAsync(string kind, SangamUser user, CancellationToken cancellationToken)
+        => _notices?.SendAsync(kind, user, cancellationToken) ?? Task.CompletedTask;
 
     /// <inheritdoc />
     public async Task SetSignInPreferenceAsync(Guid userId, SignInMode preference, CancellationToken cancellationToken = default)
@@ -556,7 +599,7 @@ public sealed class AccountService : IAccountService
 
     private static UserSummary ToSummary(SangamUser u) => new(
         u.Id, u.FirstName, u.LastName, u.Email ?? string.Empty, u.EmailConfirmed, u.PhoneNumber, u.PhoneNumberConfirmed,
-        u.DateOfBirth, u.Gender, u.Locale, u.SignInPreference, u.CreatedAt, u.TwoFactorEnabled, u.UpdatedAt, u.SecurityStamp ?? string.Empty, u.IdentityVerifiedAt);
+        u.DateOfBirth, u.Gender, u.Locale, u.SignInPreference, u.CreatedAt, u.TwoFactorEnabled, u.UpdatedAt, u.SecurityStamp ?? string.Empty, u.IdentityVerifiedAt, u.Status);
 
     private static string PurposeJson(OneTimeCodePurpose purpose, string? reason = null)
         => reason is null

@@ -294,8 +294,10 @@ filters **restated verbatim** in Sandalwood mono, and "Clear all filters".
 ## Interactions & behaviour
 
 - **No JavaScript on auth.** Every state in screens 1–8 is a distinct server response. Countdown =
-  `meta refresh` + server-rendered label. Strength meter may be progressively enhanced client-side,
-  but must render server-side after a failed post.
+  server-rendered label; `js/resend.js` counts it down in the page and enables the button at zero
+  (R7: the earlier `meta refresh` reloaded the page and could wipe a half-typed code, WCAG 2.2.1).
+  Without JavaScript the button works, and pressed early the server says to wait. Strength meter may
+  be progressively enhanced client-side, but must render server-side after a failed post.
 - **No layout shift**, ever: all state pairs (disabled/enabled, empty/filled strength, met/unmet
   requirement, passive/challenge Turnstile) occupy identical boxes.
 - **Hover** (150 ms, colour only): primary → `#1F5A52`; secondary → ground `#E7EDEA`; tertiary →

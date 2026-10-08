@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Sangam.Identity.Application.Abstractions;
 using Sangam.Identity.Application.Monitoring;
 using Sangam.Identity.Domain.Entities;
+using Sangam.Identity.Infrastructure.Maintenance;
 using Sangam.Identity.Infrastructure.Persistence;
 
 namespace Sangam.Identity.Infrastructure.Monitoring;
@@ -65,49 +66,55 @@ public sealed partial class AlertEvaluator : BackgroundService
         SangamDbContext db = await contexts.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         await using (db.ConfigureAwait(false))
         {
-            DateTimeOffset now = snapshot.At;
-            Dictionary<string, MonitoringAlert> known = await db.MonitoringAlerts.ToDictionaryAsync(a => a.Key, cancellationToken).ConfigureAwait(false);
-            List<AlertCondition> toSend = [];
-            foreach (AlertCondition condition in open)
-            {
-                if (!known.TryGetValue(condition.Key, out MonitoringAlert? row))
-                {
-                    db.MonitoringAlerts.Add(new MonitoringAlert { Key = condition.Key, Summary = condition.Summary, OpenedAt = now, LastSentAt = now });
-                    toSend.Add(condition);
-                }
-                else if (row.ResolvedAt is not null)
-                {
-                    (row.OpenedAt, row.ResolvedAt, row.LastSentAt, row.Summary) = (now, null, now, condition.Summary);
-                    toSend.Add(condition);
-                }
-                else if (now - row.LastSentAt >= TimeSpan.FromHours(Math.Max(1, _options.Alerts.RepeatHours)))
-                {
-                    (row.LastSentAt, row.Summary) = (now, condition.Summary);
-                    toSend.Add(condition);
-                }
-            }
-
-            HashSet<string> openKeys = [.. open.Select(o => o.Key)];
-            foreach (MonitoringAlert row in known.Values.Where(r => r.ResolvedAt is null && !openKeys.Contains(r.Key)))
-            {
-                row.ResolvedAt = now;
-            }
-
-            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            foreach (AlertCondition condition in toSend)
-            {
-                await alerts.SendAsync(condition.Summary, condition.Details, cancellationToken).ConfigureAwait(false);
-            }
-
-            if (now - _prunedAt > TimeSpan.FromHours(1))
-            {
-                _prunedAt = now;
-                DateTimeOffset cutoff = now.AddDays(-Math.Max(7, _options.RetentionDays));
-                await db.MetricPoints.Where(p => p.Minute < cutoff).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
-            }
+            // R7 (PR-33): with two identity replicas evaluating, one at a time keeps the books, so an alert is sent once.
+            await ClusterLock.TryRunAsync(db, ClusterLock.Alerts, ct => KeepBooksAsync(db, alerts, open, snapshot.At, ct), cancellationToken).ConfigureAwait(false);
         }
 
         return open;
+    }
+
+    private async Task KeepBooksAsync(SangamDbContext db, IPlatformAlerts alerts, IReadOnlyList<AlertCondition> open, DateTimeOffset at, CancellationToken cancellationToken)
+    {
+        DateTimeOffset now = at;
+        Dictionary<string, MonitoringAlert> known = await db.MonitoringAlerts.ToDictionaryAsync(a => a.Key, cancellationToken).ConfigureAwait(false);
+        List<AlertCondition> toSend = [];
+        foreach (AlertCondition condition in open)
+        {
+            if (!known.TryGetValue(condition.Key, out MonitoringAlert? row))
+            {
+                db.MonitoringAlerts.Add(new MonitoringAlert { Key = condition.Key, Summary = condition.Summary, OpenedAt = now, LastSentAt = now });
+                toSend.Add(condition);
+            }
+            else if (row.ResolvedAt is not null)
+            {
+                (row.OpenedAt, row.ResolvedAt, row.LastSentAt, row.Summary) = (now, null, now, condition.Summary);
+                toSend.Add(condition);
+            }
+            else if (now - row.LastSentAt >= TimeSpan.FromHours(Math.Max(1, _options.Alerts.RepeatHours)))
+            {
+                (row.LastSentAt, row.Summary) = (now, condition.Summary);
+                toSend.Add(condition);
+            }
+        }
+
+        HashSet<string> openKeys = [.. open.Select(o => o.Key)];
+        foreach (MonitoringAlert row in known.Values.Where(r => r.ResolvedAt is null && !openKeys.Contains(r.Key)))
+        {
+            row.ResolvedAt = now;
+        }
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        foreach (AlertCondition condition in toSend)
+        {
+            await alerts.SendAsync(condition.Summary, condition.Details, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (now - _prunedAt > TimeSpan.FromHours(1))
+        {
+            _prunedAt = now;
+            DateTimeOffset cutoff = now.AddDays(-Math.Max(7, _options.RetentionDays));
+            await db.MetricPoints.Where(p => p.Minute < cutoff).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <inheritdoc />

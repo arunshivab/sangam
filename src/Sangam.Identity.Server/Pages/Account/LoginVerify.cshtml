@@ -2,7 +2,6 @@
 @model LoginVerifyModel
 @{
     ViewData["Title"] = L["Enter your sign-in code"].Value;
-    if (Model.RefreshSeconds > 0) { ViewData["Refresh"] = Model.RefreshSeconds; }
 }
 
 <section class="sg-card">
@@ -41,7 +40,7 @@
     <input type="hidden" asp-for="ReturnUrl" />
     @if (Model.ResendIn > 0)
     {
-      <button type="submit" class="sg-btn sg-btn--secondary sg-btn--block" disabled>@L["Resend in {0}", Model.ResendLabel]</button>
+      <button type="submit" class="sg-btn sg-btn--secondary sg-btn--block" data-resend-in="@Model.ResendIn" data-resend-wait="@L["Resend in {0}", "{0}"]" data-resend-ready="@L["Resend sign-in code"]">@L["Resend in {0}", Model.ResendLabel]</button>
     }
     else
     {
@@ -60,3 +59,4 @@
   <div class="sg-cord-rule" role="presentation"></div>
   <p class="sg-alt"><a href="/login">@L["Use a different account"]</a> @L["· Stuck?"] <a href="mailto:help@sangamid.in">help@sangamid.in</a></p>
 </section>
+<script src="/js/resend.js" defer></script>

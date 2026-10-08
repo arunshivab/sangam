@@ -53,6 +53,18 @@ public sealed partial class EfManagementService : IManagementService
             return ManagementResult.Invalid<RoleDto>("A display name is required.");
         }
 
+        // R7 (ASVS V5.1.3): limits the columns hold, checked here, so a long value is a 400 with the reason and never a
+        // database error.
+        if (input.DisplayName.Length > 200 || input.Description?.Length > 500)
+        {
+            return ManagementResult.Invalid<RoleDto>("A display name is at most 200 characters, and a description at most 500.");
+        }
+
+        if (input.Permissions is null || input.Permissions.Count > 100 || input.Permissions.Any(p => string.IsNullOrWhiteSpace(p) || p.Length > 100))
+        {
+            return ManagementResult.Invalid<RoleDto>("Permissions are a list of at most 100, each 1 to 100 characters.");
+        }
+
         if (input.OrgId is Guid scopeOrg && !await _db.Organisations.AnyAsync(o => o.Id == scopeOrg, cancellationToken).ConfigureAwait(false))
         {
             return ManagementResult.NotFound<RoleDto>("The organisation to scope the role to does not exist.");
@@ -132,9 +144,14 @@ public sealed partial class EfManagementService : IManagementService
             return ManagementResult.Invalid<OrganisationDto>("A name is required.");
         }
 
-        if (input.Metadata is not null && !IsJsonObject(input.Metadata))
+        if (input.Name.Length > 200)
         {
-            return ManagementResult.Invalid<OrganisationDto>("Metadata must be a JSON object.");
+            return ManagementResult.Invalid<OrganisationDto>("A name is at most 200 characters.");
+        }
+
+        if (input.Metadata is not null && (input.Metadata.Length > 8192 || !IsJsonObject(input.Metadata)))
+        {
+            return ManagementResult.Invalid<OrganisationDto>("Metadata must be a JSON object of at most 8 KB.");
         }
 
         DateTimeOffset now = _clock.UtcNow;

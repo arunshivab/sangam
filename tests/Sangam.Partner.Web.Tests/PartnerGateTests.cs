@@ -8,6 +8,7 @@ namespace Sangam.Partner.Web.Tests;
 /// another's application. Rendered by the real host; the rules themselves are proved in the
 /// service tests, so these check that the pages hand nothing extra to the browser.
 /// </summary>
+[Collection("partner-db")]
 public sealed class PartnerGateTests : IClassFixture<PartnerFactory>
 {
     private readonly PartnerFactory _factory;

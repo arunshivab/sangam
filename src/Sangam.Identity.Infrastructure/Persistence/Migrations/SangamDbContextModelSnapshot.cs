@@ -3014,6 +3014,34 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                     b.ToTable("sms_messages", (string)null);
                 });
 
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.UnknownAddressAttempt", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("key");
+
+                    b.Property<int>("Failures")
+                        .HasColumnType("integer")
+                        .HasColumnName("failures");
+
+                    b.Property<DateTimeOffset>("LastSeen")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_seen");
+
+                    b.Property<DateTimeOffset?>("LockedUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("locked_until");
+
+                    b.HasKey("Key")
+                        .HasName("pk_unknown_address_attempts");
+
+                    b.HasIndex("LastSeen")
+                        .HasDatabaseName("idx_unknown_address_attempts_last_seen");
+
+                    b.ToTable("unknown_address_attempts", (string)null);
+                });
+
             modelBuilder.Entity("Sangam.Identity.Domain.Entities.UserAttributeDefinition", b =>
                 {
                     b.Property<Guid>("Id")

@@ -1,0 +1,13 @@
+# D-A: the identity server's audit archive (encrypted files, a year after each event). Every identity replica mounts
+# it and one at a time writes, so it needs ReadWriteMany storage (an NFS or file-storage class). Back it up with the
+# database (SGM-603).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sangam-audit-archive
+  namespace: sangam
+spec:
+  accessModes: [ReadWriteMany]
+  resources:
+    requests:
+      storage: 10Gi

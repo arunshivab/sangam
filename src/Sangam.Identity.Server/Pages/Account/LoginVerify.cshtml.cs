@@ -74,9 +74,6 @@ public sealed class LoginVerifyModel : AuthPageModel
     /// <summary>Countdown as m:ss.</summary>
     public string ResendLabel => TimeSpan.FromSeconds(ResendIn).ToString(@"m\:ss", CultureInfo.InvariantCulture);
 
-    /// <summary>Meta-refresh interval so the disabled button re-enables without JavaScript.</summary>
-    public int RefreshSeconds => ResendIn > 0 ? ResendIn : 0;
-
     /// <summary>Renders the code form, or sends the user back to sign-in when there is no pending flow.</summary>
     /// <param name="cancellationToken">Cancellation token.</param>
     public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken)

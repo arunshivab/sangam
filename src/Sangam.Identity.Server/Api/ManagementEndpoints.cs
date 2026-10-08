@@ -41,7 +41,8 @@ public static class ManagementEndpoints
     {
         ArgumentNullException.ThrowIfNull(endpoints);
 
-        RouteGroupBuilder api = endpoints.MapGroup("/api/v1").RequireAuthorization(PolicyName).DisableAntiforgery().RequireRateLimiting(AuthRateLimiting.ApiPolicy);
+        RouteGroupBuilder api = endpoints.MapGroup("/api/v1").RequireAuthorization(PolicyName).DisableAntiforgery().RequireRateLimiting(AuthRateLimiting.ApiPolicy)
+            .AddEndpointFilter(AccessDeniedAudit.FilterAsync);
 
         api.MapGet("/roles", async (ClaimsPrincipal caller, IAppDirectory apps, IManagementService mgmt, CancellationToken ct) =>
         {

@@ -62,12 +62,14 @@ builder.Services.AddAuthentication(options =>
         o.Cookie.Name = "sangam.portal";
         o.Cookie.HttpOnly = true;
         o.Cookie.SameSite = SameSiteMode.Lax;
-        o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        o.Cookie.SecurePolicy = SecurityHeaders.CookiePolicy(builder.Environment.EnvironmentName);
         o.ExpireTimeSpan = TimeSpan.FromHours(8);
         o.SlidingExpiration = true;
+        o.Events.OnValidatePrincipal = SessionLifetime.ValidateAsync;
     })
     .AddOpenIdConnect(o =>
     {
+        o.Events.OnTicketReceived = SessionLifetime.StampAsync;
         // The portal is just another partner app: authorization code + PKCE, same as LiPi HIS.
         o.Authority = authority;
         o.ClientId = clientId;
@@ -89,6 +91,7 @@ builder.Services.AddAuthentication(options =>
         o.TokenValidationParameters.RoleClaimType = Claims.Role;
     });
 
+builder.Services.AddAntiforgery(o => o.Cookie.SecurePolicy = SecurityHeaders.CookiePolicy(builder.Environment.EnvironmentName));
 builder.Services.AddAuthorization(o => o.FallbackPolicy = o.DefaultPolicy);
 
 builder.Services.AddSangamWebHosting(builder.Configuration);
@@ -98,6 +101,10 @@ app.Lifetime.ApplicationStarted.Register(StartupGuard.MarkStarted);
 
 // Behind Caddy: take the client address from trusted proxies only, before anything reads it (OI-037).
 app.UseForwardedHeaders();
+// R7: CSP, framing, nosniff and the other security headers on every response (SGM-503).
+// DigiLocker's sign-in page is where the verification form's answer redirects (form-action covers redirects).
+Sangam.Identity.Infrastructure.Verification.DigiLockerSettings digiLocker = Sangam.Identity.Infrastructure.Verification.DigiLockerSettings.From(app.Configuration);
+app.UseSangamSecurityHeaders(app.Environment.EnvironmentName, identityServer: false, authority, digiLocker.Enabled ? digiLocker.AuthorizeUrl : null);
 app.UseSangamRequestMetrics();
 
 if (!app.Environment.IsDevelopment())
@@ -118,16 +125,24 @@ app.MapStaticAssets();
 
 // Sign-out here ends the portal cookie and then the Sangam session (RP-initiated).
 app.MapGet("/signout", (HttpContext context) =>
-    Results.SignOut(
+{
+    context.Response.Headers["Clear-Site-Data"] = SecurityHeaders.ClearSiteData;
+    return Results.SignOut(
         new Microsoft.AspNetCore.Authentication.AuthenticationProperties { RedirectUri = "/" },
-        [CookieAuthenticationDefaults.AuthenticationScheme, OpenIdConnectDefaults.AuthenticationScheme]))
+        [CookieAuthenticationDefaults.AuthenticationScheme, OpenIdConnectDefaults.AuthenticationScheme]);
+})
     .AllowAnonymous();
 
 // PR-26: verifying the name, date of birth and gender through DigiLocker.
 app.MapDigiLocker();
 
 app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+    .AddInteractiveServerRenderMode(o =>
+{
+    // R7: Blazor would send its own Content-Security-Policy (frame-ancestors 'self') on every page, in place of the
+    // full policy the security headers set; that one already forbids all framing.
+    o.ContentSecurityFrameAncestorsPolicy = null;
+});
 
 app.MapSangamLanguageSwitch();
 app.MapSangamHealth();

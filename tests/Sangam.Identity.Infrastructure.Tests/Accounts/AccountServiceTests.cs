@@ -183,6 +183,29 @@ public sealed class AccountServiceTests : IAsyncLifetime
     }
 
     [PostgresFact]
+    public async Task AnAddressWithNoAccount_LocksOutAfterFive_CountedAcrossReplicas()
+    {
+        // D-L, R7 (PR-33): the same five tries as a real account, however many identity-server replicas take them.
+        await using ServiceProvider replica = Replica();
+        using IServiceScope one = _provider.CreateScope();
+        using IServiceScope two = replica.CreateScope();
+        IAccountService[] hosts = [one.ServiceProvider.GetRequiredService<IAccountService>(), two.ServiceProvider.GetRequiredService<IAccountService>()];
+
+        for (int i = 0; i < 4; i++)
+        {
+            Assert.Equal(SignInStatus.InvalidCredentials, (await hosts[i % 2].CheckPasswordAsync("ghost@example.in", "wrong", null, null, null)).Status);
+        }
+
+        Assert.Equal(SignInStatus.LockedOut, (await hosts[0].CheckPasswordAsync("ghost@example.in", "wrong", null, null, null)).Status);
+        Assert.Equal(SignInStatus.LockedOut, (await hosts[1].CheckPasswordAsync("GHOST@example.in", "wrong", null, null, null)).Status);
+        Assert.Equal(SignInStatus.InvalidCredentials, (await hosts[1].CheckPasswordAsync("someone-else@example.in", "wrong", null, null, null)).Status);
+
+        // Only a hash of the address is kept.
+        await using SangamDbContext db = _pg.CreateContext();
+        Assert.DoesNotContain(await db.UnknownAddressAttempts.Select(a => a.Key).ToListAsync(), k => k.Contains("ghost", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [PostgresFact]
     public async Task SignInModes_UserPreferenceAndAppPolicyDriveTheFlow()
     {
         using IServiceScope scope = _provider.CreateScope();
@@ -226,9 +249,68 @@ public sealed class AccountServiceTests : IAsyncLifetime
 
         AccountResult ok = await accounts.ResetPasswordAsync(Rajesh.Email, code, "Brand-New-Password-2026!", null);
         Assert.True(ok.Succeeded);
+
+        // R7 (ASVS V2.5.5): the person is told, in case it was not them.
+        SentEmail notice = outbox.LatestFor(Rajesh.Email)!;
+        Assert.Equal("Your Sangam password was changed", notice.Message.Subject);
+        Assert.Contains("help@sangamid.in", notice.Message.TextBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("Brand-New", notice.Message.TextBody, StringComparison.Ordinal);
         Assert.NotEqual(stampBefore, (await accounts.FindByEmailAsync(Rajesh.Email))!.SecurityStamp);
         Assert.Equal(SignInStatus.InvalidCredentials, (await accounts.CheckPasswordAsync(Rajesh.Email, Rajesh.Password, null, null, null)).Status);
         Assert.Equal(SignInStatus.Succeeded, (await accounts.CheckPasswordAsync(Rajesh.Email, "Brand-New-Password-2026!", null, null, null)).Status);
+    }
+
+    [PostgresFact]
+    public async Task ChangePassword_NeedsTheCurrentOne_CountsWrongOnes_AndTellsThePerson()
+    {
+        // R7 (ASVS V2.1.6, V2.5.5).
+        using IServiceScope scope = _provider.CreateScope();
+        IAccountService accounts = scope.ServiceProvider.GetRequiredService<IAccountService>();
+        InMemoryEmailOutbox outbox = scope.ServiceProvider.GetRequiredService<InMemoryEmailOutbox>();
+        Guid userId = await RegisterVerifiedAsync(scope, Rajesh);
+        string stampBefore = (await accounts.FindByIdAsync(userId))!.SecurityStamp;
+
+        AccountResult wrong = await accounts.ChangePasswordAsync(userId, "Not-My-Password-1!", "Brand-New-Password-2026!", null);
+        Assert.False(wrong.Succeeded);
+        Assert.Equal("CurrentPassword", wrong.Errors[0].Field);
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            Assert.Equal(1, (await db.Users.SingleAsync(u => u.Id == userId)).AccessFailedCount);
+        }
+
+        Assert.False((await accounts.ChangePasswordAsync(userId, Rajesh.Password, Rajesh.Password, null)).Succeeded);
+        Assert.False((await accounts.ChangePasswordAsync(userId, Rajesh.Password, "short", null)).Succeeded);
+
+        AccountResult ok = await accounts.ChangePasswordAsync(userId, Rajesh.Password, "Brand-New-Password-2026!", null);
+        Assert.True(ok.Succeeded);
+        Assert.NotEqual(stampBefore, (await accounts.FindByIdAsync(userId))!.SecurityStamp);
+        Assert.Equal(SignInStatus.Succeeded, (await accounts.CheckPasswordAsync(Rajesh.Email, "Brand-New-Password-2026!", null, null, null)).Status);
+        Assert.Equal("Your Sangam password was changed", outbox.LatestFor(Rajesh.Email)!.Message.Subject);
+
+        for (int i = 0; i < 5; i++)
+        {
+            await accounts.ChangePasswordAsync(userId, "Not-My-Password-1!", "Another-Password-2026!", null);
+        }
+
+        AccountResult locked = await accounts.ChangePasswordAsync(userId, "Brand-New-Password-2026!", "Another-Password-2026!", null);
+        Assert.False(locked.Succeeded);
+        Assert.Contains("Too many failed attempts", locked.Errors[0].Message, StringComparison.Ordinal);
+    }
+
+    private ServiceProvider Replica()
+    {
+        ServiceCollection services = new();
+        services.AddLogging();
+        services.AddDataProtection();
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:Sangam"] = _pg.ConnectionString,
+            ["Sangam:Email:UseOutbox"] = "true",
+            ["Sangam:PasswordHashing:MemoryKiB"] = "8192",
+            ["Sangam:PasswordHashing:Iterations"] = "2",
+        }).Build();
+        services.AddSangamInfrastructure(configuration);
+        return services.BuildServiceProvider();
     }
 
     private static async Task<Guid> RegisterVerifiedAsync(IServiceScope scope, RegisterUserCommand command)

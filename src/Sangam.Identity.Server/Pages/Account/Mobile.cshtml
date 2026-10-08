@@ -2,7 +2,6 @@
 @model MobileModel
 @{
     ViewData["Title"] = L["Verify your mobile"].Value;
-    if (Model.ResendIn > 0) { ViewData["Refresh"] = Model.ResendIn; }
 }
 
 <section class="sg-card">
@@ -25,7 +24,7 @@
     <form method="post" asp-page-handler="Send">
       @if (Model.ResendIn > 0)
       {
-        <button type="submit" class="sg-btn sg-btn--secondary sg-btn--block" disabled>@L["Text another code in {0}", Model.ResendLabel]</button>
+        <button type="submit" class="sg-btn sg-btn--secondary sg-btn--block" data-resend-in="@Model.ResendIn" data-resend-wait="@L["Text another code in {0}", "{0}"]" data-resend-ready="@L["Text me a code"]">@L["Text another code in {0}", Model.ResendLabel]</button>
       }
       else
       {
@@ -44,3 +43,4 @@
 
   <a class="sg-tertiary" href="/account">@L["Back to your account"]</a>
 </section>
+<script src="/js/resend.js" defer></script>

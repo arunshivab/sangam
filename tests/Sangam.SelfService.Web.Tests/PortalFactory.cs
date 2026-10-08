@@ -101,7 +101,8 @@ public sealed class PortalFactory : WebApplicationFactory<Program>
             LastName = "Menon",
             DateOfBirth = new DateOnly(1986, 6, 12),
             Gender = Gender.Male,
-            PhoneNumber = "+9198765" + Random.Shared.Next(10000, 99999).ToString(System.Globalization.CultureInfo.InvariantCulture),
+            // Nine random digits: this test database keeps users between runs, so five digits began to collide.
+            PhoneNumber = "+919" + Random.Shared.NextInt64(100_000_000, 1_000_000_000).ToString(System.Globalization.CultureInfo.InvariantCulture),
             SecurityStamp = Guid.NewGuid().ToString("N"),
             CreatedAt = now.AddDays(-40),
             UpdatedAt = now,
@@ -199,4 +200,13 @@ public sealed class PortalFactory : WebApplicationFactory<Program>
             return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), SchemeName)));
         }
     }
+}
+
+/// <summary>
+/// The portal test classes share one database; run them one at a time. Each class has its own host, and
+/// two hosts migrating a fresh database at once collide (as on CI, where the database starts empty).
+/// </summary>
+[CollectionDefinition("portal-db")]
+public sealed class PortalDatabaseGroup
+{
 }

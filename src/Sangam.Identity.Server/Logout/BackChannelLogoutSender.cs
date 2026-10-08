@@ -53,6 +53,16 @@ public sealed partial class BackChannelLogoutSender : BackgroundService
     {
         using IServiceScope scope = _scopes.CreateScope();
         SangamDbContext db = scope.ServiceProvider.GetRequiredService<SangamDbContext>();
+        int delivered = 0;
+
+        // R7 (PR-33): one replica at a time, so a logout is never posted twice.
+        await Sangam.Identity.Infrastructure.Maintenance.ClusterLock.TryRunAsync(db, Sangam.Identity.Infrastructure.Maintenance.ClusterLock.BackChannelLogout,
+            async ct => delivered = await DeliverAsync(db, ct).ConfigureAwait(false), cancellationToken).ConfigureAwait(false);
+        return delivered;
+    }
+
+    private async Task<int> DeliverAsync(SangamDbContext db, CancellationToken cancellationToken)
+    {
         DateTimeOffset now = DateTimeOffset.UtcNow;
         var due = await db.LogoutNotifications
             .Where(n => n.SentAt == null && n.Attempts < MaxAttempts && n.NextAttemptAt <= now)

@@ -231,6 +231,56 @@ public sealed partial class AuthScreenTests
     }
 
     [PostgresFact]
+    public async Task ChangePassword_AsksForTheCurrentOne_KeepsThisDeviceSignedIn_AndTellsThePerson()
+    {
+        // R7 (ASVS V2.1.6, V2.5.5).
+        using BrowserSession s = new(_factory);
+        string email = $"change-{Guid.NewGuid():N}@example.in";
+        string mobile = Random.Shared.NextInt64(7000000000, 9999999999).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        InMemoryEmailOutbox outbox = _factory.Services.GetRequiredService<InMemoryEmailOutbox>();
+
+        using (BrowserSession anonymous = new(_factory))
+        {
+            (HttpStatusCode anonSt, _) = await anonymous.GetAsync("/account/password");
+            Assert.Equal(HttpStatusCode.Found, anonSt);
+        }
+
+        await RegisterAndVerifyAsync(s, outbox, email, mobile);
+        (HttpStatusCode getSt, string form) = await s.GetAsync("/account/password");
+        Assert.Equal(HttpStatusCode.OK, getSt);
+        Assert.Contains("autocomplete=\"current-password\"", form, StringComparison.Ordinal);
+
+        (HttpStatusCode wrongSt, _, string wrongHtml) = await s.PostFormAsync("/account/password", new Dictionary<string, string>
+        {
+            ["CurrentPassword"] = "Not-My-Password-1!",
+            ["NewPassword"] = "Brand-New-Password-2026!",
+            ["ConfirmPassword"] = "Brand-New-Password-2026!",
+        });
+        Assert.Equal(HttpStatusCode.OK, wrongSt);
+        Assert.Contains("That is not your current password.", wrongHtml, StringComparison.Ordinal);
+
+        (HttpStatusCode okSt, string? okLoc, _) = await s.PostFormAsync("/account/password", new Dictionary<string, string>
+        {
+            ["CurrentPassword"] = "Correct-Horse-2026!",
+            ["NewPassword"] = "Brand-New-Password-2026!",
+            ["ConfirmPassword"] = "Brand-New-Password-2026!",
+        });
+        Assert.Equal(HttpStatusCode.Found, okSt);
+        Assert.StartsWith("/account?passwordChanged=", okLoc, StringComparison.OrdinalIgnoreCase);
+        (HttpStatusCode accSt, string accHtml) = await s.GetAsync(okLoc!);
+        Assert.Equal(HttpStatusCode.OK, accSt);
+        Assert.Contains("Your password is changed.", accHtml, StringComparison.Ordinal);
+        Assert.Equal("Your Sangam password was changed", outbox.LatestFor(email)!.Message.Subject);
+
+        await s.PostFormAsync("/logout", []);
+        Assert.Equal("\"cache\", \"storage\"", s.LastPostHeaders["Clear-Site-Data"]);
+        (_, string? oldLoc, _) = await s.PostFormAsync("/login", new Dictionary<string, string> { ["Email"] = email, ["Password"] = "Correct-Horse-2026!" });
+        Assert.Null(oldLoc);
+        (_, string? newLoc, _) = await s.PostFormAsync("/login", new Dictionary<string, string> { ["Email"] = email, ["Password"] = "Brand-New-Password-2026!" });
+        Assert.Equal("/account", newLoc);
+    }
+
+    [PostgresFact]
     public async Task TwoStepAndPasswordlessModes_RouteThroughTheCodeScreen()
     {
         using BrowserSession s = new(_factory);
@@ -350,7 +400,7 @@ public sealed partial class AuthScreenTests
         {
             UserManager<SangamUser> users = scope.ServiceProvider.GetRequiredService<UserManager<SangamUser>>();
             SangamUser user = (await users.FindByEmailAsync(email))!;
-            current = await AuthenticatorApp.CurrentCodeAsync(users, user);
+            current = await AuthenticatorApp.CurrentCodeAsync(users, user, TimeSpan.FromSeconds(30));
         }
 
         (_, string? afterCode, _) = await s.PostFormAsync("/login/authenticator", new Dictionary<string, string> { ["Code"] = current });

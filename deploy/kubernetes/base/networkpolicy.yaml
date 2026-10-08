@@ -1,0 +1,21 @@
+# Nothing reaches a Sangam pod except the ingress controller (and the kubelet's probes). Egress is left open: the
+# hosts call the database, Anjal, DigiLocker and partners' SCIM, webhook and logout addresses, which the outbound
+# guard checks (https, no private addresses). Narrow egress to the database and the internet where the cluster's
+# network plugin allows it (ASVS V12.6.1, SGM-908 R-08).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sangam-ingress-only
+  namespace: sangam
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: sangam
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+      ports:
+        - port: 8080

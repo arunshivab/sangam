@@ -1,3 +1,4 @@
+using System.Reflection;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Sangam.Identity.Domain;
 using Sangam.Identity.Infrastructure.Seeding;
@@ -54,6 +55,7 @@ public sealed class IndexModel : PageModel
 
         Host = _configuration["Sangam:Host"] ?? "id.sangamid.in";
         Operator = _configuration["Sangam:Operator"] ?? PlatformOwner.Name;
-        Version = (typeof(IndexModel).Assembly.GetName().Version ?? new Version(0, 0, 0)).ToString(3);
+        // The full version, release candidate included (1.0.0-rc.1), without the commit after "+".
+        Version = typeof(IndexModel).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "0.0.0";
     }
 }

@@ -11,10 +11,14 @@ namespace Sangam.Identity.Server.Tests;
 /// </summary>
 internal static class AuthenticatorApp
 {
-    public static async Task<string> CurrentCodeAsync(UserManager<SangamUser> users, SangamUser user)
+    /// <param name="users">User manager.</param>
+    /// <param name="user">The person.</param>
+    /// <param name="ahead">How far ahead: a code works once (R7), so a second sign-in in the same 30 seconds uses the
+    /// next one, as the phone would show it a moment later.</param>
+    public static async Task<string> CurrentCodeAsync(UserManager<SangamUser> users, SangamUser user, TimeSpan ahead = default)
     {
         string key = (await users.GetAuthenticatorKeyAsync(user))!;
-        long step = DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 30;
+        long step = (DateTimeOffset.UtcNow + ahead).ToUnixTimeSeconds() / 30;
         byte[] counter = BitConverter.GetBytes(step);
         if (BitConverter.IsLittleEndian)
         {

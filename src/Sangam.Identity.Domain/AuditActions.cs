@@ -329,4 +329,14 @@ public static class AuditActions
 
     /// <summary>A webhook delivery gave up after its retries; the endpoint is marked failing.</summary>
     public const string WebhookFailing = "webhook.failing";
+
+    /// <summary>An administrator downloaded an application's evidence pack (PR-32).</summary>
+    public const string EvidenceExport = "evidence.export";
+
+    /// <summary>A signed-in caller was refused by an access check — the management API (R7, ASVS V7.2.2).</summary>
+    public const string AccessDenied = "access.denied";
+
+    /// <summary>The token, introspection or revocation endpoint refused a client or a grant — a wrong client secret, or
+    /// a spent, expired or replayed code or refresh token (R7, ASVS V7.2.1).</summary>
+    public const string TokenRefused = "token.refused";
 }

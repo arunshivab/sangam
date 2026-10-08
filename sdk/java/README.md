@@ -7,7 +7,7 @@ conformance vectors (`sdk/conformance/vectors.json`):
   `StepUp.satisfies(...)` and `StepUp.challenge(...)` (RFC 9470), `WebhookVerifier.verify(...)`, `TokenVerifier`
   (Nimbus JOSE + JWT), `ManagementClient`, and the shared audit event: `SangamAudit.build(...)`,
   `SangamAudit.validate(...)`, `AuditBuffer`.
-- **`in.sangamid:sangam-spring`** — Spring Boot 3.5 and Spring Security 6.5: sign-in with PKCE, `@RequireStepUp`,
+- **`in.sangamid:sangam-spring`** — Spring Boot 4.1 and Spring Security 7.1 (Java 17 or later): sign-in with PKCE, `@RequireStepUp`,
   `SangamUsers.current()` and `SangamAuditRecorder`.
 
 ```properties

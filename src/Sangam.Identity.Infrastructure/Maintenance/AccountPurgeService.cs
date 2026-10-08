@@ -94,6 +94,15 @@ public sealed partial class AccountPurgeService : BackgroundService
         using IServiceScope scope = _scopeFactory.CreateScope();
         SangamDbContext db = scope.ServiceProvider.GetRequiredService<SangamDbContext>();
         IAuditWriter audit = scope.ServiceProvider.GetRequiredService<IAuditWriter>();
+        (int Accounts, int Sessions) result = (0, 0);
+
+        // R7 (PR-33, OI-047): every host runs this service; one at a time sweeps, so no account is purged twice.
+        await ClusterLock.TryRunAsync(db, ClusterLock.Maintenance, async ct => result = await SweepAsync(db, audit, ct).ConfigureAwait(false), cancellationToken).ConfigureAwait(false);
+        return result;
+    }
+
+    private async Task<(int Accounts, int Sessions)> SweepAsync(SangamDbContext db, IAuditWriter audit, CancellationToken cancellationToken)
+    {
         DateTimeOffset now = _clock.UtcNow;
 
         List<SangamUser> due = await db.Users
@@ -131,6 +140,9 @@ public sealed partial class AccountPurgeService : BackgroundService
         DateTimeOffset log = now - TimeSpan.FromDays(90);
         await db.ScimDeliveries.Where(d => d.CompletedAt != null && d.CompletedAt < log).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
         await db.WebhookDeliveries.Where(d => d.CompletedAt != null && d.CompletedAt < log).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+
+        // R7: counts of wrong passwords for unknown addresses are forgotten after a day.
+        await Accounts.UnknownAddressLockout.PruneAsync(db, now, cancellationToken).ConfigureAwait(false);
 
         return (due.Count, sessions);
     }

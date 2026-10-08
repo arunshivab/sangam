@@ -12,6 +12,9 @@ internal sealed partial class BrowserSession : IDisposable
 {
     private readonly HttpClient _client;
 
+    /// <summary>The response headers of the last <see cref="PostFormAsync"/>.</summary>
+    public IReadOnlyDictionary<string, string> LastPostHeaders { get; private set; } = new Dictionary<string, string>();
+
     public BrowserSession(WebApplicationFactory<Program> factory)
     {
         _client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false, HandleCookies = true });
@@ -66,6 +69,7 @@ internal sealed partial class BrowserSession : IDisposable
         string target = handler is null ? path : path + (path.Contains('?', StringComparison.Ordinal) ? "&" : "?") + "handler=" + handler;
         using FormUrlEncodedContent content = new(form);
         using HttpResponseMessage response = await _client.PostAsync(new Uri(target, UriKind.Relative), content);
+        LastPostHeaders = response.Headers.ToDictionary(h => h.Key, h => string.Join(", ", h.Value), StringComparer.OrdinalIgnoreCase);
         return (response.StatusCode, response.Headers.Location?.ToString(), await response.Content.ReadAsStringAsync());
     }
 

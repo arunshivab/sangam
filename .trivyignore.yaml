@@ -1,0 +1,8 @@
+# Trivy findings reviewed and accepted (R7). Each entry says why; anything not listed here fails the security job.
+misconfigurations:
+  - id: KSV-0109
+    paths:
+      - deploy/kubernetes/base/config.yaml
+    statement: >-
+      The rule matches key names (SANGAM_SECRETS_DIR, Sangam__Passwords__BreachCheck__*, Sangam__Passkeys__*). Their
+      values are a directory, switches and host names, not secrets; every secret is a mounted file (README, "Secrets").

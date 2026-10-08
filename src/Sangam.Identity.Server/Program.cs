@@ -13,6 +13,7 @@ using Sangam.Identity.Server.Authentication;
 using Sangam.Identity.Server.Endpoints;
 using Sangam.Identity.Server.Saml;
 using Sangam.Shared.Constants;
+using Sangam.Web.Shared.Hosting;
 using Sangam.Web.Shared.Localization;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -79,9 +80,11 @@ if (keyRingProblem is not null)
     throw new InvalidOperationException(keyRingProblem);
 }
 
-builder.Services.AddSangamCookies();
+builder.Services.AddSangamCookies(builder.Environment.EnvironmentName);
+builder.Services.AddAntiforgery(o => o.Cookie.SecurePolicy = SecurityHeaders.CookiePolicy(builder.Environment.EnvironmentName));
 builder.Services.AddAuthRateLimiting(builder.Configuration);
 builder.Services.AddAuthorization(o => o.AddManagementPolicy());
+builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationMiddlewareResultHandler, Sangam.Identity.Server.Api.AccessDeniedAudit>();
 
 string? issuer = builder.Configuration["Sangam:Issuer"];
 bool developmentCertificates = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing");
@@ -111,6 +114,13 @@ string? auditProblem = AuditArchiveOptions.Validate(builder.Environment.Environm
 if (auditProblem is not null)
 {
     throw new InvalidOperationException(auditProblem);
+}
+
+// PR-32: SIEM streaming, when switched on, needs a receiver and TLS outside Development.
+string? siemProblem = Sangam.Identity.Infrastructure.Siem.SiemOptions.Validate(builder.Environment.EnvironmentName, builder.Configuration);
+if (siemProblem is not null)
+{
+    throw new InvalidOperationException(siemProblem);
 }
 
 builder.Services.AddOpenIddict()
@@ -155,6 +165,9 @@ builder.Services.AddOpenIddict()
         o.RegisterClaims(Claims.Name, Claims.GivenName, Claims.FamilyName, Claims.Birthdate, Claims.Gender, Claims.Locale, Claims.Zoneinfo, Claims.UpdatedAt,
             Claims.Email, Claims.EmailVerified, Claims.PhoneNumber, Claims.PhoneNumberVerified, SangamClaims.SessionId, SangamClaims.Orgs, SangamClaims.IdentityVerified,
             Claims.AuthenticationContextReference, Claims.AuthenticationMethodReference, Claims.AuthenticationTime);
+
+        // R7 (ASVS V7.2.1): refused clients and grants are audited.
+        o.AddTokenRefusalAudit();
 
         // PR-17: advertise the assurance levels an application may ask for with acr_values (SGM-207 §3).
         o.AddEventHandler<OpenIddict.Server.OpenIddictServerEvents.HandleConfigurationRequestContext>(handler => handler.UseInlineHandler(context =>
@@ -223,6 +236,9 @@ app.Lifetime.ApplicationStarted.Register(StartupGuard.MarkStarted);
 
 // Behind Caddy: take the client address from trusted proxies only, before anything reads it (OI-037).
 app.UseForwardedHeaders();
+// R7: CSP, framing, nosniff and the other security headers on every response (SGM-503). The identity server frames
+// applications' front-channel logout pages.
+app.UseSangamSecurityHeaders(app.Environment.EnvironmentName, identityServer: true);
 app.UseSangamRequestMetrics();
 
 if (app.Configuration.GetValue<bool>("Sangam:Database:MigrateOnStartup"))

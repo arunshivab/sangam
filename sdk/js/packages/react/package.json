@@ -1,6 +1,6 @@
 {
   "name": "@sangam/react",
-  "version": "0.15.0",
+  "version": "1.0.0-rc.1",
   "description": "Sangam for React: the signed-in person from your back end (@sangam/node), permission checks, step-up and sign-in components. Tokens stay on the server.",
   "license": "Apache-2.0",
   "type": "module",
@@ -13,7 +13,7 @@
     "test": "tsc -p tsconfig.test.json && node --test --test-reporter=spec \"dist-test/test/*.test.js\""
   },
   "peerDependencies": { "react": ">=18" },
-  "dependencies": { "@sangam/client": "0.15.0" },
+  "dependencies": { "@sangam/client": "1.0.0-rc.1" },
   "devDependencies": { "typescript": "^5.9.3", "@types/node": "^22.18.0", "@types/react": "^19.1.0", "@types/react-dom": "^19.1.0", "react": "^19.1.0", "react-dom": "^19.1.0" },
   "engines": { "node": ">=20" }
 }

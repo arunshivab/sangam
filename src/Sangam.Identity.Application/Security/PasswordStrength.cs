@@ -22,6 +22,7 @@ public enum PasswordVerdict
 /// <param name="HasDigit">Contains a digit.</param>
 /// <param name="HasSymbol">Contains a non-alphanumeric character.</param>
 /// <param name="IsNotBlocklisted">Not on the local blocklist and not a single repeated character.</param>
+/// <param name="IsNotTooLong">At most <see cref="PasswordStrength.MaximumLength"/> characters (R7, ASVS V2.1.2).</param>
 public sealed record PasswordStrengthResult(
     PasswordVerdict Verdict,
     int Segments,
@@ -30,13 +31,14 @@ public sealed record PasswordStrengthResult(
     bool HasLowercase,
     bool HasDigit,
     bool HasSymbol,
-    bool IsNotBlocklisted)
+    bool IsNotBlocklisted,
+    bool IsNotTooLong = true)
 {
     /// <summary>Contains all four character classes.</summary>
     public bool HasAllClasses => HasUppercase && HasLowercase && HasDigit && HasSymbol;
 
     /// <summary>Whether the password may be accepted at all.</summary>
-    public bool MeetsPolicy => HasMinimumLength && HasAllClasses && IsNotBlocklisted;
+    public bool MeetsPolicy => HasMinimumLength && HasAllClasses && IsNotBlocklisted && IsNotTooLong;
 
     /// <summary>The five requirement tokens shown beside the verdict, in display order.</summary>
     public IReadOnlyList<(string Label, bool Met)> Tokens
@@ -59,6 +61,10 @@ public static class PasswordStrength
 {
     /// <summary>Minimum length accepted.</summary>
     public const int MinimumLength = 8;
+
+    /// <summary>Longest password accepted when one is set (R7, ASVS V2.1.2: 64 or more allowed, over 128 refused).
+    /// Passwords set before R7 are still checked at sign-in whatever their length.</summary>
+    public const int MaximumLength = 128;
 
     /// <summary>Length at which a policy-compliant password is reported as strong.</summary>
     public const int StrongLength = 14;
@@ -83,11 +89,12 @@ public static class PasswordStrength
         bool symbol = p.Any(c => !char.IsLetterOrDigit(c));
         bool notBlocked = p.Length > 0 && !Blocklist.Contains(p) && !IsRepetitive(p);
         bool allClasses = upper && lower && digit && symbol;
+        bool notTooLong = p.Length <= MaximumLength;
 
-        if (!minimum || !allClasses || !notBlocked)
+        if (!minimum || !allClasses || !notBlocked || !notTooLong)
         {
             int weakSegments = p.Length == 0 ? 0 : 1;
-            return new PasswordStrengthResult(PasswordVerdict.Weak, weakSegments, minimum, upper, lower, digit, symbol, notBlocked);
+            return new PasswordStrengthResult(PasswordVerdict.Weak, weakSegments, minimum, upper, lower, digit, symbol, notBlocked, notTooLong);
         }
 
         int score = 2;
