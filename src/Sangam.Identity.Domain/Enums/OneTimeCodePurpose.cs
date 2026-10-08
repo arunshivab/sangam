@@ -11,4 +11,7 @@ public enum OneTimeCodePurpose
 
     /// <summary>Completes a sign-in in the <c>password_and_otp</c> or <c>otp_only</c> modes.</summary>
     SignIn = 2,
+
+    /// <summary>Confirming ownership of a new e-mail address before it replaces the current one (OI-022).</summary>
+    EmailChange = 3,
 }

@@ -336,3 +336,11 @@ input[type="date"].sg-field { min-height: var(--sg-control-height); }
 
 .sg-signed-in-as { display: flex; align-items: center; gap: var(--sg-space-3); padding: var(--sg-space-3) var(--sg-space-4); background: var(--sg-cream); border-radius: var(--sg-radius-control); }
 .sg-signed-in-label { font: 500 9px/1 var(--sg-font-mono); letter-spacing: 0.12em; color: var(--sg-slate); writing-mode: horizontal-tb; flex: none; }
+
+/* Document pages (PR-13): terms, privacy notice, help and grievances hold several paragraphs in one card. */
+.sg-doc .sg-card-body + .sg-card-body { margin-top: 12px; }
+.sg-doc ul.sg-card-body { padding-left: 20px; }
+.sg-doc dl.sg-card-body { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; }
+.sg-doc dl.sg-card-body dt { font-weight: 600; }
+.sg-doc dl.sg-card-body dd { margin: 0; }
+.sg-doc .sg-tertiary { display: inline-block; margin-top: 16px; }

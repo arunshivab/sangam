@@ -1,0 +1,34 @@
+@page "/invite/{token}"
+@model InviteModel
+@{
+    ViewData["Title"] = "Invitation";
+}
+
+<section class="sg-card">
+  @if (Model.View is null)
+  {
+    <h1 class="sg-card-title">Invitation not found</h1>
+    <p class="sg-card-body">This invitation link is not valid. Ask the person who invited you to send a new one.</p>
+  }
+  else
+  {
+    <h1 class="sg-card-title">Join @Model.View.OrgName</h1>
+    <p class="sg-card-body">You are invited to join <strong>@Model.View.OrgName</strong> in <strong>@Model.View.AppName</strong> as <strong>@Model.View.RoleName</strong>.</p>
+    @if (Model.Message is not null)
+    {
+      <partial name="_Banner" model="@((Model.Succeeded ? "success" : "danger", Model.Message))" />
+    }
+    @if (!Model.Succeeded && Model.View.State == Sangam.Identity.Application.Partners.InvitationState.Open)
+    {
+      <p class="sg-card-body">Accepting links your Sangam account to @Model.View.AppName and gives you this role. @Model.View.AppName will ask for your permission to see your details the first time you sign in to it.</p>
+      <form method="post">
+        <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">Accept the invitation</button>
+      </form>
+    }
+    else if (!Model.Succeeded)
+    {
+      <p class="sg-card-body">@Model.StateText</p>
+    }
+  }
+  <a class="sg-tertiary" href="/account">Go to your Sangam account</a>
+</section>

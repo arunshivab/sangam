@@ -51,6 +51,9 @@ internal static class AuditNarrator
         {
             AuditActions.UserRegister => "You created your Sangam account.",
             AuditActions.UserEmailVerify => "You verified your email address.",
+            AuditActions.UserEmailChangeRequest => "You asked to change your email address; a code went to the new address.",
+            AuditActions.UserEmailChange => "You changed your email address. The old address was told.",
+            AuditActions.AppInvitationAccept => "You accepted an invitation and joined an organisation in an application.",
             AuditActions.UserLoginSuccess => "You signed in" + ModeSuffix(e.Metadata) + ".",
             AuditActions.UserLoginFail => "A sign-in attempt failed" + ReasonSuffix(e.Metadata) + ".",
             AuditActions.UserLogout => "You signed out.",

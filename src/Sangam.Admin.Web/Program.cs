@@ -9,6 +9,7 @@ using Sangam.Shared.Constants;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddSangamSecretFiles();
 
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddSangamApplication();

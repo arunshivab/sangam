@@ -50,6 +50,12 @@ public sealed class SangamDbContext : IdentityUserContext<SangamUser, Guid>, IDa
     /// <summary>Audit events (append-only).</summary>
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
+    /// <summary>Invitations by e-mail to an organisation and role (PR-13).</summary>
+    public DbSet<Invitation> Invitations => Set<Invitation>();
+
+    /// <summary>Pending and completed changes of e-mail address (OI-022).</summary>
+    public DbSet<EmailChangeRequest> EmailChangeRequests => Set<EmailChangeRequest>();
+
     /// <summary>The ASP.NET Core data-protection key ring, shared by every host (OI-037).</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 

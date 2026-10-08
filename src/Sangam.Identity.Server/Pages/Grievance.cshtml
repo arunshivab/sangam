@@ -1,0 +1,28 @@
+@page "/privacy/grievance"
+@model GrievanceModel
+@{
+    ViewData["Title"] = "Raise a grievance";
+}
+
+<section class="sg-card sg-doc">
+  <h1 class="sg-card-title">Raise a grievance</h1>
+  <p class="sg-card-body">If you are unhappy with how Sangam handles your personal data, tell us. Write to:</p>
+  <dl class="sg-card-body">
+    <dt>Grievance officer</dt>
+    <dd>@(Model.OfficerName ?? "To be named before Sangam opens to the public")</dd>
+    <dt>Email</dt>
+    <dd><a href="mailto:@Model.Email">@Model.Email</a></dd>
+    @if (Model.Address is not null)
+    {
+      <dt>Post</dt>
+      <dd>@Model.Address</dd>
+    }
+  </dl>
+  <p class="sg-card-body">Write from the email address of your Sangam account, describe what happened and when, and say what you would like us to do.</p>
+  @if (Model.ResponseDays is not null)
+  {
+    <p class="sg-card-body">We will answer within @Model.ResponseDays days.</p>
+  }
+  <p class="sg-card-body">If you are not satisfied with our answer, you may complain to the Data Protection Board of India under the Digital Personal Data Protection Act, 2023.</p>
+  <p class="sg-card-body">Many things you can do yourself in <a href="/account">your account</a>: download your data, correct your details, see your activity, withdraw an app's access, and delete your account.</p>
+</section>

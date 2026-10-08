@@ -39,6 +39,23 @@ exist, so there is no production database to act on yet.
       retention periods. Unset keeps every audit event.
 - [ ] The identity server starts: it refuses without a real e-mail sender or with the outbox on.
 
+## Added by R1
+
+- [ ] Anjal's SMTP submission settings in `Sangam__Email__Smtp__*` and its account in the secret files
+      (OI-027). `Sangam:Email:Smtp:AllowedRecipients` is **empty** in production.
+- [ ] `scripts/check-mail-dns.ps1 -Domain sangamid.in -DkimSelector <selector>` passes.
+- [ ] Token certificates created, stored as secret files, and configured (`Sangam:Certificates`); the
+      server starts.
+- [ ] Two database roles: the owner runs the migrator; the hosts use the application role.
+- [ ] Migrations applied with the `migrator` image before the hosts start.
+- [ ] `scripts/backup-db.sh` in cron, with an off-site copy; `scripts/restore-drill.sh` run once and
+      its time recorded in SGM-603.
+- [ ] Telemetry collector chosen and `Sangam__Telemetry__OtlpEndpoint` set, or left unset knowingly.
+- [ ] Terms and privacy notice reviewed by counsel (OI-002) and configured (`Sangam:Legal:TermsPath`,
+      `PrivacyPath`); `/terms` and `/privacy` show them, not the pending notice.
+- [ ] Grievance officer named and configured (`Sangam:Grievance:OfficerName`, `Email`, `Address`,
+      `ResponseDays`); `/privacy/grievance` shows them.
+
 ## Bootstrapping the first owner — a deliberate, one-time act
 
 Nothing created on a developer's machine reaches production: migrations carry schema, never rows.

@@ -1,5 +1,5 @@
 # Sangam — local development reverse proxy.
-# Production Caddyfile (real hosts, ACME certificates, security headers) lands in PR-08.
+# The production Caddyfile is deploy/production/Caddyfile (PR-10).
 
 {
   local_certs

@@ -1,0 +1,87 @@
+# Sangam - production stack on the E2E VM (PR-10, SGM-307). The database is a separate stack
+# (postgres/docker-compose.yml); Anjal is its own stack too (OI-013). See README.md here.
+name: sangam
+
+x-host: &host
+  restart: unless-stopped
+  networks: [edge, sangam-db]
+  environment: &env
+    ASPNETCORE_ENVIRONMENT: Production
+    SANGAM_SECRETS_DIR: /run/secrets
+    Sangam__ForwardedHeaders__KnownNetworks: 172.30.0.0/24
+    Sangam__Authority: https://id.sangamid.in
+    Sangam__PortalUrl: https://account.sangamid.in
+    # Optional: Sangam__Telemetry__OtlpEndpoint: http://otel-collector:4317 (collector is the founder's choice)
+
+services:
+  identity:
+    <<: *host
+    build: { context: ../.., target: app, args: { PROJECT: Sangam.Identity.Server } }
+    environment:
+      <<: *env
+      Sangam__Issuer: https://id.sangamid.in
+      # Anjal's SMTP submission settings are the founder's to supply (OI-027).
+      Sangam__Email__Smtp__Host: "SET-ANJAL-SMTP-HOST"
+      Sangam__Email__Smtp__Port: "587"
+      Sangam__Email__Smtp__Security: StartTls
+      Sangam__Email__Smtp__FromAddress: no-reply@sangamid.in
+      Sangam__Certificates__Signing__0__Path: /run/secrets/signing_current.pfx
+      Sangam__Certificates__Encryption__0__Path: /run/secrets/encryption_current.pfx
+      # Audit retention is unset until the founder decides the periods (Sangam__Audit__RetentionDays).
+    secrets:
+      - source: ConnectionStrings__Sangam
+      - source: Sangam__Email__Smtp__Username
+      - source: Sangam__Email__Smtp__Password
+      - source: Sangam__Certificates__Signing__0__Password
+      - source: Sangam__Certificates__Encryption__0__Password
+      - source: signing_current.pfx
+      - source: encryption_current.pfx
+
+  portal:
+    <<: *host
+    build: { context: ../.., target: app, args: { PROJECT: Sangam.SelfService.Web } }
+    secrets: [ConnectionStrings__Sangam, Sangam__Portal__ClientSecret]
+
+  admin:
+    <<: *host
+    build: { context: ../.., target: app, args: { PROJECT: Sangam.Admin.Web } }
+    secrets: [ConnectionStrings__Sangam, Sangam__Admin__ClientSecret]
+
+  partner:
+    <<: *host
+    build: { context: ../.., target: app, args: { PROJECT: Sangam.Partner.Web } }
+    secrets: [ConnectionStrings__Sangam, Sangam__Partner__ClientSecret]
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [edge]
+
+secrets:
+  ConnectionStrings__Sangam: { file: ./secrets/ConnectionStrings__Sangam }
+  Sangam__Email__Smtp__Username: { file: ./secrets/Sangam__Email__Smtp__Username }
+  Sangam__Email__Smtp__Password: { file: ./secrets/Sangam__Email__Smtp__Password }
+  Sangam__Certificates__Signing__0__Password: { file: ./secrets/Sangam__Certificates__Signing__0__Password }
+  Sangam__Certificates__Encryption__0__Password: { file: ./secrets/Sangam__Certificates__Encryption__0__Password }
+  signing_current.pfx: { file: ./secrets/signing_current.pfx }
+  encryption_current.pfx: { file: ./secrets/encryption_current.pfx }
+  Sangam__Portal__ClientSecret: { file: ./secrets/Sangam__Portal__ClientSecret }
+  Sangam__Admin__ClientSecret: { file: ./secrets/Sangam__Admin__ClientSecret }
+  Sangam__Partner__ClientSecret: { file: ./secrets/Sangam__Partner__ClientSecret }
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  edge:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+  sangam-db:
+    external: true
