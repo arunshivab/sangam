@@ -212,7 +212,12 @@ public static class SamlProtocol
         ArgumentNullException.ThrowIfNull(certificate);
         XmlElement root = document.DocumentElement!;
         List<XmlElement> own = [.. root.ChildNodes.OfType<XmlElement>().Where(e => e.LocalName == "Signature" && e.NamespaceURI == DsigNs)];
-        if (own.Count != 1 || !root.HasAttribute("ID") || document.SelectNodes("//*[@ID='" + root.GetAttribute("ID").Replace("'", string.Empty, StringComparison.Ordinal) + "']")!.Count != 1)
+        string id = root.GetAttribute("ID");
+
+        // rc.4 (CodeQL cs/xml/xpath-injection): the ID must be a valid xs:ID, and no other element may carry it. The
+        // count compares exactly and by walking the document (no XPath built from the message), over every attribute
+        // name SignedXml resolves a reference by (ID, Id, id), so no second element can answer for the root.
+        if (own.Count != 1 || !IsWellFormedId(id) || ElementsWithId(document, id) != 1)
         {
             return false;
         }
@@ -225,6 +230,45 @@ public static class SamlProtocol
         }
 
         return signed.CheckSignature(certificate, verifySignatureOnly: true);
+    }
+
+    /// <summary>Whether <paramref name="id"/> is a valid xs:ID (an XML name without a colon), as SAML requires.</summary>
+    /// <param name="id">The value of an ID attribute.</param>
+    internal static bool IsWellFormedId(string id)
+    {
+        if (string.IsNullOrEmpty(id))
+        {
+            return false;
+        }
+
+        try
+        {
+            XmlConvert.VerifyNCName(id);
+            return true;
+        }
+        catch (XmlException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>How many elements carry <paramref name="id"/> in an <c>ID</c>, <c>Id</c> or <c>id</c> attribute (exact match).</summary>
+    /// <param name="document">The message.</param>
+    /// <param name="id">The ID.</param>
+    internal static int ElementsWithId(XmlDocument document, string id)
+    {
+        int count = 0;
+        foreach (XmlElement element in document.GetElementsByTagName("*").OfType<XmlElement>())
+        {
+            if (string.Equals(element.GetAttribute("ID"), id, StringComparison.Ordinal)
+                || string.Equals(element.GetAttribute("Id"), id, StringComparison.Ordinal)
+                || string.Equals(element.GetAttribute("id"), id, StringComparison.Ordinal))
+            {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     /// <summary>Builds the signed (and, for an SP with an encryption certificate, encrypted) response to a sign-in.</summary>

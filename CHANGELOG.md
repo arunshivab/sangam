@@ -4,6 +4,52 @@ All notable changes to Sangam are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [1.0.0-rc.4] - fourth release candidate
+
+Sangam 1.0.0-rc.4 fixes what the full list of code-scanning alerts showed after rc.3, and changes how code quality
+is checked: the CodeQL gate on pull requests runs the security queries only, and the wider code-quality queries are
+run by hand once per release.
+
+### Security
+- **SAML: the signed element's ID is checked without building an XPath query from it** (CodeQL
+  `cs/xml/xpath-injection`, critical). Before checking a signature, Sangam makes sure no other element in the message
+  uses the signed root's ID (a defence against XML signature wrapping). rc.3 did this with an XPath query built from
+  the ID, with quote marks stripped out, so a crafted ID could slip a second element past the check. The signature
+  itself was still verified by .NET's `SignedXml`, and no production deployment existed, but the guard was weaker
+  than intended. The ID must now be a valid XML name, and the elements carrying it (as `ID`, `Id` or `id`) are
+  counted directly. New tests: malformed IDs, and a decoy element in each of the three spellings.
+- **Java SDK: the webhook timestamp parse is guarded too** (`java/uncaught-number-format-exception`). rc.3's length
+  check already refuses a timestamp too long for a number; the parse now also catches the exception itself, so a
+  later change to the check cannot make the verifier throw.
+
+### Fixes found by the code-quality review
+- **SIEM forwarding over mutual TLS no longer leaks a private key on each reconnect.** The client certificate is
+  loaded once and kept for the forwarder's lifetime; before, each reconnect loaded a new copy and never released it,
+  which mattered most while the receiver was down and the forwarder kept retrying.
+- **Certificate loading at start-up releases what it has loaded when it fails**: the token signing and encryption
+  certificates, the key-ring certificates and the audit-archive certificate. A misconfigured start-up still refuses
+  to start, as before.
+- The SAML endpoint's error message cannot be empty, so its two `?? string.Empty` fallbacks are gone (CodeQL
+  `cs/constant-condition`).
+- Small tidy-ups in the partner console (a field made read-only, a simpler condition), the evidence pack and tests.
+
+### Code scanning
+- **The CodeQL gate runs `security-extended`** (`.github/workflows/codeql.yml`), not `security-and-quality`. A pull
+  request is still failed by any high or critical security alert. Quality notes (style, LINQ, casts) no longer
+  appear as alerts on every pull request.
+- **Generated code is no longer analysed**: `**/obj/**` joins `docs/design/**` in `.github/codeql/codeql-config.yml`.
+- **New: `tools/security/codeql-quality.sh`**, the once-per-release code-quality review. It runs the
+  security-and-quality suite over C#, JavaScript/TypeScript, Python, Java and the workflows, and writes a summary
+  of every finding outside generated code. rc.4's review: Python, Java and the workflows clean; JavaScript only
+  the three alerts already explained in docs/security/README.md; C# findings fixed where they mattered, the rest
+  recorded there with the reasons.
+- **To dismiss on GitHub, with the reasons in docs/security/README.md (4):** the SAML parser's missing schema
+  validation (`cs/xml/missing-validation`), and the three from rc.3.
+
+### Versions
+- 1.0.0-rc.4 everywhere: .NET assemblies, npm and Maven 1.0.0-rc.4, PyPI 1.0.0rc4, Kubernetes images and the
+  migration job (`sangam-migrate-1-0-0-rc-4`).
+
 ## [1.0.0-rc.3] - third release candidate
 
 Sangam 1.0.0-rc.3 acts on what rc.2's new checks found on their first run: the nightly accessibility walk, the

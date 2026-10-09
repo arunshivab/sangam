@@ -1,5 +1,8 @@
 # rc.3: what CodeQL analyses (.github/workflows/codeql.yml). docs/design holds the design prototype pages that drew the
 # brand and screens (SGM-1xx); they are not part of any host or SDK and are never served, so they are left out.
+# rc.4: obj/ holds code the compiler generates at build time (Razor, source generators, assembly info). It is not
+# written by hand, so findings in it cannot be fixed in the repository and are left out too.
 name: Sangam CodeQL configuration
 paths-ignore:
   - docs/design/**
+  - '**/obj/**'

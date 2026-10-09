@@ -149,7 +149,7 @@ else
             _authMode = _view.AuthMode;
             _mapping = _view.GroupMapping;
             _delete = _view.DeleteOnDeprovision;
-            _enabled = _view.Configured ? _view.Enabled : true;
+            _enabled = !_view.Configured || _view.Enabled;
         }
     }
 

@@ -123,7 +123,7 @@ internal sealed class ReferenceScimServer : IAsyncDisposable
             {
                 ["schemas"] = new JsonArray("urn:ietf:params:scim:api:messages:2.0:ListResponse"),
                 ["totalResults"] = list.Count,
-                ["Resources"] = new JsonArray([.. (countOnly ? [] : list).Select(u => (JsonNode)u.DeepClone())]),
+                ["Resources"] = new JsonArray([.. (countOnly ? [] : list).Select(u => u.DeepClone())]),
             });
         });
 

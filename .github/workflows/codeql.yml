@@ -3,6 +3,8 @@ name: CodeQL
 # rc.2 (SGM-503): static analysis of every language in the repository, on each pull request, on main, and weekly
 # (new queries find old code). Alerts appear under Security -> Code scanning. The ruleset's "Require code scanning
 # results" rule turns high and critical security alerts into a failed check on the pull request.
+# rc.4: the gate runs the security-extended suite only. The code-quality queries (security-and-quality) run once per
+# release by hand with tools/security/codeql-quality.sh; see docs/security/README.md.
 
 on:
   push:
@@ -65,7 +67,7 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
-          queries: security-and-quality
+          queries: security-extended
           config-file: ./.github/codeql/codeql-config.yml
 
       - name: Build the .NET solution

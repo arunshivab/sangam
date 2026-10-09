@@ -405,7 +405,7 @@ public sealed class EfEvidencePackService : IEvidencePackService
             .Append("## At a glance\n\n| | |\n|---|---|\n")
             .Append(Line("Application", app.DisplayName + " (`" + app.ClientId + "`), " + app.OwnerCompanyName))
             .Append(Line("Status", app.Status.ToString()))
-            .Append(Line("Sign-in rule", policy.SignIn.ToString() + "; two-step sign-in: " + policy.Mfa + "; minimum password " + policy.MinPasswordLength.ToString(CultureInfo.InvariantCulture) + " characters; breached-password check " + (policy.BreachedPasswordCheck ? "on" : "off")))
+            .Append(Line("Sign-in rule", policy.SignIn + "; two-step sign-in: " + policy.Mfa + "; minimum password " + policy.MinPasswordLength.ToString(CultureInfo.InvariantCulture) + " characters; breached-password check " + (policy.BreachedPasswordCheck ? "on" : "off")))
             .Append(Line("Administrators", admins.ToString(CultureInfo.InvariantCulture) + (adminsWithoutTwoStep == 0 ? ", all with two-step sign-in" : ", of whom " + adminsWithoutTwoStep.ToString(CultureInfo.InvariantCulture) + " without two-step sign-in")))
             .Append(Line("People with a role now", people.ToString(CultureInfo.InvariantCulture)))
             .Append(Line("Access changes in the period", changes.ToString(CultureInfo.InvariantCulture)))

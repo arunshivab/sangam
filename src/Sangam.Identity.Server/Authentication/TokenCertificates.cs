@@ -26,27 +26,39 @@ public static class TokenCertificates
     private static List<X509Certificate2> LoadKind(IConfiguration configuration, string kind)
     {
         List<X509Certificate2> certificates = [];
-        foreach (IConfigurationSection entry in configuration.GetSection($"{SectionName}:{kind}").GetChildren())
+        try
         {
-            string? path = entry["Path"];
-            if (string.IsNullOrWhiteSpace(path))
+            foreach (IConfigurationSection entry in configuration.GetSection($"{SectionName}:{kind}").GetChildren())
             {
-                throw new InvalidOperationException($"{SectionName}:{kind}:{entry.Key}:Path is empty.");
+                string? path = entry["Path"];
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    throw new InvalidOperationException($"{SectionName}:{kind}:{entry.Key}:Path is empty.");
+                }
+
+                if (!File.Exists(path))
+                {
+                    throw new InvalidOperationException($"The {kind.ToLowerInvariant()} certificate file {path} ({SectionName}:{kind}:{entry.Key}) does not exist.");
+                }
+
+                // Added before it is checked, so the catch below disposes it with the others when the check fails.
+                X509Certificate2 certificate = X509CertificateLoader.LoadPkcs12FromFile(path, entry["Password"], X509KeyStorageFlags.EphemeralKeySet);
+                certificates.Add(certificate);
+                if (!certificate.HasPrivateKey)
+                {
+                    throw new InvalidOperationException($"The {kind.ToLowerInvariant()} certificate {path} has no private key.");
+                }
+            }
+        }
+        catch
+        {
+            // rc.4: a later entry failing must not leave the certificates already loaded undisposed.
+            foreach (X509Certificate2 loaded in certificates)
+            {
+                loaded.Dispose();
             }
 
-            if (!File.Exists(path))
-            {
-                throw new InvalidOperationException($"The {kind.ToLowerInvariant()} certificate file {path} ({SectionName}:{kind}:{entry.Key}) does not exist.");
-            }
-
-            X509Certificate2 certificate = X509CertificateLoader.LoadPkcs12FromFile(path, entry["Password"], X509KeyStorageFlags.EphemeralKeySet);
-            if (!certificate.HasPrivateKey)
-            {
-                certificate.Dispose();
-                throw new InvalidOperationException($"The {kind.ToLowerInvariant()} certificate {path} has no private key.");
-            }
-
-            certificates.Add(certificate);
+            throw;
         }
 
         if (certificates.Count == 0)

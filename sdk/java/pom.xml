@@ -5,7 +5,7 @@
   <!-- Sangam SDK for Java (R6, PR-29, SGM-306): the core library, the Spring Security adapter and the sample. -->
   <groupId>in.sangamid</groupId>
   <artifactId>sangam-parent</artifactId>
-  <version>1.0.0-rc.3</version>
+  <version>1.0.0-rc.4</version>
   <packaging>pom</packaging>
   <name>Sangam SDK for Java</name>
   <licenses><license><name>Apache-2.0</name><url>https://www.apache.org/licenses/LICENSE-2.0</url></license></licenses>

@@ -13,6 +13,7 @@ public sealed class SamlProtocolTests : IDisposable
 {
     private const string Idp = "https://id.sangamid.in/saml";
     private const string Acs = "https://crm.example.in/saml/acs";
+    private static readonly string[] IdSpellings = ["ID", "Id", "id"];
     private readonly X509Certificate2 _signing = SelfSigned("CN=Sangam test IdP");
     private readonly RSA _spKey = RSA.Create(2048);
 
@@ -57,6 +58,41 @@ public sealed class SamlProtocolTests : IDisposable
         XmlNode signature = doubled.GetElementsByTagName("Signature", SamlProtocol.DsigNs)[0]!;
         doubled.DocumentElement!.AppendChild(signature.CloneNode(deep: true));
         Assert.False(SamlProtocol.VerifyEnvelopedSignature(doubled, _signing));
+    }
+
+    [Fact]
+    public void TheRootId_MustBeAValidXmlName_AndBelongToNoOtherElement()
+    {
+        // rc.4 (CodeQL cs/xml/xpath-injection): the check no longer strips characters before comparing, so an ID with a
+        // quote cannot be mistaken for another element's ID; it is refused as not an xs:ID at all.
+        Assert.False(SamlProtocol.IsWellFormedId("_a'b"));
+        Assert.False(SamlProtocol.IsWellFormedId("_a\"b"));
+        Assert.False(SamlProtocol.IsWellFormedId(string.Empty));
+        Assert.False(SamlProtocol.IsWellFormedId("1starts-with-a-digit"));
+        Assert.True(SamlProtocol.IsWellFormedId("_9f8c1d2e-1a2b-4c3d-8e9f-0a1b2c3d4e5f"));
+
+        XmlDocument document = SamlProtocol.Load("<r ID=\"_x'\"><a ID=\"_x\"/><b Id=\"_y\"/><c id=\"_y\"/></r>");
+        Assert.Equal(1, SamlProtocol.ElementsWithId(document, "_x'"));
+        Assert.Equal(1, SamlProtocol.ElementsWithId(document, "_x"));
+        Assert.Equal(2, SamlProtocol.ElementsWithId(document, "_y"));
+    }
+
+    [Fact]
+    public void AnotherElementUsingTheRootsId_InAnySpelling_IsRefused()
+    {
+        XmlDocument genuine = SamlProtocol.Load(SamlProtocol.BuildResponse(Content(encryptFor: null), _signing));
+        string id = genuine.DocumentElement!.GetAttribute("ID");
+        Assert.Equal(1, SamlProtocol.ElementsWithId(genuine, id));
+
+        foreach (string attribute in IdSpellings)
+        {
+            XmlDocument copy = SamlProtocol.Load(genuine.OuterXml);
+            XmlElement decoy = copy.CreateElement("decoy");
+            decoy.SetAttribute(attribute, id);
+            copy.DocumentElement!.AppendChild(decoy);
+            Assert.Equal(2, SamlProtocol.ElementsWithId(copy, id));
+            Assert.False(SamlProtocol.VerifyEnvelopedSignature(copy, _signing));
+        }
     }
 
     [Fact]

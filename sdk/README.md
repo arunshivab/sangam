@@ -44,7 +44,7 @@ seed registers the redirect addresses `http://localhost:59x0/auth/callback` for 
 ```sh
 cd sdk/js && npm ci && npm run build && npm start -w sangam-sample-react-node        # 5910
 cd sdk/python && pip install -e ".[fastapi]" uvicorn && cd samples/fastapi && uvicorn main:app --port 5920
-cd sdk/java && mvn -q package -DskipTests && java -jar samples/spring-boot/target/sangam-sample-spring-boot-1.0.0-rc.3.jar   # 5930
+cd sdk/java && mvn -q package -DskipTests && java -jar samples/spring-boot/target/sangam-sample-spring-boot-1.0.0-rc.4.jar   # 5930
 dotnet run --project samples/Sangam.Sample.AspNetCore --urls http://localhost:5940
 python3 sdk/conformance/live/check_samples.py out http://localhost:5910 http://localhost:5920 http://localhost:5930 http://localhost:5940
 ```

@@ -1,6 +1,6 @@
 {
   "name": "@sangam/client",
-  "version": "1.0.0-rc.3",
+  "version": "1.0.0-rc.4",
   "description": "Sangam for JavaScript and TypeScript: who signed in and what they may do in which organisation, step-up, webhook verification, the shared audit event, the management API and access-token checks. Browser and Node.",
   "license": "Apache-2.0",
   "type": "module",

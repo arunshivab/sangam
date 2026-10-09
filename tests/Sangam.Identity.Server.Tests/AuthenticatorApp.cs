@@ -11,6 +11,7 @@ namespace Sangam.Identity.Server.Tests;
 /// </summary>
 internal static class AuthenticatorApp
 {
+    /// <summary>The code the phone shows now, or <paramref name="ahead"/> later.</summary>
     /// <param name="users">User manager.</param>
     /// <param name="user">The person.</param>
     /// <param name="ahead">How far ahead: a code works once (R7), so a second sign-in in the same 30 seconds uses the

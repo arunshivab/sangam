@@ -23,7 +23,13 @@ public final class WebhookVerifier {
                 || secret == null || !secret.startsWith(SECRET_PREFIX)) {
             return false;
         }
-        if (Math.abs(now - Long.parseLong(timestamp)) > TOLERANCE_SECONDS) {
+        long sent;
+        try {
+            sent = Long.parseLong(timestamp);
+        } catch (NumberFormatException e) {
+            return false;
+        }
+        if (Math.abs(now - sent) > TOLERANCE_SECONDS) {
             return false;
         }
         try {
