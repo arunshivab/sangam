@@ -114,7 +114,8 @@ def through_sangam(pg, email, sample):
 def validate(event):
     """The shared schema, through the JSON Schema itself."""
     import jsonschema
-    schema = json.load(open(os.path.join(HERE, '..', '..', 'schema', 'audit-event-1.0.schema.json')))
+    with open(os.path.join(HERE, '..', '..', 'schema', 'audit-event-1.0.schema.json'), encoding='utf-8') as f:
+        schema = json.load(f)
     return [e.message for e in jsonschema.Draft202012Validator(schema).iter_errors(event)]
 
 
@@ -165,5 +166,6 @@ with sync_playwright() as p:
         report[sample] = r
         ctx.close()
     browser.close()
-json.dump(report, open(f'{OUT}/live-conformance.json', 'w'), indent=1)
+with open(f'{OUT}/live-conformance.json', 'w', encoding='utf-8') as f:
+    json.dump(report, f, indent=1)
 sys.exit(0 if all(r['passed'] for r in report.values()) else 1)

@@ -18,7 +18,8 @@ public final class WebhookVerifier {
 
     /** HMAC-SHA256 of {@code id.timestamp.body} under the secret's bytes, and a timestamp within five minutes. */
     public static boolean verify(String id, String timestamp, String signature, String body, String secret, long now) {
-        if (id == null || id.isEmpty() || signature == null || signature.isEmpty() || timestamp == null || !timestamp.matches("\\d+")
+        // At most 18 digits: always a valid long, so a crafted timestamp is refused rather than thrown (rc.3).
+        if (id == null || id.isEmpty() || signature == null || signature.isEmpty() || timestamp == null || !timestamp.matches("\\d{1,18}")
                 || secret == null || !secret.startsWith(SECRET_PREFIX)) {
             return false;
         }

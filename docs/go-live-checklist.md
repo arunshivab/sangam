@@ -273,3 +273,11 @@ Text:
 
 - [ ] Have a native speaker read the Hindi and Malayalam texts added in rc.2: the "your sign-in uses a password"
       e-mail (`password_account_code_notice`), the two lines on the code screens, and the connection messages.
+
+## Added by rc.3 (v1.0.0-rc.3)
+
+- [ ] After the rc.3 merge, dismiss the three code-scanning alerts listed in docs/security/README.md ("Code scanning:
+      the first analysis"), with those reasons. Check that the Security tab then shows no open alerts.
+- [ ] Close Dependabot's `@types/node` 26 pull request with the reason in the CHANGELOG. Dependabot closes the
+      others itself once rc.3 has the same versions.
+- [ ] Turn the Nightly workflow back on if it was turned off, and check the next night's run is green.

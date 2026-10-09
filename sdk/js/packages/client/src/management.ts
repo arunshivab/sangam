@@ -15,6 +15,15 @@ export class SangamApiError extends Error {
   }
 }
 
+/** Drops trailing "/" characters (a loop, not a regular expression, so its time stays linear on any input). */
+function trimTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47) {
+    end--;
+  }
+  return value.slice(0, end);
+}
+
 /**
  * Sangam's management API for your application's back end, with client-credentials tokens fetched and cached. Needs a
  * confidential client allowed `sangam.manage`. Never use it from a browser.
@@ -25,7 +34,7 @@ export class ManagementClient {
   readonly #fetch: typeof fetch;
 
   constructor(options: ManagementClientOptions) {
-    this.#options = { ...options, authority: options.authority.replace(/\/+$/, "") };
+    this.#options = { ...options, authority: trimTrailingSlashes(options.authority) };
     this.#fetch = options.fetch ?? fetch;
   }
 

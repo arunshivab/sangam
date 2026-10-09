@@ -6,7 +6,6 @@
 Settings: SANGAM_AUTHORITY, SANGAM_CLIENT_ID, SANGAM_CLIENT_SECRET, BASE_URL, COOKIE_SECRET, AUDIT_BUFFER.
 """
 import html
-import json
 import os
 
 from fastapi import Depends, FastAPI, Request
@@ -23,14 +22,15 @@ sangam = SangamFastAPI(
         client_secret=os.environ.get("SANGAM_CLIENT_SECRET", "sangam-dev-sample-secret-change-me"),
         base_url=os.environ.get("BASE_URL", f"http://localhost:{PORT}"),
         cookie_secret=os.environ.get("COOKIE_SECRET", "sample-only-cookie-secret-change-me-0123456789"),
-        audit=AuditConfig("sangam-dev-sample", "1.0.0rc2", "development"),
+        audit=AuditConfig("sangam-dev-sample", "1.0.0rc3", "development"),
         audit_buffer=os.environ.get("AUDIT_BUFFER", "sangam-audit/pending.jsonl"),
     )
 )
 app = FastAPI(title="Sangam sample (Python)")
 sangam.install(app)
 
-PAGE = open(os.path.join(os.path.dirname(__file__), "page.html"), encoding="utf-8").read()
+with open(os.path.join(os.path.dirname(__file__), "page.html"), encoding="utf-8") as _page:
+    PAGE = _page.read()
 
 
 @app.get("/", response_class=HTMLResponse)

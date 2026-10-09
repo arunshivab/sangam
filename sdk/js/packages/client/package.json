@@ -1,6 +1,6 @@
 {
   "name": "@sangam/client",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0-rc.3",
   "description": "Sangam for JavaScript and TypeScript: who signed in and what they may do in which organisation, step-up, webhook verification, the shared audit event, the management API and access-token checks. Browser and Node.",
   "license": "Apache-2.0",
   "type": "module",
@@ -13,6 +13,6 @@
     "test": "tsc -p tsconfig.test.json && node --test --test-reporter=spec \"dist-test/test/*.test.js\""
   },
   "dependencies": { "jose": "^6.1.0" },
-  "devDependencies": { "typescript": "^5.9.3", "@types/node": "^22.18.0" },
+  "devDependencies": { "typescript": "^7.0.2", "@types/node": "^22.18.0" },
   "engines": { "node": ">=20" }
 }

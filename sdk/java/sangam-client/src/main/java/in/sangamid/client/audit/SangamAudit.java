@@ -166,8 +166,11 @@ public final class SangamAudit {
     }
 
     private static Map<String, Object> ordered(Object... pairs) {
+        if (pairs.length % 2 != 0) {
+            throw new IllegalArgumentException("ordered() takes name and value pairs.");
+        }
         Map<String, Object> m = new LinkedHashMap<>();
-        for (int i = 0; i < pairs.length; i += 2) {
+        for (int i = 0; i + 1 < pairs.length; i += 2) {
             m.put((String) pairs[i], pairs[i + 1]);
         }
         return m;

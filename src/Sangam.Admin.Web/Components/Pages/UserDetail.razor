@@ -63,7 +63,7 @@ else
       @if (_detail.Attributes is { Count: > 0 } attributes)
       {
         <h3 class="sg-h3">@L["Details applications keep"]</h3>
-        <div class="sg-table-wrap" data-panel="attribute-values">
+        <div class="sg-table-wrap" tabindex="0" role="region" aria-label="@L["Details applications keep"]" data-panel="attribute-values">
           <table class="sg-table">
             <thead><tr><th>@L["Application"]</th><th>@L["Attribute"]</th><th>@L["Value"]</th><th>@L["Who may change it"]</th></tr></thead>
             <tbody>

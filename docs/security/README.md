@@ -21,6 +21,21 @@ penetration test: those are commissioned by the founder.
 | `zap-baseline` (`nightly.yml`) | every night, and by hand | any FAIL from the ZAP baseline scan of a host | no (nightly) |
 | Dependabot (`dependabot.yml`) | weekly, and at once for an advisory | opens pull requests for NuGet, npm, pip, Maven, GitHub Actions and Docker updates | each runs the full CI |
 
+## Code scanning: the first analysis (rc.3)
+
+CodeQL's first run on main (rc.2) raised 35 alerts. None was in the hosts' own C# code. rc.3 fixed 29 (see the
+CHANGELOG) and stopped analysing `docs/design` (3, design prototypes that are never served). Three are dismissed
+on GitHub with these reasons:
+
+| Alert | Where | Dismissed as | Why |
+|---|---|---|---|
+| `js/file-access-to-http` | `sdk/js/packages/node/src/audit.ts` | Won't fix | Reading the audit buffer from disk and sending it to Sangam over HTTPS is what the audit recorder is for. The buffer holds the application's own audit events. |
+| `js/stack-trace-exposure` | `sdk/js/packages/node/test/flow.test.ts` | Used in tests | A test's stand-in identity provider; it is never shipped or run in production. |
+| `js/xss-through-exception` | `sdk/js/packages/node/test/flow.test.ts` | Used in tests | The same test server. |
+
+New alerts on a pull request fail it through the ruleset (high or critical security alerts). Review the Security
+tab after each weekly run: new queries can find old code.
+
 Related:
 
 - [../siem.md](../siem.md): streaming the audit log to a SIEM.

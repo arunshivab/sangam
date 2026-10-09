@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sangam-client"
-version = "1.0.0rc2"
+version = "1.0.0rc3"
 description = "Sangam for Python: sign-in with PKCE kept on the server, permissions per organisation, step-up, webhook verification, the shared audit event, access-token checks and the management API; FastAPI and Flask adapters."
 readme = "README.md"
 license = "Apache-2.0"

@@ -1,7 +1,7 @@
 """Nightly accessibility walk (rc.2; first run by hand in R7 PR-31, see docs/accessibility.md).
 
 Walks every screen of the four hosts in Hindi, Malayalam and English and, on each one, runs axe-core (WCAG 2.0, 2.1
-and 2.2 A and AA rules) at desktop width, checks the layout at desktop and phone widths, and records any
+and 2.2 A and AA rules) at desktop and phone widths (phone since rc.3), checks the layout at both widths, and records any
 Content-Security-Policy violation and any console error the page reports. axe runs through the DevTools protocol,
 which the page's policy does not govern, so the policy stays enforced while it runs.
 
@@ -23,7 +23,8 @@ from playwright.sync_api import sync_playwright
 
 B, PORTAL, ADMIN, PARTNER = 'http://localhost:5100', 'http://localhost:5200', 'http://localhost:5300', 'http://localhost:5400'
 OUT = sys.argv[1] if len(sys.argv) > 1 else 'artifacts/a11y'
-AXE = open(os.environ['AXE_JS'], encoding='utf-8').read()
+with open(os.environ['AXE_JS'], encoding='utf-8') as _axe:
+    AXE = _axe.read()
 DB = os.environ.get('SANGAM_DB', 'postgresql://sangam_identity:sangam_dev@localhost:5432/sangam_identity')
 TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 AXE_RUN = "async (tags) => { const r = await axe.run(document, { runOnly: { type: 'tag', values: tags }, resultTypes: ['violations', 'incomplete'] }); return { violations: r.violations.map(v => ({ id: v.id, impact: v.impact, help: v.help, tags: v.tags.filter(t => t.startsWith('wcag')), nodes: v.nodes.length, targets: v.nodes.slice(0, 6).map(n => n.target.join(' ')), summary: (v.nodes[0] || {}).failureSummary || '' })), incomplete: r.incomplete.map(v => ({ id: v.id, nodes: v.nodes.length })), passes: r.passes.length }; }"
@@ -201,7 +202,7 @@ with sync_playwright() as p:
                 try:
                     pg.wait_for_load_state('networkidle', timeout=6000)
                 except Exception:
-                    pass
+                    pass  # A console that keeps a connection open never goes idle; the fixed wait below covers it.
                 pg.wait_for_timeout(1200)
             elif wait:
                 pg.wait_for_timeout(wait)
@@ -222,13 +223,17 @@ with sync_playwright() as p:
                     try:
                         ph.wait_for_load_state('networkidle', timeout=6000)
                     except Exception:
-                        pass
+                        pass  # As above: the live connection keeps the page from going idle.
                     ph.wait_for_timeout(1200)
                 entry['phone'] = ph.evaluate(CHECK, names)
+                # rc.3: axe at phone width too. Tables that fit a desktop scroll sideways here, so their keyboard
+                # access (WCAG 2.1.1) is always tested, not only when a long value happens to widen them.
+                ph.evaluate(AXE)
+                entry['axe_phone'] = ph.evaluate(AXE_RUN, TAGS)
             finally:
                 phone.close()
             results[name] = entry
-            v = entry['axe']['violations']
+            v = entry['axe']['violations'] + entry.get('axe_phone', {}).get('violations', [])
             layout = entry['desktop']['issues'] + entry.get('phone', {}).get('issues', [])
             print(f"  {lang} {name}: axe {len(v)} rules / {sum(x['nodes'] for x in v)} nodes {[x['id'] for x in v]}; layout {len(layout)}; csp {len(entry['csp'])}; broken {len(entry['broken'])}", flush=True)
 
@@ -258,7 +263,7 @@ with sync_playwright() as p:
             with pg.expect_request(lambda r: r.url.startswith('http://localhost:5900'), timeout=8000):
                 pg.click('button[value], .sg-btn--consent-allow')
         except Exception:
-            pass
+            pass  # The redirect target (localhost:5900) is not running; only the request matters.
         # Front-channel logout: the frame never loads, so the page stays up for its three seconds.
         sql(f"update apps set front_channel_logout_uri='http://localhost:5100/never-loads' where {APP}")
         pg.route('**/never-loads**', lambda route: route.abort())
@@ -357,14 +362,16 @@ with sync_playwright() as p:
     finally:
         sql(f"update apps set sign_in_policy='default', min_password_length=null, mfa_requirement='optional', front_channel_logout_uri=null where {APP}")
         sql("delete from customisations where key='branding'")
-        json.dump(report, open(f'{OUT}/a11y-report.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+        with open(f'{OUT}/a11y-report.json', 'w', encoding='utf-8') as out:
+            json.dump(report, out, ensure_ascii=False, indent=1)
         browser.close()
 
 failures = []
 for lang, screens in report.items():
     for name, entry in screens.items():
-        for v in entry['axe']['violations']:
-            failures.append(f"{lang} {name}: axe {v['id']} ({v['impact']}) on {v['nodes']} element(s): {v['help']}")
+        for width, result in (('desktop', entry['axe']), ('phone', entry.get('axe_phone', {'violations': []}))):
+            for v in result['violations']:
+                failures.append(f"{lang} {name} ({width}): axe {v['id']} ({v['impact']}) on {v['nodes']} element(s): {v['help']}")
         failures += [f'{lang} {name}: policy violation: {c}' for c in entry['csp']]
         failures += [f'{lang} {name}: live connection broken: {e}' for e in entry['broken']]
 screens = sum(len(s) for s in report.values())

@@ -38,6 +38,9 @@ manual check.
   policy violation, or an interactive page whose live connection breaks. Layout findings and words left in English
   are in its JSON report (the job's `accessibility` artifact). Run it by hand from the Actions tab before a release.
 - **Run it locally** with the commands at the top of `axe_walk.py`. `SHOTS=1` keeps a screenshot of every screen.
+- **Phone width (rc.3).** axe also runs at 390 pixels, where tables scroll sideways. The first nightly run found a
+  table that could not be scrolled with the keyboard, only in Malayalam, where long values made it overflow; rc.3
+  made every scrolling table a focusable, labelled region and added this step, so the case is always tested.
 - **New screens need an entry in the walk.** rc.2 added choosing an organisation in the partner console: the panel
   it opens ended the browser's live connection from R3 to rc.1, and the walk never opened it.
 - **When the connection drops**, the portal and the consoles say so and offer to try again or reload

@@ -4,6 +4,45 @@ All notable changes to Sangam are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [1.0.0-rc.3] - third release candidate
+
+Sangam 1.0.0-rc.3 acts on what rc.2's new checks found on their first run: the nightly accessibility walk, the
+first CodeQL analysis, and Dependabot's first update pull requests.
+
+### Accessibility
+- **Tables that scroll sideways can now be reached with the keyboard** (WCAG 2.1.1). All 15 table wrappers in the
+  operator and partner consoles are focusable and labelled regions. The first nightly walk found one: the
+  Monitoring page's 24-hour table in Malayalam, where long values made it wider than the screen.
+- **The walk runs axe at phone width too** (390 pixels), where tables scroll. A screen no longer passes only because
+  its table happens to fit a desktop. Run against rc.2's code, this step finds the same fault on two screens.
+
+### Code scanning (CodeQL's first analysis: 35 alerts, none in the hosts' own C# code)
+- **Fixed (29):**
+  - JS SDK: trailing "/" is trimmed with a loop instead of a regular expression that could take very long on crafted
+    input (5).
+  - `@sangam/node`: cookies are parsed into a Map, so a cookie named `__proto__` or `constructor` cannot reach an
+    object's prototype; a malformed cookie is skipped instead of failing the request (1).
+  - React + Node sample: a per-address rate limit on every route (express-rate-limit), for partners to copy (5).
+  - Java SDK: a webhook timestamp too long for a number is refused instead of throwing; the audit helper checks its
+    pairs (2).
+  - Python: files closed with `with`, unused imports removed, protocol stubs documented, and silent `except`
+    blocks explained (16).
+- **Excluded (3):** `docs/design`, the design prototype pages, is no longer analysed (`.github/codeql/codeql-config.yml`).
+- **To dismiss on GitHub, with the reasons in docs/security/README.md (3):** the audit buffer sent over HTTP (the
+  SDK's purpose) and two alerts in a test file.
+- New tests: the cookie parser (JS) and the long timestamp (Java).
+
+### Dependencies (Dependabot)
+- Taken: TypeScript 7.0 (its compiler no longer loads every `@types` package by itself, so the base configuration
+  names Node's), esbuild 0.28, Jackson 3.2.3, Maven compiler 3.16 and Surefire 3.6, Microsoft.NET.Test.Sdk 18.10,
+  xunit.runner.visualstudio 4.0, coverlet 10.1 and QRCoder 1.8.
+- Not taken: `@types/node` 26. The types follow the oldest Node the SDKs support, not the newest; Dependabot now
+  skips its major versions (`.github/dependabot.yml`).
+
+### Versions
+- 1.0.0-rc.3 everywhere: .NET assemblies, npm and Maven 1.0.0-rc.3, PyPI 1.0.0rc3, Kubernetes images and the
+  migration job (`sangam-migrate-1-0-0-rc-3`).
+
 ## [1.0.0-rc.2] - second release candidate
 
 Sangam 1.0.0-rc.2 adds the checks that keep running on their own, and fixes found while testing rc.1. Version 1.0.0

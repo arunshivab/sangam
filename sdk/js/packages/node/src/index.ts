@@ -91,16 +91,25 @@ function safeReturn(value: string | null | undefined): string {
  *
  * Routes under `basePath` (default /auth): GET login (returnTo, acr, max_age), GET callback, GET logout, GET me.
  */
+/** Drops trailing "/" characters (a loop, not a regular expression, so its time stays linear on any input). */
+function trimTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47) {
+    end--;
+  }
+  return value.slice(0, end);
+}
+
 export function createSangam(options: SangamNodeOptions) {
   if (options.cookieSecret.length < 32) throw new Error("cookieSecret must be at least 32 characters.");
-  const basePath = (options.basePath ?? "/auth").replace(/\/+$/, "");
-  const baseUrl = options.baseUrl.replace(/\/+$/, "");
+  const basePath = trimTrailingSlashes(options.basePath ?? "/auth");
+  const baseUrl = trimTrailingSlashes(options.baseUrl);
   const redirectUri = `${baseUrl}${basePath}/callback`;
   const secure = baseUrl.startsWith("https://");
   const ttl = options.sessionTtlSeconds ?? 8 * 3600;
   const store = options.store ?? new MemorySessionStore<SangamSession>();
   const scopes = options.scopes ?? ["openid", "profile", "email", "orgs.read"];
-  const authority = options.authority.replace(/\/+$/, "");
+  const authority = trimTrailingSlashes(options.authority);
   let configuration: Promise<oidc.Configuration> | undefined = options.configuration ? Promise.resolve(options.configuration) : undefined;
 
   function config(): Promise<oidc.Configuration> {
