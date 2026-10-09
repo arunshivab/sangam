@@ -66,22 +66,34 @@ public static class KeyRingProtection
     private static List<X509Certificate2> Load(IConfiguration configuration)
     {
         List<X509Certificate2> certificates = [];
-        foreach (IConfigurationSection entry in configuration.GetSection(SectionName).GetChildren())
+        try
         {
-            string? path = entry["Path"];
-            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+            foreach (IConfigurationSection entry in configuration.GetSection(SectionName).GetChildren())
             {
-                throw new InvalidOperationException($"The key-ring certificate file '{path}' ({SectionName}:{entry.Key}:Path) does not exist.");
+                string? path = entry["Path"];
+                if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+                {
+                    throw new InvalidOperationException($"The key-ring certificate file '{path}' ({SectionName}:{entry.Key}:Path) does not exist.");
+                }
+
+                // Added before it is checked, so the catch below disposes it with the others when the check fails.
+                X509Certificate2 certificate = X509CertificateLoader.LoadPkcs12FromFile(path, entry["Password"], X509KeyStorageFlags.EphemeralKeySet);
+                certificates.Add(certificate);
+                if (!certificate.HasPrivateKey)
+                {
+                    throw new InvalidOperationException($"The key-ring certificate {path} has no private key.");
+                }
+            }
+        }
+        catch
+        {
+            // rc.4: a later entry failing must not leave the certificates already loaded undisposed.
+            foreach (X509Certificate2 loaded in certificates)
+            {
+                loaded.Dispose();
             }
 
-            X509Certificate2 certificate = X509CertificateLoader.LoadPkcs12FromFile(path, entry["Password"], X509KeyStorageFlags.EphemeralKeySet);
-            if (!certificate.HasPrivateKey)
-            {
-                certificate.Dispose();
-                throw new InvalidOperationException($"The key-ring certificate {path} has no private key.");
-            }
-
-            certificates.Add(certificate);
+            throw;
         }
 
         return certificates;

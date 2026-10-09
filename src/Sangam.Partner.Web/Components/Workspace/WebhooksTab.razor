@@ -152,7 +152,7 @@ else
     private WebhookOverview? _view;
     private string _url = string.Empty;
     private string _description = string.Empty;
-    private HashSet<string> _events = [AppEventTypes.MembershipGranted, AppEventTypes.MembershipRevoked, AppEventTypes.UserDeactivated, AppEventTypes.SessionRevoked];
+    private readonly HashSet<string> _events = [AppEventTypes.MembershipGranted, AppEventTypes.MembershipRevoked, AppEventTypes.UserDeactivated, AppEventTypes.SessionRevoked];
     private string? _secret;
     private bool _busy;
     private bool _ok;

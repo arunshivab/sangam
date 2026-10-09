@@ -62,20 +62,27 @@ public sealed class AuditArchiveOptions
     public X509Certificate2 LoadCertificate()
     {
         X509Certificate2 certificate = X509CertificateLoader.LoadCertificateFromFile(CertificatePath ?? throw new InvalidOperationException("No audit-archive certificate is set."));
-        if (certificate.HasPrivateKey)
+        try
         {
-            certificate.Dispose();
-            throw new InvalidOperationException("The audit-archive certificate must be the public certificate only; its private key stays offline with the founder.");
-        }
+            if (certificate.HasPrivateKey)
+            {
+                throw new InvalidOperationException("The audit-archive certificate must be the public certificate only; its private key stays offline with the founder.");
+            }
 
-        using RSA? rsa = certificate.GetRSAPublicKey();
-        if (rsa is null || rsa.KeySize < 3072)
+            using RSA? rsa = certificate.GetRSAPublicKey();
+            if (rsa is null || rsa.KeySize < 3072)
+            {
+                throw new InvalidOperationException("The audit-archive certificate needs an RSA key of at least 3072 bits.");
+            }
+
+            return certificate;
+        }
+        catch
         {
+            // rc.4: disposed on every failure, including an unreadable key, not only on the two refusals.
             certificate.Dispose();
-            throw new InvalidOperationException("The audit-archive certificate needs an RSA key of at least 3072 bits.");
+            throw;
         }
-
-        return certificate;
     }
 
     /// <summary>Returns why the host must not start, or <see langword="null"/>.</summary>

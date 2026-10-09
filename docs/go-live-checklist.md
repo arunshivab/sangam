@@ -281,3 +281,11 @@ Text:
 - [ ] Close Dependabot's `@types/node` 26 pull request with the reason in the CHANGELOG. Dependabot closes the
       others itself once rc.3 has the same versions.
 - [ ] Turn the Nightly workflow back on if it was turned off, and check the next night's run is green.
+
+## Added by rc.4 (v1.0.0-rc.4)
+
+- [ ] After the rc.4 merge and CodeQL's first run on main with it, dismiss the four alerts listed in
+      docs/security/README.md ("Code scanning: rc.4"), with those reasons. The quality notes close by themselves once
+      the gate runs `security-extended`; check that the Security tab then shows no open alerts.
+- [ ] Before each release from now on, run the code-quality review (`tools/security/codeql-quality.sh`) and read its
+      summary: fix what matters, record the rest in docs/security/README.md.

@@ -79,7 +79,7 @@ public static class SamlEndpoints
         }
 
         bool post = HttpMethods.IsPost(http.Request.Method);
-        string? message;
+        string message;
         string? relayState;
         if (post)
         {
@@ -97,7 +97,7 @@ public static class SamlEndpoints
         AuthnRequestMessage request;
         try
         {
-            string xml = post ? Encoding.UTF8.GetString(Convert.FromBase64String(message ?? string.Empty)) : SamlProtocol.InflateRedirect(message ?? string.Empty);
+            string xml = post ? Encoding.UTF8.GetString(Convert.FromBase64String(message)) : SamlProtocol.InflateRedirect(message);
             document = SamlProtocol.Load(xml);
             request = SamlProtocol.ReadAuthnRequest(document);
         }

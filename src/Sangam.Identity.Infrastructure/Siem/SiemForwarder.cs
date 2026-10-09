@@ -41,6 +41,7 @@ public sealed partial class SiemForwarder : IAsyncDisposable
     private readonly ILogger<SiemForwarder> _logger;
     private TcpClient? _tcp;
     private Stream? _stream;
+    private X509Certificate2Collection? _clientCertificates;
 
     /// <summary>Initialises the forwarder.</summary>
     /// <param name="scopes">Scope factory.</param>
@@ -111,6 +112,15 @@ public sealed partial class SiemForwarder : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await CloseAsync().ConfigureAwait(false);
+        if (_clientCertificates is not null)
+        {
+            foreach (X509Certificate2 certificate in _clientCertificates)
+            {
+                certificate.Dispose();
+            }
+
+            _clientCertificates = null;
+        }
     }
 
     private async Task<int> SendAsync(SangamDbContext db, CancellationToken cancellationToken)
@@ -223,12 +233,8 @@ public sealed partial class SiemForwarder : IAsyncDisposable
             }
 
             SslStream ssl = new(tcp.GetStream(), leaveInnerStreamOpen: false);
-            X509Certificate2? authority = string.IsNullOrWhiteSpace(_options.CaCertificatePath) ? null : X509CertificateLoader.LoadCertificateFromFile(_options.CaCertificatePath);
-            X509Certificate2Collection clients = [];
-            if (!string.IsNullOrWhiteSpace(_options.ClientCertificatePath))
-            {
-                clients.Add(X509CertificateLoader.LoadPkcs12FromFile(_options.ClientCertificatePath, _options.ClientCertificatePassword));
-            }
+            using X509Certificate2? authority = string.IsNullOrWhiteSpace(_options.CaCertificatePath) ? null : X509CertificateLoader.LoadCertificateFromFile(_options.CaCertificatePath);
+            X509Certificate2Collection clients = ClientCertificates();
 
             try
             {
@@ -248,10 +254,6 @@ public sealed partial class SiemForwarder : IAsyncDisposable
                 await ssl.DisposeAsync().ConfigureAwait(false);
                 throw;
             }
-            finally
-            {
-                authority?.Dispose();
-            }
 
             _tcp = tcp;
             _stream = ssl;
@@ -267,6 +269,26 @@ public sealed partial class SiemForwarder : IAsyncDisposable
             tcp.Dispose();
             throw;
         }
+    }
+
+    /// <summary>
+    /// rc.4: the client certificate (mutual TLS) is loaded once and kept for the forwarder's lifetime. Loading it on
+    /// every reconnect left one undisposed private key behind each time the receiver was unreachable.
+    /// </summary>
+    private X509Certificate2Collection ClientCertificates()
+    {
+        if (_clientCertificates is null)
+        {
+            X509Certificate2Collection loaded = [];
+            if (!string.IsNullOrWhiteSpace(_options.ClientCertificatePath))
+            {
+                loaded.Add(X509CertificateLoader.LoadPkcs12FromFile(_options.ClientCertificatePath, _options.ClientCertificatePassword));
+            }
+
+            _clientCertificates = loaded;
+        }
+
+        return _clientCertificates;
     }
 
     /// <summary>Accepts the receiver's certificate: publicly trusted, or — when an authority is configured — issued by

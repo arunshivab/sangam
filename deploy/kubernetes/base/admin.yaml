@@ -47,7 +47,7 @@ spec:
               app.kubernetes.io/name: admin
       containers:
         - name: admin
-          image: sangam/admin:1.0.0-rc.3
+          image: sangam/admin:1.0.0-rc.4
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

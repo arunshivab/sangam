@@ -87,7 +87,7 @@ patches:
             name: sangam-test-ca
   - target:
       kind: Job
-      name: sangam-migrate-1-0-0-rc-3
+      name: sangam-migrate-1-0-0-rc-4
     patch: |
       - op: replace
         path: /spec/template/spec/containers/0/imagePullPolicy

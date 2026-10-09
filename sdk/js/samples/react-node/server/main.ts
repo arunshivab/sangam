@@ -16,7 +16,7 @@ const sangam = createSangam({
   baseUrl,
   cookieSecret: process.env.COOKIE_SECRET ?? "sample-only-cookie-secret-change-me-0123456789",
   allowInsecureRequests: authority.startsWith("http://localhost") || authority.startsWith("http://127.0.0.1"),
-  audit: { appId: "sangam-dev-sample", appVersion: "1.0.0-rc.3", environment: "development", bufferPath: process.env.AUDIT_BUFFER ?? "sangam-audit/pending.jsonl" },
+  audit: { appId: "sangam-dev-sample", appVersion: "1.0.0-rc.4", environment: "development", bufferPath: process.env.AUDIT_BUFFER ?? "sangam-audit/pending.jsonl" },
 });
 
 const app = express();

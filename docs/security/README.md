@@ -1,4 +1,4 @@
-# Security evidence (R7, v1.0.0-rc.1)
+# Security evidence (R7, v1.0.0-rc.1; checks updated to rc.4)
 
 Sangam's own security work, ready for an outside tester and an auditor. None of it is a certification or a
 penetration test: those are commissioned by the founder.
@@ -16,7 +16,8 @@ penetration test: those are commissioned by the founder.
 |---|---|---|---|
 | `security` (CI) | every pull request and push to main | a high or critical finding in a dependency, the repository or the identity image | yes |
 | `migrations` (CI) | every pull request and push to main | an entity change without its migration, in Sangam's database or the imagiQa sample's | yes |
-| CodeQL (`codeql.yml`) | every pull request, push to main, and weekly | through the ruleset's "Require code scanning results": a high or critical security alert | yes |
+| CodeQL (`codeql.yml`, `security-extended` since rc.4) | every pull request, push to main, and weekly | through the ruleset's "Require code scanning results": a high or critical security alert | yes |
+| Code-quality review (`tools/security/codeql-quality.sh`, rc.4) | once per release, by hand | nothing by itself: each finding is fixed or recorded below | before each release |
 | `accessibility` (`nightly.yml`) | every night, and by hand | any WCAG 2.2 AA violation, policy violation or broken live connection, in three languages | no (nightly) |
 | `zap-baseline` (`nightly.yml`) | every night, and by hand | any FAIL from the ZAP baseline scan of a host | no (nightly) |
 | Dependabot (`dependabot.yml`) | weekly, and at once for an advisory | opens pull requests for NuGet, npm, pip, Maven, GitHub Actions and Docker updates | each runs the full CI |
@@ -35,6 +36,44 @@ on GitHub with these reasons:
 
 New alerts on a pull request fail it through the ruleset (high or critical security alerts). Review the Security
 tab after each weekly run: new queries can find old code.
+
+## Code scanning: rc.4
+
+The full alert list after rc.3 (214 entries) held one critical alert in the hosts' own code, one medium, a Java
+alert, and about 170 code-quality notes, many of them in compiler-generated code under `obj/`.
+
+- **Fixed:** the critical `cs/xml/xpath-injection` in the SAML signature check (#36), the Java timestamp parse
+  (#35), two `cs/constant-condition` notes in the SAML endpoint (#200, #201), and the quality findings that were
+  real faults (a certificate leaked on each SIEM reconnect, certificates left undisposed when start-up fails). See
+  the CHANGELOG.
+- **The gate now runs `security-extended`.** The quality notes leave the Security tab after the first analysis of
+  main with rc.4, and `obj/` is no longer analysed.
+- **Code quality is reviewed once per release** with `tools/security/codeql-quality.sh` (the `security-and-quality`
+  suite, every language). The founder or Claude runs it before tagging; its summary is read in full.
+
+Dismissed on GitHub after rc.4, with these reasons:
+
+| Alert | Where | Dismissed as | Why |
+|---|---|---|---|
+| #37 `cs/xml/missing-validation` | `src/Sangam.Identity.Infrastructure/Saml/SamlProtocol.cs` (`Load`) | Won't fix | SAML messages are not validated against the XML schema, by design: Sangam reads only the elements it needs and checks each one. The reader prohibits DTDs, has no resolver (no external entities) and caps the size; the signature is verified before any value is trusted. |
+| #30 `js/file-access-to-http` | `sdk/js/packages/node/src/audit.ts` | Won't fix | As in rc.3: sending the audit buffer to Sangam is the recorder's purpose. |
+| #23, #22 `js/stack-trace-exposure`, `js/xss-through-exception` | `sdk/js/packages/node/test/flow.test.ts` | Used in tests | As in rc.3: a test's stand-in identity provider. |
+
+rc.4's own quality review (C#, after the fixes) left these, none of them a fault:
+
+| Rule | Count | Why it stays |
+|---|---|---|
+| `cs/path-combine` | 43 | `Path.Combine` drops its first part when a later part is absolute. Every call joins a configured directory with a name Sangam builds itself (or a test's temporary folder); none takes a name from a request. |
+| `cs/linq/missed-where`, `cs/linq/missed-select` | 24 | Style: a `foreach` with an `if` could be a LINQ `Where`. The loops are kept where they read more plainly. |
+| `cs/useless-upcast` | 17 | `(string?)null` and `(Guid?)null` in tuples, ternaries and anonymous objects, where the cast names the type. |
+| `cs/local-not-disposed` | 6 | Disposed through `await using (x.ConfigureAwait(false))`, in a `finally`, or returned to the caller; CodeQL does not follow these. |
+| `cs/complex-condition` | 3 | Validation checks that read as one rule. |
+| `cs/catch-of-all-exceptions` | 1 | The account purge logs and carries on with the next account; marked with a pragma and a comment. |
+| `cs/static-field-written-by-instance` | 1 | `AccountService`'s dummy hash for timing-safe sign-in, computed once; writing it twice is harmless. |
+| `cs/equality-on-floats` | 1 | A comparison with an exact sentinel value, not a computed one. |
+| `cs/xml/missing-validation` | 1 | #37 above. |
+
+JavaScript held only the three alerts above; Python, Java and the workflows were clean.
 
 Related:
 
