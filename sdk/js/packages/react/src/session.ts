@@ -16,12 +16,21 @@ export class HttpError extends Error {
   }
 }
 
+/** Drops trailing "/" characters (a loop, not a regular expression, so its time stays linear on any input). */
+function trimTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47) {
+    end--;
+  }
+  return value.slice(0, end);
+}
+
 /**
  * Talks to your back end's Sangam routes. The browser never sees a token: it asks the back end who is signed in, and
  * follows the back end's answer when a sign-in or a step-up is needed.
  */
 export function createSessionClient(options: SessionClientOptions = {}) {
-  const basePath = (options.basePath ?? "/auth").replace(/\/+$/, "");
+  const basePath = trimTrailingSlashes(options.basePath ?? "/auth");
   const doFetch = options.fetch ?? ((input, init) => fetch(input, init));
   const navigate = options.navigate ?? ((url: string) => window.location.assign(url));
   const here = () => (typeof window === "undefined" ? "/" : window.location.pathname + window.location.search);

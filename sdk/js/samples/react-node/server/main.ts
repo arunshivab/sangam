@@ -1,4 +1,5 @@
 import express, { type NextFunction, type Request, type Response } from "express";
+import { rateLimit } from "express-rate-limit";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { can, createSangam, SangamAcr } from "@sangam/node";
@@ -15,10 +16,13 @@ const sangam = createSangam({
   baseUrl,
   cookieSecret: process.env.COOKIE_SECRET ?? "sample-only-cookie-secret-change-me-0123456789",
   allowInsecureRequests: authority.startsWith("http://localhost") || authority.startsWith("http://127.0.0.1"),
-  audit: { appId: "sangam-dev-sample", appVersion: "1.0.0-rc.2", environment: "development", bufferPath: process.env.AUDIT_BUFFER ?? "sangam-audit/pending.jsonl" },
+  audit: { appId: "sangam-dev-sample", appVersion: "1.0.0-rc.3", environment: "development", bufferPath: process.env.AUDIT_BUFFER ?? "sangam-audit/pending.jsonl" },
 });
 
 const app = express();
+// rc.3: a per-address limit on every route, sign-in included. Copy it: a real application needs one in front of its
+// API too (tune the numbers; behind a proxy, set "trust proxy" so the limit sees the client's address).
+app.use(rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: "draft-8", legacyHeaders: false }));
 app.use(express.json());
 app.use((req, res, next) => void sangam.router(req, res, next));
 

@@ -29,12 +29,18 @@ export class MemorySessionStore<T> implements SessionStore<T> {
 }
 
 export function cookies(req: IncomingMessage): Record<string, string> {
-  const out: Record<string, string> = {};
+  // A Map, not a plain object, while parsing: a cookie named "__proto__" or "constructor" cannot reach a prototype.
+  const out = new Map<string, string>();
   for (const part of (req.headers.cookie ?? "").split(";")) {
     const i = part.indexOf("=");
-    if (i > 0) out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
+    if (i <= 0) continue;
+    try {
+      out.set(part.slice(0, i).trim(), decodeURIComponent(part.slice(i + 1).trim()));
+    } catch {
+      // A malformed %-escape: skip that cookie rather than fail the request.
+    }
   }
-  return out;
+  return Object.fromEntries(out);
 }
 
 /** A session id, signed so a forged cookie is ignored. */

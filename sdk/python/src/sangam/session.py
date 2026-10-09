@@ -13,9 +13,14 @@ COOKIE = "sangam.sid"
 
 
 class SessionStore(Protocol):
-    def get(self, sid: str) -> dict[str, Any] | None: ...
-    def set(self, sid: str, value: dict[str, Any], ttl: int) -> None: ...
-    def delete(self, sid: str) -> None: ...
+    def get(self, sid: str) -> dict[str, Any] | None:
+        """The session with this id, or None when there is none or it has expired."""
+
+    def set(self, sid: str, value: dict[str, Any], ttl: int) -> None:
+        """Stores the session for ttl seconds."""
+
+    def delete(self, sid: str) -> None:
+        """Forgets the session."""
 
 
 class MemorySessionStore:

@@ -23,7 +23,7 @@ else
   {
     <section class="sg-panel" data-panel="alerts">
       <h2 class="sg-h2">@L["Alerts"]</h2>
-      <div class="sg-table-wrap">
+      <div class="sg-table-wrap" tabindex="0" role="region" aria-label="@L["Alerts"]">
         <table class="sg-table">
           <thead><tr><th>@L["Condition"]</th><th>@L["Opened"]</th><th>@L["State"]</th></tr></thead>
           <tbody>
@@ -92,7 +92,7 @@ else
     }
     else
     {
-      <div class="sg-table-wrap">
+      <div class="sg-table-wrap" tabindex="0" role="region" aria-label="@L["The last 24 hours"]">
         <table class="sg-table sg-table--compact">
           <thead><tr><th>@L["Hour"]</th><th>@L["Sign-ins"]</th><th>@L["Refused"]</th><th>@L["Lockouts"]</th><th>@L["Rate-limit hits"]</th><th>@L["Requests"]</th><th>@L["Errors"]</th><th>@L["Avg ms"]</th><th>@L["E-mail failures"]</th><th>@L["SMS failures"]</th></tr></thead>
           <tbody>

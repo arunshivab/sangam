@@ -17,6 +17,11 @@ updates:
 
   - package-ecosystem: npm
     directory: /sdk/js
+    # rc.3: @types/node follows the oldest Node the SDKs support (engines: node >= 20, CI on 22), not the newest Node;
+    # newer types would let code use APIs that supported runtimes lack. Raise it when the supported range moves.
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     schedule:
       interval: weekly
       day: monday

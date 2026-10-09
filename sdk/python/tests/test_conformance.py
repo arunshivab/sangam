@@ -6,7 +6,14 @@ import pytest
 
 from sangam import AuditConfig, AuditEntry, SangamUser, build_audit_event, has_permission, has_role, parse_memberships, roles_in, satisfies, step_up_challenge, uuid7, validate_audit_event, verify_webhook
 
-V = json.load(open(os.path.join(os.path.dirname(__file__), "..", "..", "conformance", "vectors.json"), encoding="utf-8"))
+
+
+def _load(*parts: str):
+    with open(os.path.join(os.path.dirname(__file__), "..", "..", *parts), encoding="utf-8") as f:
+        return json.load(f)
+
+
+V = _load("conformance", "vectors.json")
 USER = SangamUser(id="x", memberships=tuple(parse_memberships(V["permissions"]["sangam_orgs"])))
 
 
@@ -62,7 +69,7 @@ def test_audit_builder():
 
 def test_the_schema_file_agrees_with_the_vectors():
     jsonschema = pytest.importorskip("jsonschema")
-    schema = json.load(open(os.path.join(os.path.dirname(__file__), "..", "..", "schema", "audit-event-1.0.schema.json"), encoding="utf-8"))
+    schema = _load("schema", "audit-event-1.0.schema.json")
     validator = jsonschema.Draft202012Validator(schema)
     for c in V["audit"]["validation"]:
         assert (not list(validator.iter_errors(c["event"]))) is c["valid"], c["why"]

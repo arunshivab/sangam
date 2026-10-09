@@ -1,7 +1,4 @@
 """FastAPI: sign-in with PKCE on the server, step-up, permission, token guard and audit, against a real provider."""
-import json
-from urllib.parse import urlparse
-
 import pytest
 from fastapi import Depends, FastAPI, Request
 from fastapi.testclient import TestClient

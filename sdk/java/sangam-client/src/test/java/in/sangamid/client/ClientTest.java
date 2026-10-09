@@ -1,6 +1,7 @@
 package in.sangamid.client;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -89,5 +90,13 @@ class ClientTest {
         } finally {
             server.stop(0);
         }
+    }
+
+    @Test
+    void aWebhookTimestampTooLongForALong_IsRefused_NotThrown() {
+        // rc.3 (CodeQL java/uncaught-number-format-exception): a crafted 25-digit timestamp is simply not valid.
+        String secret = "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw";
+        assertFalse(WebhookVerifier.verify("msg_1", "1234567890123456789012345", "v1,AAAA", "{}", secret, 1614265330L));
+        assertFalse(WebhookVerifier.verify("msg_1", "", "v1,AAAA", "{}", secret, 1614265330L));
     }
 }
