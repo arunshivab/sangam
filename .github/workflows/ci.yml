@@ -18,9 +18,12 @@ env:
 jobs:
   # Two explicit jobs rather than a matrix: service containers exist only on Linux
   # runners. The job names are what the branch ruleset requires — keep them stable.
+  # Linux runners are pinned to ubuntu-24.04 (GitHub moves ubuntu-latest to Ubuntu 26 from 19 October 2026); the
+  # job name keeps "ubuntu-latest" because the ruleset requires that exact name. Move to a newer image deliberately,
+  # as its own change (SGM-912 section 7).
   build-ubuntu:
     name: build (ubuntu-latest)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:18
@@ -99,7 +102,7 @@ jobs:
 
   format:
     name: format
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
@@ -118,7 +121,7 @@ jobs:
   # the last migration's snapshot, for Sangam's database and for the imagiQa sample's. Needs no database.
   migrations:
     name: migrations
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
@@ -142,7 +145,7 @@ jobs:
   # (sdk/conformance/vectors.json) and its own tests. A required check since R7.
   sdks:
     name: sdks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
@@ -178,7 +181,7 @@ jobs:
   # A required check since R7.
   security:
     name: security
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
