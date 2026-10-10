@@ -13,7 +13,7 @@ import {
   type StepUpRequirement,
 } from "@sangam/client";
 import { AuditRecorder, type AuditOptions } from "./audit.js";
-import { cookies, MemorySessionStore, newId, setCookie, signId, unsignId, type SessionStore } from "./session.js";
+import { cookies, MemorySessionStore, newId, sessionCookieName, setCookie, signId, unsignId, type SessionStore } from "./session.js";
 
 export * from "@sangam/client";
 export { AuditRecorder, clientIp, type AuditOptions } from "./audit.js";
@@ -60,8 +60,6 @@ declare module "node:http" {
   }
 }
 
-const COOKIE = "sangam.sid";
-
 function redirect(res: ServerResponse, location: string): void {
   res.statusCode = 302;
   res.setHeader("location", location);
@@ -106,6 +104,7 @@ export function createSangam(options: SangamNodeOptions) {
   const baseUrl = trimTrailingSlashes(options.baseUrl);
   const redirectUri = `${baseUrl}${basePath}/callback`;
   const secure = baseUrl.startsWith("https://");
+  const cookieName = sessionCookieName(secure);
   const ttl = options.sessionTtlSeconds ?? 8 * 3600;
   const store = options.store ?? new MemorySessionStore<SangamSession>();
   const scopes = options.scopes ?? ["openid", "profile", "email", "orgs.read"];
@@ -123,14 +122,14 @@ export function createSangam(options: SangamNodeOptions) {
   }
 
   async function load(req: IncomingMessage): Promise<{ id: string | undefined; session: SangamSession }> {
-    const id = unsignId(cookies(req)[COOKIE], options.cookieSecret);
+    const id = unsignId(cookies(req)[cookieName], options.cookieSecret);
     return { id, session: (id ? await store.get(id) : undefined) ?? {} };
   }
 
   async function save(res: ServerResponse, id: string | undefined, session: SangamSession): Promise<string> {
     const sid = id ?? newId();
     await store.set(sid, session, ttl);
-    setCookie(res, COOKIE, signId(sid, options.cookieSecret), { secure, maxAge: ttl });
+    setCookie(res, cookieName, signId(sid, options.cookieSecret), { secure, maxAge: ttl });
     return sid;
   }
 
@@ -204,7 +203,7 @@ export function createSangam(options: SangamNodeOptions) {
   async function logout(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const { id, session } = await load(req);
     if (id) await store.delete(id);
-    setCookie(res, COOKIE, "", { secure, maxAge: 0 });
+    setCookie(res, cookieName, "", { secure, maxAge: 0 });
     const c = await config();
     const parameters: Record<string, string> = { post_logout_redirect_uri: baseUrl + "/" };
     if (session.idToken) parameters.id_token_hint = session.idToken;

@@ -16,8 +16,17 @@ namespace Sangam.SelfService.Web.Verification;
 /// </summary>
 public static class DigiLockerEndpoints
 {
-    /// <summary>The cookie that carries the state across the round trip.</summary>
+    /// <summary>The cookie that carries the state across the round trip. Over HTTPS it is named with the
+    /// <c>__Secure-</c> prefix (rc.5); it lives under the callback path, so it cannot take <c>__Host-</c>.</summary>
     public const string CookieName = "sangam.digilocker";
+
+    /// <summary>The cookie's name for this request: <c>__Secure-sangam.digilocker</c> over HTTPS (rc.5).</summary>
+    /// <param name="context">The request.</param>
+    public static string CookieNameFor(HttpContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        return context.Request.IsHttps ? "__Secure-" + CookieName : CookieName;
+    }
 
     /// <summary>The callback path, under which the cookie lives.</summary>
     public const string CallbackPath = "/verify/digilocker/callback";
@@ -52,7 +61,7 @@ public static class DigiLockerEndpoints
             (string verifier, string challenge) = DigiLockerClient.NewPkce();
             string state = Convert.ToHexStringLower(System.Security.Cryptography.RandomNumberGenerator.GetBytes(16));
             Pending pending = new(state, verifier, userId.Value, DateTimeOffset.UtcNow.Add(Lifetime));
-            context.Response.Cookies.Append(CookieName, protection.CreateProtector(Purpose).Protect(JsonSerializer.Serialize(pending)), new CookieOptions
+            context.Response.Cookies.Append(CookieNameFor(context), protection.CreateProtector(Purpose).Protect(JsonSerializer.Serialize(pending)), new CookieOptions
             {
                 HttpOnly = true,
                 Secure = context.Request.IsHttps,
@@ -67,7 +76,7 @@ public static class DigiLockerEndpoints
         app.MapGet(CallbackPath, async (HttpContext context, DigiLockerClient digiLocker, DigiLockerSettings settings, IIdentityVerificationService verification, IDataProtectionProvider protection, CancellationToken cancellationToken) =>
         {
             Pending? pending = Read(context, protection);
-            context.Response.Cookies.Delete(CookieName, new CookieOptions { Path = CallbackPath });
+            context.Response.Cookies.Delete(CookieNameFor(context), new CookieOptions { Path = CallbackPath });
             Guid? userId = PortalUser.Id(context.User);
             string? state = context.Request.Query["state"];
             string? code = context.Request.Query["code"];
@@ -124,7 +133,7 @@ public static class DigiLockerEndpoints
 
     private static Pending? Read(HttpContext context, IDataProtectionProvider protection)
     {
-        if (!context.Request.Cookies.TryGetValue(CookieName, out string? value) || string.IsNullOrEmpty(value))
+        if (!context.Request.Cookies.TryGetValue(CookieNameFor(context), out string? value) || string.IsNullOrEmpty(value))
         {
             return null;
         }

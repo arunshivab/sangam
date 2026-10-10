@@ -140,7 +140,16 @@ public sealed class ManagementServiceTests : IAsyncLifetime
         await mgmt.UpsertRoleAsync(_appId, "nurse", Doctor with { DisplayName = "Nurse", Permissions = ["patient:read"] }, ManagementActor.Api);
         await mgmt.UpsertOrganisationAsync(_appId, orgId, new OrganisationUpsert("Apulki", "hospital", null, null), ManagementActor.Api);
 
-        ManagementResult<MembershipDto> granted = await mgmt.UpsertMembershipAsync(_appId, orgId, _userId, new MembershipUpsert("doctor", true), ManagementActor.Api);
+        // rc.5 (ASVS V4.2.1, consent first): through the API, a person who does not use the application is not added —
+        // with the same answer as an id that does not exist — and is not linked to it.
+        ManagementResult<MembershipDto> refused = await mgmt.UpsertMembershipAsync(_appId, orgId, _userId, new MembershipUpsert("doctor", true), ManagementActor.Api);
+        ManagementResult<MembershipDto> unknown = await mgmt.UpsertMembershipAsync(_appId, orgId, Guid.NewGuid(), new MembershipUpsert("doctor", true), ManagementActor.Api);
+        Assert.Equal((ManagementStatus.NotFound, EfManagementService.NotAUserOfThisApplication), (refused.Status, refused.Message));
+        Assert.Equal((refused.Status, refused.Message), (unknown.Status, unknown.Message));
+        Assert.False(await db.AppGrants.AnyAsync(g => g.UserId == _userId && g.AppId == _appId));
+
+        // Accepting an invitation is the person's own act, and links them.
+        ManagementResult<MembershipDto> granted = await mgmt.UpsertMembershipAsync(_appId, orgId, _userId, new MembershipUpsert("doctor", true), ManagementActor.Person(_userId));
         Assert.Equal(ManagementStatus.Ok, granted.Status);
         Assert.True(granted.Value!.AppliesToDescendants);
         Assert.True(await db.AppGrants.AnyAsync(g => g.UserId == _userId && g.AppId == _appId && g.RevokedAt == null));
@@ -170,7 +179,7 @@ public sealed class ManagementServiceTests : IAsyncLifetime
         Guid orgId = Guid.NewGuid();
         await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor, ManagementActor.Api);
         await mgmt.UpsertOrganisationAsync(_appId, orgId, new OrganisationUpsert("Apulki", "hospital", null, null), ManagementActor.Api);
-        await mgmt.UpsertMembershipAsync(_appId, orgId, _userId, new MembershipUpsert("doctor", false), ManagementActor.Api);
+        await mgmt.UpsertMembershipAsync(_appId, orgId, _userId, new MembershipUpsert("doctor", false), ManagementActor.Person(_userId));
         Assert.Single(await tenancy.GetOrgClaimsAsync(_userId, _appId));
 
         await mgmt.RevokeMembershipAsync(_appId, orgId, _userId, ManagementActor.Api);
@@ -187,7 +196,7 @@ public sealed class ManagementServiceTests : IAsyncLifetime
         await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor, ManagementActor.Api);
         await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor with { DisplayName = "Senior consultant", Permissions = ["patient:read", "rx:write", "discharge:approve"], OrgId = orgId }, ManagementActor.Api);
 
-        await mgmt.UpsertMembershipAsync(_appId, orgId, _userId, new MembershipUpsert("doctor", false), ManagementActor.Api);
+        await mgmt.UpsertMembershipAsync(_appId, orgId, _userId, new MembershipUpsert("doctor", false), ManagementActor.Person(_userId));
 
         EfTenancyQuery tenancy = new(db);
         IReadOnlyList<OrgClaim> claims = await tenancy.GetOrgClaimsAsync(_userId, _appId);

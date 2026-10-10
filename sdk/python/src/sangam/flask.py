@@ -8,7 +8,6 @@ from flask import Blueprint, Flask, Response, g, jsonify, redirect, request
 
 from .audit import AuditEntry
 from .memberships import SangamUser, has_permission
-from .session import COOKIE
 from .stepup import satisfies, step_up_challenge
 from .tokens import InvalidToken
 from .web import SangamCore, SangamSettings, user_to_dict
@@ -36,19 +35,19 @@ class SangamFlask:
             app.register_blueprint(bp)
 
     def _cookie(self, response: Response, value: str, max_age: int | None = None) -> Response:
-        response.set_cookie(COOKIE, value, max_age=self.settings.session_ttl if max_age is None else max_age, httponly=True, samesite="Lax", secure=self.core.secure, path="/")
+        response.set_cookie(self.core.cookie, value, max_age=self.settings.session_ttl if max_age is None else max_age, httponly=True, samesite="Lax", secure=self.core.secure, path="/")
         return response
 
     def _login(self) -> Response:
-        url, cookie = self.core.begin(request.cookies.get(COOKIE), request.args.get("returnTo"), request.args.get("acr"), request.args.get("max_age"))
+        url, cookie = self.core.begin(request.cookies.get(self.core.cookie), request.args.get("returnTo"), request.args.get("acr"), request.args.get("max_age"))
         return self._cookie(redirect(url, 302), cookie)
 
     def _callback(self) -> Response:
-        target, cookie = self.core.finish(request.cookies.get(COOKIE), request.args.to_dict())
+        target, cookie = self.core.finish(request.cookies.get(self.core.cookie), request.args.to_dict())
         return self._cookie(redirect(target, 302), cookie)
 
     def _logout(self) -> Response:
-        return self._cookie(redirect(self.core.end(request.cookies.get(COOKIE)), 302), "", 0)
+        return self._cookie(redirect(self.core.end(request.cookies.get(self.core.cookie)), 302), "", 0)
 
     def _me(self) -> Any:
         user = self.current_user()
@@ -58,7 +57,7 @@ class SangamFlask:
 
     def current_user(self) -> SangamUser | None:
         if "sangam_user" not in g:
-            g.sangam_user = self.core.user(request.cookies.get(COOKIE))
+            g.sangam_user = self.core.user(request.cookies.get(self.core.cookie))
         return g.sangam_user
 
     def _send_to_sangam(self, login: str, error: str, acr: str | None = None, max_age: int | None = None) -> Any:

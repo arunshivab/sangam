@@ -136,30 +136,36 @@ else
     </section>
 
     <section class="sg-panel" data-panel="breach-list">
-      <h2 class="sg-h2">@L["Breached-password list"]</h2>
+      <h2 class="sg-h2">@L["Breached-password check"]</h2>
       <dl class="sg-facts">
         <dt>@L["Check"]</dt>
-        <dd>@if (s.BreachList.Enabled && s.BreachList.Loaded)
+        <dd>@if (s.BreachList.Enabled)
             {
               <span class="sg-ok">@L["on"]</span>
             }
-            else if (s.BreachList.Enabled)
+            else
             {
-              <span class="sg-warn">@L["switched on, but off until the list is loaded"]</span>
+              <span class="sg-warn">@L["off"]</span>
+            }</dd>
+        <dt>@L["Pwned Passwords service"]</dt>
+        <dd>@if (!s.BreachList.Online)
+            {
+              <span class="sg-muted">@L["not used: the built-in list only"]</span>
+            }
+            else if (s.BreachList.OnlineFailingSince is DateTimeOffset failing)
+            {
+              <span class="sg-warn">@L["not answering since {0}: the built-in list is used meanwhile", When(failing)]</span>
+            }
+            else if (s.BreachList.LastOnlineSuccess is DateTimeOffset answered)
+            {
+              <span class="sg-ok">@L["answering"]</span><span class="sg-muted"> · @When(answered)</span>
             }
             else
             {
-              <span class="sg-muted">@L["off"]</span>
+              <span class="sg-muted">@L["not asked yet since the identity server started"]</span>
             }</dd>
-        <dt>@L["List"]</dt>
-        <dd>@if (s.BreachList.Loaded)
-            {
-              @L["{0} hashes, dated {1}", s.BreachList.Entries.ToString("N0", CultureInfo.CurrentCulture), s.BreachList.ListDate?.ToString("d MMM yyyy", CultureInfo.CurrentCulture) ?? "—"]
-            }
-            else
-            {
-              <span class="sg-muted">@(s.BreachList.Problem is string problem ? L[problem] : L["not loaded"])</span>
-            }</dd>
+        <dt>@L["Built-in list"]</dt>
+        <dd>@L["{0} common passwords", s.BreachList.FallbackEntries.ToString("N0", CultureInfo.CurrentCulture)]</dd>
         <dt>@L["Reported by"]</dt>
         <dd>@if (s.BreachListSource is HostBreachList source)
             {
@@ -169,11 +175,30 @@ else
             {
               <span class="sg-muted">@L["the identity server has not reported yet; shown from this console's own settings"]</span>
             }</dd>
-        @foreach (HostBreachList other in s.BreachListReports.Where(r => s.BreachListSource is not null && r.Host != s.BreachListSource.Host && (r.Status.Enabled != s.BreachList.Enabled || r.Status.Loaded != s.BreachList.Loaded)))
+        @foreach (HostBreachList other in s.BreachListReports.Where(r => s.BreachListSource is not null && r.Host != s.BreachListSource.Host && (r.Status.Enabled != s.BreachList.Enabled || r.Status.Online != s.BreachList.Online)))
         {
           <dt class="sg-mono">@other.Host</dt>
-          <dd class="sg-warn-text">@L["sees it differently: {0}", other.Status.Enabled && other.Status.Loaded ? L["on"] : other.Status.Enabled ? L["switched on, but off until the list is loaded"] : L["off"]]</dd>
+          <dd class="sg-warn-text">@L["sees it differently: {0}", !other.Status.Enabled ? L["off"] : other.Status.Online ? L["on, with the online service"] : L["on, built-in list only"]]</dd>
         }
+      </dl>
+    </section>
+
+    <section class="sg-panel" data-panel="antivirus">
+      <h2 class="sg-h2">@L["Virus scanner"]</h2>
+      <dl class="sg-facts">
+        <dt>@L["Logo uploads"]</dt>
+        <dd>@if (!s.Antivirus.Configured)
+            {
+              <span class="sg-muted">@L["no scanner configured (allowed only in development)"]</span>
+            }
+            else if (s.Antivirus.Up == true)
+            {
+              <span class="sg-ok">@L["scanned: the scanner is answering"]</span>
+            }
+            else
+            {
+              <span class="sg-warn">@L["refused: the scanner is not answering"]</span>
+            }</dd>
       </dl>
     </section>
   </div>

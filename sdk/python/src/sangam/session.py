@@ -12,6 +12,11 @@ from typing import Any, Protocol
 COOKIE = "sangam.sid"
 
 
+def cookie_name(secure: bool) -> str:
+    """The session cookie's name: over https it carries the __Host- prefix (rc.5), so only this exact host can set it."""
+    return "__Host-" + COOKIE if secure else COOKIE
+
+
 class SessionStore(Protocol):
     def get(self, sid: str) -> dict[str, Any] | None:
         """The session with this id, or None when there is none or it has expired."""

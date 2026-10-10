@@ -117,7 +117,7 @@ public sealed record HostBreachList(string Host, BreachListStatus Status, DateTi
 /// <param name="Tls">The public sites' certificates.</param>
 /// <param name="Backup">The last backup.</param>
 /// <param name="RestoreDrill">The last restore drill.</param>
-/// <param name="BreachList">The offline breached-password list (D-J).</param>
+/// <param name="BreachList">The breached-password check (rc.5).</param>
 /// <param name="Anjal">Anjal.</param>
 /// <param name="Alerts">Open alerts, and those resolved in the last week.</param>
 public sealed record MonitoringSnapshot(
@@ -152,7 +152,15 @@ public sealed record MonitoringSnapshot(
 
     /// <summary>The grievance log's open and overdue counts (D-D).</summary>
     public GrievanceCounts Grievances { get; init; } = new(0, 0, 0);
+
+    /// <summary>The virus scanner uploaded logos go through (rc.5).</summary>
+    public AntivirusStatus Antivirus { get; init; } = new(false, null);
 }
+
+/// <summary>The virus scanner, as this host reaches it (rc.5, ASVS V12.4.2).</summary>
+/// <param name="Configured">Whether a scanner is configured.</param>
+/// <param name="Up">Whether it answered just now; <see langword="null"/> when none is configured.</param>
+public sealed record AntivirusStatus(bool Configured, bool? Up);
 
 /// <summary>Sangam's own monitoring (D-H): no third party; the numbers live in Sangam's database.</summary>
 public interface IMonitoringService

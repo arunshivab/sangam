@@ -17,7 +17,7 @@ from authlib.oauth2.rfc7636 import create_s256_code_challenge
 from .audit import AuditBuffer, AuditConfig, AuditEntry, build_audit_event
 from .management import ManagementClient
 from .memberships import SangamMembership, SangamUser, user_from_claims
-from .session import MemorySessionStore, SessionStore, new_id, sign_id, unsign_id
+from .session import MemorySessionStore, SessionStore, cookie_name, new_id, sign_id, unsign_id
 from .stepup import satisfies
 from .tokens import ALGORITHMS, TokenVerifier
 
@@ -71,6 +71,7 @@ class SangamCore:
         self.base_url = settings.base_url.rstrip("/")
         self.redirect_uri = f"{self.base_url}{self.base_path}/callback"
         self.secure = self.base_url.startswith("https://")
+        self.cookie = cookie_name(self.secure)
         self._http = http or httpx.Client(timeout=15)
         self._metadata: dict[str, Any] | None = None
         self._keys: Any = None

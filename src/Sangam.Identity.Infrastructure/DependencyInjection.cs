@@ -75,12 +75,14 @@ public static class DependencyInjection
             {
                 o.User.RequireUniqueEmail = true;
                 o.SignIn.RequireConfirmedEmail = true;
-                // Same policy as Anjal; PasswordStrength enforces it first with the blocklist.
+                // rc.5 (ASVS V2.1.1, V2.1.9): length, not character types. PasswordStrength enforces it first with the
+                // built-in list of common passwords; PolicyPasswordValidator adds what organisations require.
                 o.Password.RequiredLength = Sangam.Identity.Application.Security.PasswordStrength.MinimumLength;
-                o.Password.RequireNonAlphanumeric = true;
-                o.Password.RequireUppercase = true;
-                o.Password.RequireLowercase = true;
-                o.Password.RequireDigit = true;
+                o.Password.RequireNonAlphanumeric = false;
+                o.Password.RequireUppercase = false;
+                o.Password.RequireLowercase = false;
+                o.Password.RequireDigit = false;
+                o.Password.RequiredUniqueChars = 1;
                 // UnknownAddressLockout mirrors these two for addresses with no account (D-L).
                 o.Lockout.MaxFailedAccessAttempts = 5;
                 o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
@@ -99,10 +101,11 @@ public static class DependencyInjection
         PolicySettings policies = PolicySettings.From(configuration);
         services.AddSingleton(policies);
         services.AddScoped<ISecurityPolicyService, EfSecurityPolicyService>();
-        // D-J: offline only — the local Pwned Passwords list; off until the list is loaded.
-        services.AddSingleton<OfflineBreachedPasswordChecker>();
-        services.AddSingleton<IBreachedPasswordChecker>(sp => sp.GetRequiredService<OfflineBreachedPasswordChecker>());
-        services.AddSingleton<IBreachListStatus>(sp => sp.GetRequiredService<OfflineBreachedPasswordChecker>());
+        // rc.5 (D-J revised): the built-in list first, then Pwned Passwords by k-anonymity; an outage falls back to the list.
+        services.AddHttpClient(PwnedPasswordsChecker.HttpClientName, c => c.DefaultRequestHeaders.UserAgent.ParseAdd("SangamID-breach-check"));
+        services.AddSingleton<PwnedPasswordsChecker>();
+        services.AddSingleton<IBreachedPasswordChecker>(sp => sp.GetRequiredService<PwnedPasswordsChecker>());
+        services.AddSingleton<IBreachListStatus>(sp => sp.GetRequiredService<PwnedPasswordsChecker>());
 
         services.AddOpenIddict()
             .AddCore(o => o.UseEntityFrameworkCore().UseDbContext<SangamDbContext>());
@@ -133,6 +136,8 @@ public static class DependencyInjection
         services.AddScoped<ISignatureService, EfSignatureService>();
         // PR-19: branding and message templates by level.
         services.AddScoped<Application.Customisation.CurrentApplication>();
+        // rc.5 (ASVS V12.4.2): every uploaded logo goes through the server's ClamAV (shared with Anjal).
+        services.AddSingleton<Customisation.IFileScanner>(sp => new Customisation.ClamAvScanner(configuration, sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Customisation.ClamAvScanner>>()));
         services.AddScoped<Customisation.EfCustomisationService>();
         services.AddScoped<Application.Customisation.ICustomisationService>(sp => sp.GetRequiredService<Customisation.EfCustomisationService>());
         services.AddScoped<Application.Customisation.IMessageTemplates>(sp => sp.GetRequiredService<Customisation.EfCustomisationService>());

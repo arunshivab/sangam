@@ -84,7 +84,10 @@ public sealed class SangamManagementClient : IDisposable
     public Task<JsonNode?> UpsertOrganisationAsync(Guid id, string name, string type, Guid? parentId = null, CancellationToken cancellationToken = default)
         => SendAsync(HttpMethod.Put, $"orgs/{id:D}", new { name, type, parentId, metadata = (string?)null }, cancellationToken);
 
-    /// <summary>Gives a person a role at an organisation.</summary>
+    /// <summary>
+    /// Gives a person a role at an organisation. rc.5: only someone who already uses your application (has signed in to
+    /// it); anyone else answers 404 — invite them with <see cref="InviteAsync"/> instead.
+    /// </summary>
     /// <param name="orgId">The organisation.</param>
     /// <param name="userId">The person (their <c>sub</c>).</param>
     /// <param name="role">The role code.</param>
@@ -93,6 +96,18 @@ public sealed class SangamManagementClient : IDisposable
     /// <param name="cancellationToken">Cancellation token.</param>
     public Task<JsonNode?> UpsertMembershipAsync(Guid orgId, Guid userId, string role, bool appliesToDescendants = false, DateTimeOffset? expiresAt = null, CancellationToken cancellationToken = default)
         => SendAsync(HttpMethod.Put, $"orgs/{orgId:D}/members/{userId:D}", new { role, appliesToDescendants, expiresAt }, cancellationToken);
+
+    /// <summary>
+    /// Invites someone by e-mail to a role at an organisation (rc.5). They are added when they accept, signed in to
+    /// Sangam with that address; the link works for seven days. At most 200 invitations a day per application.
+    /// </summary>
+    /// <param name="orgId">The organisation.</param>
+    /// <param name="email">The address to invite.</param>
+    /// <param name="role">The role code.</param>
+    /// <param name="appliesToDescendants">Whether it reaches the organisation's children.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public Task<JsonNode?> InviteAsync(Guid orgId, string email, string role, bool appliesToDescendants = false, CancellationToken cancellationToken = default)
+        => SendAsync(HttpMethod.Post, $"orgs/{orgId:D}/invitations", new { email, role, appliesToDescendants }, cancellationToken);
 
     /// <summary>The values your application keeps about a person.</summary>
     /// <param name="userId">The person.</param>

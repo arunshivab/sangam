@@ -99,7 +99,7 @@ public static class SangamAuthentication
         services.AddAuthentication(IdentityConstants.ApplicationScheme)
             .AddCookie(IdentityConstants.ApplicationScheme, o =>
             {
-                o.Cookie.Name = SessionCookieName;
+                o.Cookie.Name = Sangam.Web.Shared.Hosting.SecurityHeaders.CookieName(SessionCookieName, environmentName);
                 o.Cookie.HttpOnly = true;
                 o.Cookie.SameSite = SameSiteMode.Lax;
                 o.Cookie.SecurePolicy = secure;
@@ -112,7 +112,7 @@ public static class SangamAuthentication
             })
             .AddCookie(PendingScheme, o =>
             {
-                o.Cookie.Name = PendingCookieName;
+                o.Cookie.Name = Sangam.Web.Shared.Hosting.SecurityHeaders.CookieName(PendingCookieName, environmentName);
                 o.Cookie.HttpOnly = true;
                 o.Cookie.SameSite = SameSiteMode.Lax;
                 o.Cookie.SecurePolicy = secure;

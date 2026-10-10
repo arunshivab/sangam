@@ -64,7 +64,13 @@ GET    /roles                              PUT /roles/{code}          DELETE /ro
 GET    /orgs/{orgId}                       PUT /orgs/{orgId}
 GET    /orgs/{orgId}/members               PUT /orgs/{orgId}/members/{userId}
 DELETE /orgs/{orgId}/members/{userId}
+POST   /orgs/{orgId}/invitations           (rc.5)
 ```
+
+rc.5 (ASVS V4.2.1, consent first): `PUT /orgs/{orgId}/members/{userId}` adds only a person who already uses the
+calling application; for anyone else — or an id that does not exist — it answers 404 with the same message. Such a
+person is invited with `POST /orgs/{orgId}/invitations` (`email`, `role`, `appliesToDescendants`) and is linked only
+when they accept, signed in with that address. An application may send 200 invitations a day.
 
 The app id comes **from the token, never from the URL**, so an app cannot address another
 app's roles, organisations or memberships. Rules enforced: role codes are

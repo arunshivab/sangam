@@ -44,6 +44,8 @@ public sealed class ConsoleFactory : WebApplicationFactory<Program>
         ArgumentNullException.ThrowIfNull(builder);
         builder.UseEnvironment("Testing");
         builder.UseSetting("Sangam:DataProtection:PersistKeys", "false");
+        // rc.5: tests never call the Pwned Passwords service; the built-in list is the check.
+        builder.UseSetting("Sangam:Passwords:BreachCheck:Endpoint", "");
         // OI-015: TestServer has no HTTPS port; the redirection middleware’s warning is expected here.
         builder.UseSetting("Logging:LogLevel:Microsoft.AspNetCore.HttpsPolicy", "Error");
         builder.UseSetting("ConnectionStrings:Sangam", HasDatabase ? ConsoleTestConnection : SangamDbContextFactory.DevelopmentConnectionString);

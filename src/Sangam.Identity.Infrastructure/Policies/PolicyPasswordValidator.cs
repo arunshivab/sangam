@@ -8,13 +8,19 @@ namespace Sangam.Identity.Infrastructure.Policies;
 
 /// <summary>
 /// Applies the policy rules whenever a password is set — registration, reset and replacement (PR-16): the longest
-/// minimum over every application and organisation the person belongs to, and, when the breach-check service is
-/// on, a password that appears in known breaches is refused.
+/// minimum over every application and organisation the person belongs to, the character types where any of them
+/// requires them (rc.5), and a password that appears in known breaches is refused.
 /// </summary>
 public sealed class PolicyPasswordValidator : IPasswordValidator<SangamUser>
 {
     /// <summary>Error code: shorter than a policy requires.</summary>
     public const string TooShortCode = "PasswordTooShortForPolicy";
+
+    /// <summary>Error code: an organisation or application requires all four character types (rc.5).</summary>
+    public const string CharacterTypesCode = "PasswordCharacterTypesForPolicy";
+
+    /// <summary>The message when character types are required and missing.</summary>
+    public const string CharacterTypesMessage = "An organisation you belong to requires an upper-case letter, a lower-case letter, a number and a symbol.";
 
     /// <summary>Error code: found in known breaches.</summary>
     public const string BreachedCode = "PasswordBreached";
@@ -52,6 +58,11 @@ public sealed class PolicyPasswordValidator : IPasswordValidator<SangamUser>
                 Code = TooShortCode,
                 Description = string.Create(CultureInfo.InvariantCulture, $"An organisation you belong to requires a password of at least {policy.MinPasswordLength} characters."),
             });
+        }
+
+        if (policy.RequireCharacterTypes && !PasswordStrength.Evaluate(password, policy.MinPasswordLength, requireCharacterTypes: true).HasAllClasses)
+        {
+            return IdentityResult.Failed(new IdentityError { Code = CharacterTypesCode, Description = CharacterTypesMessage });
         }
 
         return await _breaches.IsBreachedAsync(password).ConfigureAwait(false) == true

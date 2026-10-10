@@ -277,7 +277,7 @@ public static class SiemFormat
             || action.StartsWith("user.session", StringComparison.Ordinal) || action.StartsWith("user.sms", StringComparison.Ordinal)
             || action.StartsWith("token.", StringComparison.Ordinal) || action.StartsWith("device.", StringComparison.Ordinal)
             || action.StartsWith("admin.user.mfa", StringComparison.Ordinal) || action.StartsWith("identity.", StringComparison.Ordinal)
-            || action is "admin.user.force_logout" or "admin.user.suspend" or "user.register.duplicate" or "sms.volume.alert" or "platform.alert" or "access.denied"
+            || action is "admin.user.force_logout" or "admin.user.suspend" or "user.register.duplicate" or "sms.volume.alert" or "platform.alert" or "access.denied" or "upload.refused"
             || action.StartsWith("saml.assertion", StringComparison.Ordinal) || action.StartsWith("saml.logout", StringComparison.Ordinal))
         {
             return "security";
@@ -310,7 +310,7 @@ public static class SiemFormat
     public static string Outcome(string action)
     {
         ArgumentNullException.ThrowIfNull(action);
-        if (action is "consent.deny" or "device.deny" or "user.signature.decline" or "identity.verify.refused" or "access.denied" or "token.refused")
+        if (action is "consent.deny" or "device.deny" or "user.signature.decline" or "identity.verify.refused" or "access.denied" or "token.refused" or "upload.refused")
         {
             return "denied";
         }

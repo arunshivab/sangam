@@ -104,7 +104,10 @@ public final class ManagementClient {
         return send("PUT", "orgs/" + id, body);
     }
 
-    /** Gives a person a role at an organisation; {@code expiresAt} (ISO 8601) makes it time-limited. */
+    /**
+     * Gives a person a role at an organisation; {@code expiresAt} (ISO 8601) makes it time-limited. rc.5: only someone who
+     * already uses your application; anyone else answers 404 — invite them with {@link #invite} instead.
+     */
     public JsonNode upsertMembership(String orgId, String userId, String role, boolean appliesToDescendants, String expiresAt) throws IOException, InterruptedException {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("role", role);
@@ -113,6 +116,15 @@ public final class ManagementClient {
             body.put("expiresAt", expiresAt);
         }
         return send("PUT", "orgs/" + orgId + "/members/" + userId, body);
+    }
+
+    /** Invites someone by e-mail to a role at an organisation (rc.5); they are added when they accept. At most 200 a day. */
+    public JsonNode invite(String orgId, String email, String role, boolean appliesToDescendants) throws IOException, InterruptedException {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("email", email);
+        body.put("role", role);
+        body.put("appliesToDescendants", appliesToDescendants);
+        return send("POST", "orgs/" + orgId + "/invitations", body);
     }
 
     public JsonNode getAttributes(String userId) throws IOException, InterruptedException {

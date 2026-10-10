@@ -62,6 +62,25 @@
   </span>
 </label>
 
+@* rc.5: an organisation or application may keep a character-type rule it already follows; never the default (ASVS V2.1.9). *@
+<label class="sg-check">
+  <input type="checkbox" checked="@(_types == true || View.Inherited.RequireCharacterTypes)" disabled="@View.Inherited.RequireCharacterTypes"
+         @onchange="e => _types = e.Value is true ? true : null" />
+  <span>
+    @L["Require an upper-case letter, a lower-case letter, a number and a symbol"]
+    @if (View.Inherited.RequireCharacterTypes)
+    {
+      <span class="sg-muted">— @L["already required by {0}", InheritLabel]</span>
+    }
+  </span>
+</label>
+@if (_types == true && !View.Inherited.RequireCharacterTypes)
+{
+  <p class="sg-notice sg-notice--warn" role="status" data-notice="character-types">
+    @L["Not recommended. Security standards (OWASP ASVS and NIST) advise against character-type rules: people answer them with predictable passwords such as Pune@2026. Length and the breached-password check protect better. Turn this on only to keep a policy your organisation already follows. Everyone it covers must meet it when they next set a password, in every application they use with Sangam."]
+  </p>
+}
+
 <div class="sg-actions">
   <button type="button" class="sg-btn sg-btn--primary" @onclick="SaveAsync" disabled="@Busy">@L["Save security policy"]</button>
 </div>
@@ -100,6 +119,7 @@
     private int? _minLength;
     private MfaRequirement? _mfa;
     private bool? _breach;
+    private bool? _types;
 
     protected override void OnParametersSet()
     {
@@ -107,9 +127,10 @@
         _minLength = View.MinPasswordLength;
         _mfa = View.Mfa is MfaRequirement m && m > View.Inherited.Mfa ? m : null;
         _breach = View.BreachedPasswordCheck == true ? true : null;
+        _types = View.RequireCharacterTypes == true ? true : null;
     }
 
-    private Task SaveAsync() => OnSave.InvokeAsync(new PolicyInput(_signIn, _minLength, _mfa, _breach));
+    private Task SaveAsync() => OnSave.InvokeAsync(new PolicyInput(_signIn, _minLength, _mfa, _breach, _types));
 
     private static int SecurityRank(SignInPolicy policy) => Sangam.Identity.Domain.SecurityPolicy.Rank(policy);
 

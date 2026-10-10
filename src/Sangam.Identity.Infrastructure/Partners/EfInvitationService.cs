@@ -23,6 +23,10 @@ public sealed class EfInvitationService : IInvitationService
     /// <summary>How long an invitation works.</summary>
     public static readonly TimeSpan Lifetime = TimeSpan.FromDays(7);
 
+    /// <summary>How many invitations an application may send through the API in 24 hours (rc.5), so the API cannot
+    /// be used to send mail in bulk.</summary>
+    public const int ApiDailyLimit = 200;
+
     private static readonly EmailAddressAttribute EmailFormat = new();
     private readonly SangamDbContext _db;
     private readonly UserManager<SangamUser> _users;
@@ -118,6 +122,77 @@ public sealed class EfInvitationService : IInvitationService
     }
 
     /// <inheritdoc />
+    public async Task<ManagementResult<InvitationSent>> CreateForApplicationAsync(Guid appId, Guid orgId, string email, string roleCode, bool appliesToDescendants, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(email);
+        ArgumentNullException.ThrowIfNull(roleCode);
+        string address = email.Trim();
+        if (address.Length == 0 || address.Length > 256 || !EmailFormat.IsValid(address))
+        {
+            return ManagementResult.Invalid<InvitationSent>("A valid email address is required.");
+        }
+
+        Organisation? org = await _db.Organisations.AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == orgId && o.RegisteredViaAppId == appId && o.DeletedAt == null && o.Status == OrganisationStatus.Active, cancellationToken).ConfigureAwait(false);
+        if (org is null)
+        {
+            return ManagementResult.NotFound<InvitationSent>("The organisation does not exist.");
+        }
+
+        Role? role = await _db.Roles.AsNoTracking()
+            .Where(r => r.AppId == appId && r.Code == roleCode && r.RetiredAt == null && (r.OrgId == null || r.OrgId == orgId))
+            .OrderByDescending(r => r.OrgId != null)
+            .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        App? app = await _db.Apps.AsNoTracking().FirstOrDefaultAsync(a => a.Id == appId, cancellationToken).ConfigureAwait(false);
+        if (role is null || app is null)
+        {
+            return ManagementResult.NotFound<InvitationSent>("No live role with that code for this app.");
+        }
+
+        DateTimeOffset now = _clock.UtcNow;
+        int sentToday = await _db.Invitations.CountAsync(i => i.AppId == appId && i.InvitedByUserId == null && i.CreatedAt > now.AddDays(-1), cancellationToken).ConfigureAwait(false);
+        if (sentToday >= ApiDailyLimit)
+        {
+            return ManagementResult.Invalid<InvitationSent>($"This application has sent {ApiDailyLimit} invitations in the last 24 hours. Try again later.");
+        }
+
+        string token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+        Invitation invitation = new()
+        {
+            Id = Guid.NewGuid(),
+            AppId = appId,
+            OrgId = orgId,
+            RoleCode = role.Code,
+            AppliesToDescendants = appliesToDescendants,
+            Email = address,
+            NormalizedEmail = _users.NormalizeEmail(address),
+            TokenHash = Hash(token),
+            InvitedByUserId = null,
+            CreatedAt = now,
+            ExpiresAt = now + Lifetime,
+        };
+        _db.Invitations.Add(invitation);
+        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        Dictionary<string, string> values = new(StringComparer.Ordinal)
+        {
+            ["application"] = app.DisplayName,
+            ["organisation"] = org.Name,
+            ["role"] = role.DisplayName,
+            ["link"] = $"{_origin}/invite/{token}",
+            ["days"] = ((int)Lifetime.TotalDays).ToString(System.Globalization.CultureInfo.InvariantCulture),
+        };
+
+        // The person may not have an account, so the language is the platform's default, with the organisation's and
+        // application's own wording if set.
+        EmailMessage message = await _templates.EmailAsync(MessageTemplateKinds.Invitation, System.Globalization.CultureInfo.CurrentUICulture.Name, appId, orgId, values, address, address, cancellationToken).ConfigureAwait(false);
+        await _email.SendAsync(message, cancellationToken).ConfigureAwait(false);
+        await _audit.WriteAsync(new AuditEntry(AuditActions.AppInvitationCreate, AuditActorType.Api, null, appId, "organisation", orgId,
+            Metadata: JsonSerializer.Serialize(new Dictionary<string, string> { ["email"] = LogRedaction.MaskEmail(address), ["role"] = role.Code, ["via"] = "api" })), cancellationToken).ConfigureAwait(false);
+        return ManagementResult.Ok(new InvitationSent(invitation.Id, address, role.Code, invitation.ExpiresAt));
+    }
+
+    /// <inheritdoc />
     public async Task<InvitationView?> GetAsync(string token, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(token);
@@ -161,8 +236,11 @@ public sealed class EfInvitationService : IInvitationService
             return PartnerResult.Refused($"This invitation was sent to {LogRedaction.MaskEmail(invitation.Email)}. Sign in with that address to accept it.");
         }
 
+        // Accepting is the person's consent (rc.5): an invitation the application sent through the API is granted as
+        // the person's own act; one an administrator sent, as theirs.
+        ManagementActor actor = invitation.InvitedByUserId is Guid inviter ? ManagementActor.AppAdmin(inviter) : ManagementActor.Person(userId);
         ManagementResult<MembershipDto> granted = await _management.UpsertMembershipAsync(invitation.AppId, invitation.OrgId, userId,
-            new MembershipUpsert(invitation.RoleCode, invitation.AppliesToDescendants), ManagementActor.AppAdmin(invitation.InvitedByUserId), cancellationToken).ConfigureAwait(false);
+            new MembershipUpsert(invitation.RoleCode, invitation.AppliesToDescendants), actor, cancellationToken).ConfigureAwait(false);
         if (granted.Status != ManagementStatus.Ok)
         {
             return PartnerResult.Refused("This invitation is no longer valid.");
@@ -194,7 +272,10 @@ public sealed class EfInvitationService : IInvitationService
             return InvitationState.Used;
         }
 
-        if (invitation.RevokedAt is not null || !await IsAdminAsync(invitation.InvitedByUserId, invitation.AppId, cancellationToken).ConfigureAwait(false))
+        bool inviterStillMayInvite = invitation.InvitedByUserId is Guid inviter
+            ? await IsAdminAsync(inviter, invitation.AppId, cancellationToken).ConfigureAwait(false)
+            : await _db.Apps.AnyAsync(a => a.Id == invitation.AppId && a.Status == AppStatus.Active, cancellationToken).ConfigureAwait(false);
+        if (invitation.RevokedAt is not null || !inviterStillMayInvite)
         {
             return InvitationState.Withdrawn;
         }

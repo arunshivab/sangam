@@ -3,7 +3,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: sangam-migrate-1-0-0-rc-4
+  name: sangam-migrate-1-0-0-rc-5
   namespace: sangam
   labels:
     app.kubernetes.io/name: migrator
@@ -26,7 +26,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: migrator
-          image: sangam/migrator:1.0.0-rc.4
+          image: sangam/migrator:1.0.0-rc.5
           imagePullPolicy: IfNotPresent
           env:
             - name: CONNECTION

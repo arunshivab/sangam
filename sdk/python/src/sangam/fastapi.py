@@ -9,7 +9,6 @@ from starlette.concurrency import run_in_threadpool
 
 from .audit import AuditEntry
 from .memberships import SangamUser, has_permission
-from .session import COOKIE
 from .stepup import satisfies, step_up_challenge
 from .tokens import InvalidToken, VerifiedToken
 from .web import SangamCore, SangamSettings
@@ -51,29 +50,29 @@ class SangamFastAPI:
 
     # ---------------------------------------------------------------- routes
     def _cookie(self, response: Response, value: str, max_age: int | None = None) -> None:
-        response.set_cookie(COOKIE, value, max_age=self.settings.session_ttl if max_age is None else max_age, httponly=True, samesite="lax", secure=self.core.secure, path="/")
+        response.set_cookie(self.core.cookie, value, max_age=self.settings.session_ttl if max_age is None else max_age, httponly=True, samesite="lax", secure=self.core.secure, path="/")
 
     async def _login(self, request: Request) -> Response:
         q = request.query_params
-        url, cookie = await run_in_threadpool(self.core.begin, request.cookies.get(COOKIE), q.get("returnTo"), q.get("acr"), q.get("max_age"))
+        url, cookie = await run_in_threadpool(self.core.begin, request.cookies.get(self.core.cookie), q.get("returnTo"), q.get("acr"), q.get("max_age"))
         response = RedirectResponse(url, status_code=302)
         self._cookie(response, cookie)
         return response
 
     async def _callback(self, request: Request) -> Response:
-        target, cookie = await run_in_threadpool(self.core.finish, request.cookies.get(COOKIE), dict(request.query_params))
+        target, cookie = await run_in_threadpool(self.core.finish, request.cookies.get(self.core.cookie), dict(request.query_params))
         response = RedirectResponse(target, status_code=302)
         self._cookie(response, cookie)
         return response
 
     async def _logout(self, request: Request) -> Response:
-        url = await run_in_threadpool(self.core.end, request.cookies.get(COOKIE))
+        url = await run_in_threadpool(self.core.end, request.cookies.get(self.core.cookie))
         response = RedirectResponse(url, status_code=302)
         self._cookie(response, "", max_age=0)
         return response
 
     async def _me(self, request: Request) -> Response:
-        user = self.core.user(request.cookies.get(COOKIE))
+        user = self.core.user(request.cookies.get(self.core.cookie))
         if user is None:
             return JSONResponse({"user": None, "loginUrl": self.core.login_url("/")}, status_code=401)
         from .web import user_to_dict
@@ -83,7 +82,7 @@ class SangamFastAPI:
     # ---------------------------------------------------------------- dependencies
     def current_user(self, request: Request) -> SangamUser | None:
         """Dependency: the signed-in person, or None."""
-        return self.core.user(request.cookies.get(COOKIE))
+        return self.core.user(request.cookies.get(self.core.cookie))
 
     def require_user(self) -> Callable[..., SangamUser]:
         """Dependency: the signed-in person; others are sent to sign in."""

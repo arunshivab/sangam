@@ -43,11 +43,13 @@ a password, so every mode is reachable for every user.
 First name, last name, email, mobile (E.164; an Indian ten-digit number is normalised to
 `+91…`; the form takes the country code and the national number as two fields), date of birth,
 gender, password — all required; terms must be accepted explicitly. Mobile is stored unverified
-until mobile OTP ships. Password policy is the same as Anjal's: at least 8 characters, an
-uppercase letter, a lowercase letter, a digit and a symbol, and not on a local blocklist;
-14+ characters is reported as "strong". ASP.NET Core Identity is configured with the identical
-rules, and the strength meter is computed server-side so it renders after a failed post
-without JavaScript.
+until mobile OTP ships. Password policy was at first the same as Anjal's: at least 8 characters, an
+uppercase letter, a lowercase letter, a digit and a symbol, and not on a local blocklist.
+**Changed in rc.5** (founder decision A1, ASVS V2.1.1 and V2.1.9): at least 12 characters, no
+character-type rules unless an organisation or application opts in, not one of the 10,000 most
+common passwords, and checked against Pwned Passwords by k-anonymity; 16+ characters is reported
+as "strong". ASP.NET Core Identity is configured with the same length, and the strength meter is
+computed server-side so it renders after a failed post without JavaScript.
 
 ## Sessions
 

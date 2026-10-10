@@ -39,6 +39,7 @@ public sealed class EfCustomisationService : ICustomisationService, IMessageTemp
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
     private readonly SmsSettings _sms;
+    private readonly IFileScanner _scanner;
 
     // In a console several components load at once on one circuit. Each call therefore gets its own DbContext
     // (never the circuit's shared one), and calls on this instance take turns.
@@ -49,12 +50,14 @@ public sealed class EfCustomisationService : ICustomisationService, IMessageTemp
     /// <param name="audit">Audit writer.</param>
     /// <param name="clock">Clock.</param>
     /// <param name="sms">SMS settings, for the registered English SMS texts.</param>
-    public EfCustomisationService(IDbContextFactory<SangamDbContext> contexts, IAuditWriter audit, IClock clock, SmsSettings sms)
+    /// <param name="scanner">The virus scanner every logo goes through before it is kept (rc.5).</param>
+    public EfCustomisationService(IDbContextFactory<SangamDbContext> contexts, IAuditWriter audit, IClock clock, SmsSettings sms, IFileScanner scanner)
     {
         _contexts = contexts ?? throw new ArgumentNullException(nameof(contexts));
         _audit = audit ?? throw new ArgumentNullException(nameof(audit));
         _clock = clock ?? throw new ArgumentNullException(nameof(clock));
         _sms = sms ?? throw new ArgumentNullException(nameof(sms));
+        _scanner = scanner ?? throw new ArgumentNullException(nameof(scanner));
     }
 
     /// <inheritdoc />
@@ -228,6 +231,20 @@ public sealed class EfCustomisationService : ICustomisationService, IMessageTemp
         if (problem is not null)
         {
             return CustomisationResult.Refused(problem);
+        }
+
+        // rc.5 (ASVS V12.4.2): scanned for known malware before it is kept; never kept unscanned.
+        ScanResult scan = await _scanner.ScanAsync(content, cancellationToken).ConfigureAwait(false);
+        if (scan.Verdict == ScanVerdict.Infected)
+        {
+            await _audit.WriteAsync(new AuditEntry(AuditActions.UploadRefused, AuditActorType.Admin, userId, scope == CustomisationScope.App ? scopeId : null, "logo", scopeId,
+                Metadata: System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string> { ["signature"] = scan.Detail ?? string.Empty }), IpAddress: ipAddress), cancellationToken).ConfigureAwait(false);
+            return CustomisationResult.Refused("The virus scanner found malware in this file, so it was not saved.");
+        }
+
+        if (scan.Verdict == ScanVerdict.Unavailable)
+        {
+            return CustomisationResult.Refused("The virus scanner is not available just now, so the logo was not saved. Try again in a few minutes.");
         }
 
         string type = LogoCheck.IsPng(content) ? "image/png" : "image/svg+xml";

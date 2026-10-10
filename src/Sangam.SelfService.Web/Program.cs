@@ -38,6 +38,13 @@ if (emailProblem is not null)
     throw new InvalidOperationException(emailProblem);
 }
 
+// rc.5 (ASVS V2.4.5): passwords are never hashed without the pepper outside Development and Testing.
+string? pepperProblem = Sangam.Identity.Infrastructure.Security.PasswordPepperGuard.Validate(builder.Environment.EnvironmentName, builder.Configuration);
+if (pepperProblem is not null)
+{
+    throw new InvalidOperationException(pepperProblem);
+}
+
 // PR-26: DigiLocker, when switched on, needs its credentials and a real key for hashing DigiLocker ids.
 string? digiLockerProblem = DigiLockerGuard.Validate(builder.Environment.EnvironmentName, builder.Configuration);
 if (digiLockerProblem is not null)
@@ -59,7 +66,7 @@ builder.Services.AddAuthentication(options =>
     })
     .AddCookie(o =>
     {
-        o.Cookie.Name = "sangam.portal";
+        o.Cookie.Name = SecurityHeaders.CookieName("sangam.portal", builder.Environment.EnvironmentName);
         o.Cookie.HttpOnly = true;
         o.Cookie.SameSite = SameSiteMode.Lax;
         o.Cookie.SecurePolicy = SecurityHeaders.CookiePolicy(builder.Environment.EnvironmentName);
@@ -91,7 +98,11 @@ builder.Services.AddAuthentication(options =>
         o.TokenValidationParameters.RoleClaimType = Claims.Role;
     });
 
-builder.Services.AddAntiforgery(o => o.Cookie.SecurePolicy = SecurityHeaders.CookiePolicy(builder.Environment.EnvironmentName));
+builder.Services.AddAntiforgery(o =>
+{
+    o.Cookie.SecurePolicy = SecurityHeaders.CookiePolicy(builder.Environment.EnvironmentName);
+    o.Cookie.Name = SecurityHeaders.CookieName("sangam.antiforgery", builder.Environment.EnvironmentName);
+});
 builder.Services.AddAuthorization(o => o.FallbackPolicy = o.DefaultPolicy);
 
 builder.Services.AddSangamWebHosting(builder.Configuration);
@@ -146,5 +157,6 @@ app.MapRazorComponents<App>()
 
 app.MapSangamLanguageSwitch();
 app.MapSangamHealth();
+app.MapSangamSecurityTxt(app.Configuration);
 
 await app.RunAsync().ConfigureAwait(false);

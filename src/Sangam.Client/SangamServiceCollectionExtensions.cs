@@ -40,7 +40,13 @@ public static class SangamServiceCollectionExtensions
             })
             .AddCookie(SangamDefaults.CookieScheme, o =>
             {
-                o.Cookie.Name = sangam.CookieName;
+                o.Cookie.Name = sangam.EffectiveCookieName;
+                if (o.Cookie.Name.StartsWith("__Host-", StringComparison.Ordinal))
+                {
+                    // The browser accepts a __Host- cookie only for the whole site.
+                    o.Cookie.Path = "/";
+                }
+
                 o.Cookie.HttpOnly = true;
                 o.Cookie.SameSite = SameSiteMode.Lax;
                 o.Cookie.SecurePolicy = sangam.RequireHttpsMetadata ? CookieSecurePolicy.Always : CookieSecurePolicy.SameAsRequest;

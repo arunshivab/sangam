@@ -4,6 +4,75 @@ All notable changes to Sangam are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [1.0.0-rc.5] - fifth release candidate
+
+Sangam 1.0.0-rc.5 acts on the founder's decisions on the six ASVS Level 2 requirements that were Not met (A1 to A6,
+10 October 2026). Five are now met; the sixth is accepted for the pilot with compensating controls. Two more move from
+Partly to Met. ASVS L2 now stands at 161 met, 75 partly, 1 not met (accepted), 8 for the founder and 14 not applicable.
+
+### Passwords (ASVS V2.1.1, V2.1.7, V2.1.9; decision A1)
+- **At least 12 characters, and no character-type rules.** Length and the breached-password check protect better
+  than forcing an upper-case letter, a digit and a symbol, which people answer with predictable passwords. The
+  strength meter shows the length and calls 16 characters strong. Organisations and applications can still require
+  more characters (up to 64); a minimum below 12 is raised by the migration.
+- **An organisation or application may keep a character-type rule** it already follows: a new option in its security
+  policy, off by default. Ticking it shows why it is not recommended; saving it is audited. Its people meet it when
+  they next set a password, in every application they use with Sangam.
+- **Breached-password check, on for everyone (D-J revised):** first a built-in list of the 10,000 most common
+  passwords of 12 characters or more (from the Pwned Passwords top-million list in SecLists, MIT licence; about 70 KB),
+  then Pwned Passwords by k-anonymity: only the first five characters of the password's SHA-1 leave the server, and
+  the answer is padded. If the service does not answer within 3 seconds the built-in list is the check — nobody is
+  ever blocked — and the monitoring page shows since when; after an hour the founder is alerted. The offline full-list
+  importer (`breach-list`) is removed: the full list is now over 50 GB, too large to keep on the server.
+
+### Password pepper (ASVS V2.4.5; decision A2)
+- Passwords are hashed with a pepper — 32 random bytes held in a secret file, outside the database and its backups —
+  as Argon2id's own secret input. A copy of the database alone reveals no password. Each hash names its pepper's
+  version (`keyid`), so the pepper can be replaced; older hashes, and hashes made before rc.5, are rehashed at the
+  person's next sign-in. Every host refuses to start without the pepper outside Development and Testing.
+
+### Cookies (ASVS V3.4.4; decision A3)
+- Session and anti-forgery cookies are named with the `__Host-` prefix on staging and production, so the browser
+  accepts them only over HTTPS from that exact host. The DigiLocker state cookie uses `__Secure-`. The client
+  libraries' session cookies default to `__Host-` names over HTTPS (.NET `__Host-sangam.app`, Node and Python
+  `__Host-sangam.sid`). Renaming the cookies signs everyone out once, which costs nothing before go-live.
+
+### Consent first in the management API (ASVS V4.2.1; decision A4)
+- `PUT /api/v1/orgs/{org}/members/{user}` adds only someone who already uses the calling application. For anyone
+  else — or an id that does not exist — it answers 404 with the same message, so the API no longer tells which ids
+  are Sangam users, and an application can no longer link a person to itself by their id.
+- **New: `POST /api/v1/orgs/{org}/invitations`** (`email`, `role`, `appliesToDescendants`): invites the person by
+  e-mail, in the same flow as the partner console's invitations; they are linked only when they accept. 200 a day
+  per application. Every SDK has an `invite` call (.NET `InviteAsync`, JavaScript `invite`, Python `invite`, Java
+  `invite`).
+
+### Virus scan of uploaded logos (ASVS V12.4.2; decision A5)
+- Every logo is scanned by the server's ClamAV (shared with Anjal, on the private network only) before it is kept,
+  through ClamAV's own protocol, with no package added. An infected file is refused and audited (`upload.refused`);
+  while the scanner does not answer, uploads are refused. The partner and operator consoles refuse to start without a
+  scanner. The monitoring page has a *Virus scanner* panel and alerts when it stops answering.
+
+### Keys (ASVS V6.4.1, V6.4.2; decision A6)
+- Signing, encryption and key-ring keys and the pepper stay as root-only secret files for the private pilot and
+  controlled launch, accepted with compensating controls (SGM-908). Review before the public launch.
+
+### Also
+- **The identity server's front page** is no longer the PR-01 design check: it says what Sangam is, leads to the
+  account, and warns against links in unexpected messages.
+- **`/.well-known/security.txt`** (RFC 9116) on every host: the security contact, the policy, and an expiry that is
+  always six months ahead.
+- Hindi and Malayalam texts for every new message (to be read by a native speaker with the rest).
+
+### Upgrading
+- Migration `SecurityRc5`: the character-type columns, the 12-character floor, and invitations an application sends.
+- Before starting: create `secrets/Sangam__PasswordHashing__Pepper` (`openssl rand -base64 32`) and keep a copy
+  offline; create the `anjal-clamav` network and set `Sangam__Antivirus__Host`. See docs/go-live-checklist.md,
+  "Added by rc.5".
+
+### Versions
+- 1.0.0-rc.5 everywhere: .NET assemblies, npm and Maven 1.0.0-rc.5, PyPI 1.0.0rc5, Kubernetes images and the
+  migration job (`sangam-migrate-1-0-0-rc-5`).
+
 ## [1.0.0-rc.4] - fourth release candidate
 
 Sangam 1.0.0-rc.4 fixes what the full list of code-scanning alerts showed after rc.3, and changes how code quality

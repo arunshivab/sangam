@@ -4,11 +4,10 @@ name: sangam
 
 x-host: &host
   restart: unless-stopped
-  networks: [edge, sangam-db]
-  # D-J: the offline breached-password list, imported on the server (README: "Breached-password list").
+  # rc.5: anjal-clamav is the private network on which Anjal's ClamAV listens (README: "Virus scanner").
+  networks: [edge, sangam-db, anjal-clamav]
   # D-H: the backup and restore-drill scripts write their status here for the monitoring page.
   volumes:
-    - /srv/sangam/pwned:/var/lib/sangam/pwned:ro
     - /srv/sangam/status:/var/lib/sangam/status:ro
   # D-H: logs stay on the server (rotated here; kept 180 days in the encrypted backups, R4).
   logging:
@@ -31,11 +30,13 @@ x-host: &host
     # The address and paths are confirmed after Anjal's own testing (docs/anjal-messaging-contract.md).
     Sangam__Anjal__BaseUrl: "SET-ANJAL-API-URL"
     Sangam__Anjal__FromAddress: no-reply@sangamid.in
-    # D-J: offline only. The check stays off until the founder switches it on AND the list is loaded. Switch it on
-    # here, for every host, never in one service: the identity server checks passwords, the partner console offers
-    # the per-application setting, and /monitoring shows the identity server's own report (V-10, SGM-303).
-    Sangam__Passwords__BreachCheck__Enabled: "false"
-    Sangam__Passwords__BreachCheck__ListPath: /var/lib/sangam/pwned/pwned-passwords.bin
+    # rc.5 (D-J revised): the breached-password check is on for everyone — the built-in list, then Pwned Passwords by
+    # k-anonymity (only five characters of a password's SHA-1 leave the server). Nothing to download or import. It
+    # needs outbound HTTPS to api.pwnedpasswords.com; without it the built-in list is the check and /monitoring says so.
+    Sangam__Passwords__BreachCheck__Enabled: "true"
+    # rc.5 (ASVS V12.4.2): every uploaded logo is scanned by Anjal's ClamAV, on the private anjal-clamav network only.
+    Sangam__Antivirus__Host: "SET-ANJAL-CLAMAV-HOST"
+    Sangam__Antivirus__Port: "3310"
     # D-H: self-hosted monitoring; no third party. Every host records its metrics into the database.
     Sangam__Monitoring__StatusDirectory: /var/lib/sangam/status
 
@@ -45,7 +46,6 @@ services:
     build: { context: ../.., target: app, args: { PROJECT: Sangam.Identity.Server } }
     # The shared volumes, plus D-A's audit archive: written here only, kept on the server and in the encrypted backups.
     volumes:
-      - /srv/sangam/pwned:/var/lib/sangam/pwned:ro
       - /srv/sangam/status:/var/lib/sangam/status:ro
       - /srv/sangam/audit-archive:/var/lib/sangam/audit-archive
     environment:
@@ -94,6 +94,7 @@ services:
     secrets:
       - source: ConnectionStrings__Sangam
       - source: Sangam__Anjal__ApiKey
+      - source: Sangam__PasswordHashing__Pepper
       - source: Sangam__Certificates__Signing__0__Password
       - source: Sangam__Certificates__Encryption__0__Password
       - source: signing_current.pfx
@@ -112,7 +113,7 @@ services:
     environment:
       <<: *env
       Sangam__Monitoring__HostName: portal
-    secrets: [ConnectionStrings__Sangam, Sangam__Portal__ClientSecret, Sangam__Anjal__ApiKey, keyring_current.pfx, Sangam__DataProtection__Certificates__0__Password]
+    secrets: [ConnectionStrings__Sangam, Sangam__Portal__ClientSecret, Sangam__Anjal__ApiKey, Sangam__PasswordHashing__Pepper, keyring_current.pfx, Sangam__DataProtection__Certificates__0__Password]
 
   admin:
     <<: *host
@@ -120,7 +121,7 @@ services:
     environment:
       <<: *env
       Sangam__Monitoring__HostName: admin
-    secrets: [ConnectionStrings__Sangam, Sangam__Admin__ClientSecret, Sangam__Anjal__ApiKey, keyring_current.pfx, Sangam__DataProtection__Certificates__0__Password]
+    secrets: [ConnectionStrings__Sangam, Sangam__Admin__ClientSecret, Sangam__Anjal__ApiKey, Sangam__PasswordHashing__Pepper, keyring_current.pfx, Sangam__DataProtection__Certificates__0__Password]
 
   partner:
     <<: *host
@@ -128,7 +129,7 @@ services:
     environment:
       <<: *env
       Sangam__Monitoring__HostName: partner
-    secrets: [ConnectionStrings__Sangam, Sangam__Partner__ClientSecret, Sangam__Anjal__ApiKey, keyring_current.pfx, Sangam__DataProtection__Certificates__0__Password]
+    secrets: [ConnectionStrings__Sangam, Sangam__Partner__ClientSecret, Sangam__Anjal__ApiKey, Sangam__PasswordHashing__Pepper, keyring_current.pfx, Sangam__DataProtection__Certificates__0__Password]
 
   # D-I: the imagiQa sample at demo.sangamid.in — bannered "Demo, not for real patient data" on every page; its
   # own database (imagiqa_demo) and role; registered with Sangam by the identity server's settings above.
@@ -169,6 +170,8 @@ services:
 secrets:
   ConnectionStrings__Sangam: { file: ./secrets/ConnectionStrings__Sangam }
   Sangam__Anjal__ApiKey: { file: ./secrets/Sangam__Anjal__ApiKey }
+  # rc.5 (ASVS V2.4.5): the password pepper — 32 random bytes in base64; one offline copy with the founder, never in a backup.
+  Sangam__PasswordHashing__Pepper: { file: ./secrets/Sangam__PasswordHashing__Pepper }
   Sangam__Certificates__Signing__0__Password: { file: ./secrets/Sangam__Certificates__Signing__0__Password }
   Sangam__Certificates__Encryption__0__Password: { file: ./secrets/Sangam__Certificates__Encryption__0__Password }
   signing_current.pfx: { file: ./secrets/signing_current.pfx }
@@ -192,4 +195,7 @@ networks:
       config:
         - subnet: 172.30.0.0/24
   sangam-db:
+    external: true
+  # rc.5: created once (docker network create anjal-clamav) and joined by Anjal's ClamAV container only.
+  anjal-clamav:
     external: true

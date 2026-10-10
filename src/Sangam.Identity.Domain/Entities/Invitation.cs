@@ -31,8 +31,9 @@ public class Invitation
     /// <summary>SHA-256 of the token (hex). The token itself is only in the e-mail.</summary>
     public string TokenHash { get; set; } = string.Empty;
 
-    /// <summary>The administrator who invited.</summary>
-    public Guid InvitedByUserId { get; set; }
+    /// <summary>The administrator who invited; <see langword="null"/> when the application invited through the
+    /// management API (rc.5).</summary>
+    public Guid? InvitedByUserId { get; set; }
 
     /// <summary>When it was sent.</summary>
     public DateTimeOffset CreatedAt { get; set; }

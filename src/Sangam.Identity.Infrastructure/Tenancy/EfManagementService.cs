@@ -14,6 +14,9 @@ namespace Sangam.Identity.Infrastructure.Tenancy;
 /// <summary><see cref="IManagementService"/>: the app-scoped writes behind the management API.</summary>
 public sealed partial class EfManagementService : IManagementService
 {
+    /// <summary>The management API's answer for a person it may not add (rc.5): unknown, or not a user of the application.</summary>
+    public const string NotAUserOfThisApplication = "That person does not use this application. Invite them instead (POST /orgs/{orgId}/invitations); they are added when they accept.";
+
     private readonly SangamDbContext _db;
     private readonly IClock _clock;
     private readonly IAuditWriter _audit;
@@ -246,6 +249,17 @@ public sealed partial class EfManagementService : IManagementService
         }
 
         bool userExists = await _db.Users.AnyAsync(u => u.Id == userId && u.Status == UserStatus.Active, cancellationToken).ConfigureAwait(false);
+
+        // rc.5 (ASVS V4.2.1, consent first): through the API an application adds only people who already use it —
+        // who signed in to it and allowed it. Anyone else it invites (POST /orgs/{org}/invitations), and they are
+        // linked when they accept. One answer for an unknown id and a person who does not use the application, so
+        // the API never tells which ids are Sangam users.
+        if (actor.Type == AuditActorType.Api
+            && (!userExists || !await _db.AppGrants.AnyAsync(g => g.UserId == userId && g.AppId == appId && g.RevokedAt == null, cancellationToken).ConfigureAwait(false)))
+        {
+            return ManagementResult.NotFound<MembershipDto>(NotAUserOfThisApplication);
+        }
+
         if (!userExists)
         {
             return ManagementResult.NotFound<MembershipDto>("The user does not exist or is not active.");

@@ -11,7 +11,10 @@ namespace Sangam.Identity.Domain;
 /// <param name="MinPasswordLength">Shortest password allowed.</param>
 /// <param name="Mfa">Second-factor rule.</param>
 /// <param name="BreachedPasswordCheck">Whether passwords must not appear in known breaches.</param>
-public sealed record SecurityPolicy(SignInPolicy SignIn, int MinPasswordLength, MfaRequirement Mfa, bool BreachedPasswordCheck)
+/// <param name="RequireCharacterTypes">Whether passwords must contain an upper-case letter, a lower-case letter, a
+/// digit and a symbol (rc.5). Never the platform default — ASVS V2.1.9 and NIST advise against it — but an organisation
+/// or application may require it, for example to keep a policy it has followed for years.</param>
+public sealed record SecurityPolicy(SignInPolicy SignIn, int MinPasswordLength, MfaRequirement Mfa, bool BreachedPasswordCheck, bool RequireCharacterTypes = false)
 {
     /// <summary>The longest minimum a policy may set.</summary>
     public const int MaxMinPasswordLength = 64;
@@ -35,18 +38,20 @@ public sealed record SecurityPolicy(SignInPolicy SignIn, int MinPasswordLength, 
     /// <param name="minPasswordLength">The level's minimum length, or <see langword="null"/>.</param>
     /// <param name="mfa">The level's second-factor rule, or <see langword="null"/>.</param>
     /// <param name="breachedPasswordCheck">The level's breach check, or <see langword="null"/>.</param>
-    public SecurityPolicy Tighten(SignInPolicy? signIn, int? minPasswordLength, MfaRequirement? mfa, bool? breachedPasswordCheck) => new(
+    /// <param name="requireCharacterTypes">The level's character-type rule, or <see langword="null"/>.</param>
+    public SecurityPolicy Tighten(SignInPolicy? signIn, int? minPasswordLength, MfaRequirement? mfa, bool? breachedPasswordCheck, bool? requireCharacterTypes = null) => new(
         signIn is SignInPolicy s && Rank(s) > Rank(SignIn) ? s : SignIn,
         Math.Max(MinPasswordLength, Math.Min(minPasswordLength ?? 0, MaxMinPasswordLength)),
         mfa is MfaRequirement m && m > Mfa ? m : Mfa,
-        BreachedPasswordCheck || breachedPasswordCheck == true);
+        BreachedPasswordCheck || breachedPasswordCheck == true,
+        RequireCharacterTypes || requireCharacterTypes == true);
 
     /// <summary>Combines two policies that both apply (for example, two organisations): the stricter of each setting.</summary>
     /// <param name="other">The other policy.</param>
     public SecurityPolicy Strictest(SecurityPolicy other)
     {
         ArgumentNullException.ThrowIfNull(other);
-        return Tighten(other.SignIn, other.MinPasswordLength, other.Mfa, other.BreachedPasswordCheck);
+        return Tighten(other.SignIn, other.MinPasswordLength, other.Mfa, other.BreachedPasswordCheck, other.RequireCharacterTypes);
     }
 
     /// <summary>
@@ -57,7 +62,8 @@ public sealed record SecurityPolicy(SignInPolicy SignIn, int MinPasswordLength, 
     /// <param name="minPasswordLength">Proposed minimum length, or <see langword="null"/>.</param>
     /// <param name="mfa">Proposed second-factor rule, or <see langword="null"/>.</param>
     /// <param name="breachedPasswordCheck">Proposed breach check, or <see langword="null"/>.</param>
-    public string? WhyWeaker(SignInPolicy? signIn, int? minPasswordLength, MfaRequirement? mfa, bool? breachedPasswordCheck)
+    /// <param name="requireCharacterTypes">Proposed character-type rule, or <see langword="null"/>.</param>
+    public string? WhyWeaker(SignInPolicy? signIn, int? minPasswordLength, MfaRequirement? mfa, bool? breachedPasswordCheck, bool? requireCharacterTypes = null)
     {
         if (signIn is SignInPolicy s && Rank(s) < Rank(SignIn))
         {
@@ -72,6 +78,11 @@ public sealed record SecurityPolicy(SignInPolicy SignIn, int MinPasswordLength, 
         if (mfa is MfaRequirement m && m < Mfa)
         {
             return "That second-factor rule is weaker than the one already in force here.";
+        }
+
+        if (requireCharacterTypes == false && RequireCharacterTypes)
+        {
+            return "Character types are already required here and cannot be switched off.";
         }
 
         return breachedPasswordCheck == false && BreachedPasswordCheck

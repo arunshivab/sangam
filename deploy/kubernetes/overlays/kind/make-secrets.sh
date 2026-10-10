@@ -31,6 +31,7 @@ $K -n sangam create secret generic sangam-migrator --from-literal=CONNECTION="$C
 $K -n sangam create secret generic sangam-shared \
   --from-literal=ConnectionStrings__Sangam="$CONN" \
   --from-literal=Sangam__Anjal__ApiKey="anjal-test-key-$(pass)" \
+  --from-literal=Sangam__PasswordHashing__Pepper="$(openssl rand -base64 32)" \
   --from-file=keyring_current.pfx \
   --from-literal=Sangam__DataProtection__Certificates__0__Password="$PW"
 $K -n sangam create secret generic sangam-identity \

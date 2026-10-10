@@ -13,7 +13,7 @@
         _ => Model.Segments == 0 ? "" : L["Too weak"].Value,
     };
 }
-<div class="sg-meter sg-meter--@level" data-sg-meter aria-hidden="true">
+<div class="sg-meter sg-meter--@level" data-sg-meter data-min="@Model.MinimumLength" data-types="@(Model.RequiresCharacterTypes ? "true" : "false")" aria-hidden="true">
   @for (int i = 0; i < 4; i++)
   {
     <span class="sg-meter-seg @(i < Model.Segments ? "sg-meter-seg--on" : "")"></span>
@@ -21,17 +21,18 @@
 </div>
 <p class="sg-meter-caption" data-sg-caption>
   <span class="sg-meter-verdict sg-meter-verdict--@level" data-sg-verdict data-label-strong="@L["Strong"]" data-label-fair="@L["Fair"]" data-label-weak="@L["Too weak"]">@verdict</span>
-  @foreach ((string label, bool met) in Model.Tokens)
+  @foreach ((string code, bool met) in Model.Tokens)
   {
-    <span class="sg-token @(met ? "sg-token--met" : "")" data-sg-token="@label"><span class="sg-token-mark" aria-hidden="true">@(met ? "✓" : "·")</span>@TokenText(label)</span>
+    <span class="sg-token @(met ? "sg-token--met" : "")" data-sg-token="@code"><span class="sg-token-mark" aria-hidden="true">@(met ? "✓" : "·")</span>@TokenText(code)</span>
   }
 </p>
 
 @functions {
-    // The rule tokens keep their codes (the script matches on them); people read them in their language.
+    // The rule tokens keep their codes (the script matches on them); people read them in their language. rc.5: the
+    // length always; the four character types only where an organisation or application requires them.
     private string TokenText(string code) => code switch
     {
-        "8+" => L["8+ characters"],
+        "length" => L["{0}+ characters", Model.MinimumLength],
         "upper" => L["A–Z"],
         "lower" => L["a–z"],
         "number" => L["0–9"],

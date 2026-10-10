@@ -57,6 +57,9 @@ public sealed class Organisation
     /// <summary>Breached-password check for its members; <see langword="null"/> inherits, and only <see langword="true"/> is stricter.</summary>
     public bool? BreachedPasswordCheck { get; set; }
 
+    /// <summary>Character-type rule for its members (rc.5); <see langword="null"/> inherits, and only <see langword="true"/> is stricter.</summary>
+    public bool? RequireCharacterTypes { get; set; }
+
     /// <summary>Lifecycle state.</summary>
     public OrganisationStatus Status { get; set; } = OrganisationStatus.Active;
 

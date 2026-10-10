@@ -1,8 +1,10 @@
 // Progressive enhancement only: the meter and its requirement tokens are rendered by the
 // server and are correct without JavaScript (after any post). This file updates the same
-// markup as the user types, using the identical rules as Sangam.Identity.Application's
-// PasswordStrength: 8+ characters, all four character classes, not a repeated password.
-// Served from this origin; nothing is fetched and nothing is sent anywhere.
+// markup as the user types, using the same rules as Sangam.Identity.Application's
+// PasswordStrength (rc.5): at least the policy's length (data-min, 12 or more), the four
+// character types only where the policy requires them (data-types), not a repeated character.
+// The list of common passwords and the breached-password check run on the server when the
+// password is saved. Served from this origin; nothing is fetched and nothing is sent anywhere.
 (function () {
     "use strict";
 
@@ -16,9 +18,12 @@
     var segments = group.querySelectorAll(".sg-meter-seg");
     var verdictText = group.querySelector("[data-sg-verdict]");
     var tokens = group.querySelectorAll("[data-sg-token]");
-    if (!meter || segments.length !== 4 || !verdictText || tokens.length !== 5) {
+    if (!meter || segments.length !== 4 || !verdictText || tokens.length === 0) {
         return;
     }
+
+    var minimum = parseInt(meter.getAttribute("data-min"), 10) || 12;
+    var requireTypes = meter.getAttribute("data-types") === "true";
 
     // PR-18: the verdicts in the reader's language, rendered by the server; English is the fallback.
     function label(name, fallback) {
@@ -27,21 +32,21 @@
 
     function evaluate(value) {
         var rules = {
-            "8+": value.length >= 8,
+            "length": value.length >= minimum,
             "upper": /[A-Z]/.test(value),
             "lower": /[a-z]/.test(value),
             "number": /[0-9]/.test(value),
             "symbol": /[^A-Za-z0-9]/.test(value)
         };
-        var allClasses = rules.upper && rules.lower && rules.number && rules.symbol;
+        var typesOk = !requireTypes || (rules.upper && rules.lower && rules.number && rules.symbol);
         var repeated = value.length > 0 && value.split("").every(function (c) { return c === value[0]; });
         var notBlocked = value.length > 0 && !repeated;
 
-        if (!rules["8+"] || !allClasses || !notBlocked) {
+        if (!rules.length || !typesOk || !notBlocked || value.length > 128) {
             return { level: "weak", label: value.length === 0 ? "" : label("weak", "Too weak"), filled: value.length === 0 ? 0 : 1, rules: rules };
         }
 
-        var filled = 2 + (value.length >= 11 ? 1 : 0) + (value.length >= 14 ? 1 : 0);
+        var filled = 2 + (value.length >= 14 ? 1 : 0) + (value.length >= 16 ? 1 : 0);
         return { level: filled >= 4 ? "strong" : "fair", label: filled >= 4 ? label("strong", "Strong") : label("fair", "Fair"), filled: filled, rules: rules };
     }
 
@@ -61,7 +66,7 @@
             token.className = met ? "sg-token sg-token--met" : "sg-token";
             var mark = token.querySelector(".sg-token-mark");
             if (mark) {
-                mark.textContent = met ? "\u2713" : "\u00b7";
+                mark.textContent = met ? "✓" : "·";
             }
         }
     }

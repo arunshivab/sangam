@@ -73,9 +73,17 @@ export class ManagementClient {
     return this.send("PUT", `orgs/${id}`, { name, type, parentId, metadata: null });
   }
 
-  /** Gives a person a role at an organisation; `expiresAt` makes it time-limited. */
+  /**
+   * Gives a person a role at an organisation; `expiresAt` makes it time-limited. rc.5: only someone who already uses
+   * your application; anyone else answers 404 — invite them with `invite` instead.
+   */
   upsertMembership(orgId: string, userId: string, role: string, appliesToDescendants = false, expiresAt?: string) {
     return this.send("PUT", `orgs/${orgId}/members/${userId}`, expiresAt ? { role, appliesToDescendants, expiresAt } : { role, appliesToDescendants });
+  }
+
+  /** Invites someone by e-mail to a role at an organisation (rc.5); they are added when they accept. At most 200 a day. */
+  invite(orgId: string, email: string, role: string, appliesToDescendants = false) {
+    return this.send("POST", `orgs/${orgId}/invitations`, { email, role, appliesToDescendants });
   }
 
   getAttributes(userId: string) {

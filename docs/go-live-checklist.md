@@ -118,7 +118,7 @@ Checks:
       restore-drill scripts write to it; the monitoring page shows both. The outside watchdog on Anjal's server calls
       `https://id.sangamid.in/health/ready` every minute (Anjal project). Thresholds reviewed
       (`Sangam__Monitoring__Alerts__*`).
-- [ ] D-J: the Pwned Passwords list downloaded with the official downloader, imported on the server
+- [ ] *(Superseded by rc.5, D-J revised: nothing to download; see "Added by rc.5".)* D-J: the Pwned Passwords list downloaded with the official downloader, imported on the server
       (`docker compose run --rm identity breach-list import --source … --output /var/lib/sangam/pwned/pwned-passwords.bin --date YYYY-MM-DD`,
       with `/srv/sangam/pwned` mounted writable for the import), the monitoring page shows its date; only then
       `Sangam__Passwords__BreachCheck__Enabled=true`. Refresh every few months.
@@ -182,12 +182,13 @@ Security (docs/security/, SGM-503):
 - [ ] Commission the external penetration test from `docs/security/pentest-scope.md`, on a staging copy built from
       this release. Record its findings in SGM-503 and SGM-701.
 - [ ] Decide the ASVS gaps that are yours to decide (SGM-908 lists the options):
-  - [ ] Password policy: keep 8 characters with classes, or move to 12 without classes (V2.1.1, V2.1.9).
-  - [ ] A pepper for password hashes (V2.4.5).
-  - [ ] Keys: files on the VM for the pilot, or a key vault or HSM (V6.4.2).
-  - [ ] Antivirus on logo uploads (V12.4.2).
-  - [ ] `__Host-` cookie names at the cut-over (V3.4.4).
-  - [ ] Linking people through the management API: consent first, or pairwise ids (V4.2.1, OI-050).
+  - [x] Password policy: 12 characters without classes; organisations may opt in to classes (V2.1.1, V2.1.9). Built in rc.5.
+  - [x] A pepper for password hashes (V2.4.5). Built in rc.5; see "Added by rc.5".
+  - [x] Keys: files on the VM for the pilot and controlled launch, accepted with compensating controls (V6.4.2). Review
+        before the public launch (see "Added by rc.5").
+  - [x] Antivirus on logo uploads, with Anjal's ClamAV (V12.4.2). Built in rc.5.
+  - [x] `__Host-` cookie names, now rather than at the cut-over (V3.4.4). Built in rc.5.
+  - [x] Linking people through the management API: consent first (V4.2.1). Built in rc.5. Pairwise ids: still to discuss.
 - [ ] Confirm volume encryption on the E2E VM, and NTP on it (V6.1.1, V7.3.4).
 - [ ] Confirm the reverse proxy sends `X-Forwarded-Proto: https` (Caddy does, unchanged). Since R7, cookies are always
       Secure, so a page with a form reached over plain HTTP answers 500 instead of setting a cookie (OI-057).
@@ -289,3 +290,24 @@ Text:
       the gate runs `security-extended`; check that the Security tab then shows no open alerts.
 - [ ] Before each release from now on, run the code-quality review (`tools/security/codeql-quality.sh`) and read its
       summary: fix what matters, record the rest in docs/security/README.md.
+
+## Added by rc.5 (v1.0.0-rc.5)
+
+The founder's ASVS decisions A1 to A6 (10 October 2026), built in rc.5:
+
+- [ ] **Pepper (A2):** `openssl rand -base64 32 > secrets/Sangam__PasswordHashing__Pepper` on the server, before the
+      first start. Keep **one offline copy** with the audit-archive key and the backup key, never on the server's
+      backup path. Every host refuses to start without it.
+- [ ] **Virus scanner (A5):** `docker network create anjal-clamav`; attach Anjal's ClamAV container to it (Anjal
+      project); set `Sangam__Antivirus__Host` (and the port if not 3310). Upload one logo on the partner console and see
+      the monitoring page's *Virus scanner* panel say it is answering.
+- [ ] **Breached-password check (A1, D-J revised):** confirm the server reaches `https://api.pwnedpasswords.com`; the
+      monitoring page shows the service *answering* after the first password is set.
+- [ ] **Keys (A6):** before the public launch, review whether the signing, encryption and key-ring keys and the pepper
+      stay as files on the VM or move to a managed key vault in an India region (V6.4.1, V6.4.2; SGM-908).
+- [ ] **Pairwise subject ids (A4):** discuss before the first outside partner connects. Today every application sees
+      the same Sangam id for a person; consent first (rc.5) stops an application linking someone by that id alone.
+- [ ] Tell partners: the management API now adds only people who already use their application; anyone else is
+      invited with `POST /api/v1/orgs/{org}/invitations` (every SDK has an `invite` call).
+- [ ] `security.txt` is served by every host at `/.well-known/security.txt` (contact security@sangamid.in). Make sure
+      that mailbox exists and is read, and register the CERT-In point of contact.

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Sangam.Identity.Application.Accounts;
 using Sangam.Identity.Application.Security;
+using Sangam.Identity.Domain;
 using Sangam.Identity.Server.Authentication;
 
 namespace Sangam.Identity.Server.Pages.Account;
@@ -55,7 +56,9 @@ public sealed class PasswordModel : PageModel
     /// <param name="cancellationToken">Cancellation.</param>
     public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken)
     {
-        MinimumLength = (await _policies.ForPasswordAsync(UserId(), cancellationToken)).MinPasswordLength;
+        SecurityPolicy policy = await _policies.ForPasswordAsync(UserId(), cancellationToken);
+        MinimumLength = policy.MinPasswordLength;
+        Strength = PasswordStrength.Evaluate(null, policy.MinPasswordLength, policy.RequireCharacterTypes);
         return Page();
     }
 
@@ -64,8 +67,9 @@ public sealed class PasswordModel : PageModel
     public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)
     {
         Guid userId = UserId();
-        MinimumLength = (await _policies.ForPasswordAsync(userId, cancellationToken)).MinPasswordLength;
-        Strength = PasswordStrength.Evaluate(NewPassword);
+        SecurityPolicy policy = await _policies.ForPasswordAsync(userId, cancellationToken);
+        MinimumLength = policy.MinPasswordLength;
+        Strength = PasswordStrength.Evaluate(NewPassword, policy.MinPasswordLength, policy.RequireCharacterTypes);
         if (NewPassword.Length < MinimumLength)
         {
             ModelState.AddModelError(nameof(NewPassword), L["Use at least {0} characters.", MinimumLength]);

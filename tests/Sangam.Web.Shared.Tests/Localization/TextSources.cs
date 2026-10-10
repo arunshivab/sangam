@@ -30,7 +30,7 @@ internal static partial class TextSources
     /// UI files that are not screens a person reads in their language: development-only pages, OAuth protocol errors
     /// (<c>error_description</c> is for developers), the management API and start-up refusals.
     /// </summary>
-    private static readonly string[] UiExclusions = ["/Pages/Dev/", "/Pages/Index.cshtml", "/Endpoints/", "/Api/", "TokenCertificates.cs", "Program.cs"];
+    private static readonly string[] UiExclusions = ["/Pages/Dev/", "/Endpoints/", "/Api/", "TokenCertificates.cs", "Program.cs"];
 
     /// <summary>Visible words that are the same in every language.</summary>
     private static readonly Regex Untranslatable = new(@"^(sangam|Sangam|partners|SangamID|English|imagiQa|LiPi( HIS)?|id\.sangamid\.in|sangamid\.in|OK|PIN|ID|OTP|SMS|DLT|JSON|Aadhaar|ABHA|HIS|DPDP|[A-Z]{2,6}|[a-z0-9.-]+@[a-z0-9.-]+|https?://\S*|[\W\d_]+)$", RegexOptions.CultureInvariant);

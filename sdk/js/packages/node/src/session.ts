@@ -62,6 +62,11 @@ export function newId(): string {
   return randomBytes(24).toString("base64url");
 }
 
+/** The session cookie's name: over https it carries the `__Host-` prefix (rc.5, ASVS V3.4.4), so only this exact host can set it. */
+export function sessionCookieName(secure: boolean): string {
+  return secure ? "__Host-sangam.sid" : "sangam.sid";
+}
+
 export function setCookie(res: ServerResponse, name: string, value: string, options: { maxAge?: number; secure: boolean; path?: string }): void {
   const parts = [`${name}=${encodeURIComponent(value)}`, `Path=${options.path ?? "/"}`, "HttpOnly", "SameSite=Lax"];
   if (options.secure) parts.push("Secure");
