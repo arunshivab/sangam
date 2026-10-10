@@ -27,4 +27,10 @@ public sealed class AppGrant
 
     /// <summary>When revoked (UTC); <see langword="null"/> while active.</summary>
     public DateTimeOffset? RevokedAt { get; set; }
+
+    /// <summary>When the person last signed in to the application or it last refreshed their tokens (rc.6, SGM-910 section 7).</summary>
+    public DateTimeOffset? LastUsedAt { get; set; }
+
+    /// <summary>When the person was told the connection will end for inactivity; cleared when they use it again (rc.6).</summary>
+    public DateTimeOffset? InactivityNoticeAt { get; set; }
 }

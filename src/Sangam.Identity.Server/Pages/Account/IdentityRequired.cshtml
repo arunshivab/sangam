@@ -1,0 +1,33 @@
+@page "/identity/required"
+@model IdentityRequiredModel
+@{
+    ViewData["Title"] = L["Verify your identity"].Value;
+}
+
+<section class="sg-card">
+  <div class="sg-circle sg-circle--pending" aria-hidden="true"><span class="sg-cord-dot sg-cord-dot--solo"></span></div>
+  <h1 class="sg-card-title sg-card-title--centre">@L["Verify your identity"]</h1>
+  <p class="sg-card-body sg-card-body--centre">@L["{0} asks everyone who uses it to verify their identity with DigiLocker, the government's document wallet, before entering.", Model.Partner?.DisplayName ?? L["This application"]]</p>
+
+  <partial name="_Banner" model="@(("danger", Model.Problem ?? string.Empty))" />
+
+  @if (!Model.Available)
+  {
+    <p class="sg-card-body">@L["DigiLocker is not available right now. Please try again later."]</p>
+  }
+  else
+  {
+    <p class="sg-card-body">@L["Sangam reads only the name, date of birth and gender on your DigiLocker record — never a document or an Aadhaar number. Your name, date of birth and gender in Sangam will take the record's values and be locked."]</p>
+    <form method="post" novalidate>
+      <input type="hidden" asp-for="ReturnUrl" />
+      <label class="sg-check">
+        <input type="checkbox" name="agree" value="true" required />
+        @L["I agree that my name, date of birth and gender will take DigiLocker's values."]
+      </label>
+      <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Verify with DigiLocker"]</button>
+    </form>
+  }
+
+  <div class="sg-cord-rule" role="presentation"></div>
+  <p class="sg-alt">@L["Questions?"] <a href="mailto:help@sangamid.in">help@sangamid.in</a></p>
+</section>

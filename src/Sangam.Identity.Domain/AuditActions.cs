@@ -348,4 +348,31 @@ public static class AuditActions
 
     /// <summary>An uploaded file was refused because the virus scanner found malware in it (rc.5, ASVS V12.4.2).</summary>
     public const string UploadRefused = "upload.refused";
+
+    /// <summary>
+    /// The person asked to recover their account with DigiLocker, having lost their second step and recovery codes (rc.6,
+    /// SGM-914). Metadata: how the record matched (<c>strong</c>, <c>rule</c>, or <c>review</c>), the request, and when it takes effect.
+    /// </summary>
+    public const string UserMfaRecoveryRequest = "user.mfa.recovery.request";
+
+    /// <summary>An operator approved a recovery whose DigiLocker record did not match the account (rc.6); the reason is in metadata.</summary>
+    public const string AdminUserMfaRecoveryApprove = "admin.user.mfa.recovery.approve";
+
+    /// <summary>An operator refused a recovery whose DigiLocker record did not match the account (rc.6); the reason is in metadata.</summary>
+    public const string AdminUserMfaRecoveryRefuse = "admin.user.mfa.recovery.refuse";
+
+    /// <summary>The person was told their connection to an application will end for inactivity (rc.6, SGM-910 section 7).</summary>
+    public const string ConsentInactivityNotice = "consent.inactivity.notice";
+
+    /// <summary>A person's connection to an application ended after the application's inactivity limit (rc.6, SGM-910 section 7).</summary>
+    public const string ConsentInactivityExpire = "consent.inactivity.expire";
+
+    /// <summary>The person was told their account will be deleted for inactivity (rc.6, SGM-910 section 7).</summary>
+    public const string UserAccountInactivityNotice = "user.account.inactivity.notice";
+
+    /// <summary>An account with no application connection and no sign-in for three years was scheduled for deletion (rc.6).</summary>
+    public const string UserAccountInactivityDeletion = "user.account.inactivity.deletion";
+
+    /// <summary>An application requires DigiLocker verification and the person was asked to verify before entering it (rc.6, SGM-914).</summary>
+    public const string IdentityVerifyRequired = "identity.verify.required";
 }

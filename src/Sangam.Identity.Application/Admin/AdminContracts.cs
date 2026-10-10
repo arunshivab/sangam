@@ -100,17 +100,3 @@ public sealed record AdminResult(bool Succeeded, string? Message)
     /// <param name="message">Why.</param>
     public static AdminResult Refused(string message) => new(false, message);
 }
-
-/// <summary>How support proved who the person is before resetting their two-step sign-in (PR-16, CAP-019).</summary>
-public enum IdentityProofingMethod
-{
-    /// <summary>A video call in which the person showed photo identification matching the account's name and date of birth.</summary>
-    VideoCall = 0,
-
-    /// <summary>The person came in person with photo identification.</summary>
-    InPerson = 1,
-
-    /// <summary>A call back to the account's verified mobile number, answering questions only the person can.</summary>
-    VerifiedMobileCallback = 2,
-}
-

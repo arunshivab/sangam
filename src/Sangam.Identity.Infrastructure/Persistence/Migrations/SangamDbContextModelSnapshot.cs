@@ -486,6 +486,10 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("homepage_url");
 
+                    b.Property<int?>("InactivityLimitYears")
+                        .HasColumnType("integer")
+                        .HasColumnName("inactivity_limit_years");
+
                     b.Property<bool>("IsPlatform")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -524,6 +528,12 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                     b.Property<bool>("RequireConsent")
                         .HasColumnType("boolean")
                         .HasColumnName("require_consent");
+
+                    b.Property<bool>("RequireIdentityVerification")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("require_identity_verification");
 
                     b.Property<string>("SignInPolicy")
                         .IsRequired()
@@ -565,6 +575,8 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
 
                     b.ToTable("apps", null, t =>
                         {
+                            t.HasCheckConstraint("chk_apps_inactivity_limit_years", "inactivity_limit_years IS NULL OR inactivity_limit_years BETWEEN 1 AND 10");
+
                             t.HasCheckConstraint("chk_apps_mfa_requirement", "mfa_requirement IN ('optional','required_for_administrators','required')");
 
                             t.HasCheckConstraint("chk_apps_min_password_length", "min_password_length IS NULL OR min_password_length BETWEEN 12 AND 64");
@@ -742,6 +754,14 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("GrantedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("granted_at");
+
+                    b.Property<DateTimeOffset?>("InactivityNoticeAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("inactivity_notice_at");
+
+                    b.Property<DateTimeOffset?>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_used_at");
 
                     b.Property<DateTimeOffset?>("RevokedAt")
                         .HasColumnType("timestamp with time zone")
@@ -1627,6 +1647,10 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("privileged");
 
+                    b.Property<string>("Record")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("record");
+
                     b.Property<string>("Reference")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -1640,6 +1664,24 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("RequestedByUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("requested_by_user_id");
+
+                    b.Property<string>("ReviewReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("review_reason");
+
+                    b.Property<string>("ReviewStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("review_status");
+
+                    b.Property<DateTimeOffset?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reviewed_at");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reviewed_by_user_id");
 
                     b.Property<Guid?>("UrgentByUserId")
                         .HasColumnType("uuid")
@@ -1671,10 +1713,17 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("idx_mfa_reset_requests_due")
                         .HasFilter("cancelled_at IS NULL AND applied_at IS NULL");
 
+                    b.HasIndex("RequestedAt")
+                        .HasDatabaseName("idx_mfa_reset_requests_review")
+                        .HasFilter("review_status = 'waiting' AND cancelled_at IS NULL AND applied_at IS NULL");
+
                     b.HasIndex("UserId")
                         .HasDatabaseName("idx_mfa_reset_requests_user");
 
-                    b.ToTable("mfa_reset_requests", (string)null);
+                    b.ToTable("mfa_reset_requests", null, t =>
+                        {
+                            t.HasCheckConstraint("chk_mfa_reset_requests_review_status", "review_status IS NULL OR review_status IN ('waiting', 'approved', 'refused')");
+                        });
                 });
 
             modelBuilder.Entity("Sangam.Identity.Domain.Entities.MonitoringAlert", b =>
@@ -2457,6 +2506,10 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("identity_verified_at");
 
+                    b.Property<DateTimeOffset?>("InactivityNoticeAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("inactivity_notice_at");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -2466,6 +2519,10 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("LastPasswordChangeAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_password_change_at");
+
+                    b.Property<DateTimeOffset?>("LastSignInAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_sign_in_at");
 
                     b.Property<string>("Locale")
                         .IsRequired()
@@ -2547,6 +2604,9 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_users");
+
+                    b.HasIndex("LastSignInAt")
+                        .HasDatabaseName("idx_users_last_sign_in");
 
                     b.HasIndex("NormalizedEmail")
                         .IsUnique()

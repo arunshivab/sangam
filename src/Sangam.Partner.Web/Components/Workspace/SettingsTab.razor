@@ -77,6 +77,36 @@ else
                     Explanation="@L["Rules for everyone who signs in to {0}. They can only be stricter than Sangam's own, and each organisation can tighten them further.", Info.AppName].Value" />
     </div>
   }
+
+  <div class="sg-panel" data-panel="access-rules">
+    <h2 class="sg-h3">@L["Who may keep using {0}", Info.AppName]</h2>
+    <div class="sg-form-row">
+      <label class="sg-label" for="inactivity">@L["End a person's connection after this long without signing in"]</label>
+      <select id="inactivity" class="sg-input" @bind="_inactivity">
+        <option value="">@L["Never"]</option>
+        @for (int years = 1; years <= 10; years++)
+        {
+          <option value="@years">@L["{0} years", years]</option>
+        }
+      </select>
+    </div>
+    <p class="sg-muted">@L["The person is told 30 days before. When it ends, their roles and details in {0} are removed, and {0} is told by SCIM or webhook so it can erase its own copy. Under the DPDP Rules, a large e-commerce, online gaming or social media platform must set 3 years.", Info.AppName]</p>
+    <label class="sg-check">
+      <input type="checkbox" @bind="_requireVerification" disabled="@(!_settings.IdentityVerificationAvailable && !_settings.RequireIdentityVerification)" />
+      @L["Require people to verify their identity with DigiLocker before entering {0}", Info.AppName]
+    </label>
+    @if (!_settings.IdentityVerificationAvailable)
+    {
+      <p class="sg-muted">@L["DigiLocker is not switched on for Sangam yet."]</p>
+    }
+    else
+    {
+      <p class="sg-muted">@L["To switch this on, verify your own identity with DigiLocker first, on your Sangam account's profile page. People who are not verified are asked to verify the next time they sign in to {0}.", Info.AppName]</p>
+    }
+    <div class="sg-actions">
+      <button type="button" class="sg-btn sg-btn--primary" @onclick="SaveAccessRulesAsync" disabled="@_busy">@L["Save access rules"]</button>
+    </div>
+  </div>
 }
 
 <StatusLine Ok="_ok" Message="@_message" />
@@ -100,6 +130,8 @@ else
     private string _colour = "#000000";
     private string _glyph = string.Empty;
     private SignInPolicy _policy;
+    private string _inactivity = string.Empty;
+    private bool _requireVerification;
     private bool _busy;
     private bool _ok;
     private string? _message;
@@ -117,6 +149,8 @@ else
             _colour = _settings.BrandColour;
             _glyph = _settings.Glyph;
             _policy = _settings.SignInPolicy;
+            _inactivity = _settings.InactivityLimitYears?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty;
+            _requireVerification = _settings.RequireIdentityVerification;
         }
     }
 
@@ -133,6 +167,20 @@ else
     {
         _busy = true;
         PartnerResult result = await Partners.UpdateSettingsAsync(Info.UserId, Info.AppId, _description, _colour, _glyph, _policy);
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = L[result.Message ?? string.Empty];
+        if (result.Succeeded)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task SaveAccessRulesAsync()
+    {
+        _busy = true;
+        int? years = int.TryParse(_inactivity, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int y) ? y : null;
+        PartnerResult result = await Partners.UpdateAccessRulesAsync(Info.UserId, Info.AppId, years, _requireVerification);
         _busy = false;
         _ok = result.Succeeded;
         _message = L[result.Message ?? string.Empty];

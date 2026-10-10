@@ -100,29 +100,99 @@
   "two_step_reset_notice": {
     "en-IN": {
       "subject": "Your Sangam two-step sign-in was reset",
-      "body": "Hello {{name}},\n\nSangam support has removed the authenticator app from your account, after confirming who you are,\nbecause you told us you had lost it and your recovery codes. Every device has been signed out.\n\nSign in with your password, then set up an authenticator app again in your account. Keep the new\nrecovery codes somewhere safe, away from your phone.\n\nIf you did not ask for this, write to help@sangamid.in at once from this address.\n\nSangam - one identity, many homes\nid.sangamid.in"
+      "body": "Hello {{name}},\n\nYour account was recovered: the authenticator app was removed and every device was signed out, because\nsomeone said the app and the recovery codes were lost and DigiLocker confirmed who they are.\n\nSign in, then set up an authenticator app again in your account. Keep the new recovery codes somewhere\nsafe, away from your phone.\n\nIf you did not ask for this, write to help@sangamid.in at once from this address.\n\nSangam - one identity, many homes\nid.sangamid.in"
     },
     "hi-IN": {
       "subject": "आपका Sangam दो-चरणीय साइन इन रीसेट किया गया",
-      "body": "नमस्ते {{name}},\n\nआपकी पहचान की पुष्टि करने के बाद, Sangam सहायता टीम ने आपके खाते से ऑथेंटिकेटर ऐप हटा दिया है,\nक्योंकि आपने हमें बताया था कि आपका ऐप और आपके रिकवरी कोड खो गए हैं। सभी डिवाइस से साइन आउट कर दिया गया है।\n\nअपने पासवर्ड से साइन इन करें, फिर अपने खाते में ऑथेंटिकेटर ऐप दोबारा सेट करें। नए रिकवरी कोड\nअपने फ़ोन से अलग, किसी सुरक्षित जगह पर रखें।\n\nयदि आपने यह अनुरोध नहीं किया था, तो तुरंत इसी पते से help@sangamid.in पर लिखें।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+      "body": "नमस्ते {{name}},\n\nआपका खाता पुनर्प्राप्त कर लिया गया है: ऑथेंटिकेटर ऐप हटा दिया गया और सभी डिवाइस से साइन आउट कर दिया गया, क्योंकि\nबताया गया कि ऐप और रिकवरी कोड खो गए हैं, और DigiLocker ने पहचान की पुष्टि की।\n\nसाइन इन करें, फिर अपने खाते में ऑथेंटिकेटर ऐप दोबारा सेट करें। नए रिकवरी कोड अपने फ़ोन से अलग, किसी\nसुरक्षित जगह पर रखें।\n\nयदि आपने यह अनुरोध नहीं किया था, तो तुरंत इसी पते से help@sangamid.in पर लिखें।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
     },
     "ml-IN": {
       "subject": "നിങ്ങളുടെ Sangam രണ്ട്-ഘട്ട സൈൻ-ഇൻ റീസെറ്റ് ചെയ്തു",
-      "body": "നമസ്കാരം {{name}},\n\nനിങ്ങളുടെ ഓതന്റിക്കേറ്റർ ആപ്പും റിക്കവറി കോഡുകളും നഷ്ടപ്പെട്ടതായി നിങ്ങൾ അറിയിച്ചതിനാൽ, നിങ്ങൾ ആരാണെന്ന്\nസ്ഥിരീകരിച്ച ശേഷം Sangam സപ്പോർട്ട് ടീം നിങ്ങളുടെ അക്കൗണ്ടിൽ നിന്ന് ഓതന്റിക്കേറ്റർ ആപ്പ് നീക്കം ചെയ്തു. എല്ലാ ഉപകരണങ്ങളിൽ നിന്നും\nസൈൻ ഔട്ട് ചെയ്തിട്ടുണ്ട്.\n\nനിങ്ങളുടെ പാസ്‌വേഡ് ഉപയോഗിച്ച് സൈൻ ഇൻ ചെയ്യുക, തുടർന്ന് അക്കൗണ്ടിൽ ഓതന്റിക്കേറ്റർ ആപ്പ് വീണ്ടും സജ്ജമാക്കുക.\nപുതിയ റിക്കവറി കോഡുകൾ ഫോണിൽ നിന്ന് മാറി സുരക്ഷിതമായ ഒരിടത്ത് സൂക്ഷിക്കുക.\n\nനിങ്ങൾ ഇത് ആവശ്യപ്പെട്ടിട്ടില്ലെങ്കിൽ, ഉടൻ തന്നെ ഈ വിലാസത്തിൽ നിന്ന് help@sangamid.in എന്ന വിലാസത്തിലേക്ക് എഴുതുക.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+      "body": "നമസ്കാരം {{name}},\n\nനിങ്ങളുടെ അക്കൗണ്ട് വീണ്ടെടുത്തു: ആപ്പും റിക്കവറി കോഡുകളും നഷ്ടപ്പെട്ടതായി അറിയിക്കുകയും DigiLocker ആളെ\nസ്ഥിരീകരിക്കുകയും ചെയ്തതിനാൽ, ഓതന്റിക്കേറ്റർ ആപ്പ് നീക്കം ചെയ്യുകയും എല്ലാ ഉപകരണങ്ങളിൽ നിന്നും സൈൻ ഔട്ട് ചെയ്യുകയും ചെയ്തു.\n\nസൈൻ ഇൻ ചെയ്യുക, തുടർന്ന് അക്കൗണ്ടിൽ ഓതന്റിക്കേറ്റർ ആപ്പ് വീണ്ടും സജ്ജമാക്കുക. പുതിയ റിക്കവറി കോഡുകൾ ഫോണിൽ\nനിന്ന് മാറി സുരക്ഷിതമായ ഒരിടത്ത് സൂക്ഷിക്കുക.\n\nനിങ്ങൾ ഇത് ആവശ്യപ്പെട്ടിട്ടില്ലെങ്കിൽ, ഉടൻ തന്നെ ഈ വിലാസത്തിൽ നിന്ന് help@sangamid.in എന്ന വിലാസത്തിലേക്ക് എഴുതുക.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
     }
   },
   "two_step_reset_requested": {
     "en-IN": {
-      "subject": "Sangam support was asked to reset your two-step sign-in",
-      "body": "Hello {{name}},\n\nSangam support was asked to remove the authenticator app from your account, because someone told us you\nhad lost it and your recovery codes. For your safety, nothing happens for {{hours}} hours: the reset takes\neffect at {{effective}}, and only if you do not stop it.\n\nIf this wasn't you, cancel it now with one click:\n\n    {{link}}\n\nIf it was you, there is nothing to do; you will be told when it is done.\n\nSangam - one identity, many homes\nid.sangamid.in"
+      "subject": "Someone asked to recover your Sangam account",
+      "body": "Hello {{name}},\n\nSomeone signed in with your first step and asked to recover your account with DigiLocker, saying the\nauthenticator app and the recovery codes were lost. For your safety, nothing happens for {{hours}} hours: the\nrecovery takes effect at {{effective}}, and only if you do not stop it.\n\nIf this wasn't you, cancel it now with one click, then change your password:\n\n    {{link}}\n\nIf it was you, there is nothing to do; you will be told when it is done.\n\nSangam - one identity, many homes\nid.sangamid.in"
     },
     "hi-IN": {
-      "subject": "Sangam सहायता टीम से आपका दो-चरणीय साइन इन रीसेट करने का अनुरोध किया गया",
-      "body": "नमस्ते {{name}},\n\nSangam सहायता टीम से आपके खाते से ऑथेंटिकेटर ऐप हटाने का अनुरोध किया गया है, क्योंकि किसी ने हमें बताया कि आपका\nऐप और रिकवरी कोड खो गए हैं। आपकी सुरक्षा के लिए {{hours}} घंटे तक कुछ नहीं होगा: रीसेट {{effective}} पर लागू होगा,\nऔर केवल तभी जब आप इसे न रोकें।\n\nयदि यह आप नहीं थे, तो एक क्लिक में इसे अभी रद्द करें:\n\n    {{link}}\n\nयदि यह आप थे, तो कुछ करने की आवश्यकता नहीं है; काम पूरा होने पर आपको बताया जाएगा।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+      "subject": "किसी ने आपका Sangam खाता पुनर्प्राप्त करने का अनुरोध किया",
+      "body": "नमस्ते {{name}},\n\nकिसी ने आपके पहले चरण से साइन इन करके DigiLocker से आपका खाता पुनर्प्राप्त करने का अनुरोध किया है, यह कहते हुए कि\nऑथेंटिकेटर ऐप और रिकवरी कोड खो गए हैं। आपकी सुरक्षा के लिए {{hours}} घंटे तक कुछ नहीं होगा: पुनर्प्राप्ति\n{{effective}} पर लागू होगी, और केवल तभी जब आप इसे न रोकें।\n\nयदि यह आप नहीं थे, तो एक क्लिक में इसे अभी रद्द करें, फिर अपना पासवर्ड बदलें:\n\n    {{link}}\n\nयदि यह आप थे, तो कुछ करने की आवश्यकता नहीं है; काम पूरा होने पर आपको बताया जाएगा।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
     },
     "ml-IN": {
-      "subject": "നിങ്ങളുടെ രണ്ട്-ഘട്ട സൈൻ-ഇൻ റീസെറ്റ് ചെയ്യാൻ Sangam സപ്പോർട്ടിനോട് ആവശ്യപ്പെട്ടു",
-      "body": "നമസ്കാരം {{name}},\n\nനിങ്ങളുടെ ഓതന്റിക്കേറ്റർ ആപ്പും റിക്കവറി കോഡുകളും നഷ്ടപ്പെട്ടതായി ആരോ അറിയിച്ചതിനാൽ, നിങ്ങളുടെ അക്കൗണ്ടിൽ നിന്ന്\nഓതന്റിക്കേറ്റർ ആപ്പ് നീക്കം ചെയ്യാൻ Sangam സപ്പോർട്ടിനോട് ആവശ്യപ്പെട്ടു. നിങ്ങളുടെ സുരക്ഷയ്ക്കായി {{hours}} മണിക്കൂർ ഒന്നും\nസംഭവിക്കില്ല: റീസെറ്റ് {{effective}}-ന് പ്രാബല്യത്തിൽ വരും, നിങ്ങൾ തടഞ്ഞില്ലെങ്കിൽ മാത്രം.\n\nഇത് നിങ്ങളല്ലെങ്കിൽ, ഒറ്റ ക്ലിക്കിൽ ഇപ്പോൾ റദ്ദാക്കുക:\n\n    {{link}}\n\nഇത് നിങ്ങളാണെങ്കിൽ, ഒന്നും ചെയ്യേണ്ടതില്ല; പൂർത്തിയാകുമ്പോൾ അറിയിക്കും.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+      "subject": "നിങ്ങളുടെ Sangam അക്കൗണ്ട് വീണ്ടെടുക്കാൻ ആരോ അഭ്യർത്ഥിച്ചു",
+      "body": "നമസ്കാരം {{name}},\n\nഓതന്റിക്കേറ്റർ ആപ്പും റിക്കവറി കോഡുകളും നഷ്ടപ്പെട്ടു എന്ന് പറഞ്ഞ്, ആരോ നിങ്ങളുടെ ആദ്യ ഘട്ടം ഉപയോഗിച്ച് സൈൻ ഇൻ ചെയ്ത്\nDigiLocker വഴി നിങ്ങളുടെ അക്കൗണ്ട് വീണ്ടെടുക്കാൻ അഭ്യർത്ഥിച്ചു. നിങ്ങളുടെ സുരക്ഷയ്ക്കായി {{hours}} മണിക്കൂർ ഒന്നും\nസംഭവിക്കില്ല: വീണ്ടെടുക്കൽ {{effective}}-ന് പ്രാബല്യത്തിൽ വരും, നിങ്ങൾ തടഞ്ഞില്ലെങ്കിൽ മാത്രം.\n\nഇത് നിങ്ങളല്ലെങ്കിൽ, ഒറ്റ ക്ലിക്കിൽ ഇപ്പോൾ റദ്ദാക്കുക, തുടർന്ന് പാസ്‌വേഡ് മാറ്റുക:\n\n    {{link}}\n\nഇത് നിങ്ങളാണെങ്കിൽ, ഒന്നും ചെയ്യേണ്ടതില്ല; പൂർത്തിയാകുമ്പോൾ അറിയിക്കും.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
+  "recovery_review_waiting": {
+    "en-IN": {
+      "subject": "Someone asked to recover your Sangam account",
+      "body": "Hello {{name}},\n\nSomeone signed in with your first step and asked to recover your account with DigiLocker, saying the\nauthenticator app and the recovery codes were lost. The DigiLocker record did not match your account\nexactly, so a Sangam operator will compare the name, date of birth and gender before anything happens. If\nthey approve it, a waiting period follows and you will be told again.\n\nIf this wasn't you, cancel it now with one click, then change your password:\n\n    {{link}}\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "किसी ने आपका Sangam खाता पुनर्प्राप्त करने का अनुरोध किया",
+      "body": "नमस्ते {{name}},\n\nकिसी ने आपके पहले चरण से साइन इन करके DigiLocker से आपका खाता पुनर्प्राप्त करने का अनुरोध किया है, यह कहते हुए कि\nऑथेंटिकेटर ऐप और रिकवरी कोड खो गए हैं। DigiLocker का रिकॉर्ड आपके खाते से पूरी तरह मेल नहीं खाया, इसलिए कुछ भी\nहोने से पहले Sangam का एक ऑपरेटर नाम, जन्म तिथि और लिंग की तुलना करेगा। यदि वे इसे स्वीकृत करते हैं, तो एक\nप्रतीक्षा अवधि होगी और आपको फिर से बताया जाएगा।\n\nयदि यह आप नहीं थे, तो एक क्लिक में इसे अभी रद्द करें, फिर अपना पासवर्ड बदलें:\n\n    {{link}}\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "നിങ്ങളുടെ Sangam അക്കൗണ്ട് വീണ്ടെടുക്കാൻ ആരോ അഭ്യർത്ഥിച്ചു",
+      "body": "നമസ്കാരം {{name}},\n\nഓതന്റിക്കേറ്റർ ആപ്പും റിക്കവറി കോഡുകളും നഷ്ടപ്പെട്ടു എന്ന് പറഞ്ഞ്, ആരോ നിങ്ങളുടെ ആദ്യ ഘട്ടം ഉപയോഗിച്ച് സൈൻ ഇൻ ചെയ്ത്\nDigiLocker വഴി നിങ്ങളുടെ അക്കൗണ്ട് വീണ്ടെടുക്കാൻ അഭ്യർത്ഥിച്ചു. DigiLocker രേഖ നിങ്ങളുടെ അക്കൗണ്ടുമായി പൂർണമായി\nപൊരുത്തപ്പെട്ടില്ല, അതിനാൽ എന്തെങ്കിലും സംഭവിക്കുന്നതിന് മുമ്പ് ഒരു Sangam ഓപ്പറേറ്റർ പേര്, ജനനത്തീയതി, ലിംഗം എന്നിവ\nതാരതമ്യം ചെയ്യും. അവർ അംഗീകരിച്ചാൽ, ഒരു കാത്തിരിപ്പ് കാലയളവ് ഉണ്ടാകും, നിങ്ങളെ വീണ്ടും അറിയിക്കും.\n\nഇത് നിങ്ങളല്ലെങ്കിൽ, ഒറ്റ ക്ലിക്കിൽ ഇപ്പോൾ റദ്ദാക്കുക, തുടർന്ന് പാസ്‌വേഡ് മാറ്റുക:\n\n    {{link}}\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
+  "recovery_refused": {
+    "en-IN": {
+      "subject": "Your Sangam account recovery was refused",
+      "body": "Hello {{name}},\n\nA Sangam operator compared the DigiLocker record with your account and could not match them, so the\naccount cannot be recovered this way. Nothing in your account has changed.\n\nIf you find your phone or your recovery codes, you can sign in as before. Otherwise you may create a new\nSangam account; the applications you use can invite you again.\n\nIf you did not ask for this, change your password: someone else knows it.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "आपके Sangam खाते की पुनर्प्राप्ति अस्वीकार कर दी गई",
+      "body": "नमस्ते {{name}},\n\nSangam के एक ऑपरेटर ने DigiLocker के रिकॉर्ड की तुलना आपके खाते से की और उनका मिलान नहीं हो सका, इसलिए खाते को\nइस तरह पुनर्प्राप्त नहीं किया जा सकता। आपके खाते में कुछ भी नहीं बदला है।\n\nयदि आपको अपना फ़ोन या रिकवरी कोड मिल जाएं, तो आप पहले की तरह साइन इन कर सकते हैं। अन्यथा आप एक नया Sangam\nखाता बना सकते हैं; आप जिन ऐप्लिकेशन का उपयोग करते हैं, वे आपको फिर से आमंत्रित कर सकते हैं।\n\nयदि आपने यह अनुरोध नहीं किया था, तो अपना पासवर्ड बदलें: किसी और को यह पता है।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "നിങ്ങളുടെ Sangam അക്കൗണ്ട് വീണ്ടെടുക്കൽ നിരസിച്ചു",
+      "body": "നമസ്കാരം {{name}},\n\nഒരു Sangam ഓപ്പറേറ്റർ DigiLocker രേഖ നിങ്ങളുടെ അക്കൗണ്ടുമായി താരതമ്യം ചെയ്തു, അവ പൊരുത്തപ്പെടുത്താൻ\nകഴിഞ്ഞില്ല, അതിനാൽ ഈ രീതിയിൽ അക്കൗണ്ട് വീണ്ടെടുക്കാൻ കഴിയില്ല. നിങ്ങളുടെ അക്കൗണ്ടിൽ ഒന്നും മാറിയിട്ടില്ല.\n\nനിങ്ങളുടെ ഫോണോ റിക്കവറി കോഡുകളോ കണ്ടെത്തിയാൽ, മുമ്പത്തെപ്പോലെ സൈൻ ഇൻ ചെയ്യാം. അല്ലെങ്കിൽ ഒരു പുതിയ Sangam\nഅക്കൗണ്ട് തുടങ്ങാം; നിങ്ങൾ ഉപയോഗിക്കുന്ന ആപ്ലിക്കേഷനുകൾക്ക് നിങ്ങളെ വീണ്ടും ക്ഷണിക്കാം.\n\nനിങ്ങൾ ഇത് ആവശ്യപ്പെട്ടിട്ടില്ലെങ്കിൽ, പാസ്‌വേഡ് മാറ്റുക: മറ്റൊരാൾക്ക് അത് അറിയാം.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
+  "app_inactivity_notice": {
+    "en-IN": {
+      "subject": "Your connection to {{application}} will end",
+      "body": "Hello {{name}},\n\nYou have not signed in to {{application}} with Sangam for a long time. {{application}} asks Sangam to end\nconnections that are not used, so on {{date}} your connection to it will end: it will no longer receive your\nsign-in, and your roles there will be removed.\n\nTo keep it, simply sign in to {{application}} before then. Your Sangam account itself stays.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "{{application}} से आपका कनेक्शन समाप्त हो जाएगा",
+      "body": "नमस्ते {{name}},\n\nआपने लंबे समय से Sangam के साथ {{application}} में साइन इन नहीं किया है। {{application}} Sangam से उन कनेक्शन को\nसमाप्त करने के लिए कहता है जिनका उपयोग नहीं होता, इसलिए {{date}} को इससे आपका कनेक्शन समाप्त हो जाएगा: इसे आपका\nसाइन इन नहीं मिलेगा, और वहाँ आपकी भूमिकाएँ हटा दी जाएँगी।\n\nइसे बनाए रखने के लिए, उससे पहले बस {{application}} में साइन इन करें। आपका Sangam खाता बना रहेगा।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "{{application}}-ലേക്കുള്ള നിങ്ങളുടെ കണക്ഷൻ അവസാനിക്കും",
+      "body": "നമസ്കാരം {{name}},\n\nനിങ്ങൾ ഏറെക്കാലമായി Sangam ഉപയോഗിച്ച് {{application}}-ൽ സൈൻ ഇൻ ചെയ്തിട്ടില്ല. ഉപയോഗിക്കാത്ത കണക്ഷനുകൾ\nഅവസാനിപ്പിക്കാൻ {{application}} Sangam-നോട് ആവശ്യപ്പെടുന്നു, അതിനാൽ {{date}}-ന് അതിലേക്കുള്ള നിങ്ങളുടെ കണക്ഷൻ\nഅവസാനിക്കും: അതിന് ഇനി നിങ്ങളുടെ സൈൻ-ഇൻ ലഭിക്കില്ല, അവിടെയുള്ള നിങ്ങളുടെ റോളുകൾ നീക്കം ചെയ്യും.\n\nഇത് നിലനിർത്താൻ, അതിനുമുമ്പ് {{application}}-ൽ സൈൻ ഇൻ ചെയ്താൽ മതി. നിങ്ങളുടെ Sangam അക്കൗണ്ട് നിലനിൽക്കും.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
+  "app_connection_ended": {
+    "en-IN": {
+      "subject": "Your connection to {{application}} has ended",
+      "body": "Hello {{name}},\n\nBecause you had not signed in to {{application}} for longer than it allows, your connection to it has ended\nand your roles there were removed. {{application}} was told, so that it can erase what it holds about you.\n\nTo use it again, sign in to {{application}}: you will be asked to agree again, and it may need to invite\nyou again. Your Sangam account itself stays.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "{{application}} से आपका कनेक्शन समाप्त हो गया है",
+      "body": "नमस्ते {{name}},\n\nक्योंकि आपने {{application}} में उसकी अनुमति से अधिक समय तक साइन इन नहीं किया था, इससे आपका कनेक्शन समाप्त हो गया\nहै और वहाँ आपकी भूमिकाएँ हटा दी गई हैं। {{application}} को बता दिया गया है, ताकि वह आपके बारे में रखी जानकारी मिटा सके।\n\nइसका फिर से उपयोग करने के लिए {{application}} में साइन इन करें: आपसे फिर से सहमति माँगी जाएगी, और हो सकता है कि\nउसे आपको फिर से आमंत्रित करना पड़े। आपका Sangam खाता बना रहेगा।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "{{application}}-ലേക്കുള്ള നിങ്ങളുടെ കണക്ഷൻ അവസാനിച്ചു",
+      "body": "നമസ്കാരം {{name}},\n\n{{application}} അനുവദിക്കുന്നതിലും കൂടുതൽ കാലം നിങ്ങൾ അതിൽ സൈൻ ഇൻ ചെയ്യാത്തതിനാൽ, അതിലേക്കുള്ള നിങ്ങളുടെ കണക്ഷൻ\nഅവസാനിച്ചു, അവിടെയുള്ള നിങ്ങളുടെ റോളുകൾ നീക്കം ചെയ്തു. നിങ്ങളെക്കുറിച്ച് സൂക്ഷിച്ചിരിക്കുന്നത് മായ്ക്കാൻ കഴിയുന്നതിനായി\n{{application}}-നെ അറിയിച്ചിട്ടുണ്ട്.\n\nഇത് വീണ്ടും ഉപയോഗിക്കാൻ {{application}}-ൽ സൈൻ ഇൻ ചെയ്യുക: വീണ്ടും സമ്മതം ചോദിക്കും, അതിന് നിങ്ങളെ വീണ്ടും\nക്ഷണിക്കേണ്ടി വന്നേക്കാം. നിങ്ങളുടെ Sangam അക്കൗണ്ട് നിലനിൽക്കും.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
+  "account_inactivity_notice": {
+    "en-IN": {
+      "subject": "Your Sangam account will be deleted",
+      "body": "Hello {{name}},\n\nYour Sangam account has not been used for three years and is no longer connected to any application.\nSangam keeps personal data only while it is needed, so on {{date}} your account will be deleted.\n\nTo keep it, simply sign in before then at id.sangamid.in.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "आपका Sangam खाता हटा दिया जाएगा",
+      "body": "नमस्ते {{name}},\n\nआपके Sangam खाते का तीन वर्षों से उपयोग नहीं हुआ है और यह अब किसी ऐप्लिकेशन से जुड़ा नहीं है। Sangam व्यक्तिगत\nडेटा केवल तब तक रखता है जब तक उसकी आवश्यकता हो, इसलिए {{date}} को आपका खाता हटा दिया जाएगा।\n\nइसे बनाए रखने के लिए, उससे पहले बस id.sangamid.in पर साइन इन करें।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "നിങ്ങളുടെ Sangam അക്കൗണ്ട് ഇല്ലാതാക്കും",
+      "body": "നമസ്കാരം {{name}},\n\nനിങ്ങളുടെ Sangam അക്കൗണ്ട് മൂന്ന് വർഷമായി ഉപയോഗിച്ചിട്ടില്ല, ഇപ്പോൾ ഒരു ആപ്ലിക്കേഷനുമായും ബന്ധിപ്പിച്ചിട്ടുമില്ല.\nആവശ്യമുള്ളിടത്തോളം മാത്രമേ Sangam വ്യക്തിഗത ഡാറ്റ സൂക്ഷിക്കുന്നുള്ളൂ, അതിനാൽ {{date}}-ന് നിങ്ങളുടെ അക്കൗണ്ട് ഇല്ലാതാക്കും.\n\nഇത് നിലനിർത്താൻ, അതിനുമുമ്പ് id.sangamid.in-ൽ സൈൻ ഇൻ ചെയ്താൽ മതി.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
     }
   },
   "operator_alert": {

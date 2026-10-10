@@ -17,6 +17,7 @@ namespace Sangam.Identity.Application.Apps;
 /// <param name="ConsentVersion">Consent wording version in force.</param>
 /// <param name="Status">Lifecycle state.</param>
 /// <param name="IsPlatform">One of Sangam's own applications (portal, consoles): consent is implicit and recorded (V-06).</param>
+/// <param name="RequireIdentityVerification">People must be verified with DigiLocker before entering (rc.6, SGM-914).</param>
 public sealed record AppSummary(
     Guid Id,
     string ClientId,
@@ -31,4 +32,5 @@ public sealed record AppSummary(
     SignInPolicy SignInPolicy,
     string ConsentVersion,
     AppStatus Status,
-    bool IsPlatform = false);
+    bool IsPlatform = false,
+    bool RequireIdentityVerification = false);

@@ -38,6 +38,13 @@ public sealed class DigiLockerSettings
     /// <summary>The address DigiLocker sends the person back to, as registered with it; empty means the portal's own <c>/verify/digilocker/callback</c>.</summary>
     public string RedirectUri { get; set; } = string.Empty;
 
+    /// <summary>
+    /// rc.6 (SGM-914): the identity server's return address, registered with DigiLocker as well, for an application that
+    /// requires verification and for recovering an account; empty means the identity server's own
+    /// <c>/identity/digilocker/callback</c>.
+    /// </summary>
+    public string IdentityRedirectUri { get; set; } = string.Empty;
+
     /// <summary>The key DigiLocker ids are hashed with (32 characters or more outside Development).</summary>
     public string SubjectKey { get; set; } = string.Empty;
 

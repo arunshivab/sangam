@@ -56,7 +56,7 @@ public static class MessageTemplateKinds
     /// <summary>The SMS alert to operators (D-H, D-K).</summary>
     public const string SmsOperatorAlert = "sms_operator_alert";
 
-    /// <summary>The e-mail that support was asked to reset two-step sign-in, with the cancel link (D-K).</summary>
+    /// <summary>The e-mail that someone asked to recover the account (reset two-step sign-in), with the cancel link (D-K; rc.6).</summary>
     public const string TwoStepResetRequested = "two_step_reset_requested";
 
     /// <summary>An alert e-mail to operators (D-H, D-K).</summary>
@@ -89,6 +89,21 @@ public static class MessageTemplateKinds
     /// <summary>To the person: they asked for a sign-in code, but their sign-in uses a password (rc.2).</summary>
     public const string PasswordAccountCodeNotice = "password_account_code_notice";
 
+    /// <summary>To the person: a recovery with DigiLocker did not match their account and waits for an operator (rc.6, SGM-914).</summary>
+    public const string RecoveryReviewWaiting = "recovery_review_waiting";
+
+    /// <summary>To the person: an operator refused a recovery with DigiLocker (rc.6, SGM-914).</summary>
+    public const string RecoveryRefused = "recovery_refused";
+
+    /// <summary>To the person: their connection to an application will end for inactivity (rc.6, SGM-910 section 7).</summary>
+    public const string AppInactivityNotice = "app_inactivity_notice";
+
+    /// <summary>To the person: their connection to an application ended for inactivity (rc.6, SGM-910 section 7).</summary>
+    public const string AppConnectionEnded = "app_connection_ended";
+
+    /// <summary>To the person: their unused account will be deleted (rc.6, SGM-910 section 7).</summary>
+    public const string AccountInactivityNotice = "account_inactivity_notice";
+
     /// <summary>Every kind, in the order the consoles list them.</summary>
     public static IReadOnlyList<MessageTemplateKind> All { get; } =
     [
@@ -106,6 +121,11 @@ public static class MessageTemplateKinds
         new(PasskeyRemovedNotice, false, false, ["name"], []),
         new(PasswordAccountCodeNotice, false, false, ["name"], []),
         new(TwoStepResetRequested, false, false, ["name", "hours", "effective", "link"], ["link"]),
+        new(RecoveryReviewWaiting, false, false, ["name", "link"], ["link"]),
+        new(RecoveryRefused, false, false, ["name"], []),
+        new(AppInactivityNotice, false, false, ["name", "application", "date"], ["application", "date"]),
+        new(AppConnectionEnded, false, false, ["name", "application"], ["application"]),
+        new(AccountInactivityNotice, false, false, ["name", "date"], ["date"]),
         new(OperatorAlert, false, false, ["summary", "details"], ["summary"]),
         new(GrievanceAcknowledgement, false, false, ["name", "reference", "received", "resolve_by"], ["reference"]),
         new(GrievanceResolution, false, false, ["name", "reference", "resolution"], ["reference", "resolution"]),

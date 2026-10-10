@@ -44,6 +44,13 @@ internal sealed partial class BrowserSession : IDisposable
         throw new InvalidOperationException("Too many redirects from " + path);
     }
 
+    /// <summary>One GET, not followed, with where it redirects.</summary>
+    public async Task<(HttpStatusCode Status, string? Location, string Html)> GetWithLocationAsync(string path)
+    {
+        using HttpResponseMessage response = await _client.GetAsync(new Uri(path, UriKind.Relative));
+        return (response.StatusCode, response.Headers.Location?.ToString(), await response.Content.ReadAsStringAsync());
+    }
+
     public async Task<(HttpStatusCode Status, string Html)> GetAsync(string path)
     {
         using HttpResponseMessage response = await _client.GetAsync(new Uri(path, UriKind.Relative));

@@ -32,6 +32,11 @@ internal static class AuditNarrator
         AuditActions.AppAdminRevoke,
         AuditActions.AdminUserMfaResetRequest,
         AuditActions.AdminUserMfaReset,
+        AuditActions.UserMfaRecoveryRequest,
+        AuditActions.AdminUserMfaRecoveryApprove,
+        AuditActions.AdminUserMfaRecoveryRefuse,
+        AuditActions.ConsentInactivityExpire,
+        AuditActions.UserAccountInactivityNotice,
     };
 
     public static AuditLine Describe(AuditEvent e, IReadOnlyDictionary<Guid, string> appNames)
@@ -117,10 +122,19 @@ internal static class AuditNarrator
             AuditActions.AdminUserHoldPlace => "A Sangam operator placed a hold on your account.",
             AuditActions.AdminUserHoldClear => "A Sangam operator cleared the hold on your account.",
             AuditActions.AdminUserMfaResetRequest => "Sangam support was asked to reset your two-step sign-in. It waits out a cooling-off period, and you were told so you could cancel it.",
-            AuditActions.AdminUserMfaReset => "Your two-step sign-in was reset by Sangam support. Your authenticator was removed and every device was signed out.",
+            AuditActions.AdminUserMfaReset => "Your two-step sign-in was reset. Your authenticator was removed and every device was signed out.",
             AuditActions.AdminUserMfaResetUrgent => "A Sangam operator applied the reset of your two-step sign-in at once, without the cooling-off period.",
             AuditActions.AdminUserMfaResetWithdraw => "A Sangam operator withdrew the reset of your two-step sign-in.",
             AuditActions.UserMfaResetCancel => "You cancelled a reset of your two-step sign-in.",
+            AuditActions.UserMfaRecoveryRequest => Read(e.Metadata, "match") is "review"
+                ? "Someone asked to recover your account with DigiLocker. The record did not match your account, so a Sangam operator will review it, and you were told so you could cancel it."
+                : "Someone asked to recover your account with DigiLocker. It waits out a cooling-off period, and you were told so you could cancel it.",
+            AuditActions.AdminUserMfaRecoveryApprove => "A Sangam operator approved the recovery of your account after reviewing the DigiLocker record. It waits out a cooling-off period.",
+            AuditActions.AdminUserMfaRecoveryRefuse => "A Sangam operator refused the recovery of your account: the DigiLocker record did not match it.",
+            AuditActions.ConsentInactivityNotice => $"You were told your connection to {app} will end, because you have not signed in to it for a long time.",
+            AuditActions.ConsentInactivityExpire => $"Your connection to {app} ended, because you had not signed in to it for longer than it allows.",
+            AuditActions.UserAccountInactivityNotice => "You were told your account will be deleted, because it has not been used for three years.",
+            AuditActions.IdentityVerifyRequired => $"{app} asked you to verify your identity with DigiLocker before entering it.",
             _ => e.Action,
         };
 

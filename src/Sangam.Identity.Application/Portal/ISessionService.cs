@@ -37,6 +37,15 @@ public interface ISessionService
     /// <param name="cancellationToken">Cancellation token.</param>
     Task RecordAppAsync(Guid sessionId, Guid appId, Guid userId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// rc.6 (SGM-910 section 7): records that the person used an application — signed in to it, or it refreshed their
+    /// tokens — and clears any inactivity notice for that connection. Written at most once an hour per connection.
+    /// </summary>
+    /// <param name="userId">The person.</param>
+    /// <param name="appId">The application.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task RecordUseAsync(Guid userId, Guid appId, CancellationToken cancellationToken = default);
+
     /// <summary>The applications that took part in a session and have a front-channel logout page (PR-20).</summary>
     /// <param name="sessionId">The session.</param>
     /// <param name="cancellationToken">Cancellation token.</param>

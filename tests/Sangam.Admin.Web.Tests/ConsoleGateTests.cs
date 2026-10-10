@@ -127,13 +127,17 @@ public sealed class ConsoleGateTests : IClassFixture<ConsoleFactory>
         Assert.Contains("Sign out everywhere", detail, StringComparison.Ordinal);
         Assert.DoesNotContain(">Delete now<", detail, StringComparison.Ordinal);
 
-        // PR-16: the lost-authenticator reset appears only for someone who has an authenticator.
-        Assert.DoesNotContain("Request a reset of two-step sign-in", detail, StringComparison.Ordinal);
+        // rc.6 (SGM-914): there is no support-assisted reset; a person with an authenticator recovers it with DigiLocker.
+        Assert.DoesNotContain("Lost authenticator", detail, StringComparison.Ordinal);
         Guid enrolled = await _factory.SeedAsync(role: null, mfa: true, "Enrolled");
         string enrolledDetail = await GetAsync(support, $"/users/{enrolled:D}");
-        Assert.Contains("Request a reset of two-step sign-in", enrolledDetail, StringComparison.Ordinal);
-        Assert.Contains("72 for operators", enrolledDetail, StringComparison.Ordinal);
-        Assert.Contains("Never record identity-document numbers", enrolledDetail, StringComparison.Ordinal);
+        Assert.Contains("recovers the account themselves with DigiLocker", enrolledDetail, StringComparison.Ordinal);
+        Assert.DoesNotContain("Video call", enrolledDetail, StringComparison.Ordinal);
+        Assert.DoesNotContain("Request a reset of two-step sign-in", enrolledDetail, StringComparison.Ordinal);
+
+        // The review queue is open to Support.
+        string recoveries = await GetAsync(support, "/recoveries");
+        Assert.Contains("No recovery is waiting for review.", recoveries, StringComparison.Ordinal);
     }
 
     [PostgresFact]

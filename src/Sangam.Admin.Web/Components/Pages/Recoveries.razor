@@ -1,0 +1,113 @@
+@page "/recoveries"
+@using Sangam.Identity.Application.Verification
+@using Sangam.Identity.Domain.Enums
+@inject IAccountRecoveryService Recovery
+
+<PageTitle>@L["Recoveries · Sangam console"]</PageTitle>
+
+<h1 class="sg-h1">@L["Recoveries to review"]</h1>
+<p class="sg-lede">@L["People who lost their authenticator and recovery codes recover their account with DigiLocker. When the DigiLocker record does not match the account, the recovery waits here. Compare only what is shown, decide whether it is the same person, and write why. Never contact the person except by e-mail, and never ask for a document."]</p>
+
+@if (_rows is null)
+{
+  <p class="sg-muted">@(_loaded ? L["Reviewing recoveries needs Support or Owner access."] : L["Loading…"])</p>
+}
+else if (_rows.Count == 0)
+{
+  <p class="sg-muted">@L["No recovery is waiting for review."]</p>
+}
+else
+{
+  @foreach (RecoveryReview row in _rows)
+  {
+    <section class="sg-panel" data-panel="recovery" data-request="@row.RequestId">
+      <h2 class="sg-h3">@L["Asked for {0}", IndiaTime.Compact(row.RequestedAt)] <a class="sg-muted" href="/users/@row.UserId">@L["account"]</a></h2>
+      @if (row.Privileged)
+      {
+        <p class="sg-muted"><strong>@L["Privileged account: only an Owner may decide, and the wait after approval is 72 hours."]</strong></p>
+      }
+      <div class="sg-table-wrap" tabindex="0" role="region" aria-label="@L["Profile and DigiLocker record"]">
+        <table class="sg-table">
+          <thead><tr><th></th><th>@L["Sangam profile"]</th><th>@L["DigiLocker record"]</th></tr></thead>
+          <tbody>
+            <tr class="@(row.Mismatches.Contains(RecoveryMatch.Name) ? "sg-warn-text" : null)"><th scope="row">@L["Name"]</th><td>@row.ProfileName</td><td>@row.RecordName</td></tr>
+            <tr class="@(row.Mismatches.Contains(RecoveryMatch.DateOfBirth) ? "sg-warn-text" : null)"><th scope="row">@L["Date of birth"]</th><td class="sg-mono">@row.ProfileDateOfBirth.ToString("d MMM yyyy", System.Globalization.CultureInfo.InvariantCulture)</td><td class="sg-mono">@row.RecordDateOfBirth.ToString("d MMM yyyy", System.Globalization.CultureInfo.InvariantCulture)</td></tr>
+            <tr class="@(row.Mismatches.Contains(RecoveryMatch.GenderPart) ? "sg-warn-text" : null)"><th scope="row">@L["Gender"]</th><td>@GenderName(row.ProfileGender)</td><td>@GenderName(row.RecordGender)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      @if (row.Mismatches.Contains("identity"))
+      {
+        <p class="sg-muted">@L["This account was verified with a different DigiLocker account. It may be the same person with a second DigiLocker account, or someone else."]</p>
+      }
+      <div class="sg-form-row">
+        <label class="sg-label" for="reason-@row.RequestId">@L["Your reason"]</label>
+        <input id="reason-@row.RequestId" class="sg-input" maxlength="500" value="@Reason(row.RequestId)" @oninput="e => _reasons[row.RequestId] = e.Value?.ToString() ?? string.Empty" placeholder="@L["e.g. the profile leaves out the middle name; same person"]" />
+      </div>
+      <div class="sg-actions">
+        <button type="button" class="sg-btn sg-btn--primary" @onclick="() => ApproveAsync(row.RequestId)" disabled="@(_busy || Reason(row.RequestId).Trim().Length < 10)">@L["Same person — approve"]</button>
+        <button type="button" class="sg-btn sg-btn--danger" @onclick="() => RefuseAsync(row.RequestId)" disabled="@(_busy || Reason(row.RequestId).Trim().Length < 10)">@L["Not the same person — refuse"]</button>
+      </div>
+    </section>
+  }
+}
+
+@if (_message is not null)
+{
+  <p class="@(_ok ? "sg-ok" : "sg-warn")">@_message</p>
+}
+
+@code {
+    [CascadingParameter]
+    public ConsoleContext? Context { get; set; }
+
+    private readonly Dictionary<Guid, string> _reasons = [];
+    private IReadOnlyList<RecoveryReview>? _rows;
+    private bool _loaded;
+    private bool _busy;
+    private bool _ok;
+    private string? _message;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        if (Context is null)
+        {
+            return;
+        }
+
+        _rows = Context.CanAct ? await Recovery.WaitingAsync(Context.UserId) : null;
+        _loaded = true;
+    }
+
+    private string Reason(Guid id) => _reasons.TryGetValue(id, out string? reason) ? reason : string.Empty;
+
+    private string GenderName(Gender gender) => gender switch
+    {
+        Gender.Female => L["Female"],
+        Gender.Male => L["Male"],
+        Gender.Other => L["Other"],
+        _ => L["Not given"],
+    };
+
+    private Task ApproveAsync(Guid id) => DecideAsync(id, approve: true);
+
+    private Task RefuseAsync(Guid id) => DecideAsync(id, approve: false);
+
+    private async Task DecideAsync(Guid id, bool approve)
+    {
+        _busy = true;
+        AdminResult result = approve
+            ? await Recovery.ApproveAsync(Context!.UserId, id, Reason(id), null)
+            : await Recovery.RefuseAsync(Context!.UserId, id, Reason(id), null);
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = L[result.Message ?? string.Empty];
+        if (result.Succeeded)
+        {
+            _reasons.Remove(id);
+            await LoadAsync();
+        }
+    }
+}

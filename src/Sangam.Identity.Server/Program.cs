@@ -11,6 +11,7 @@ using Sangam.Identity.Server.Api;
 using Sangam.Identity.Server.Authentication;
 using Sangam.Identity.Server.Endpoints;
 using Sangam.Identity.Server.Saml;
+using Sangam.Identity.Server.Verification;
 using Sangam.Shared.Constants;
 using Sangam.Web.Shared.Hosting;
 using Sangam.Web.Shared.Localization;
@@ -97,6 +98,14 @@ string? pepperProblem = Sangam.Identity.Infrastructure.Security.PasswordPepperGu
 if (pepperProblem is not null)
 {
     throw new InvalidOperationException(pepperProblem);
+}
+
+// rc.6 (SGM-914): the identity server now talks to DigiLocker itself (an application that requires verification,
+// recovering an account), so it needs the same credentials and the same subject key as the portal.
+string? digiLockerProblem = Sangam.Identity.Infrastructure.Verification.DigiLockerGuard.Validate(builder.Environment.EnvironmentName, builder.Configuration);
+if (digiLockerProblem is not null)
+{
+    throw new InvalidOperationException(digiLockerProblem);
 }
 
 string? smsProblem = SmsGuard.Validate(builder.Environment.EnvironmentName, builder.Configuration);
@@ -284,6 +293,7 @@ app.MapRazorPages().WithStaticAssets().RequireRateLimiting(AuthRateLimiting.Poli
 app.MapSangamLanguageSwitch();
 app.MapBrandingEndpoints();
 app.MapConnectEndpoints();
+app.MapIdentityDigiLocker();
 app.MapSamlEndpoints();
 app.MapManagementEndpoints();
 app.MapSmsEndpoints();

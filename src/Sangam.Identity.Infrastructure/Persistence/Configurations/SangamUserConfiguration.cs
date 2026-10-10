@@ -42,6 +42,7 @@ internal sealed class SangamUserConfiguration :
         b.Property(u => u.HoldReason).HasMaxLength(500);
         b.HasIndex(u => u.Status).HasDatabaseName("idx_users_status");
         b.HasIndex(u => u.PurgeAfter).HasFilter("purge_after IS NOT NULL").HasDatabaseName("idx_users_purge_after");
+        b.HasIndex(u => u.LastSignInAt).HasDatabaseName("idx_users_last_sign_in");
 
         b.ToTable(t =>
         {

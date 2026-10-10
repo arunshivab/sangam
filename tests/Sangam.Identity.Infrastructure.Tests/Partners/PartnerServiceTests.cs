@@ -415,6 +415,68 @@ public sealed class PartnerServiceTests : IAsyncLifetime
 
     // ------------------------------------------------------------ helpers
 
+    // ------------------------------------------------------------ rc.6 access rules
+
+    [PostgresFact]
+    public async Task AccessRules_TakeAnInactivityLimitOfOneToTenYears_OrNone_AndAreAudited()
+    {
+        IPartnerService partner = Service();
+        Assert.False((await partner.UpdateAccessRulesAsync(_admin, _his, 0, false)).Succeeded);
+        Assert.False((await partner.UpdateAccessRulesAsync(_admin, _his, 11, false)).Succeeded);
+        Assert.False((await partner.UpdateAccessRulesAsync(_nurse, _his, 3, false)).Succeeded);
+        Assert.False((await partner.UpdateAccessRulesAsync(_owner, _other, 3, false)).Succeeded);
+
+        PartnerResult saved = await partner.UpdateAccessRulesAsync(_admin, _his, 3, false);
+        Assert.True(saved.Succeeded, saved.Message);
+        PartnerAppSettings settings = (await Service().GetSettingsAsync(_admin, _his))!;
+        Assert.Equal(3, settings.InactivityLimitYears);
+        Assert.False(settings.IdentityVerificationAvailable);
+
+        Assert.True((await Service().UpdateAccessRulesAsync(_admin, _his, null, false)).Succeeded);
+        Assert.Null((await Service().GetSettingsAsync(_admin, _his))!.InactivityLimitYears);
+
+        await using SangamDbContext db = _pg.CreateContext();
+        Assert.Equal(2, await db.AuditEvents.CountAsync(e => e.Action == AuditActions.AppSettingsUpdate && e.ActorUserId == _admin && e.TargetId == _his));
+    }
+
+    [PostgresFact]
+    public async Task RequiringVerification_IsRefused_UntilDigiLockerIsOn_AndTheAdminIsVerifiedThemselves()
+    {
+        Infrastructure.Verification.DigiLockerSettings digiLocker = _provider.GetRequiredService<Infrastructure.Verification.DigiLockerSettings>();
+        Assert.False(digiLocker.Enabled);
+        PartnerResult off = await Service().UpdateAccessRulesAsync(_admin, _his, null, true);
+        Assert.False(off.Succeeded);
+        Assert.Contains("DigiLocker is not switched on", off.Message, StringComparison.Ordinal);
+
+        digiLocker.Enabled = true;
+        try
+        {
+            PartnerResult unverified = await Service().UpdateAccessRulesAsync(_admin, _his, null, true);
+            Assert.False(unverified.Succeeded);
+            Assert.Contains("Verify your own identity", unverified.Message, StringComparison.Ordinal);
+
+            await using (SangamDbContext db = _pg.CreateContext())
+            {
+                SangamUser admin = await db.Users.SingleAsync(u => u.Id == _admin);
+                admin.IdentityVerifiedAt = DateTimeOffset.UtcNow;
+                await db.SaveChangesAsync();
+            }
+
+            PartnerResult on = await Service().UpdateAccessRulesAsync(_admin, _his, null, true);
+            Assert.True(on.Succeeded, on.Message);
+            PartnerAppSettings settings = (await Service().GetSettingsAsync(_owner, _his))!;
+            Assert.True(settings.RequireIdentityVerification);
+            Assert.True(settings.IdentityVerificationAvailable);
+
+            // Keeping it on is not a fresh switch: an unverified colleague can still change the inactivity limit.
+            Assert.True((await Service().UpdateAccessRulesAsync(_owner, _his, 5, true)).Succeeded);
+        }
+        finally
+        {
+            digiLocker.Enabled = false;
+        }
+    }
+
     private async Task<Guid> NewPlatformAppAsync()
     {
         DateTimeOffset now = DateTimeOffset.UtcNow;

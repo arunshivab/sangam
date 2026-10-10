@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Sangam.Identity.Application.Tenancy;
+using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Entities;
 using Sangam.Identity.Domain.Enums;
 using Sangam.Identity.Infrastructure.Persistence;
@@ -135,6 +136,52 @@ public sealed partial class PolicyScreenTests
         (_, string silent, _) = await s.FollowAsync(Authorize() + "&prompt=none");
         Assert.StartsWith(DevelopmentSeeder.SampleRedirectUri, silent, StringComparison.Ordinal);
         Assert.Contains("error=login_required", silent, StringComparison.Ordinal);
+    }
+
+    [PostgresFact]
+    public async Task AnApplicationRequiringVerification_SendsAnUnverifiedPersonToDigiLocker_AndLetsAVerifiedOneIn()
+    {
+        // rc.6 (SGM-914 section 4): the app admin's switch is enforced at authorize, before consent.
+        using BrowserSession s = new(_factory);
+        (Guid userId, _) = await RegisterAsync(s);
+        await SetRequireVerificationAsync(true);
+        try
+        {
+            (_, string location, string html) = await s.FollowAsync(Authorize());
+            Assert.Equal("/identity/required", Path(location));
+            Assert.Contains("Verify your identity", html, StringComparison.Ordinal);
+            Assert.Contains("DigiLocker is not available right now", html, StringComparison.Ordinal);
+
+            // prompt=none is answered with an error, never a page.
+            (_, string silent, _) = await s.FollowAsync(Authorize() + "&prompt=none");
+            Assert.StartsWith(DevelopmentSeeder.SampleRedirectUri, silent, StringComparison.Ordinal);
+            Assert.Contains("error=interaction_required", silent, StringComparison.Ordinal);
+
+            using (IServiceScope scope = _factory.Services.CreateScope())
+            {
+                SangamDbContext db = scope.ServiceProvider.GetRequiredService<SangamDbContext>();
+                SangamUser user = await db.Users.SingleAsync(u => u.Id == userId);
+                user.IdentityVerifiedAt = DateTimeOffset.UtcNow;
+                await db.SaveChangesAsync();
+                Assert.True(await db.AuditEvents.AnyAsync(e => e.ActorUserId == userId && e.Action == AuditActions.IdentityVerifyRequired));
+            }
+
+            (_, string after, _) = await s.FollowAsync(Authorize());
+            Assert.NotEqual("/identity/required", Path(after));
+        }
+        finally
+        {
+            await SetRequireVerificationAsync(false);
+        }
+    }
+
+    private async Task SetRequireVerificationAsync(bool required)
+    {
+        using IServiceScope scope = _factory.Services.CreateScope();
+        SangamDbContext db = scope.ServiceProvider.GetRequiredService<SangamDbContext>();
+        App app = await db.Apps.SingleAsync(a => a.ClientId == DevelopmentSeeder.SampleClientId);
+        app.RequireIdentityVerification = required;
+        await db.SaveChangesAsync();
     }
 
     private static string Authorize()

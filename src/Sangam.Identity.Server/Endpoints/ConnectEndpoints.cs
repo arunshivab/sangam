@@ -167,6 +167,18 @@ public static class ConnectEndpoints
                 cancellationToken).ConfigureAwait(false);
         }
 
+        // 2d. rc.6 (SGM-914 section 4): the application requires its people to be verified with DigiLocker.
+        if (app.RequireIdentityVerification && user.IdentityVerifiedAt is null)
+        {
+            await audit.WriteAsync(new AuditEntry(AuditActions.IdentityVerifyRequired, AuditActorType.User, user.Id, app.Id, "app", app.Id), cancellationToken).ConfigureAwait(false);
+            if (request.HasPromptValue(PromptValues.None))
+            {
+                return Forbid(Errors.InteractionRequired, "This application requires the person to verify their identity with DigiLocker.");
+            }
+
+            return Results.Redirect("/identity/required?returnUrl=" + Uri.EscapeDataString(returnUrl));
+        }
+
         // 3. Consent — partner applications ask; Sangam's own (portal, consoles) are first-party and
         //    consent is implicit, but still recorded (V-06). A denial parked in the pending cookie ends the request.
         System.Collections.Immutable.ImmutableArray<string> requested = request.GetScopes();
@@ -210,6 +222,9 @@ public static class ConnectEndpoints
             // PR-20: this application now takes part in the session and is told when it ends.
             await sessions.RecordAppAsync(sid, app.Id, user.Id, cancellationToken).ConfigureAwait(false);
         }
+
+        // rc.6 (SGM-910 section 7): signing in to the application keeps the connection from ending for inactivity.
+        await sessions.RecordUseAsync(user.Id, app.Id, cancellationToken).ConfigureAwait(false);
 
         List<string> resources = [];
         await foreach (string resource in scopes.ListResourcesAsync(identity.GetScopes(), cancellationToken).ConfigureAwait(false))
@@ -302,6 +317,9 @@ public static class ConnectEndpoints
             {
                 return Forbid(Errors.InvalidClient, "This application is not registered with Sangam or has been disabled.");
             }
+
+            // rc.6 (SGM-910 section 7): a code redeemed or tokens refreshed count as using the application.
+            await sessions.RecordUseAsync(user.Id, app.Id, cancellationToken).ConfigureAwait(false);
 
             string? authorizationId = stored!.GetAuthorizationId();
             if (request.IsRefreshTokenGrantType() && authorizationId is not null)

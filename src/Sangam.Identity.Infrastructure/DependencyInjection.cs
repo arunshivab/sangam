@@ -236,7 +236,8 @@ public static class DependencyInjection
         services.AddHttpClient(Verification.DigiLockerSettings.ClientName, c => c.Timeout = Provisioning.OutboundHttp.Timeout)
             .ConfigurePrimaryHttpMessageHandler(sp => Provisioning.OutboundHttp.CreateHandler(sp.GetRequiredService<Provisioning.OutboundSettings>().AllowPrivate));
         services.AddScoped<Verification.DigiLockerClient>();
-        services.AddScoped<Application.Verification.IIdentityVerificationService, Verification.EfIdentityVerificationService>();
+        services.AddScoped<Verification.EfIdentityVerificationService>();
+        services.AddScoped<Application.Verification.IIdentityVerificationService>(sp => sp.GetRequiredService<Verification.EfIdentityVerificationService>());
         services.AddScoped<Provisioning.AppEventDispatcher>();
         services.AddScoped<Provisioning.IntegrationAlerts>();
         services.AddScoped<Provisioning.ScimProvisioner>();
@@ -247,6 +248,7 @@ public static class DependencyInjection
         // D-A: a year live, then the encrypted, anonymised archive; purged at seven years.
         services.AddSingleton(AuditArchiveOptions.From(configuration));
         services.AddSingleton<AuditArchiver>();
+        services.AddScoped<InactivityService>();
         services.AddHostedService<AccountPurgeService>();
 
         // PR-32: the audit log streamed to a SIEM (off unless Sangam:Siem:Enabled; one host at a time).
@@ -257,6 +259,7 @@ public static class DependencyInjection
         // D-K: support resets of two-step sign-in wait out a cooling-off period; D-H/D-K: alerts to the founder.
         services.AddScoped<EfMfaResetService>();
         services.AddScoped<IMfaResetService>(sp => sp.GetRequiredService<EfMfaResetService>());
+        services.AddScoped<Application.Verification.IAccountRecoveryService, EfAccountRecoveryService>();
         services.AddScoped<IPlatformAlerts, PlatformAlerts>();
         services.AddHostedService<MfaResetApplier>();
 

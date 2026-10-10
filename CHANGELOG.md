@@ -6,6 +6,64 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0-rc.6] - sixth release candidate
+
+Sangam 1.0.0-rc.6 builds the founder's policies signed on 11 October 2026: data classification and retention
+(SGM-910), identity proofing and account recovery (SGM-914) and the secure-coding checklist (SGM-913). A lost
+authenticator is now recovered with DigiLocker, without support staff, so **DigiLocker is required in production**
+(see the go-live checklist). ASVS L2 V2.5.7 moves from Partly to Met: 162 met, 74 partly, 1 not met (accepted),
+8 for the founder, 14 not applicable.
+
+### Recovering a lost authenticator with DigiLocker (SGM-914 sections 5 to 7)
+- **Self-service, from the sign-in page.** Someone who has passed their first step (password or e-mailed code) but
+  lost their authenticator and recovery codes chooses *recover your account with DigiLocker* (`/login/recover`). The
+  identity server has its own DigiLocker round trip (`/identity/digilocker/callback`), bound to the pending first step.
+- **The record is compared with the account.** For an account already verified, the DigiLocker identity must be the
+  same one (its keyed hash). Otherwise the name rule: date of birth exactly; every word of the profile's name present
+  in the record's name, so a missing middle name or an initial still matches; gender compared only when both give one.
+- **A match starts the usual waiting period** — 24 hours, 72 for operators and application or organisation
+  administrators — with notices to the e-mail and mobile and a link to cancel. Then the authenticator is removed and the account is
+  verified with the record (name, date of birth and gender take DigiLocker's values and are locked).
+- **A record that does not match waits for an operator** on the operator console's new *Recoveries* page, which shows
+  only the name, date of birth and gender on both sides. Support or Owner decides, with a written reason (an Owner
+  for a privileged account; never one's own); an approval starts the waiting period, a refusal tells the person they
+  may create a new account. A reason that looks like a document number is refused.
+- **No support-assisted recovery.** The operator console's *Request a reset* form and the proofing methods (video
+  call, in person, call-back) are removed; nobody at Sangam talks to the person or sees a document. The urgent
+  override — applying a pending recovery at once — is now an Owner's alone, never on their own account, with a reason.
+- The DigiLocker id is never stored; only its keyed hash, kept with the request until it is applied or cancelled.
+  The identity server now refuses to start with DigiLocker on but without its credentials or subject key.
+
+### Applications that require DigiLocker verification (SGM-914 section 4)
+- A new *Access rules* panel on the partner console's settings: *Require DigiLocker verification*. It can be switched
+  on only while DigiLocker is available and only by an administrator who is verified themselves.
+- People who are not verified are sent to *Verify your identity* (`/identity/required`) when they sign in to that
+  application, and continue to it afterwards; with `prompt=none` the application gets `interaction_required`.
+  Each such stop is audited (`identity.verify.required`).
+
+### Retention (SGM-910 section 6)
+- A daily sweep deletes sign-in codes and passkey challenges a day after they expire; finished invitations, e-mail
+  changes and recovery requests after 30 days; the SMS log after 180 days; closed grievances after 3 years (until now
+  grievances were never deleted). Grievance history stays append-only except for this sweep.
+- Logs are kept one year (was 180 days): the backup job's log upload and the off-site lifecycle rule `logs-1-year`.
+
+### Inactivity (SGM-910 section 7)
+- Sangam records when each person last used each application. An application's administrators may set an
+  inactivity limit of 1 to 10 years (or none) in *Access rules*. Thirty days before the limit the person is told by
+  e-mail; then the connection ends: access, roles, attributes, consent and tokens are revoked, and the application
+  receives `ConsentRevoked` (reason `inactive`) by SCIM or webhook. Signing in to the application again before then
+  keeps the connection.
+- An account that uses no partner application and has not signed in for 3 years is told, and deleted 30 days later.
+  Operators and application administrators are never deleted this way.
+- The migration starts everyone's clock at the upgrade: existing connections and accounts count as used on that day.
+
+### E-mails
+- New: recovery waiting for review, recovery refused, connection ending soon, connection ended, account to be deleted
+  for inactivity. The recovery e-mails describe the DigiLocker recovery. All in English, Hindi and Malayalam.
+
+### Development
+- The pull-request template is the SGM-913 secure-coding checklist, item by item, with what the build already checks.
+
 ### Build
 - Linux CI, CodeQL and nightly jobs run on `ubuntu-24.04` instead of `ubuntu-latest`, which GitHub moves to Ubuntu 26
   from 19 October 2026. The required check names are unchanged. A move to a newer image is made deliberately, as its

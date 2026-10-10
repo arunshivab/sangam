@@ -1,24 +1,52 @@
-# PR-26: lets people verify their name, date of birth and gender with DigiLocker in the account portal. Use together
-# with docker-compose.yml (and the SAML file if you use it):
+# PR-26 and rc.6: DigiLocker. Use together with docker-compose.yml (and the SAML file if you use it):
 #   docker compose -f docker-compose.yml -f docker-compose.digilocker.yml up -d
-# Without this file DigiLocker stays off. Register https://account.sangamid.in/verify/digilocker/callback with
-# DigiLocker (API Setu) as the redirect address; the portal refuses to start without the three secrets below.
+#
+# What it switches on:
+#   - portal:   people verify their name, date of birth and gender in the account portal (PR-26);
+#   - identity: an application that requires verification sends unverified people to DigiLocker before entering, and a
+#               person who lost their authenticator and recovery codes recovers their account with DigiLocker (rc.6,
+#               SGM-914). Since rc.6 this is the only way to recover a lost authenticator, so production runs with
+#               this file;
+#   - partner:  application administrators may switch on "require DigiLocker verification" (rc.6).
+#
+# Register BOTH return addresses with DigiLocker (API Setu):
+#   https://account.sangamid.in/verify/digilocker/callback
+#   https://id.sangamid.in/identity/digilocker/callback
+# The portal and the identity server refuse to start without the three secrets below.
+x-digilocker-endpoints: &digilocker-endpoints
+  Sangam__DigiLocker__Enabled: "true"
+  # The endpoints default to api.digitallocker.gov.in (Requester API Specification v1.12). Point them at the sandbox or
+  # the MeriPehchaan host here if DigiLocker's onboarding says so:
+  # Sangam__DigiLocker__AuthorizeUrl: https://digilocker.meripehchaan.gov.in/public/oauth2/1/authorize
+  # Sangam__DigiLocker__TokenUrl: https://digilocker.meripehchaan.gov.in/public/oauth2/1/token
+  # Sangam__DigiLocker__UserUrl: https://digilocker.meripehchaan.gov.in/public/oauth2/1/user
+
 services:
   portal:
     environment:
-      Sangam__DigiLocker__Enabled: "true"
+      <<: *digilocker-endpoints
       Sangam__DigiLocker__RedirectUri: https://account.sangamid.in/verify/digilocker/callback
-      # The endpoints default to api.digitallocker.gov.in (Requester API Specification v1.12). Point them at the
-      # sandbox or the MeriPehchaan host here if DigiLocker's onboarding says so:
-      # Sangam__DigiLocker__AuthorizeUrl: https://digilocker.meripehchaan.gov.in/public/oauth2/1/authorize
-      # Sangam__DigiLocker__TokenUrl: https://digilocker.meripehchaan.gov.in/public/oauth2/1/token
-      # Sangam__DigiLocker__UserUrl: https://digilocker.meripehchaan.gov.in/public/oauth2/1/user
     secrets:
       - source: Sangam__DigiLocker__ClientId
       - source: Sangam__DigiLocker__ClientSecret
-      # The key DigiLocker ids are hashed with: 32 characters or more. Never change it, or every verified person's
-      # DigiLocker identity becomes free to verify a second account.
+      # The key DigiLocker ids are hashed with: 32 characters or more, the SAME file for the portal and the identity
+      # server. Never change it, or every verified person's DigiLocker identity becomes free to verify a second account,
+      # and recovery stops recognising verified people.
       - source: Sangam__DigiLocker__SubjectKey
+
+  identity:
+    environment:
+      <<: *digilocker-endpoints
+      Sangam__DigiLocker__IdentityRedirectUri: https://id.sangamid.in/identity/digilocker/callback
+    secrets:
+      - source: Sangam__DigiLocker__ClientId
+      - source: Sangam__DigiLocker__ClientSecret
+      - source: Sangam__DigiLocker__SubjectKey
+
+  partner:
+    # The partner console only needs to know DigiLocker is on; it never talks to DigiLocker.
+    environment:
+      Sangam__DigiLocker__Enabled: "true"
 
 secrets:
   Sangam__DigiLocker__ClientId: { file: ./secrets/Sangam__DigiLocker__ClientId }

@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Sangam.Identity.Application.Abstractions;
 using Sangam.Identity.Application.Accounts;
@@ -20,13 +19,12 @@ public sealed partial class EfAdminService : IAdminService
     private readonly IPortalService _portal;
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
-    private readonly UserManager<SangamUser> _users;
     private readonly EfMfaResetService _resets;
     private readonly IPlatformAlerts _alerts;
     private readonly Provisioning.OutboundSettings _outbound;
 
     /// <summary>Initialises the service.</summary>
-    public EfAdminService(SangamDbContext db, IPortalService portal, IAuditWriter audit, IClock clock, UserManager<SangamUser> users, EfMfaResetService resets, IPlatformAlerts alerts, Provisioning.OutboundSettings outbound)
+    public EfAdminService(SangamDbContext db, IPortalService portal, IAuditWriter audit, IClock clock, EfMfaResetService resets, IPlatformAlerts alerts, Provisioning.OutboundSettings outbound)
     {
         _resets = resets ?? throw new ArgumentNullException(nameof(resets));
         _alerts = alerts ?? throw new ArgumentNullException(nameof(alerts));
@@ -35,7 +33,6 @@ public sealed partial class EfAdminService : IAdminService
         _portal = portal ?? throw new ArgumentNullException(nameof(portal));
         _audit = audit ?? throw new ArgumentNullException(nameof(audit));
         _clock = clock ?? throw new ArgumentNullException(nameof(clock));
-        _users = users ?? throw new ArgumentNullException(nameof(users));
     }
 
     /// <inheritdoc />
@@ -673,29 +670,20 @@ public sealed partial class EfAdminService : IAdminService
     }
 
     /// <inheritdoc />
-    public async Task<AdminResult> RequestTwoStepResetAsync(Guid operatorUserId, Guid userId, IdentityProofingMethod method, string reference, string? ipAddress, CancellationToken cancellationToken = default)
+    public async Task<AdminResult> ApplyTwoStepResetNowAsync(Guid operatorUserId, Guid userId, string reason, string? ipAddress, CancellationToken cancellationToken = default)
     {
-        (AdminResult? refusal, SangamUser? user, bool privileged) = await CheckTwoStepResetAsync(operatorUserId, userId, reference, cancellationToken).ConfigureAwait(false);
+        ArgumentNullException.ThrowIfNull(reason);
+        AdminResult? refusal = await RequireAsync(operatorUserId, PlatformRole.Owner, cancellationToken).ConfigureAwait(false);
         if (refusal is not null)
         {
             return refusal;
         }
 
-        if (await _resets.PendingRowAsync(userId, cancellationToken).ConfigureAwait(false) is not null)
+        if (operatorUserId == userId)
         {
-            return AdminResult.Refused("A reset is already waiting for this person. Withdraw it, or apply it now with the urgent override.");
+            return AdminResult.Refused("You cannot apply a recovery of your own account. Ask another owner.");
         }
 
-        MfaResetRequest request = await _resets.CreateAsync(user!, operatorUserId, MethodCode(method), reference, privileged, ipAddress, cancellationToken).ConfigureAwait(false);
-        int hours = (int)(request.EffectiveAt - request.RequestedAt).TotalHours;
-        return AdminResult.Ok($"Reset requested. It takes effect in {hours} hours unless the person cancels it; they have been alerted by e-mail, by SMS where possible, and will see a notice when they next sign in.");
-    }
-
-    /// <inheritdoc />
-    public async Task<AdminResult> ApplyTwoStepResetNowAsync(Guid operatorUserId, Guid userId, IdentityProofingMethod method, string reference, string reason, string? ipAddress, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(reference);
-        ArgumentNullException.ThrowIfNull(reason);
         if (reason.Trim().Length < 10)
         {
             return AdminResult.Refused("An urgent reset needs a written reason of at least a sentence.");
@@ -707,13 +695,11 @@ public sealed partial class EfAdminService : IAdminService
         }
 
         MfaResetRequest? request = await _resets.PendingRowAsync(userId, cancellationToken).ConfigureAwait(false);
-        (AdminResult? refusal, SangamUser? user, bool privileged) = await CheckTwoStepResetAsync(operatorUserId, userId, request?.Reference ?? reference, cancellationToken).ConfigureAwait(false);
-        if (refusal is not null)
+        if (request is null)
         {
-            return refusal;
+            return AdminResult.Refused("There is no recovery waiting on this account. The person starts one themselves with DigiLocker.");
         }
 
-        request ??= await _resets.CreateAsync(user!, operatorUserId, MethodCode(method), reference, privileged, ipAddress, cancellationToken).ConfigureAwait(false);
         if (!await _resets.ApplyAsync(request, operatorUserId, reason.Trim(), ipAddress, cancellationToken).ConfigureAwait(false))
         {
             return AdminResult.Refused("The reset was cancelled or applied a moment ago.");
@@ -721,12 +707,12 @@ public sealed partial class EfAdminService : IAdminService
 
         await _audit.WriteAsync(
             new AuditEntry(AuditActions.AdminUserMfaResetUrgent, AuditActorType.Admin, operatorUserId, TargetType: "user", TargetId: userId,
-                Metadata: System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, object> { ["request_id"] = request.Id, ["reason"] = reason.Trim(), ["privileged"] = privileged }),
+                Metadata: System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, object> { ["request_id"] = request.Id, ["reason"] = reason.Trim(), ["privileged"] = request.Privileged, ["skipped_review"] = request.ReviewStatus == MfaResetReview.Waiting }),
                 IpAddress: ipAddress),
             cancellationToken).ConfigureAwait(false);
         await _alerts.SendAsync(
             "urgent 2-step reset applied",
-            $"An operator applied a two-step reset at once, skipping the cooling-off period.\n\nOperator: {operatorUserId:D}\nAccount: {userId:D}{(privileged ? " (privileged)" : string.Empty)}\nReason: {reason.Trim()}\nRequest: {request.Id:D}",
+            $"An operator applied a two-step reset at once, skipping the cooling-off period.\n\nOperator: {operatorUserId:D}\nAccount: {userId:D}{(request.Privileged ? " (privileged)" : string.Empty)}\nReason: {reason.Trim()}\nRequest: {request.Id:D}",
             cancellationToken).ConfigureAwait(false);
         return AdminResult.Ok("Two-step sign-in reset now. The authenticator is removed, every session has ended, the person has been told, and the platform owner has been alerted.");
     }
@@ -749,60 +735,6 @@ public sealed partial class EfAdminService : IAdminService
     /// <inheritdoc />
     public async Task<PendingTwoStepReset?> PendingTwoStepResetAsync(Guid userId, CancellationToken cancellationToken = default)
         => await _resets.PendingAsync(userId, cancellationToken).ConfigureAwait(false);
-
-    /// <summary>
-    /// The checks every two-step reset passes: Support or above, never your own, an operator's only by an Owner, no
-    /// identity-document number in the reference, an existing account with an authenticator. Also says whether the
-    /// account is privileged (an operator, an application administrator or an organisation administrator; D-K).
-    /// </summary>
-    private async Task<(AdminResult? Refusal, SangamUser? User, bool Privileged)> CheckTwoStepResetAsync(Guid operatorUserId, Guid userId, string reference, CancellationToken cancellationToken)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(reference);
-        AdminResult? refusal = await RequireAsync(operatorUserId, PlatformRole.Support, cancellationToken).ConfigureAwait(false);
-        if (refusal is not null)
-        {
-            return (refusal, null, false);
-        }
-
-        if (operatorUserId == userId)
-        {
-            return (AdminResult.Refused("You cannot reset your own two-step sign-in. Ask another operator."), null, false);
-        }
-
-        if (LongNumberRegex().IsMatch(reference))
-        {
-            return (AdminResult.Refused("The reference looks like it contains an identity-document number. Record the ticket number or a short note only — never Aadhaar, PAN or passport numbers."), null, false);
-        }
-
-        bool targetIsOperator = await _db.PlatformOperators.AnyAsync(o => o.UserId == userId && o.RevokedAt == null, cancellationToken).ConfigureAwait(false);
-        if (targetIsOperator && await GetRoleAsync(operatorUserId, cancellationToken).ConfigureAwait(false) != PlatformRole.Owner)
-        {
-            return (AdminResult.Refused("Only an Owner can reset an operator's two-step sign-in."), null, false);
-        }
-
-        SangamUser? user = await _users.FindByIdAsync(userId.ToString("D")).ConfigureAwait(false);
-        if (user is null || user.Status == UserStatus.DeletedHard)
-        {
-            return (AdminResult.Refused("That user does not exist."), null, false);
-        }
-
-        if (!await _users.GetTwoFactorEnabledAsync(user).ConfigureAwait(false))
-        {
-            return (AdminResult.Refused("This person has no authenticator to reset."), null, false);
-        }
-
-        bool privileged = targetIsOperator
-            || await _db.AppAdmins.AnyAsync(a => a.UserId == userId && a.RevokedAt == null, cancellationToken).ConfigureAwait(false)
-            || await _db.OrgMemberships.AnyAsync(m => m.UserId == userId && m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > DateTimeOffset.UtcNow) && m.Role!.Code == "org_admin", cancellationToken).ConfigureAwait(false);
-        return (null, user, privileged);
-    }
-
-    private static string MethodCode(IdentityProofingMethod method) => method switch
-    {
-        IdentityProofingMethod.VideoCall => "video_call",
-        IdentityProofingMethod.InPerson => "in_person",
-        _ => "verified_mobile_callback",
-    };
 
     // Eight or more digits in a row look like an identity-document number, which must never be recorded.
     [GeneratedRegex("[0-9]{8,}")]

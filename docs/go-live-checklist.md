@@ -72,8 +72,8 @@ exist, so there is no production database to act on yet.
       `Sangam__Sms__HashKey` (32+ random characters) as a secret. Then switch it on for every host together.
 - [ ] With SMS on: `Sangam__Sms__DailyAlertThreshold` set, and a test text received on a real phone.
 - [ ] *(Superseded by D-J: the breached-password check is offline only — see below.)*
-- [ ] Support procedure for a lost authenticator written into SGM-805 and SGM-813 (who may do it, the
-      proofing methods, the reference format), and the operators told never to record ID numbers.
+- [ ] *(Superseded by rc.6, SGM-914: there is no support procedure; a lost authenticator is recovered with DigiLocker.
+      See "Added by rc.6".)* Operators who review recoveries told never to record ID numbers.
 
 ## R3: languages, branding and logout
 
@@ -158,9 +158,9 @@ Checks:
       signature (the published test vector passes), *Send a test* seen to arrive.
 - [ ] PR-25: no application attribute holds health data (read the attribute list of each application at go-live and
       after each pilot); time-limited roles seen to end on their own (one contractor role given until tomorrow).
-- [ ] PR-26 (only if DigiLocker is switched on): DigiLocker partner onboarding complete (OI-046); client id, secret and
-      a 32+ character subject key in `secrets/`, kept offline as well; the callback address registered; one real
-      verification and one removal seen to work; `docker-compose.digilocker.yml` in the start command.
+- [ ] PR-26 (required from rc.6; see "Added by rc.6"): DigiLocker partner onboarding complete (OI-046); client id,
+      secret and a 32+ character subject key in `secrets/`, kept offline as well; the callback address registered; one
+      real verification and one removal seen to work; `docker-compose.digilocker.yml` in the start command.
 - [ ] R5: the delivery worker (SCIM, webhooks, expiry) runs in the one identity container; do not scale the identity
       service to two replicas until it is made to share the work (OI-047).
 
@@ -311,3 +311,27 @@ The founder's ASVS decisions A1 to A6 (10 October 2026), built in rc.5:
       invited with `POST /api/v1/orgs/{org}/invitations` (every SDK has an `invite` call).
 - [ ] `security.txt` is served by every host at `/.well-known/security.txt` (contact security@sangamid.in). Make sure
       that mailbox exists and is read, and register the CERT-In point of contact.
+
+## Added by rc.6 (v1.0.0-rc.6)
+
+The policies SGM-910 (retention and inactivity) and SGM-914 (identity proofing and recovery), built in rc.6:
+
+- [ ] **DigiLocker is required in production.** Since rc.6 a lost authenticator is recovered only with DigiLocker (no
+      support-assisted recovery), so go-live waits for DigiLocker's onboarding with MeitY (API Setu). Register **both**
+      return addresses: `https://account.sangamid.in/verify/digilocker/callback` (portal) and
+      `https://id.sangamid.in/identity/digilocker/callback` (identity server, `Sangam__DigiLocker__IdentityRedirectUri`).
+      Start with `docker-compose.digilocker.yml`; the portal and the identity server share the one subject key.
+- [ ] **Recovery seen to work, once, with a real DigiLocker account:** a test account with an authenticator; sign in
+      with the password; *recover your account with DigiLocker*; the e-mail and SMS arrive with the cancel link;
+      cancel once; start again; after 24 hours the authenticator is gone and the account is verified.
+- [ ] **A recovery that does not match** (a test profile with a different name) is seen waiting on the operator
+      console's *Recoveries* page; approve it with a reason. Decide who reviews: Support or Owner (SGM-914 section 6).
+- [ ] **An application requiring verification:** switch it on for the demo application from a verified administrator's
+      partner console; an unverified test person is sent to *Verify your identity* and enters after DigiLocker.
+- [ ] **Retention and inactivity run:** the day after go-live, the operator console's audit shows the daily sweep; no
+      application has an inactivity limit until its owner sets one. Tell partners the limit exists (1 to 10 years,
+      notice 30 days ahead, connection ended with a SCIM or webhook `ConsentRevoked`, reason `inactive`).
+- [ ] **Accounts unused for 3 years** are deleted after 30 days' notice (operators and application administrators
+      excepted). Counsel to confirm against the DPDP Rules' Third Schedule (48 hours' notice at least) before the
+      public launch.
+- [ ] **Logs one year:** apply the updated `backup/lifecycle.json` (rule `logs-1-year`) to the off-site bucket.

@@ -1,0 +1,14 @@
+@page "/login/recover/result"
+@model RecoverResultModel
+@{
+    ViewData["Title"] = L["Recover your account"].Value;
+}
+
+<section class="sg-card">
+  <div class="sg-circle sg-circle--pending" aria-hidden="true"><span class="sg-cord-dot sg-cord-dot--solo"></span></div>
+  <h1 class="sg-card-title sg-card-title--centre">@Model.Heading</h1>
+  <p class="sg-card-body sg-card-body--centre" data-outcome="@Model.Outcome">@Model.Text</p>
+  <a class="sg-btn sg-btn--primary sg-btn--block" href="/login">@L["Back to sign-in"]</a>
+  <div class="sg-cord-rule" role="presentation"></div>
+  <p class="sg-alt">@L["Questions?"] <a href="mailto:help@sangamid.in">help@sangamid.in</a></p>
+</section>

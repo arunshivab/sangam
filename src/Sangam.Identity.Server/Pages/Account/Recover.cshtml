@@ -1,0 +1,33 @@
+@page "/login/recover"
+@model RecoverModel
+@{
+    ViewData["Title"] = L["Recover your account"].Value;
+}
+
+<section class="sg-card">
+  <h1 class="sg-card-title">@L["Recover your account with DigiLocker"]</h1>
+  <p class="sg-card-body">@L["If you have lost your authenticator app and your recovery codes, you can recover your account yourself with DigiLocker, the government's document wallet. No one at Sangam will call you or ask for a document."]</p>
+
+  @if (!Model.Available)
+  {
+    <p class="sg-card-body">@L["DigiLocker is not available right now. Please try again later."]</p>
+  }
+  else
+  {
+    <ul class="sg-card-body sg-steps">
+      <li>@L["Sangam compares the name, date of birth and gender on your DigiLocker record with your account. If they do not match, a Sangam operator compares them before anything happens."]</li>
+      <li>@L["For your safety nothing changes for 24 hours (72 for administrators). Your e-mail and mobile are told at once, with a link to cancel."]</li>
+      <li>@L["Then your authenticator is removed and you set one up again. Your name, date of birth and gender will take DigiLocker's values and be locked."]</li>
+    </ul>
+    <form method="post" novalidate>
+      <label class="sg-check">
+        <input type="checkbox" name="agree" value="true" required />
+        @L["I agree that my name, date of birth and gender will take DigiLocker's values."]
+      </label>
+      <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Continue to DigiLocker"]</button>
+    </form>
+  }
+
+  <div class="sg-cord-rule" role="presentation"></div>
+  <p class="sg-alt"><a href="/login/authenticator">@L["I found my phone or a recovery code"]</a></p>
+</section>

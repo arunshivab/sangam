@@ -3,7 +3,7 @@
 #   15 2 * * * /opt/sangam/scripts/backup-db.sh >> /var/log/sangam-backup.log 2>&1
 #
 # 1. pg_dump of the database, kept on the server for KEEP_DAYS.
-# 2. The day's container logs (D-H: kept 180 days, inside the backups).
+# 2. The day's container logs (D-H: kept one year, inside the backups; rc.6, SGM-910).
 # 3. D-E: everything leaving the server is encrypted first with `age` for the founder's public key
 #    (BACKUP_AGE_RECIPIENTS: a file of age public keys; the private key stays offline with the founder),
 #    then uploaded to E2E Object Storage in another region, with S3 Object Lock (COMPLIANCE) so that nobody —
@@ -11,7 +11,7 @@
 #      daily/    every night            locked 14 days
 #      weekly/   Sundays                locked 8 weeks
 #      monthly/  the 1st of each month  locked 12 months
-#      logs/     every night            locked 180 days
+#      logs/     every night            locked 1 year
 #      audit-archive/  each new D-A archive file (already encrypted for the founder)  locked 6 years — its events
 #                      are a year old when archived, so the copy goes when they turn seven, as D-A says
 #    The bucket's lifecycle rules (deploy/production/backup/lifecycle.json) delete each copy once its lock has run out.
@@ -67,7 +67,7 @@ if compgen -G "$OFFSITE_TARGETS_DIR/*.env" > /dev/null; then
   for target in "$OFFSITE_TARGETS_DIR"/*.env; do
     name="$(basename "$target" .env)"
     put "$target" "daily/$day/$(basename "$enc_dump")" "$enc_dump" "14 days"
-    put "$target" "logs/$day/$(basename "$enc_logs")" "$enc_logs" "180 days"
+    put "$target" "logs/$day/$(basename "$enc_logs")" "$enc_logs" "1 year"
     if [ "$(date -u -d "$NOW" +%u)" = "7" ]; then put "$target" "weekly/$day/$(basename "$enc_dump")" "$enc_dump" "8 weeks"; fi
     if [ "$(date -u -d "$NOW" +%d)" = "01" ]; then put "$target" "monthly/$day/$(basename "$enc_dump")" "$enc_dump" "12 months"; fi
     # D-A's archive files, each uploaded once (a marker per target remembers which); their events are a year old
