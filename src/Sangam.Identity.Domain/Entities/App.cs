@@ -51,6 +51,10 @@ public sealed class App
     /// <summary>Whether passwords of this application's people are checked against known breaches (PR-16).</summary>
     public bool BreachedPasswordCheck { get; set; }
 
+    /// <summary>Whether passwords of this application's people must contain all four character types (rc.5; off by
+    /// default, not recommended by ASVS V2.1.9).</summary>
+    public bool RequireCharacterTypes { get; set; }
+
     /// <summary>Where Sangam posts a logout token when a session the application took part in ends (PR-20, back-channel); set by the platform operators.</summary>
     public string? BackChannelLogoutUri { get; set; }
 

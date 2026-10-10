@@ -79,18 +79,21 @@ public sealed record OrgTypeRow(string Code, string DisplayName, bool CanBeRoot,
 /// <param name="Mfa">This level's second-factor rule, or <see langword="null"/>.</param>
 /// <param name="BreachedPasswordCheck">This level's breach check, or <see langword="null"/>.</param>
 /// <param name="BreachCheckAvailable">Whether the breach-check service is on for the platform (the founder's decision).</param>
+/// <param name="RequireCharacterTypes">This level's character-type rule (rc.5), or <see langword="null"/>.</param>
 public sealed record PolicyView(
     SecurityPolicy Inherited,
     SignInPolicy? SignIn,
     int? MinPasswordLength,
     MfaRequirement? Mfa,
     bool? BreachedPasswordCheck,
-    bool BreachCheckAvailable);
+    bool BreachCheckAvailable,
+    bool? RequireCharacterTypes = null);
 
 /// <summary>Security settings proposed for one level; <see langword="null"/> means inherit (PR-16).</summary>
 /// <param name="SignIn">Sign-in rule (organisations only; an application's is set with its other settings).</param>
 /// <param name="MinPasswordLength">Minimum password length.</param>
 /// <param name="Mfa">Second-factor rule.</param>
 /// <param name="BreachedPasswordCheck">Breach check.</param>
-public sealed record PolicyInput(SignInPolicy? SignIn, int? MinPasswordLength, MfaRequirement? Mfa, bool? BreachedPasswordCheck);
+/// <param name="RequireCharacterTypes">Character-type rule (rc.5): only <see langword="true"/> is stricter.</param>
+public sealed record PolicyInput(SignInPolicy? SignIn, int? MinPasswordLength, MfaRequirement? Mfa, bool? BreachedPasswordCheck, bool? RequireCharacterTypes = null);
 

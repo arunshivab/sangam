@@ -16,8 +16,11 @@ data:
   Sangam__Sms__Enabled: "false"
   Sangam__Anjal__BaseUrl: SET-ANJAL-API-URL
   Sangam__Anjal__FromAddress: no-reply@sangamid.in
-  Sangam__Passwords__BreachCheck__Enabled: "false"
-  Sangam__Passwords__BreachCheck__ListPath: /var/lib/sangam/pwned/pwned-passwords.bin
+  # rc.5: the built-in list, then Pwned Passwords by k-anonymity (outbound HTTPS to api.pwnedpasswords.com).
+  Sangam__Passwords__BreachCheck__Enabled: "true"
+  # rc.5: ClamAV for uploaded logos; the consoles refuse to start without it.
+  Sangam__Antivirus__Host: SET-CLAMAV-HOST
+  Sangam__Antivirus__Port: "3310"
 ---
 # The identity server's own settings (deploy/production/docker-compose.yml, service "identity").
 apiVersion: v1

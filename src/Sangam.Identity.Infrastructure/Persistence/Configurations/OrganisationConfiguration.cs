@@ -37,7 +37,7 @@ internal sealed class OrganisationConfiguration : IEntityTypeConfiguration<Organ
             // An organisation may only tighten its application's rule (PR-16): two-step always, or passkey only.
             t.HasCheckConstraint("chk_organisations_sign_in_policy", "sign_in_policy IS NULL OR sign_in_policy IN ('password_and_otp','passkey_only')");
             t.HasCheckConstraint("chk_organisations_mfa_requirement", $"mfa_requirement IS NULL OR mfa_requirement IN ({SnakeCaseEnumConverter<MfaRequirement>.SqlList()})");
-            t.HasCheckConstraint("chk_organisations_min_password_length", $"min_password_length IS NULL OR min_password_length BETWEEN 8 AND {Domain.SecurityPolicy.MaxMinPasswordLength}");
+            t.HasCheckConstraint("chk_organisations_min_password_length", $"min_password_length IS NULL OR min_password_length BETWEEN 12 AND {Domain.SecurityPolicy.MaxMinPasswordLength}");
             t.HasCheckConstraint("chk_organisations_depth", "(parent_org_id IS NULL AND depth = 0) OR (parent_org_id IS NOT NULL AND depth > 0)");
         });
     }

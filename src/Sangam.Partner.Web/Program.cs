@@ -39,6 +39,20 @@ if (emailProblem is not null)
     throw new InvalidOperationException(emailProblem);
 }
 
+// rc.5 (ASVS V2.4.5): passwords are never hashed without the pepper outside Development and Testing.
+string? pepperProblem = Sangam.Identity.Infrastructure.Security.PasswordPepperGuard.Validate(builder.Environment.EnvironmentName, builder.Configuration);
+if (pepperProblem is not null)
+{
+    throw new InvalidOperationException(pepperProblem);
+}
+
+// rc.5 (ASVS V12.4.2): logos are uploaded here, and none is kept unscanned.
+string? antivirusProblem = Sangam.Identity.Infrastructure.Customisation.AntivirusGuard.Validate(builder.Environment.EnvironmentName, builder.Configuration);
+if (antivirusProblem is not null)
+{
+    throw new InvalidOperationException(antivirusProblem);
+}
+
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddCascadingAuthenticationState();
 
@@ -51,7 +65,7 @@ builder.Services.AddAuthentication(options =>
     })
     .AddCookie(o =>
     {
-        o.Cookie.Name = "sangam.partner";
+        o.Cookie.Name = SecurityHeaders.CookieName("sangam.partner", builder.Environment.EnvironmentName);
         o.Cookie.HttpOnly = true;
         o.Cookie.SameSite = SameSiteMode.Lax;
         o.Cookie.SecurePolicy = SecurityHeaders.CookiePolicy(builder.Environment.EnvironmentName);
@@ -82,7 +96,11 @@ builder.Services.AddAuthentication(options =>
         o.TokenValidationParameters.RoleClaimType = Claims.Role;
     });
 
-builder.Services.AddAntiforgery(o => o.Cookie.SecurePolicy = SecurityHeaders.CookiePolicy(builder.Environment.EnvironmentName));
+builder.Services.AddAntiforgery(o =>
+{
+    o.Cookie.SecurePolicy = SecurityHeaders.CookiePolicy(builder.Environment.EnvironmentName);
+    o.Cookie.Name = SecurityHeaders.CookieName("sangam.antiforgery", builder.Environment.EnvironmentName);
+});
 builder.Services.AddAuthorization(o => o.FallbackPolicy = o.DefaultPolicy);
 
 // R7 (ASVS V11.1.4): an evidence pack reads a whole year of records; each administrator may build a few at a time.
@@ -166,5 +184,6 @@ app.MapRazorComponents<App>().AddInteractiveServerRenderMode(o =>
 
 app.MapSangamLanguageSwitch();
 app.MapSangamHealth();
+app.MapSangamSecurityTxt(app.Configuration);
 
 await app.RunAsync().ConfigureAwait(false);

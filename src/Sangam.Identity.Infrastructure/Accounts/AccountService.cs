@@ -23,7 +23,7 @@ public sealed class AccountService : IAccountService
     /// <summary>rc.2: how many "your sign-in uses a password" reminders one account can receive in 24 hours.</summary>
     internal const int PasswordAccountRemindersPerDay = 3;
 
-    private const string PasswordPolicyMessage = "Use at least 8 characters with an uppercase letter, a lowercase letter, a number and a symbol, and not a common password.";
+    private const string PasswordPolicyMessage = "Use at least 12 characters, and not a common password. A few words together make a good one.";
 
     private readonly UserManager<SangamUser> _users;
     private readonly SangamDbContext _db;

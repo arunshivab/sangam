@@ -60,6 +60,20 @@ public sealed class SecurityPolicyTests
     }
 
     [Fact]
+    public void CharacterTypes_AreOffByDefault_TightenOnly_AndCannotBeSwitchedOffBelow()
+    {
+        // rc.5: an organisation's or application's own choice, never the platform default (ASVS V2.1.9).
+        Assert.False(Platform.RequireCharacterTypes);
+        SecurityPolicy org = Platform.Tighten(null, null, null, null, requireCharacterTypes: true);
+        Assert.True(org.RequireCharacterTypes);
+        Assert.True(org.Tighten(null, null, null, null, requireCharacterTypes: false).RequireCharacterTypes);
+        Assert.True(Platform.Strictest(org).RequireCharacterTypes);
+        Assert.NotNull(org.WhyWeaker(null, null, null, null, requireCharacterTypes: false));
+        Assert.Null(org.WhyWeaker(null, null, null, null, requireCharacterTypes: true));
+        Assert.Null(Platform.WhyWeaker(null, null, null, null, requireCharacterTypes: false));
+    }
+
+    [Fact]
     public void APasskeyOnlyRule_MeansAPasskeySignIn()
         => Assert.Equal(SignInMode.Passkey, SignInModes.Resolve(SignInPolicy.PasskeyOnly, SignInMode.Password));
 }

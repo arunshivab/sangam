@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Sangam.Identity.Application.Accounts;
 using Sangam.Identity.Application.Apps;
 using Sangam.Identity.Application.Security;
+using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Enums;
 using Sangam.Identity.Server.Authentication;
 
@@ -17,6 +18,7 @@ public sealed class LoginNewPasswordModel : AuthPageModel
     private readonly IAccountService _accounts;
     private readonly IAppDirectory _apps;
     private readonly ISecurityPolicyService _policies;
+    private bool _requireTypes;
 
     /// <summary>Initialises the page.</summary>
     /// <param name="accounts">Accounts.</param>
@@ -78,7 +80,7 @@ public sealed class LoginNewPasswordModel : AuthPageModel
         }
 
         await PrepareAsync(userId, cancellationToken);
-        Strength = PasswordStrength.Evaluate(NewPassword);
+        Strength = PasswordStrength.Evaluate(NewPassword, MinimumLength, _requireTypes);
         if (NewPassword.Length < MinimumLength)
         {
             ModelState.AddModelError(nameof(NewPassword), L["Use at least {0} characters.", MinimumLength]);
@@ -120,8 +122,10 @@ public sealed class LoginNewPasswordModel : AuthPageModel
         await ResolvePartnerAsync(_apps, ReturnUrl, cancellationToken);
         // The account-wide rules, and this application's — which may not count yet, if this is the person's
         // first sign-in to it and they are not linked to it.
-        int everywhere = (await _policies.ForPasswordAsync(userId, cancellationToken)).MinPasswordLength;
-        int here = (await _policies.ForPersonAsync(userId, Partner?.Id, cancellationToken)).Policy.MinPasswordLength;
-        MinimumLength = Math.Max(everywhere, here);
+        SecurityPolicy everywhere = await _policies.ForPasswordAsync(userId, cancellationToken);
+        SecurityPolicy here = (await _policies.ForPersonAsync(userId, Partner?.Id, cancellationToken)).Policy;
+        MinimumLength = Math.Max(everywhere.MinPasswordLength, here.MinPasswordLength);
+        _requireTypes = everywhere.RequireCharacterTypes || here.RequireCharacterTypes;
+        Strength = PasswordStrength.Evaluate(null, MinimumLength, _requireTypes);
     }
 }

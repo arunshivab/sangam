@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Sangam.Identity.Application.Monitoring;
 using Sangam.Identity.Application.Security;
+using Sangam.Identity.Infrastructure.Customisation;
 using Sangam.Identity.Infrastructure.Messaging;
 using Sangam.Identity.Infrastructure.Persistence;
 
@@ -27,6 +28,7 @@ public sealed class EfMonitoringService : IMonitoringService
     private readonly TlsProbe _tls;
     private readonly IBreachListStatus _breaches;
     private readonly AnjalOptions _anjal;
+    private readonly IFileScanner _scanner;
 
     /// <summary>Initialises the service.</summary>
     /// <param name="contexts">Database contexts.</param>
@@ -34,8 +36,10 @@ public sealed class EfMonitoringService : IMonitoringService
     /// <param name="tls">TLS certificate probe.</param>
     /// <param name="breaches">The breached-password list's state.</param>
     /// <param name="anjal">Anjal settings.</param>
-    public EfMonitoringService(IDbContextFactory<SangamDbContext> contexts, MonitoringOptions options, TlsProbe tls, IBreachListStatus breaches, AnjalOptions anjal)
+    /// <param name="scanner">The virus scanner (rc.5), pinged for each snapshot.</param>
+    public EfMonitoringService(IDbContextFactory<SangamDbContext> contexts, MonitoringOptions options, TlsProbe tls, IBreachListStatus breaches, AnjalOptions anjal, IFileScanner scanner)
     {
+        _scanner = scanner ?? throw new ArgumentNullException(nameof(scanner));
         _contexts = contexts ?? throw new ArgumentNullException(nameof(contexts));
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _tls = tls ?? throw new ArgumentNullException(nameof(tls));
@@ -136,6 +140,7 @@ public sealed class EfMonitoringService : IMonitoringService
             {
                 BreachListReports = reports,
                 BreachListSource = source,
+                Antivirus = new AntivirusStatus(_scanner.Configured, await _scanner.PingAsync(cancellationToken).ConfigureAwait(false)),
                 AuditArchive = await AuditArchiveAsync(db, cancellationToken).ConfigureAwait(false),
                 Siem = await SiemAsync(db, cancellationToken).ConfigureAwait(false),
                 Grievances = new GrievanceCounts(

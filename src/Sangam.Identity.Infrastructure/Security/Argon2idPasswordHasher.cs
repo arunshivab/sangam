@@ -8,11 +8,14 @@ namespace Sangam.Identity.Infrastructure.Security;
 
 /// <summary>
 /// Argon2id password hashing for ASP.NET Core Identity, replacing the PBKDF2 default.
-/// Stores the PHC string format <c>$argon2id$v=19$m=65536,t=3,p=1$&lt;salt&gt;$&lt;hash&gt;</c>
+/// Stores the PHC string format <c>$argon2id$v=19$m=65536,t=3,p=1,keyid=1$&lt;salt&gt;$&lt;hash&gt;</c>
 /// (base64 without padding), so parameters travel with the hash and can be raised later:
 /// a hash made with weaker parameters verifies but reports
 /// <see cref="PasswordVerificationResult.SuccessRehashNeeded"/>.
 /// Defaults exceed the OWASP minimum (m=19 MiB, t=2, p=1).
+/// rc.5 (ASVS V2.4.5): with a pepper configured, it is Argon2id's secret input and <c>keyid</c> names its version. A
+/// hash made without a pepper, or with an earlier one, verifies and reports a rehash, so it moves to the current
+/// pepper at the person's next sign-in; a hash whose pepper is unknown does not verify.
 /// </summary>
 /// <typeparam name="TUser">The user type.</typeparam>
 public sealed class Argon2idPasswordHasher<TUser> : IPasswordHasher<TUser>
@@ -23,13 +26,31 @@ public sealed class Argon2idPasswordHasher<TUser> : IPasswordHasher<TUser>
     private const int HashBytes = 32;
 
     private readonly Argon2idOptions _options;
+    private readonly byte[]? _pepper;
+    private readonly Dictionary<int, byte[]> _peppers = [];
 
     /// <summary>Initialises the hasher with the given parameters.</summary>
-    /// <param name="options">Cost parameters; <see langword="null"/> selects the defaults.</param>
+    /// <param name="options">Cost parameters and pepper; <see langword="null"/> selects the defaults, without a pepper.</param>
     public Argon2idPasswordHasher(Argon2idOptions? options = null)
     {
         _options = options ?? new Argon2idOptions();
+        foreach ((int version, string value) in _options.PreviousPeppers)
+        {
+            if (PasswordPepperGuard.Decode(value) is byte[] previous)
+            {
+                _peppers[version] = previous;
+            }
+        }
+
+        _pepper = PasswordPepperGuard.Decode(_options.Pepper);
+        if (_pepper is not null)
+        {
+            _peppers[_options.PepperVersion] = _pepper;
+        }
     }
+
+    /// <summary>Whether new hashes are made with a pepper.</summary>
+    public bool Peppered => _pepper is not null;
 
     /// <inheritdoc />
     public string HashPassword(TUser user, string password)
@@ -38,11 +59,12 @@ public sealed class Argon2idPasswordHasher<TUser> : IPasswordHasher<TUser>
         ArgumentException.ThrowIfNullOrEmpty(password);
 
         byte[] salt = RandomNumberGenerator.GetBytes(SaltBytes);
-        byte[] hash = Derive(password, salt, _options.MemoryKiB, _options.Iterations, _options.Parallelism);
+        byte[] hash = Derive(password, salt, _options.MemoryKiB, _options.Iterations, _options.Parallelism, _pepper);
+        string key = _pepper is null ? string.Empty : string.Create(CultureInfo.InvariantCulture, $",keyid={_options.PepperVersion}");
 
         return string.Create(
             CultureInfo.InvariantCulture,
-            $"{Prefix}m={_options.MemoryKiB},t={_options.Iterations},p={_options.Parallelism}${ToBase64(salt)}${ToBase64(hash)}");
+            $"{Prefix}m={_options.MemoryKiB},t={_options.Iterations},p={_options.Parallelism}{key}${ToBase64(salt)}${ToBase64(hash)}");
     }
 
     /// <inheritdoc />
@@ -52,22 +74,29 @@ public sealed class Argon2idPasswordHasher<TUser> : IPasswordHasher<TUser>
         ArgumentNullException.ThrowIfNull(hashedPassword);
         ArgumentNullException.ThrowIfNull(providedPassword);
 
-        if (!TryParse(hashedPassword, out int memory, out int iterations, out int parallelism, out byte[] salt, out byte[] expected))
+        if (!TryParse(hashedPassword, out int memory, out int iterations, out int parallelism, out int? keyId, out byte[] salt, out byte[] expected))
         {
             return PasswordVerificationResult.Failed;
         }
 
-        byte[] actual = Derive(providedPassword, salt, memory, iterations, parallelism);
+        byte[]? pepper = null;
+        if (keyId is int id && !_peppers.TryGetValue(id, out pepper))
+        {
+            return PasswordVerificationResult.Failed;
+        }
+
+        byte[] actual = Derive(providedPassword, salt, memory, iterations, parallelism, pepper);
         if (!CryptographicOperations.FixedTimeEquals(actual, expected))
         {
             return PasswordVerificationResult.Failed;
         }
 
         bool weaker = memory < _options.MemoryKiB || iterations < _options.Iterations || parallelism < _options.Parallelism;
-        return weaker ? PasswordVerificationResult.SuccessRehashNeeded : PasswordVerificationResult.Success;
+        bool otherPepper = _pepper is not null && keyId != _options.PepperVersion;
+        return weaker || otherPepper ? PasswordVerificationResult.SuccessRehashNeeded : PasswordVerificationResult.Success;
     }
 
-    private static byte[] Derive(string password, byte[] salt, int memoryKiB, int iterations, int parallelism)
+    private static byte[] Derive(string password, byte[] salt, int memoryKiB, int iterations, int parallelism, byte[]? pepper)
     {
         using Argon2id argon = new(Encoding.UTF8.GetBytes(password))
         {
@@ -76,14 +105,20 @@ public sealed class Argon2idPasswordHasher<TUser> : IPasswordHasher<TUser>
             Iterations = iterations,
             DegreeOfParallelism = parallelism,
         };
+        if (pepper is not null)
+        {
+            argon.KnownSecret = pepper;
+        }
+
         return argon.GetBytes(HashBytes);
     }
 
-    private static bool TryParse(string encoded, out int memory, out int iterations, out int parallelism, out byte[] salt, out byte[] hash)
+    private static bool TryParse(string encoded, out int memory, out int iterations, out int parallelism, out int? keyId, out byte[] salt, out byte[] hash)
     {
         memory = 0;
         iterations = 0;
         parallelism = 0;
+        keyId = null;
         salt = [];
         hash = [];
 
@@ -116,6 +151,9 @@ public sealed class Argon2idPasswordHasher<TUser> : IPasswordHasher<TUser>
                     break;
                 case "p":
                     parallelism = value;
+                    break;
+                case "keyid":
+                    keyId = value;
                     break;
                 default:
                     return false;

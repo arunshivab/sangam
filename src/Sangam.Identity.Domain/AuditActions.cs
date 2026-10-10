@@ -345,4 +345,7 @@ public static class AuditActions
     /// <summary>The token, introspection or revocation endpoint refused a client or a grant — a wrong client secret, or
     /// a spent, expired or replayed code or refresh token (R7, ASVS V7.2.1).</summary>
     public const string TokenRefused = "token.refused";
+
+    /// <summary>An uploaded file was refused because the virus scanner found malware in it (rc.5, ASVS V12.4.2).</summary>
+    public const string UploadRefused = "upload.refused";
 }

@@ -28,6 +28,7 @@ internal sealed class AppConfiguration : IEntityTypeConfiguration<App>
         b.Property(a => a.SignInPolicy).HasConversion(new SnakeCaseEnumConverter<SignInPolicy>()).HasMaxLength(20).IsRequired();
         b.Property(a => a.MfaRequirement).HasConversion(new SnakeCaseEnumConverter<MfaRequirement>()).HasMaxLength(40).HasDefaultValue(MfaRequirement.Optional).IsRequired();
         b.Property(a => a.BreachedPasswordCheck).HasDefaultValue(false).IsRequired();
+        b.Property(a => a.RequireCharacterTypes).HasDefaultValue(false).IsRequired();
         b.Property(a => a.BackChannelLogoutUri).HasMaxLength(500);
         b.Property(a => a.FrontChannelLogoutUri).HasMaxLength(500);
 
@@ -39,7 +40,7 @@ internal sealed class AppConfiguration : IEntityTypeConfiguration<App>
             t.HasCheckConstraint("chk_apps_status", $"status IN ({SnakeCaseEnumConverter<AppStatus>.SqlList()})");
             t.HasCheckConstraint("chk_apps_sign_in_policy", $"sign_in_policy IN ({SnakeCaseEnumConverter<SignInPolicy>.SqlList()})");
             t.HasCheckConstraint("chk_apps_mfa_requirement", $"mfa_requirement IN ({SnakeCaseEnumConverter<MfaRequirement>.SqlList()})");
-            t.HasCheckConstraint("chk_apps_min_password_length", $"min_password_length IS NULL OR min_password_length BETWEEN 8 AND {Domain.SecurityPolicy.MaxMinPasswordLength}");
+            t.HasCheckConstraint("chk_apps_min_password_length", $"min_password_length IS NULL OR min_password_length BETWEEN 12 AND {Domain.SecurityPolicy.MaxMinPasswordLength}");
         });
     }
 }

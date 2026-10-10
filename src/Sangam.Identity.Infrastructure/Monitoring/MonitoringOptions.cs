@@ -107,8 +107,9 @@ public sealed class AlertThresholds
     /// <summary>Minutes Anjal may fail its health check.</summary>
     public int AnjalDownMinutes { get; set; } = 3;
 
-    /// <summary>Days before the breached-password list is due for a refresh (when the check is switched on).</summary>
-    public int BreachListAgeDays { get; set; } = 120;
+    /// <summary>Minutes the online breached-password service may stay unreachable before an alert (rc.5); the built-in
+    /// list is checked meanwhile.</summary>
+    public int BreachServiceDownMinutes { get; set; } = 60;
 
     /// <summary>Hours between repeated alerts for a condition that stays open.</summary>
     public int RepeatHours { get; set; } = 6;

@@ -35,12 +35,12 @@ Prerequisites:
 - PostgreSQL as above.
 
 1. **Images.** Build and push them from the repository root, with the same commands as
-   `deploy/production/README.md`, tagged `1.0.0-rc.4`: `sangam/identity`, `sangam/portal`, `sangam/admin`,
+   `deploy/production/README.md`, tagged `1.0.0-rc.5`: `sangam/identity`, `sangam/portal`, `sangam/admin`,
    `sangam/partner`, `sangam/migrator`. Point the image names at your registry with a kustomize `images:` entry.
 2. **Secrets.** Each file of `deploy/production/secrets` becomes a key of a Kubernetes secret. The hosts read them
    from `/run/secrets`, exactly as on the VM:
    - `sangam-shared`: `ConnectionStrings__Sangam` (application role), `Sangam__Anjal__ApiKey`,
-     `keyring_current.pfx`, `Sangam__DataProtection__Certificates__0__Password`.
+     `Sangam__PasswordHashing__Pepper` (rc.5), `keyring_current.pfx`, `Sangam__DataProtection__Certificates__0__Password`.
    - `sangam-identity`:
      - `signing_current.pfx`, `encryption_current.pfx`, `Sangam__Certificates__Signing__0__Password`,
        `Sangam__Certificates__Encryption__0__Password`;
@@ -53,12 +53,12 @@ Prerequisites:
    `overlays/kind/make-secrets.sh` shows every command.
 3. **Settings.** Copy `base/config.yaml` into your overlay and fill in the `SET-…` values, the same ones as
    `deploy/production/docker-compose.yml`. Set `Sangam__ForwardedHeaders__KnownNetworks` to your pod network.
-4. **Migrate, then roll out.** Apply the overlay. The `sangam-migrate-1-0-0-rc-4` job runs the migrations. Each release
+4. **Migrate, then roll out.** Apply the overlay. The `sangam-migrate-1-0-0-rc-5` job runs the migrations. Each release
    gets a new job name, so the job runs before the new hosts take traffic:
 
    ```sh
    kubectl apply -k overlays/<yours>
-   kubectl -n sangam wait --for=condition=complete job/sangam-migrate-1-0-0-rc-4 --timeout=10m
+   kubectl -n sangam wait --for=condition=complete job/sangam-migrate-1-0-0-rc-5 --timeout=10m
    kubectl -n sangam rollout status deploy/identity deploy/portal deploy/admin deploy/partner
    ```
 
@@ -85,8 +85,9 @@ The NetworkPolicy admits traffic only from the ingress controller's namespace.
 - **Backups.** The VM's backup and restore-drill scripts (`deploy/production/backup`) run on the VM. On Kubernetes,
   use the database service's backups, plus a CronJob that copies the audit archive volume. The monitoring page's
   backup status (`Sangam__Monitoring__StatusDirectory`) is not set here.
-- **The breached-password list.** It needs a read-only volume with `pwned-passwords.bin`, mounted at
-  `/var/lib/sangam/pwned` on every host, before `Sangam__Passwords__BreachCheck__Enabled` is turned on.
+- **The virus scanner (rc.5).** Point `Sangam__Antivirus__Host` at a ClamAV service the pods can reach; the
+  consoles refuse to start without one. The pepper (`Sangam__PasswordHashing__Pepper`) goes into the `sangam-secrets`
+  Secret like the other secrets. The breached-password check needs only outbound HTTPS to `api.pwnedpasswords.com`.
 - **The demo (imagiQa) and Anjal** are not part of this folder.
 - **Horizontal autoscaling.** Not configured. Two replicas give availability, not scale; add an HPA when load
   testing (SGM-504) shows the need.
@@ -94,12 +95,12 @@ The NetworkPolicy admits traffic only from the ingress controller's namespace.
 ## Prove it locally
 
 This needs Docker, kind and kubectl, plus Python with Playwright for the browser checks. The four host images and
-the migrator must be built as `sangam/*:1.0.0-rc.4`.
+the migrator must be built as `sangam/*:1.0.0-rc.5`.
 
 ```sh
 cd deploy/kubernetes/overlays/kind
 kind create cluster --config kind-cluster.yaml
-for i in identity portal admin partner migrator; do kind load docker-image sangam/$i:1.0.0-rc.4 --name sangam; done
+for i in identity portal admin partner migrator; do kind load docker-image sangam/$i:1.0.0-rc.5 --name sangam; done
 bash make-secrets.sh
 kubectl apply -k .
 python3 ha-proof.py      # sign-in, failover, rolling restart, node loss, one worker at a time

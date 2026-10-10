@@ -117,6 +117,37 @@ public sealed partial class InvitationServiceTests : IAsyncLifetime
     }
 
     [PostgresFact]
+    public async Task AnInvitationTheApplicationSentThroughTheApi_LinksThePerson_OnlyWhenTheyAccept()
+    {
+        // rc.5 (ASVS V4.2.1, consent first).
+        using IServiceScope scope = _provider.CreateScope();
+        IInvitationService invitations = scope.ServiceProvider.GetRequiredService<IInvitationService>();
+        InMemoryEmailOutbox outbox = scope.ServiceProvider.GetRequiredService<InMemoryEmailOutbox>();
+
+        ManagementResult<InvitationSent> sent = await invitations.CreateForApplicationAsync(_appId, _orgId, "asha@example.in", "nurse", appliesToDescendants: false);
+        Assert.Equal(ManagementStatus.Ok, sent.Status);
+        Assert.Equal(("asha@example.in", "nurse"), (sent.Value!.Email, sent.Value.Role));
+        string token = TokenIn(outbox.LatestFor("asha@example.in")!.Message.TextBody);
+
+        await using (SangamDbContext before = _pg.CreateContext())
+        {
+            Invitation row = await before.Invitations.SingleAsync(i => i.Id == sent.Value.Id);
+            Assert.Null(row.InvitedByUserId);
+            Assert.False(await before.AppGrants.AnyAsync(g => g.UserId == _inviteeId && g.AppId == _appId));
+        }
+
+        Assert.Equal(InvitationState.Open, (await invitations.GetAsync(token))!.State);
+        PartnerResult accepted = await invitations.AcceptAsync(token, _inviteeId);
+        Assert.True(accepted.Succeeded, accepted.Message);
+
+        await using SangamDbContext db = _pg.CreateContext();
+        Assert.True(await db.AppGrants.AnyAsync(g => g.UserId == _inviteeId && g.AppId == _appId && g.RevokedAt == null));
+        Assert.True(await db.OrgMemberships.AnyAsync(m => m.UserId == _inviteeId && m.OrgId == _orgId && m.RevokedAt == null));
+        Assert.Equal(ManagementStatus.NotFound, (await invitations.CreateForApplicationAsync(_appId, Guid.NewGuid(), "asha@example.in", "nurse", false)).Status);
+        Assert.Equal(ManagementStatus.Invalid, (await invitations.CreateForApplicationAsync(_appId, _orgId, "not an address", "nurse", false)).Status);
+    }
+
+    [PostgresFact]
     public async Task Invitations_AreRefused_FromNonAdministrators_ForRetiredRoles_AndOnceExpired()
     {
         using IServiceScope scope = _provider.CreateScope();

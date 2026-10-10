@@ -57,6 +57,13 @@ class ManagementClient:
             body["expiresAt"] = expires_at
         return self.send("PUT", f"orgs/{org_id}/members/{user_id}", body)
 
+    def invite(self, org_id: str, email: str, role: str, applies_to_descendants: bool = False) -> Any:
+        """Invites someone by e-mail to a role at an organisation (rc.5); they are added when they accept.
+
+        upsert_membership adds only people who already use your application; invite anyone else. At most 200 a day.
+        """
+        return self.send("POST", f"orgs/{org_id}/invitations", {"email": email, "role": role, "appliesToDescendants": applies_to_descendants})
+
     def get_attributes(self, user_id: str) -> dict[str, str | None]:
         return self.send("GET", f"users/{user_id}/attributes")
 

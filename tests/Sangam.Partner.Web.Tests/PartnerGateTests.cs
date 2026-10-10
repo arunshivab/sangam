@@ -161,7 +161,12 @@ public sealed class PartnerGateTests : IClassFixture<PartnerFactory>
         Assert.Contains("Passwords and second factor", html, StringComparison.Ordinal);
         Assert.Contains("Shortest password allowed", html, StringComparison.Ordinal);
         Assert.Contains("Required for this application", html, StringComparison.Ordinal);
-        Assert.Contains("not yet switched on for Sangam", html, StringComparison.Ordinal);
+        // rc.5: the breached-password check is on for everyone by default, so it shows as required by the platform;
+        // the character-type rule is offered, off, and explained only when ticked.
+        Assert.Contains("Refuse passwords found in known data breaches", html, StringComparison.Ordinal);
+        Assert.Contains("already required by Sangam", html, StringComparison.Ordinal);
+        Assert.Contains("Require an upper-case letter, a lower-case letter, a number and a symbol", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-notice=\"character-types\"", html, StringComparison.Ordinal);
     }
 
     [PostgresFact]

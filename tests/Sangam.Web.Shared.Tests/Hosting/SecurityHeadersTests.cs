@@ -67,4 +67,14 @@ public sealed class SecurityHeadersTests
         string identity = SecurityHeaders.Policy(development: false, identityServer: true, NoOrigins);
         Assert.Contains("script-src 'self' 'sha256-j7OoGArf6XW6YY4cAyS3riSSvrJRqpSi1fOF9vQ5SrI=';", identity, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void SessionCookies_CarryTheHostPrefix_WhereverCookiesAreAlwaysSecure()
+    {
+        // rc.5 (ASVS V3.4.4).
+        Assert.Equal("__Host-sangam.session", SecurityHeaders.CookieName("sangam.session", "Production"));
+        Assert.Equal("__Host-sangam.portal", SecurityHeaders.CookieName("sangam.portal", "Staging"));
+        Assert.Equal("sangam.session", SecurityHeaders.CookieName("sangam.session", "Development"));
+        Assert.Equal("sangam.session", SecurityHeaders.CookieName("sangam.session", "Testing"));
+    }
 }

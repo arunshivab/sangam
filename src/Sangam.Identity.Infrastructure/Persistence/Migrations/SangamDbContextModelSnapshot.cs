@@ -515,6 +515,12 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("privacy_url");
 
+                    b.Property<bool>("RequireCharacterTypes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("require_character_types");
+
                     b.Property<bool>("RequireConsent")
                         .HasColumnType("boolean")
                         .HasColumnName("require_consent");
@@ -561,7 +567,7 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("chk_apps_mfa_requirement", "mfa_requirement IN ('optional','required_for_administrators','required')");
 
-                            t.HasCheckConstraint("chk_apps_min_password_length", "min_password_length IS NULL OR min_password_length BETWEEN 8 AND 64");
+                            t.HasCheckConstraint("chk_apps_min_password_length", "min_password_length IS NULL OR min_password_length BETWEEN 12 AND 64");
 
                             t.HasCheckConstraint("chk_apps_sign_in_policy", "sign_in_policy IN ('default','password','password_and_otp','otp_only','passkey_only')");
 
@@ -1371,7 +1377,7 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
 
-                    b.Property<Guid>("InvitedByUserId")
+                    b.Property<Guid?>("InvitedByUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("invited_by_user_id");
 
@@ -1992,6 +1998,10 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("registered_via_app_id");
 
+                    b.Property<bool?>("RequireCharacterTypes")
+                        .HasColumnType("boolean")
+                        .HasColumnName("require_character_types");
+
                     b.Property<string>("SignInPolicy")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
@@ -2028,7 +2038,7 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("chk_organisations_mfa_requirement", "mfa_requirement IS NULL OR mfa_requirement IN ('optional','required_for_administrators','required')");
 
-                            t.HasCheckConstraint("chk_organisations_min_password_length", "min_password_length IS NULL OR min_password_length BETWEEN 8 AND 64");
+                            t.HasCheckConstraint("chk_organisations_min_password_length", "min_password_length IS NULL OR min_password_length BETWEEN 12 AND 64");
 
                             t.HasCheckConstraint("chk_organisations_sign_in_policy", "sign_in_policy IS NULL OR sign_in_policy IN ('password_and_otp','passkey_only')");
 

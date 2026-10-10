@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Sangam.Identity.Infrastructure;
+using Sangam.Identity.Infrastructure.Security;
 using Sangam.Identity.Server.Authentication;
 
 namespace Sangam.Identity.Server.Tests;
@@ -14,6 +15,9 @@ namespace Sangam.Identity.Server.Tests;
 public sealed class ProductionStartTests : IDisposable
 {
     private const string Password = "test-only";
+
+    // rc.5: 32 bytes, base64 — a test value, never used anywhere else.
+    private const string Pepper = "dGVzdC1vbmx5LXBlcHBlci0zMi1ieXRlcy1sb25nLiE=";
     private readonly SangamServerFactory _factory;
     private readonly string _dir = Directory.CreateTempSubdirectory("sangam-certs").FullName;
 
@@ -61,6 +65,7 @@ public sealed class ProductionStartTests : IDisposable
         WebApplicationFactory<Program> production = _factory.WithWebHostBuilder(b =>
         {
             b.UseEnvironment("Production");
+            b.UseSetting("Sangam:PasswordHashing:Pepper", Pepper);
             b.UseSetting("Sangam:Email:UseOutbox", "false");
             b.UseSetting("Sangam:Anjal:BaseUrl", "https://anjal.example.invalid/");
             b.UseSetting("Sangam:Anjal:ApiKey", "anjal-test-key-0123456789");
@@ -89,6 +94,7 @@ public sealed class ProductionStartTests : IDisposable
         WebApplicationFactory<Program> production = _factory.WithWebHostBuilder(b =>
         {
             b.UseEnvironment("Production");
+            b.UseSetting("Sangam:PasswordHashing:Pepper", Pepper);
             b.UseSetting("Sangam:Email:UseOutbox", "false");
             b.UseSetting("Sangam:Anjal:BaseUrl", "https://anjal.example.invalid/");
             b.UseSetting("Sangam:Anjal:ApiKey", "anjal-test-key-0123456789");
@@ -123,6 +129,18 @@ public sealed class ProductionStartTests : IDisposable
         Assert.NotNull(problem);
         Assert.Contains(expected, problem, StringComparison.Ordinal);
         Assert.Null(KeyRingProtection.Validate("Development", Config([.. settings])));
+    }
+
+    [Fact]
+    public void EveryHost_RefusesProduction_WithoutAPepperOfAtLeast32Bytes()
+    {
+        // rc.5 (ASVS V2.4.5).
+        Assert.Contains("password pepper", PasswordPepperGuard.Validate("Production", Config())!, StringComparison.Ordinal);
+        Assert.NotNull(PasswordPepperGuard.Validate("Staging", Config(("Sangam:PasswordHashing:Pepper", Convert.ToBase64String(new byte[16])))));
+        Assert.NotNull(PasswordPepperGuard.Validate("Production", Config(("Sangam:PasswordHashing:Pepper", "not base64!"))));
+        Assert.Null(PasswordPepperGuard.Validate("Production", Config(("Sangam:PasswordHashing:Pepper", Pepper))));
+        Assert.Null(PasswordPepperGuard.Validate("Development", Config()));
+        Assert.Null(PasswordPepperGuard.Validate("Testing", Config()));
     }
 
     private static IConfiguration Config(params (string Key, string Value)[] values)

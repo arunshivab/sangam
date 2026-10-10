@@ -9,6 +9,7 @@ secret files are never committed: `.gitignore` excludes everything here except t
 | `ConnectionStrings__Sangam` | Connection string of the **application** role — not the table owner |
 | `Sangam__Portal__ClientSecret`, `Sangam__Admin__ClientSecret`, `Sangam__Partner__ClientSecret` | Fresh client secrets, 32+ characters. The identity server registers the three clients with these same files (R4), so they always match. |
 | `Sangam__Anjal__ApiKey` | Sangam's API key on Anjal, for sending e-mail and SMS (D-B, D-M). Every host needs it. |
+| `Sangam__PasswordHashing__Pepper` | rc.5 (ASVS V2.4.5): the password pepper, `openssl rand -base64 32`. Every host needs it and refuses to start without it. One offline copy with the founder; never in a backup. |
 | `signing_current.pfx`, `encryption_current.pfx` | Token certificates (SGM-803) |
 | `Sangam__Certificates__Signing__0__Password`, `Sangam__Certificates__Encryption__0__Password` | Their passwords |
 | `keyring_current.pfx`, `Sangam__DataProtection__Certificates__0__Password` | Certificate that encrypts the data-protection key ring, and its password (V-01). Every host needs it. |

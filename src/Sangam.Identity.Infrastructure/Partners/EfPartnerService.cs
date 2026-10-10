@@ -406,7 +406,8 @@ public sealed class EfPartnerService : IPartnerService
                 app.MinPasswordLength,
                 app.MfaRequirement == MfaRequirement.Optional ? null : app.MfaRequirement,
                 app.BreachedPasswordCheck ? true : null,
-                _policies.BreachCheckAvailable);
+                _policies.BreachCheckAvailable,
+                app.RequireCharacterTypes ? true : null);
     }
 
     /// <inheritdoc />
@@ -424,7 +425,7 @@ public sealed class EfPartnerService : IPartnerService
             return NotYours;
         }
 
-        string? weaker = _policies.Platform.WhyWeaker(null, input.MinPasswordLength, input.Mfa, input.BreachedPasswordCheck);
+        string? weaker = _policies.Platform.WhyWeaker(null, input.MinPasswordLength, input.Mfa, input.BreachedPasswordCheck, input.RequireCharacterTypes);
         if (weaker is not null)
         {
             return PartnerResult.Refused(weaker);
@@ -435,16 +436,17 @@ public sealed class EfPartnerService : IPartnerService
             return PartnerResult.Refused("The breached-password check is not switched on for Sangam yet, so it cannot be required.");
         }
 
-        string before = PolicyJson(null, app.MinPasswordLength, app.MfaRequirement, app.BreachedPasswordCheck);
+        string before = PolicyJson(null, app.MinPasswordLength, app.MfaRequirement, app.BreachedPasswordCheck, app.RequireCharacterTypes);
         app.MinPasswordLength = input.MinPasswordLength;
         app.MfaRequirement = input.Mfa ?? MfaRequirement.Optional;
         app.BreachedPasswordCheck = input.BreachedPasswordCheck == true;
+        app.RequireCharacterTypes = input.RequireCharacterTypes == true;
         app.UpdatedAt = _clock.UtcNow;
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         await _audit.WriteAsync(
             new AuditEntry(AuditActions.AppPolicyUpdate, AuditActorType.Admin, userId, appId, "app", appId,
-                Metadata: $"{{\"before\":{before},\"after\":{PolicyJson(null, app.MinPasswordLength, app.MfaRequirement, app.BreachedPasswordCheck)}}}"),
+                Metadata: $"{{\"before\":{before},\"after\":{PolicyJson(null, app.MinPasswordLength, app.MfaRequirement, app.BreachedPasswordCheck, app.RequireCharacterTypes)}}}"),
             cancellationToken).ConfigureAwait(false);
         return PartnerResult.Ok("Security policy saved. It applies from each person's next sign-in.");
     }
@@ -466,7 +468,8 @@ public sealed class EfPartnerService : IPartnerService
                 org.MinPasswordLength,
                 org.MfaRequirement,
                 org.BreachedPasswordCheck,
-                _policies.BreachCheckAvailable);
+                _policies.BreachCheckAvailable,
+                org.RequireCharacterTypes);
     }
 
     /// <inheritdoc />
@@ -490,7 +493,7 @@ public sealed class EfPartnerService : IPartnerService
         }
 
         SecurityPolicy inherited = await InheritedAsync(appId, org, cancellationToken).ConfigureAwait(false);
-        string? weaker = inherited.WhyWeaker(input.SignIn, input.MinPasswordLength, input.Mfa, input.BreachedPasswordCheck);
+        string? weaker = inherited.WhyWeaker(input.SignIn, input.MinPasswordLength, input.Mfa, input.BreachedPasswordCheck, input.RequireCharacterTypes);
         if (weaker is not null)
         {
             return PartnerResult.Refused(weaker);
@@ -501,17 +504,18 @@ public sealed class EfPartnerService : IPartnerService
             return PartnerResult.Refused("The breached-password check is not switched on for Sangam yet, so it cannot be required.");
         }
 
-        string before = PolicyJson(org.SignInPolicy, org.MinPasswordLength, org.MfaRequirement, org.BreachedPasswordCheck);
+        string before = PolicyJson(org.SignInPolicy, org.MinPasswordLength, org.MfaRequirement, org.BreachedPasswordCheck, org.RequireCharacterTypes);
         org.SignInPolicy = input.SignIn;
         org.MinPasswordLength = input.MinPasswordLength;
         org.MfaRequirement = input.Mfa;
         org.BreachedPasswordCheck = input.BreachedPasswordCheck == true ? true : null;
+        org.RequireCharacterTypes = input.RequireCharacterTypes == true ? true : null;
         org.UpdatedAt = _clock.UtcNow;
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         await _audit.WriteAsync(
             new AuditEntry(AuditActions.OrgPolicyUpdate, AuditActorType.Admin, userId, appId, "organisation", orgId,
-                Metadata: $"{{\"before\":{before},\"after\":{PolicyJson(org.SignInPolicy, org.MinPasswordLength, org.MfaRequirement, org.BreachedPasswordCheck)}}}"),
+                Metadata: $"{{\"before\":{before},\"after\":{PolicyJson(org.SignInPolicy, org.MinPasswordLength, org.MfaRequirement, org.BreachedPasswordCheck, org.RequireCharacterTypes)}}}"),
             cancellationToken).ConfigureAwait(false);
         return PartnerResult.Ok($"Security policy for {org.Name} saved. It applies to everyone in it and below it from their next sign-in.");
     }
@@ -540,20 +544,21 @@ public sealed class EfPartnerService : IPartnerService
         {
             if (rows.TryGetValue(id, out Organisation? parent))
             {
-                policy = policy.Tighten(parent.SignInPolicy, parent.MinPasswordLength, parent.MfaRequirement, parent.BreachedPasswordCheck);
+                policy = policy.Tighten(parent.SignInPolicy, parent.MinPasswordLength, parent.MfaRequirement, parent.BreachedPasswordCheck, parent.RequireCharacterTypes);
             }
         }
 
         return policy;
     }
 
-    private static string PolicyJson(SignInPolicy? signIn, int? minLength, MfaRequirement? mfa, bool? breach)
+    private static string PolicyJson(SignInPolicy? signIn, int? minLength, MfaRequirement? mfa, bool? breach, bool? characterTypes)
         => JsonSerializer.Serialize(new Dictionary<string, string?>
         {
             ["sign_in"] = signIn?.ToString(),
             ["min_password_length"] = minLength?.ToString(CultureInfo.InvariantCulture),
             ["mfa"] = mfa?.ToString(),
             ["breach_check"] = breach?.ToString(),
+            ["character_types"] = characterTypes?.ToString(),
         });
 
     private static PartnerResult NotYours { get; } = PartnerResult.Refused("You do not administer this application.");

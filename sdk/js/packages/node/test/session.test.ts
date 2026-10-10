@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { IncomingMessage } from "node:http";
-import { cookies } from "../src/session.js";
+import { cookies, sessionCookieName } from "../src/session.js";
 
 // rc.3 (CodeQL js/remote-property-injection): cookie names come from the browser, so they must never reach a prototype.
 test("cookies: a cookie named __proto__ or constructor is just a value, and a malformed one is skipped", () => {
@@ -15,4 +15,10 @@ test("cookies: a cookie named __proto__ or constructor is just a value, and a ma
   assert.equal(jar["constructor"], "y");
   assert.equal(Object.hasOwn(jar, "broken"), false);
   assert.equal(Object.hasOwn(jar, "empty"), false);
+});
+
+// rc.5 (ASVS V3.4.4): over https the session cookie is __Host- prefixed, so no other subdomain can set it.
+test("sessionCookieName: __Host- prefixed over https, plain in local development", () => {
+  assert.equal(sessionCookieName(true), "__Host-sangam.sid");
+  assert.equal(sessionCookieName(false), "sangam.sid");
 });

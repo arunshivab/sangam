@@ -47,6 +47,7 @@ public sealed class MonitoringTests : IAsyncLifetime
             ["Sangam:Maintenance:Enabled"] = "false",
             ["Sangam:DataProtection:PersistKeys"] = "false",
             ["Sangam:Monitoring:HostName"] = "identity",
+            ["Sangam:Passwords:BreachCheck:Enabled"] = "false",
             ["Sangam:Monitoring:ExpectedHosts"] = "identity,ghost",
             ["Sangam:Monitoring:Alerts:HostSilentMinutes"] = "3",
             ["Sangam:Monitoring:StatusDirectory"] = _status,
@@ -169,7 +170,7 @@ public sealed class MonitoringTests : IAsyncLifetime
             [new TlsStatus("id.sangamid.in", now.AddDays(5), null)],
             new JobStatus(now.AddHours(-40), true, null),
             new JobStatus(now.AddDays(-1), false, "pg_restore failed"),
-            new Application.Security.BreachListStatus(true, false, null, 0, "The list file is not there yet."),
+            new Application.Security.BreachListStatus(true, true, 10_000, now.AddHours(-3), now.AddMinutes(-90), "The service did not answer in time."),
             new AnjalStatus(true, now.AddMinutes(-1), false, 0, 4, 0, 4),
             []);
 
@@ -193,7 +194,7 @@ public sealed class MonitoringTests : IAsyncLifetime
             Tls = [],
             Backup = new JobStatus(now.AddHours(-2), true, null),
             RestoreDrill = new JobStatus(now.AddDays(-3), true, null),
-            BreachList = new Application.Security.BreachListStatus(false, false, null, 0, null),
+            BreachList = new Application.Security.BreachListStatus(true, true, 10_000, now.AddMinutes(-1), null, null),
             Anjal = new AnjalStatus(true, now, true, 10, 0, 0, 0),
         };
         Assert.Empty(AlertRules.Evaluate(quiet, new AlertThresholds(), ["identity"], anjalConfigured: true));
@@ -211,18 +212,18 @@ public sealed class MonitoringTests : IAsyncLifetime
     [PostgresFact]
     public async Task TheBreachList_IsShownAsTheIdentityServerReportsIt_NotFromTheConsolesOwnSettings()
     {
-        // V-10: this test's host has the check off; the identity server reports it on and loaded.
+        // V-10: this test's host has the check off; the identity server reports it on, with the online service answering.
         await _provider.GetRequiredService<MetricsRecorder>().ReportAsync();
         await using (SangamDbContext db = _pg.CreateContext())
         {
             Assert.Contains("\"Enabled\":false", (await db.HostReports.SingleAsync(r => r.Host == "identity" && r.Subject == MetricsRecorder.BreachListSubject)).Payload, StringComparison.Ordinal);
             HostReport identity = await db.HostReports.SingleAsync(r => r.Host == "identity");
-            identity.Payload = System.Text.Json.JsonSerializer.Serialize(new Application.Security.BreachListStatus(true, true, new DateOnly(2026, 10, 1), 900_000_000, null));
+            identity.Payload = System.Text.Json.JsonSerializer.Serialize(new Application.Security.BreachListStatus(true, true, 10_028, DateTimeOffset.UtcNow.AddMinutes(-2), null, null));
             db.HostReports.Add(new HostReport
             {
                 Host = "admin",
                 Subject = MetricsRecorder.BreachListSubject,
-                Payload = System.Text.Json.JsonSerializer.Serialize(new Application.Security.BreachListStatus(false, false, null, 0, null)),
+                Payload = System.Text.Json.JsonSerializer.Serialize(new Application.Security.BreachListStatus(false, false, 10_028, null, null, null)),
                 ReportedAt = DateTimeOffset.UtcNow,
             });
             await db.SaveChangesAsync();
@@ -230,8 +231,8 @@ public sealed class MonitoringTests : IAsyncLifetime
 
         using IServiceScope scope = _provider.CreateScope();
         MonitoringSnapshot snapshot = (await scope.ServiceProvider.GetRequiredService<IMonitoringService>().SnapshotAsync(_owner))!;
-        Assert.True(snapshot.BreachList.Enabled && snapshot.BreachList.Loaded);
-        Assert.Equal(900_000_000, snapshot.BreachList.Entries);
+        Assert.True(snapshot.BreachList.Enabled && snapshot.BreachList.Online);
+        Assert.Equal(10_028, snapshot.BreachList.FallbackEntries);
         Assert.Equal("identity", snapshot.BreachListSource!.Host);
         Assert.Equal(2, snapshot.BreachListReports.Count);
         Assert.Contains(snapshot.BreachListReports, r => r.Host == "admin" && !r.Status.Enabled);

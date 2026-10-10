@@ -250,3 +250,7 @@ h1[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 /* R7 (WCAG 1.4.3): the language picker on the dark console reads at 8.5:1 (the shared slate was too dark). */
 .sg-lang-footer .sg-lang-item { color: var(--c-muted); }
 .sg-lang-footer .sg-lang-item--current { color: var(--c-text); }
+
+/* rc.5: a cautionary note beside a setting (the character-type rule in the security policy). Light text on the
+   raised panel clears AA (about 8:1). */
+.sg-notice { margin: 8px 0 12px; padding: 10px 14px; border-left: 3px solid var(--c-warn); background: var(--c-raise); color: var(--c-text); font: 400 14px/1.5 var(--sg-font-body); border-radius: 0 6px 6px 0; }

@@ -4,6 +4,7 @@ using OpenIddict.Abstractions;
 using OpenIddict.Validation.AspNetCore;
 using Sangam.Identity.Application.Apps;
 using Sangam.Identity.Application.Attributes;
+using Sangam.Identity.Application.Partners;
 using Sangam.Identity.Application.Signatures;
 using Sangam.Identity.Application.Tenancy;
 using Sangam.Identity.Domain.Enums;
@@ -91,6 +92,14 @@ public static class ManagementEndpoints
             AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
             return app is null ? Results.Forbid() : ToResult(await mgmt.UpsertMembershipAsync(app.Id, orgId, userId, input, ManagementActor.Api, ct).ConfigureAwait(false));
         }).WithName("UpsertMembership");
+
+        // rc.5 (ASVS V4.2.1, consent first): someone who does not use the application yet is invited, and linked when they accept.
+        api.MapPost("/orgs/{orgId:guid}/invitations", async (Guid orgId, InvitationRequest input, ClaimsPrincipal caller, IAppDirectory apps, IInvitationService invitations, CancellationToken ct) =>
+        {
+            ArgumentNullException.ThrowIfNull(input);
+            AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
+            return app is null ? Results.Forbid() : ToResult(await invitations.CreateForApplicationAsync(app.Id, orgId, input.Email ?? string.Empty, input.Role ?? string.Empty, input.AppliesToDescendants, ct).ConfigureAwait(false));
+        }).WithName("InviteMember");
 
         api.MapDelete("/orgs/{orgId:guid}/members/{userId:guid}", async (Guid orgId, Guid userId, ClaimsPrincipal caller, IAppDirectory apps, IManagementService mgmt, CancellationToken ct) =>
         {

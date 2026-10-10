@@ -111,14 +111,17 @@ public static class AlertRules
             open.Add(new("anjal_down", "Anjal not answering", "Anjal's health endpoint is not answering. Mail and SMS from Sangam may be failing."));
         }
 
-        if (s.BreachList.Enabled && s.BreachList.Loaded && s.BreachList.ListDate is DateOnly listDate
-            && (DateOnly.FromDateTime(s.At.UtcDateTime).DayNumber - listDate.DayNumber) > t.BreachListAgeDays)
+        // rc.5: the virus scanner not answering — logo uploads are refused until it does.
+        if (s.Antivirus.Configured && s.Antivirus.Up == false)
         {
-            open.Add(new("breach_list", "breach list due for refresh", $"The breached-password list is dated {listDate:yyyy-MM-dd}. Download a new copy and import it."));
+            open.Add(new("antivirus_down", "virus scanner not answering", "The virus scanner (the server's ClamAV, shared with Anjal) is not answering. Logo uploads are refused until it does."));
         }
-        else if (s.BreachList.Enabled && !s.BreachList.Loaded)
+
+        // rc.5: the online breached-password service unreachable for a while; the built-in list is checked meanwhile.
+        if (s.BreachList.Enabled && s.BreachList.Online && s.BreachList.OnlineFailingSince is DateTimeOffset failingSince
+            && s.At - failingSince >= TimeSpan.FromMinutes(t.BreachServiceDownMinutes))
         {
-            open.Add(new("breach_list", "breach check on, list missing", "The breached-password check is switched on but its list is not loaded, so passwords are not checked: " + s.BreachList.Problem));
+            open.Add(new("breach_list", "breached-password service unreachable", string.Create(c, $"The Pwned Passwords service has not answered since {failingSince:yyyy-MM-dd HH:mm} UTC ({s.BreachList.Problem}). Passwords are checked against the built-in list of {s.BreachList.FallbackEntries:N0} common passwords until it answers again. Check the server's outbound connection to api.pwnedpasswords.com.")));
         }
 
         // D-D: a grievance past either deadline.

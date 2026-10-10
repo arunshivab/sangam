@@ -14,6 +14,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- rc.5: the built-in list of common passwords (ASVS V2.1.7 fallback); its source and licence are beside it. -->
+    <EmbeddedResource Include="Security\Data\common-passwords.txt.gz" LogicalName="Sangam.Identity.Application.Security.common-passwords.txt.gz" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Sangam.Identity.Domain\Sangam.Identity.Domain.csproj" />
     <ProjectReference Include="..\Sangam.Shared\Sangam.Shared.csproj" />
   </ItemGroup>

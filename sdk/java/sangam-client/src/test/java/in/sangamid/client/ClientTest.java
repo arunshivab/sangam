@@ -93,6 +93,20 @@ class ClientTest {
     }
 
     @Test
+    void anInvitationIsPostedToTheOrganisationsInvitations() throws Exception {
+        // rc.5 (consent first): people who do not yet use the application are invited, never added by id.
+        List<String> seen = new ArrayList<>();
+        HttpServer server = serve(Map.of("/connect/token", "{\"access_token\":\"t1\",\"expires_in\":3600}"), seen);
+        try {
+            ManagementClient client = new ManagementClient("http://127.0.0.1:" + server.getAddress().getPort() + "/", "app", "s", null);
+            client.invite("o1", "asha@example.in", "nurse", true);
+            assertEquals("POST /api/v1/orgs/o1/invitations Bearer t1 {\"email\":\"asha@example.in\",\"role\":\"nurse\",\"appliesToDescendants\":true}", seen.get(1));
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
     void aWebhookTimestampTooLongForALong_IsRefused_NotThrown() {
         // rc.3 (CodeQL java/uncaught-number-format-exception): a crafted 25-digit timestamp is simply not valid.
         String secret = "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw";

@@ -144,6 +144,14 @@ public sealed class ManagementApiTests
         {
             Infrastructure.Persistence.SangamDbContext db = scope.ServiceProvider.GetRequiredService<Infrastructure.Persistence.SangamDbContext>();
             tester = await db.Users.OrderBy(u => u.CreatedAt).Select(u => u.Id).FirstAsync();
+
+            // rc.5 (consent first): the tester has signed in to the demo, as DemoHospital's caller always has.
+            Guid demo = await db.Apps.Where(a => a.ClientId == DevelopmentSeeder.ImagiqaClientId).Select(a => a.Id).SingleAsync();
+            if (!await db.AppGrants.AnyAsync(g => g.AppId == demo && g.UserId == tester && g.RevokedAt == null))
+            {
+                db.AppGrants.Add(new Domain.Entities.AppGrant { Id = Guid.NewGuid(), AppId = demo, UserId = tester, GrantedAt = DateTimeOffset.UtcNow });
+                await db.SaveChangesAsync();
+            }
         }
 
         using HttpResponseMessage role = await SendAsync(client, token, HttpMethod.Put, "/api/v1/roles/doctor", new { displayName = "Doctor", description = "Demo", permissions = NursePermissions, orgId = (Guid?)null });
@@ -154,6 +162,44 @@ public sealed class ManagementApiTests
         Assert.Equal(HttpStatusCode.OK, member.StatusCode);
         using HttpResponseMessage again = await SendAsync(client, token, HttpMethod.Put, $"/api/v1/orgs/{hospital:D}/members/{tester:D}", new { role = "doctor", appliesToDescendants = false });
         Assert.Equal(HttpStatusCode.OK, again.StatusCode);
+    }
+
+    [PostgresFact]
+    public async Task APersonWhoDoesNotUseTheApplication_IsInvited_NotAdded()
+    {
+        // rc.5 (ASVS V4.2.1, consent first).
+        using HttpClient client = _factory.CreateClient();
+        string token = await ClientTokenAsync(client, scope: "sangam.manage");
+        Guid orgId = Guid.NewGuid();
+        Guid stranger;
+        using (IServiceScope scope = _factory.Services.CreateScope())
+        {
+            Infrastructure.Persistence.SangamDbContext db = scope.ServiceProvider.GetRequiredService<Infrastructure.Persistence.SangamDbContext>();
+            Guid appId = await db.Apps.Where(a => a.ClientId == DevelopmentSeeder.SampleClientId).Select(a => a.Id).SingleAsync();
+            List<Guid> linked = await db.AppGrants.Where(g => g.AppId == appId).Select(g => g.UserId).ToListAsync();
+            stranger = await db.Users.Where(u => !linked.Contains(u.Id)).Select(u => u.Id).FirstAsync();
+        }
+
+        using HttpResponseMessage role = await SendAsync(client, token, HttpMethod.Put, "/api/v1/roles/invitee", new { displayName = "Invitee", description = "rc.5", permissions = NursePermissions, orgId = (Guid?)null });
+        Assert.Equal(HttpStatusCode.OK, role.StatusCode);
+        using HttpResponseMessage org = await SendAsync(client, token, HttpMethod.Put, $"/api/v1/orgs/{orgId:D}", new { name = "Invitation Clinic", type = "hospital", parentId = (Guid?)null, metadata = (string?)null });
+        Assert.Equal(HttpStatusCode.OK, org.StatusCode);
+
+        using HttpResponseMessage added = await SendAsync(client, token, HttpMethod.Put, $"/api/v1/orgs/{orgId:D}/members/{stranger:D}", new { role = "invitee", appliesToDescendants = false });
+        Assert.Equal(HttpStatusCode.NotFound, added.StatusCode);
+        Assert.Contains("Invite them instead", await added.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+
+        string email = $"invitee-{Guid.NewGuid():N}@example.in";
+        using HttpResponseMessage invited = await SendAsync(client, token, HttpMethod.Post, $"/api/v1/orgs/{orgId:D}/invitations", new { email, role = "invitee", appliesToDescendants = false });
+        string body = await invited.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.OK, invited.StatusCode);
+        Assert.Equal(email, JsonDocument.Parse(body).RootElement.GetProperty("email").GetString());
+        Assert.NotNull(_factory.Services.GetRequiredService<Infrastructure.Services.InMemoryEmailOutbox>().LatestFor(email));
+
+        using HttpResponseMessage badRole = await SendAsync(client, token, HttpMethod.Post, $"/api/v1/orgs/{orgId:D}/invitations", new { email, role = "ghost", appliesToDescendants = false });
+        Assert.Equal(HttpStatusCode.NotFound, badRole.StatusCode);
+        using HttpResponseMessage badEmail = await SendAsync(client, token, HttpMethod.Post, $"/api/v1/orgs/{orgId:D}/invitations", new { email = "not an address", role = "invitee", appliesToDescendants = false });
+        Assert.Equal(HttpStatusCode.BadRequest, badEmail.StatusCode);
     }
 
     private static async Task<string> ClientTokenAsync(HttpClient client, string scope, string clientId = DevelopmentSeeder.SampleClientId, string clientSecret = DevelopmentSeeder.SampleClientSecret)

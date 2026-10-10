@@ -223,6 +223,34 @@ public static class WebHosting
         return endpoints;
     }
 
+    /// <summary>The path of the security contact file (RFC 9116).</summary>
+    public const string SecurityTxtPath = "/.well-known/security.txt";
+
+    /// <summary>
+    /// rc.5 (CERT-In, ASVS V1.14.x): serves <c>/.well-known/security.txt</c> (RFC 9116) on every host, so a researcher
+    /// or CERT-In knows where to report a problem. The file never goes stale: its expiry is always 180 days ahead.
+    /// <c>Sangam:Security:Contact</c> (default <c>mailto:security@sangamid.in</c>) and <c>Sangam:Security:Policy</c>
+    /// (default the repository's SECURITY.md) can be changed.
+    /// </summary>
+    /// <param name="endpoints">The endpoints.</param>
+    /// <param name="configuration">Configuration.</param>
+    public static IEndpointRouteBuilder MapSangamSecurityTxt(this IEndpointRouteBuilder endpoints, IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(endpoints);
+        ArgumentNullException.ThrowIfNull(configuration);
+        string contact = configuration["Sangam:Security:Contact"] ?? "mailto:security@sangamid.in";
+        string policy = configuration["Sangam:Security:Policy"] ?? "https://github.com/arunshivab/sangam/blob/main/SECURITY.md";
+        endpoints.MapGet(SecurityTxtPath, (Microsoft.AspNetCore.Http.HttpContext context) =>
+        {
+            DateTimeOffset expires = new DateTimeOffset(DateTimeOffset.UtcNow.Date, TimeSpan.Zero).AddDays(180);
+            string body = string.Create(
+                CultureInfo.InvariantCulture,
+                $"Contact: {contact}\nExpires: {expires:yyyy-MM-dd'T'HH:mm:ss'Z'}\nPreferred-Languages: en, hi, ml\nCanonical: https://{context.Request.Host}{SecurityTxtPath}\nPolicy: {policy}\n");
+            return Microsoft.AspNetCore.Http.Results.Text(body, "text/plain; charset=utf-8");
+        }).AllowAnonymous();
+        return endpoints;
+    }
+
     private static string[] Split(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? [] : value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

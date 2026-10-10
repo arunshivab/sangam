@@ -44,12 +44,13 @@ public interface ISecurityPolicyService
 }
 
 /// <summary>
-/// Checks a password against known breaches (PR-16, CAP-024). D-J: offline only — a local copy of the Pwned
-/// Passwords list; nothing about a password leaves the server.
+/// Checks a password against known breaches (PR-16, CAP-024; rc.5, D-J revised): the built-in list of common
+/// passwords, then the Pwned Passwords range service by k-anonymity — only five characters of the password's SHA-1
+/// leave the server.
 /// </summary>
 public interface IBreachedPasswordChecker
 {
-    /// <summary>Whether the check is switched on and its list is loaded.</summary>
+    /// <summary>Whether the check is switched on (rc.5: the built-in list is always there, so on means available).</summary>
     bool Available { get; }
 
     /// <summary>
@@ -61,17 +62,18 @@ public interface IBreachedPasswordChecker
     Task<bool?> IsBreachedAsync(string password, CancellationToken cancellationToken = default);
 }
 
-/// <summary>The state of the offline breached-password list, for the monitoring page (D-J).</summary>
+/// <summary>The state of the breached-password check, for the monitoring page (rc.5, D-J revised).</summary>
 /// <param name="Enabled">Whether the check is switched on in settings.</param>
-/// <param name="Loaded">Whether a usable list is in place (the check runs only when both are true).</param>
-/// <param name="ListDate">The date the list was downloaded.</param>
-/// <param name="Entries">How many hashes the list holds.</param>
-/// <param name="Problem">Why the list cannot be used, when it cannot.</param>
-public sealed record BreachListStatus(bool Enabled, bool Loaded, DateOnly? ListDate, long Entries, string? Problem);
+/// <param name="Online">Whether the Pwned Passwords range service is used (otherwise only the built-in list).</param>
+/// <param name="FallbackEntries">How many passwords the built-in list holds.</param>
+/// <param name="LastOnlineSuccess">When the range service last answered, since this host started.</param>
+/// <param name="OnlineFailingSince">Since when the range service has not answered; <see langword="null"/> while it does.</param>
+/// <param name="Problem">The last failure, while the service is failing.</param>
+public sealed record BreachListStatus(bool Enabled, bool Online, int FallbackEntries, DateTimeOffset? LastOnlineSuccess, DateTimeOffset? OnlineFailingSince, string? Problem);
 
-/// <summary>Reports the state of the offline breached-password list (D-J).</summary>
+/// <summary>Reports the state of the breached-password check (rc.5).</summary>
 public interface IBreachListStatus
 {
-    /// <summary>The list's state now.</summary>
+    /// <summary>The check's state now.</summary>
     BreachListStatus Status { get; }
 }

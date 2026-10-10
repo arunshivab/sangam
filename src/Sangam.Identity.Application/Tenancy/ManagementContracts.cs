@@ -55,6 +55,12 @@ public sealed record MembershipDto(Guid UserId, Guid OrgId, string Role, bool Ap
 /// </param>
 public sealed record MembershipUpsert(string Role, bool AppliesToDescendants, DateTimeOffset? ExpiresAt = null);
 
+/// <summary>An invitation the management API sends (rc.5): how an application brings in someone who does not use it yet.</summary>
+/// <param name="Email">The address to invite.</param>
+/// <param name="Role">Role code in the app's vocabulary.</param>
+/// <param name="AppliesToDescendants">Whether the role flows down the subtree.</param>
+public sealed record InvitationRequest(string Email, string Role, bool AppliesToDescendants = false);
+
 /// <summary>Outcome of a management call.</summary>
 public enum ManagementStatus
 {
@@ -103,4 +109,8 @@ public sealed record ManagementActor(AuditActorType Type, Guid? UserId)
     /// <summary>A partner's staff member acting on the partner console.</summary>
     /// <param name="userId">Their Sangam user id.</param>
     public static ManagementActor AppAdmin(Guid userId) => new(AuditActorType.Admin, userId);
+
+    /// <summary>The person themselves, accepting an invitation the application sent through the API (rc.5).</summary>
+    /// <param name="userId">Their Sangam user id.</param>
+    public static ManagementActor Person(Guid userId) => new(AuditActorType.User, userId);
 }

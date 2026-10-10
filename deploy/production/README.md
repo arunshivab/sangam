@@ -73,18 +73,24 @@ by invitation only (pilot), invite testers first. To give someone a role at a de
   page shows it, and Anjal's own watchdog is the alert path.
 - **Logs:** the `local` logging driver, rotated (50 MB × 20 per container). They stay on the server and go into the
   encrypted backups, kept 180 days (D-H; backup job in R4).
-- **Breached-password list (D-J):** download the Pwned Passwords SHA-1 list with the official downloader, then
+- **Breached-password check (rc.5, D-J revised):** nothing to install. Every password set, and every password
+  sign-in, is checked against the built-in list of the 10,000 most common passwords and then against Pwned Passwords
+  by k-anonymity (only five characters of the password's SHA-1 leave the server; the full list, over 50 GB, is not
+  kept). The server needs outbound HTTPS to `api.pwnedpasswords.com`. When it cannot reach it, the built-in list is
+  the check and the monitoring page says since when; after an hour the founder is alerted.
+- **Password pepper (rc.5, ASVS V2.4.5):** once, before the first start, make the pepper and keep one copy offline
+  with the founder (never on the server's backup path):
 
-      mkdir -p /srv/sangam/pwned
-      docker compose run --rm -v /srv/sangam/pwned:/var/lib/sangam/pwned -v /path/to/download:/download:ro \
-        identity breach-list import --source /download/pwnedpasswords.txt \
-        --output /var/lib/sangam/pwned/pwned-passwords.bin --date 2026-10-01
+      openssl rand -base64 32 > secrets/Sangam__PasswordHashing__Pepper
 
-  The running hosts pick the new list up within a minute; the monitoring page shows its date. Switch the check on
-  only after the import, by setting `Sangam__Passwords__BreachCheck__Enabled: "true"` in the shared environment
-  block at the top of `docker-compose.yml` (every host, never one service), then `docker compose up -d`. The
-  monitoring page shows the list as the identity server reports it, and flags any host that sees it differently
-  (V-10). Refresh every few months.
+  Every host refuses to start without it. Losing it does not lose any account — people sign in with an e-mailed
+  code or a passkey and set a new password — but every password stops working, so keep the offline copy safe. To
+  replace it: give the old value as `Sangam__PasswordHashing__PreviousPeppers__1`, the new one as the pepper and
+  `Sangam__PasswordHashing__PepperVersion: "2"`; hashes move to the new pepper as people sign in.
+- **Virus scanner (rc.5, ASVS V12.4.2):** uploaded logos are scanned by Anjal's ClamAV. Once:
+  `docker network create anjal-clamav`, attach Anjal's ClamAV container to it (Anjal project), and set
+  `Sangam__Antivirus__Host` to its name on that network. The partner and operator consoles refuse to start without a
+  scanner; an upload is refused while the scanner does not answer, and the monitoring page shows it.
 - **Audit archive (D-A):** once, on the founder's own computer (never on the server):
 
       docker run --rm -v "$PWD/keys:/keys" sangam/identity audit-archive keygen --out /keys --password '<long passphrase>'

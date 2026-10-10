@@ -136,6 +136,8 @@ bool genuine = SangamWebhook.Verify(Request.Headers["webhook-id"], Request.Heade
 // The management API from your back end (needs sangam.manage); tokens are fetched and cached for you.
 SangamManagementClient sangam = services.GetRequiredService<SangamManagementClient>();
 await sangam.UpsertMembershipAsync(wardId, personId, "nurse", appliesToDescendants: false, expiresAt: contractEnd);
+// rc.5: that adds only someone who already uses your application. Anyone else is invited, and joins when they accept.
+await sangam.InviteAsync(wardId, "asha@example.in", "nurse");
 
 // The shared audit event (SGM-208): who, where and from which device are filled in from the request.
 builder.Services.AddSangamAudit(o => { o.AppId = "lims"; o.AppVersion = "1.2.0"; o.BufferPath = "/var/lib/lims/audit.jsonl"; });

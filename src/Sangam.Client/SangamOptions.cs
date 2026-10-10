@@ -26,8 +26,14 @@ public sealed class SangamOptions
     /// <summary>Where Sangam returns the person after signing out.</summary>
     public string SignedOutCallbackPath { get; set; } = SangamDefaults.SignedOutCallbackPath;
 
-    /// <summary>Name of this application's sign-in cookie.</summary>
-    public string CookieName { get; set; } = ".Sangam.Session";
+    /// <summary>
+    /// Name of this application's sign-in cookie. Left empty, it is <c>__Host-sangam.app</c> when Sangam is reached over
+    /// HTTPS (rc.5, ASVS V3.4.4: only this exact host can set it) and <c>sangam.app</c> in local development.
+    /// </summary>
+    public string? CookieName { get; set; }
+
+    /// <summary>The cookie name in use: <see cref="CookieName"/>, or the default for <see cref="RequireHttpsMetadata"/>.</summary>
+    public string EffectiveCookieName => string.IsNullOrWhiteSpace(CookieName) ? (RequireHttpsMetadata ? "__Host-sangam.app" : "sangam.app") : CookieName;
 
     /// <summary>How long a sign-in lasts while the person keeps using the application.</summary>
     public TimeSpan SessionLifetime { get; set; } = TimeSpan.FromHours(8);

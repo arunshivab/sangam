@@ -51,7 +51,7 @@ builder.Services.AddSangam(o =>
     o.Authority = builder.Configuration["Sangam:Authority"] ?? string.Empty;
     o.ClientId = builder.Configuration["Sangam:ClientId"] ?? string.Empty;
     o.ClientSecret = builder.Configuration["Sangam:ClientSecret"];
-    o.CookieName = "imagiqa.session";
+    // rc.5: no cookie name set, so the SDK uses __Host-sangam.app on HTTPS (ASVS V3.4.4).
     o.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
 });
 builder.Services.AddAuthorization(o => o.FallbackPolicy = o.DefaultPolicy);

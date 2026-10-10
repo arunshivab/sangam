@@ -162,7 +162,8 @@ public sealed partial class PolicyScreenTests
         Guid orgId = Guid.NewGuid();
         ManagementResult<OrganisationDto> created = await management.UpsertOrganisationAsync(appId, orgId, new OrganisationUpsert("Policy test " + orgId.ToString("N")[..6], "hospital", null, null), ManagementActor.Api);
         Assert.True(created.Status == ManagementStatus.Ok, created.Message);
-        ManagementResult<MembershipDto> member = await management.UpsertMembershipAsync(appId, orgId, userId, new MembershipUpsert("policy_staff", false), ManagementActor.Api);
+        // rc.5: the person joins as their own act (consent first); through the API alone only users of the app can be added.
+        ManagementResult<MembershipDto> member = await management.UpsertMembershipAsync(appId, orgId, userId, new MembershipUpsert("policy_staff", false), ManagementActor.Person(userId));
         Assert.True(member.Status == ManagementStatus.Ok, member.Message);
 
         Organisation org = await db.Organisations.SingleAsync(o => o.Id == orgId);

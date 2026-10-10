@@ -77,12 +77,14 @@ public sealed partial class AuthScreenTests
         Assert.Contains("&#x2B;971&#xA0;AE", html, StringComparison.Ordinal);
         Assert.DoesNotContain("sg-dial\" aria-hidden", html, StringComparison.Ordinal);
 
-        // The five requirement tokens sit beside the verdict; the grey box is gone.
+        // rc.5 (ASVS V2.1.1, V2.1.9): one requirement token, the length, beside the verdict; no character types.
         Assert.DoesNotContain("sg-reqs", html, StringComparison.Ordinal);
-        // Razor encodes the "+" in the 8+ token, as it does in the dialling codes.
-        foreach (string token in new[] { "8&#x2B;", "upper", "lower", "number", "symbol" })
+        Assert.Contains("data-sg-token=\"length\"", html, StringComparison.Ordinal);
+        Assert.Contains("12&#x2B; characters", html, StringComparison.Ordinal);
+        Assert.Contains("data-min=\"12\"", html, StringComparison.Ordinal);
+        foreach (string token in new[] { "upper", "lower", "number", "symbol" })
         {
-            Assert.Contains($"data-sg-token=\"{token}\"", html, StringComparison.Ordinal);
+            Assert.DoesNotContain($"data-sg-token=\"{token}\"", html, StringComparison.Ordinal);
         }
     }
 
@@ -90,15 +92,15 @@ public sealed partial class AuthScreenTests
     public async Task Register_MarksEachPasswordTokenMetOrUnmet()
     {
         using BrowserSession s = new(_factory);
-        // "kaveri7" has lower and number, but is short and lacks upper and a symbol.
-        (_, _, string html) = await s.PostFormAsync("/register", Form("IN", "9876543210", "kaveri7"));
+        // rc.5: "Kaveri#7" has every character type but is shorter than 12, so the length token is unmet.
+        (_, _, string html) = await s.PostFormAsync("/register", Form("IN", "9876543210", "Kaveri#7"));
 
-        Assert.Contains("<span class=\"sg-token sg-token--met\" data-sg-token=\"lower\"", html, StringComparison.Ordinal);
-        Assert.Contains("<span class=\"sg-token sg-token--met\" data-sg-token=\"number\"", html, StringComparison.Ordinal);
-        Assert.Contains("<span class=\"sg-token \" data-sg-token=\"8&#x2B;\"", html, StringComparison.Ordinal);
-        Assert.Contains("<span class=\"sg-token \" data-sg-token=\"upper\"", html, StringComparison.Ordinal);
-        Assert.Contains("<span class=\"sg-token \" data-sg-token=\"symbol\"", html, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"sg-token \" data-sg-token=\"length\"", html, StringComparison.Ordinal);
         Assert.Contains("Too weak", html, StringComparison.Ordinal);
+
+        // A long enough password, kept on the form by a mobile number that is too short.
+        (_, _, string longer) = await s.PostFormAsync("/register", Form("IN", "98765", "kaveri river bank"));
+        Assert.Contains("<span class=\"sg-token sg-token--met\" data-sg-token=\"length\"", longer, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -212,7 +214,7 @@ public sealed partial class AuthScreenTests
         (HttpStatusCode rGet, string resetHtml) = await s.GetAsync("/reset");
         Assert.Equal(HttpStatusCode.OK, rGet);
         Assert.Contains(email, resetHtml, StringComparison.Ordinal);
-        Assert.Contains("data-sg-token=\"symbol\"", resetHtml, StringComparison.Ordinal);
+        Assert.Contains("data-sg-token=\"length\"", resetHtml, StringComparison.Ordinal);
 
         // 6. Reset with the emailed code
         string resetCode = Code(outbox.LatestFor(email)!.Message.TextBody);

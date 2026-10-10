@@ -76,7 +76,7 @@ public sealed class EfSecurityPolicyService : ISecurityPolicyService
                 {
                     if (orgs.TryGetValue(orgId, out Organisation? org))
                     {
-                        chain = chain.Tighten(org.SignInPolicy, org.MinPasswordLength, org.MfaRequirement, org.BreachedPasswordCheck);
+                        chain = chain.Tighten(org.SignInPolicy, org.MinPasswordLength, org.MfaRequirement, org.BreachedPasswordCheck, org.RequireCharacterTypes);
                     }
                 }
 
@@ -106,5 +106,5 @@ public sealed class EfSecurityPolicyService : ISecurityPolicyService
     }
 
     private SecurityPolicy ForApp(App app)
-        => (Platform with { SignIn = app.SignInPolicy }).Tighten(null, app.MinPasswordLength, app.MfaRequirement, app.BreachedPasswordCheck);
+        => (Platform with { SignIn = app.SignInPolicy }).Tighten(null, app.MinPasswordLength, app.MfaRequirement, app.BreachedPasswordCheck, app.RequireCharacterTypes);
 }

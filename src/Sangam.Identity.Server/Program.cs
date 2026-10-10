@@ -4,7 +4,6 @@ using Sangam.Identity.Domain;
 using Sangam.Identity.Infrastructure;
 using Sangam.Identity.Infrastructure.Audit;
 using Sangam.Identity.Infrastructure.Persistence;
-using Sangam.Identity.Infrastructure.Policies;
 using Sangam.Identity.Infrastructure.Seeding;
 using Sangam.Identity.Infrastructure.Services;
 using Sangam.Identity.Infrastructure.Sms;
@@ -16,12 +15,6 @@ using Sangam.Shared.Constants;
 using Sangam.Web.Shared.Hosting;
 using Sangam.Web.Shared.Localization;
 using static OpenIddict.Abstractions.OpenIddictConstants;
-
-// D-J: the breached-password list's import and refresh tool runs from this same image, then exits.
-if (args.Length > 0 && args[0] == BreachListCommand.Verb)
-{
-    Environment.Exit(await BreachListCommand.RunAsync(args[1..], Console.Out));
-}
 
 // D-A: the audit archive's key generation, listing and reading tool, likewise.
 if (args.Length > 0 && args[0] == AuditArchiveCommand.Verb)
@@ -81,7 +74,11 @@ if (keyRingProblem is not null)
 }
 
 builder.Services.AddSangamCookies(builder.Environment.EnvironmentName);
-builder.Services.AddAntiforgery(o => o.Cookie.SecurePolicy = SecurityHeaders.CookiePolicy(builder.Environment.EnvironmentName));
+builder.Services.AddAntiforgery(o =>
+{
+    o.Cookie.SecurePolicy = SecurityHeaders.CookiePolicy(builder.Environment.EnvironmentName);
+    o.Cookie.Name = SecurityHeaders.CookieName("sangam.antiforgery", builder.Environment.EnvironmentName);
+});
 builder.Services.AddAuthRateLimiting(builder.Configuration);
 builder.Services.AddAuthorization(o => o.AddManagementPolicy());
 builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationMiddlewareResultHandler, Sangam.Identity.Server.Api.AccessDeniedAudit>();
@@ -93,6 +90,13 @@ string? emailProblem = EmailSenderGuard.Validate(builder.Environment.Environment
 if (emailProblem is not null)
 {
     throw new InvalidOperationException(emailProblem);
+}
+
+// rc.5 (ASVS V2.4.5): passwords are never hashed without the pepper outside Development and Testing.
+string? pepperProblem = Sangam.Identity.Infrastructure.Security.PasswordPepperGuard.Validate(builder.Environment.EnvironmentName, builder.Configuration);
+if (pepperProblem is not null)
+{
+    throw new InvalidOperationException(pepperProblem);
 }
 
 string? smsProblem = SmsGuard.Validate(builder.Environment.EnvironmentName, builder.Configuration);
@@ -285,5 +289,6 @@ app.MapManagementEndpoints();
 app.MapSmsEndpoints();
 
 app.MapSangamHealth();
+app.MapSangamSecurityTxt(app.Configuration);
 
 await app.RunAsync().ConfigureAwait(false);

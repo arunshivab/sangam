@@ -59,6 +59,19 @@ public static class SecurityHeaders
     public static Microsoft.AspNetCore.Http.CookieSecurePolicy CookiePolicy(string environmentName)
         => environmentName is "Development" or "Testing" ? Microsoft.AspNetCore.Http.CookieSecurePolicy.SameAsRequest : Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
 
+    /// <summary>
+    /// rc.5 (ASVS V3.4.4): a session or anti-forgery cookie's name. Wherever cookies are always Secure (everywhere but
+    /// Development and Testing) it carries the <c>__Host-</c> prefix, so the browser accepts it only over HTTPS, from
+    /// this exact host, for the whole site — no other subdomain can set or overwrite it.
+    /// </summary>
+    /// <param name="name">The name without a prefix, for example <c>sangam.session</c>.</param>
+    /// <param name="environmentName">The host environment name.</param>
+    public static string CookieName(string name, string environmentName)
+        => CookiePolicy(environmentName) == Microsoft.AspNetCore.Http.CookieSecurePolicy.Always ? HostPrefix + name : name;
+
+    /// <summary>The <c>__Host-</c> cookie prefix (rc.5).</summary>
+    public const string HostPrefix = "__Host-";
+
     /// <summary>Sends the security headers on every response.</summary>
     /// <param name="app">The application.</param>
     /// <param name="environmentName">The host's environment: Development and Testing also allow http://localhost.</param>

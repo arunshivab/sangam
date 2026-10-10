@@ -1,4 +1,4 @@
-# Security evidence (R7, v1.0.0-rc.1; checks updated to rc.4)
+# Security evidence (R7, v1.0.0-rc.1; updated to rc.5)
 
 Sangam's own security work, ready for an outside tester and an auditor. None of it is a certification or a
 penetration test: those are commissioned by the founder.
@@ -74,6 +74,21 @@ rc.4's own quality review (C#, after the fixes) left these, none of them a fault
 | `cs/xml/missing-validation` | 1 | #37 above. |
 
 JavaScript held only the three alerts above; Python, Java and the workflows were clean.
+
+## ASVS decisions (rc.5)
+
+The founder decided the six requirements that were Not met on 10 October 2026 (A1 to A6). rc.5 builds them:
+
+| Decision | Requirement | Now |
+|---|---|---|
+| A1: 12 characters, no character-type rules (organisations may opt in); breached-password check online by k-anonymity with a built-in 10,000-password fallback | V2.1.1, V2.1.9, V2.1.7 | Met |
+| A2: a pepper, as Argon2id's secret input, in a secret file; one offline copy with the founder | V2.4.5 | Met |
+| A3: `__Host-` session and anti-forgery cookies, now | V3.4.4 | Met |
+| A4: consent first — the API adds only existing users; others are invited | V4.2.1 | Met (pairwise ids still to discuss) |
+| A5: logos scanned by Anjal's ClamAV; refused while it does not answer | V12.4.2 | Met |
+| A6: keys as files on the VM for the pilot and controlled launch, compensating controls in SGM-908 | V6.4.2, V6.4.1 | Accepted; review before the public launch |
+
+ASVS L2 now: 161 met, 75 partly, 1 not met (accepted), 8 for the founder, 14 not applicable ([asvs-l2.md](asvs-l2.md)).
 
 Related:
 
