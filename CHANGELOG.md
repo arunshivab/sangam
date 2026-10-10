@@ -4,6 +4,13 @@ All notable changes to Sangam are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Build
+- Linux CI, CodeQL and nightly jobs run on `ubuntu-24.04` instead of `ubuntu-latest`, which GitHub moves to Ubuntu 26
+  from 19 October 2026. The required check names are unchanged. A move to a newer image is made deliberately, as its
+  own change (SGM-912, section 7).
+
 ## [1.0.0-rc.5] - fifth release candidate
 
 Sangam 1.0.0-rc.5 acts on the founder's decisions on the six ASVS Level 2 requirements that were Not met (A1 to A6,
