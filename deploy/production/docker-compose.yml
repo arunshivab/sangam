@@ -9,7 +9,7 @@ x-host: &host
   # D-H: the backup and restore-drill scripts write their status here for the monitoring page.
   volumes:
     - /srv/sangam/status:/var/lib/sangam/status:ro
-  # D-H: logs stay on the server (rotated here; kept 180 days in the encrypted backups, R4).
+  # D-H: logs stay on the server (rotated here; kept one year in the encrypted backups, R4; rc.6).
   logging:
     driver: local
     options:

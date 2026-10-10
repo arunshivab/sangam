@@ -24,6 +24,7 @@ public sealed class EfPartnerService : IPartnerService
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
     private readonly ISecurityPolicyService _policies;
+    private readonly Verification.DigiLockerSettings _digiLocker;
 
     /// <summary>Initialises the service.</summary>
     /// <param name="db">Database.</param>
@@ -31,8 +32,10 @@ public sealed class EfPartnerService : IPartnerService
     /// <param name="audit">Audit writer.</param>
     /// <param name="clock">Clock.</param>
     /// <param name="policies">Security policies (PR-16).</param>
-    public EfPartnerService(SangamDbContext db, IManagementService management, IAuditWriter audit, IClock clock, ISecurityPolicyService policies)
+    /// <param name="digiLocker">DigiLocker settings, for whether verification can be required (rc.6).</param>
+    public EfPartnerService(SangamDbContext db, IManagementService management, IAuditWriter audit, IClock clock, ISecurityPolicyService policies, Verification.DigiLockerSettings digiLocker)
     {
+        _digiLocker = digiLocker ?? throw new ArgumentNullException(nameof(digiLocker));
         _db = db ?? throw new ArgumentNullException(nameof(db));
         _management = management ?? throw new ArgumentNullException(nameof(management));
         _audit = audit ?? throw new ArgumentNullException(nameof(audit));
@@ -319,7 +322,63 @@ public sealed class EfPartnerService : IPartnerService
         }
 
         App? app = await _db.Apps.AsNoTracking().FirstOrDefaultAsync(a => a.Id == appId, cancellationToken).ConfigureAwait(false);
-        return app is null ? null : new PartnerAppSettings(app.DisplayName, app.Description, app.BrandColour, app.Glyph, app.SignInPolicy);
+        return app is null ? null : new PartnerAppSettings(app.DisplayName, app.Description, app.BrandColour, app.Glyph, app.SignInPolicy, app.InactivityLimitYears, app.RequireIdentityVerification, _digiLocker.Enabled);
+    }
+
+    /// <summary>The longest inactivity limit an application may set, in years (rc.6).</summary>
+    public const int MaxInactivityLimitYears = 10;
+
+    /// <inheritdoc />
+    public async Task<PartnerResult> UpdateAccessRulesAsync(Guid userId, Guid appId, int? inactivityLimitYears, bool requireIdentityVerification, CancellationToken cancellationToken = default)
+    {
+        if (await GetRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
+        {
+            return NotYours;
+        }
+
+        App? app = await _db.Apps.FirstOrDefaultAsync(a => a.Id == appId, cancellationToken).ConfigureAwait(false);
+        if (app is null)
+        {
+            return NotYours;
+        }
+
+        if (inactivityLimitYears is < 1 or > MaxInactivityLimitYears)
+        {
+            return PartnerResult.Refused("The inactivity limit must be between 1 and 10 years, or none.");
+        }
+
+        if (requireIdentityVerification && !app.RequireIdentityVerification)
+        {
+            if (!_digiLocker.Enabled)
+            {
+                return PartnerResult.Refused("DigiLocker is not switched on for Sangam yet, so verification cannot be required.");
+            }
+
+            bool verified = await _db.Users.AnyAsync(u => u.Id == userId && u.IdentityVerifiedAt != null, cancellationToken).ConfigureAwait(false);
+            if (!verified)
+            {
+                return PartnerResult.Refused("Verify your own identity with DigiLocker first, on your Sangam account's profile page, before requiring it of others.");
+            }
+        }
+
+        int? limitBefore = app.InactivityLimitYears;
+        bool verificationBefore = app.RequireIdentityVerification;
+        app.InactivityLimitYears = inactivityLimitYears;
+        app.RequireIdentityVerification = requireIdentityVerification;
+        app.UpdatedAt = _clock.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        await _audit.WriteAsync(
+            new AuditEntry(AuditActions.AppSettingsUpdate, AuditActorType.Admin, userId, appId, "app", appId,
+                Metadata: JsonSerializer.Serialize(new Dictionary<string, object?>
+                {
+                    ["inactivity_limit_years_before"] = limitBefore,
+                    ["inactivity_limit_years_after"] = inactivityLimitYears,
+                    ["require_identity_verification_before"] = verificationBefore,
+                    ["require_identity_verification_after"] = requireIdentityVerification,
+                })),
+            cancellationToken).ConfigureAwait(false);
+        return PartnerResult.Ok("Access rules saved.");
     }
 
     /// <inheritdoc />

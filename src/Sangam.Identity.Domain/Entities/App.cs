@@ -55,6 +55,15 @@ public sealed class App
     /// default, not recommended by ASVS V2.1.9).</summary>
     public bool RequireCharacterTypes { get; set; }
 
+    /// <summary>
+    /// Years without sign-in after which a person's connection to this application ends (rc.6, SGM-910 section 7):
+    /// <see langword="null"/> for never. An application in a class the DPDP Rules name sets 3.
+    /// </summary>
+    public int? InactivityLimitYears { get; set; }
+
+    /// <summary>Whether people must be verified with DigiLocker before they enter this application (rc.6, SGM-914 section 4).</summary>
+    public bool RequireIdentityVerification { get; set; }
+
     /// <summary>Where Sangam posts a logout token when a session the application took part in ends (PR-20, back-channel); set by the platform operators.</summary>
     public string? BackChannelLogoutUri { get; set; }
 

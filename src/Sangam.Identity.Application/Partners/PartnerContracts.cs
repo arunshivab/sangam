@@ -49,7 +49,10 @@ public sealed record AppAdminRow(Guid UserId, string DisplayName, string Email, 
 /// <param name="BrandColour">Hex brand colour.</param>
 /// <param name="Glyph">One or two characters for the tile.</param>
 /// <param name="SignInPolicy">The application's sign-in rule.</param>
-public sealed record PartnerAppSettings(string DisplayName, string? Description, string BrandColour, string Glyph, SignInPolicy SignInPolicy);
+/// <param name="InactivityLimitYears">Years without sign-in after which a person's connection ends, or <see langword="null"/> for never (rc.6).</param>
+/// <param name="RequireIdentityVerification">Whether people must be verified with DigiLocker before entering (rc.6).</param>
+/// <param name="IdentityVerificationAvailable">Whether DigiLocker is switched on for Sangam, so the requirement can be met (rc.6).</param>
+public sealed record PartnerAppSettings(string DisplayName, string? Description, string BrandColour, string Glyph, SignInPolicy SignInPolicy, int? InactivityLimitYears = null, bool RequireIdentityVerification = false, bool IdentityVerificationAvailable = false);
 
 /// <summary>Outcome of a partner-console action.</summary>
 /// <param name="Succeeded">Whether it was applied.</param>

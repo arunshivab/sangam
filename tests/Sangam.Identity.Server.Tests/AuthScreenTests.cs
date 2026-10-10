@@ -403,6 +403,14 @@ public sealed partial class AuthScreenTests
         Assert.Equal(HttpStatusCode.OK, wrongStatus);
         Assert.Contains("not correct", wrongHtml, StringComparison.Ordinal);
 
+        // rc.6 (SGM-914): a lost authenticator is recovered with DigiLocker from here, never through support.
+        Assert.Contains("href=\"/login/recover\"", wrongHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("video call", wrongHtml, StringComparison.OrdinalIgnoreCase);
+        (HttpStatusCode recoverStatus, string recoverHtml) = await s.GetAsync("/login/recover");
+        Assert.Equal(HttpStatusCode.OK, recoverStatus);
+        Assert.Contains("Recover your account with DigiLocker", recoverHtml, StringComparison.Ordinal);
+        Assert.Contains("DigiLocker is not available right now", recoverHtml, StringComparison.Ordinal);
+
         // The right code completes the sign-in.
         string current;
         using (IServiceScope scope = _factory.Services.CreateScope())
@@ -414,6 +422,22 @@ public sealed partial class AuthScreenTests
 
         (_, string? afterCode, _) = await s.PostFormAsync("/login/authenticator", new Dictionary<string, string> { ["Code"] = current });
         Assert.Equal("/account", afterCode);
+    }
+
+    [Fact]
+    public async Task Recovery_WithoutAPendingFirstStep_SendsYouBackToSignIn_AndAStaleCallbackStartsNothing()
+    {
+        // rc.6 (SGM-914): the recovery pages never reveal whether an account exists.
+        using BrowserSession s = new(_factory);
+        (HttpStatusCode status, _) = await s.GetAsync("/login/recover");
+        Assert.Equal(HttpStatusCode.Found, status);
+
+        (HttpStatusCode callback, string? where, _) = await s.GetWithLocationAsync("/identity/digilocker/callback?state=abc&code=xyz");
+        Assert.Equal(HttpStatusCode.Found, callback);
+        Assert.Equal("/login/recover/result?outcome=expired", where);
+
+        (_, string review) = await s.GetAsync("/login/recover/result?outcome=review");
+        Assert.Contains("a Sangam operator will compare the name, date of birth and gender", review, StringComparison.Ordinal);
     }
 
     [Fact]

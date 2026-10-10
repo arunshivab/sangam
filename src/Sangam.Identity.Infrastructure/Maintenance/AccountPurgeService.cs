@@ -14,7 +14,8 @@ namespace Sangam.Identity.Infrastructure.Maintenance;
 
 /// <summary>
 /// Hourly housekeeping: hard-deletes accounts whose 30-day grace period has passed, prunes
-/// session rows that have been revoked for more than 90 days, and runs the audit archive (D-A).
+/// session rows that have been revoked for more than 90 days, deletes short-lived records past their retention
+/// (rc.6, <see cref="RetentionSweep"/>), and runs the audit archive (D-A).
 /// <para>
 /// A hard delete pseudonymises the user row — name, email, mobile and password hash are
 /// destroyed and the email is replaced with an unusable placeholder — but the row and the audit
@@ -94,10 +95,20 @@ public sealed partial class AccountPurgeService : BackgroundService
         using IServiceScope scope = _scopeFactory.CreateScope();
         SangamDbContext db = scope.ServiceProvider.GetRequiredService<SangamDbContext>();
         IAuditWriter audit = scope.ServiceProvider.GetRequiredService<IAuditWriter>();
+        InactivityService inactivity = scope.ServiceProvider.GetRequiredService<InactivityService>();
         (int Accounts, int Sessions) result = (0, 0);
 
         // R7 (PR-33, OI-047): every host runs this service; one at a time sweeps, so no account is purged twice.
-        await ClusterLock.TryRunAsync(db, ClusterLock.Maintenance, async ct => result = await SweepAsync(db, audit, ct).ConfigureAwait(false), cancellationToken).ConfigureAwait(false);
+        // rc.6: inactive connections and accounts first, so an account scheduled now is purged in the same sweep.
+        await ClusterLock.TryRunAsync(
+            db,
+            ClusterLock.Maintenance,
+            async ct =>
+            {
+                await inactivity.RunAsync(ct).ConfigureAwait(false);
+                result = await SweepAsync(db, audit, ct).ConfigureAwait(false);
+            },
+            cancellationToken).ConfigureAwait(false);
         return result;
     }
 
@@ -140,6 +151,9 @@ public sealed partial class AccountPurgeService : BackgroundService
         DateTimeOffset log = now - TimeSpan.FromDays(90);
         await db.ScimDeliveries.Where(d => d.CompletedAt != null && d.CompletedAt < log).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
         await db.WebhookDeliveries.Where(d => d.CompletedAt != null && d.CompletedAt < log).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+
+        // rc.6 (SGM-910 section 6): codes, finished requests, the SMS log and closed grievances.
+        await RetentionSweep.RunAsync(db, now, cancellationToken).ConfigureAwait(false);
 
         // R7: counts of wrong passwords for unknown addresses are forgotten after a day.
         await Accounts.UnknownAddressLockout.PruneAsync(db, now, cancellationToken).ConfigureAwait(false);

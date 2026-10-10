@@ -34,6 +34,7 @@ public sealed class EfMfaResetService : IMfaResetService
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
     private readonly IConfiguration _configuration;
+    private readonly Verification.EfIdentityVerificationService _verification;
 
     /// <summary>Initialises the service.</summary>
     /// <param name="db">Database.</param>
@@ -45,8 +46,10 @@ public sealed class EfMfaResetService : IMfaResetService
     /// <param name="audit">Audit writer.</param>
     /// <param name="clock">Clock.</param>
     /// <param name="configuration">Configuration (<c>Sangam:Recovery</c>, and the identity server's address for the link).</param>
-    public EfMfaResetService(SangamDbContext db, UserManager<SangamUser> users, IPortalService portal, IEmailSender email, IMessageTemplates templates, SmsNoticeSender sms, IAuditWriter audit, IClock clock, IConfiguration configuration)
+    /// <param name="verification">Identity verification, to store a recovered person's DigiLocker identity (rc.6).</param>
+    public EfMfaResetService(SangamDbContext db, UserManager<SangamUser> users, IPortalService portal, IEmailSender email, IMessageTemplates templates, SmsNoticeSender sms, IAuditWriter audit, IClock clock, IConfiguration configuration, Verification.EfIdentityVerificationService verification)
     {
+        _verification = verification ?? throw new ArgumentNullException(nameof(verification));
         _db = db ?? throw new ArgumentNullException(nameof(db));
         _users = users ?? throw new ArgumentNullException(nameof(users));
         _portal = portal ?? throw new ArgumentNullException(nameof(portal));
@@ -131,7 +134,7 @@ public sealed class EfMfaResetService : IMfaResetService
     {
         DateTimeOffset now = _clock.UtcNow;
         List<MfaResetRequest> due = await _db.MfaResetRequests.AsNoTracking()
-            .Where(r => r.CancelledAt == null && r.AppliedAt == null && r.EffectiveAt <= now)
+            .Where(r => r.CancelledAt == null && r.AppliedAt == null && r.EffectiveAt <= now && (r.ReviewStatus == null || r.ReviewStatus == MfaResetReview.Approved))
             .OrderBy(r => r.EffectiveAt)
             .Take(100)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
@@ -154,56 +157,166 @@ public sealed class EfMfaResetService : IMfaResetService
             .OrderByDescending(r => r.RequestedAt)
             .FirstOrDefaultAsync(cancellationToken);
 
-    /// <summary>Creates a request, audits it and alerts the owner on every channel.</summary>
-    internal async Task<MfaResetRequest> CreateAsync(SangamUser user, Guid operatorUserId, string method, string reference, bool privileged, string? ipAddress, CancellationToken cancellationToken)
+    /// <summary>
+    /// Whether an account is privileged for a reset (D-K): an operator, an application administrator or an organisation
+    /// administrator. Privileged accounts wait 72 hours instead of 24, and only an Owner reviews their recovery.
+    /// </summary>
+    /// <param name="userId">The account.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    internal async Task<bool> IsPrivilegedAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        DateTimeOffset now = _clock.UtcNow;
+        return await _db.PlatformOperators.AnyAsync(o => o.UserId == userId && o.RevokedAt == null, cancellationToken).ConfigureAwait(false)
+            || await _db.AppAdmins.AnyAsync(a => a.UserId == userId && a.RevokedAt == null, cancellationToken).ConfigureAwait(false)
+            || await _db.OrgMemberships.AnyAsync(m => m.UserId == userId && m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > now) && m.Role!.Code == "org_admin", cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// rc.6 (SGM-914): creates the request for a person's own recovery with DigiLocker, audits it, and alerts the owner
+    /// on every channel with the cancel link. <paramref name="match"/> says how the record matched (<c>strong</c>,
+    /// <c>rule</c>, or <c>review</c>); a <c>review</c> request waits for an operator before its cooling-off starts.
+    /// </summary>
+    internal async Task<MfaResetRequest> CreateRecoveryAsync(SangamUser user, bool privileged, string match, string record, string? ipAddress, CancellationToken cancellationToken)
     {
         DateTimeOffset now = _clock.UtcNow;
         string token = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(32));
         TimeSpan period = CoolingOff(privileged);
+        bool review = match == "review";
         MfaResetRequest request = new()
         {
             Id = Guid.NewGuid(),
             UserId = user.Id,
-            RequestedByUserId = operatorUserId,
-            VerificationMethod = method,
-            Reference = reference.Trim(),
+            RequestedByUserId = user.Id,
+            VerificationMethod = "digilocker",
+            Reference = match,
             Privileged = privileged,
             RequestedAt = now,
             EffectiveAt = now + period,
             CancelTokenHash = Hash(token),
+            ReviewStatus = review ? MfaResetReview.Waiting : null,
+            Record = record,
         };
         _db.MfaResetRequests.Add(request);
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         _db.Entry(request).State = EntityState.Detached;
 
         await _audit.WriteAsync(
-            new AuditEntry(AuditActions.AdminUserMfaResetRequest, AuditActorType.Admin, operatorUserId, TargetType: "user", TargetId: user.Id,
+            new AuditEntry(AuditActions.UserMfaRecoveryRequest, AuditActorType.User, user.Id, TargetType: "user", TargetId: user.Id,
                 Metadata: JsonSerializer.Serialize(new Dictionary<string, object>
                 {
                     ["request_id"] = request.Id,
-                    ["verified_by"] = method,
-                    ["reference"] = request.Reference,
+                    ["match"] = match,
                     ["privileged"] = privileged,
-                    ["effective_at"] = request.EffectiveAt.ToString("O", CultureInfo.InvariantCulture),
+                    ["effective_at"] = review ? "after_review" : request.EffectiveAt.ToString("O", CultureInfo.InvariantCulture),
                 }),
                 IpAddress: ipAddress),
             cancellationToken).ConfigureAwait(false);
 
-        // Every channel: e-mail with the one-click cancel link, SMS when it is on, and the notice at next sign-in.
-        Dictionary<string, string> values = new(StringComparer.Ordinal)
+        if (review)
         {
-            ["name"] = user.DisplayName,
-            ["hours"] = ((int)period.TotalHours).ToString(CultureInfo.InvariantCulture),
-            ["effective"] = Ist(request.EffectiveAt),
-            ["link"] = CancelLink(token),
-        };
-        if (!string.IsNullOrEmpty(user.Email))
+            await SendAsync(user, MessageTemplateKinds.RecoveryReviewWaiting, new Dictionary<string, string>(StringComparer.Ordinal) { ["name"] = user.DisplayName, ["link"] = CancelLink(token) }, cancellationToken).ConfigureAwait(false);
+        }
+        else
         {
-            await _email.SendAsync(await _templates.EmailAsync(MessageTemplateKinds.TwoStepResetRequested, user.Locale, null, null, values, user.Email, user.DisplayName, cancellationToken).ConfigureAwait(false), cancellationToken).ConfigureAwait(false);
+            await SendRequestedAsync(user, request.RequestedAt, request.EffectiveAt, token, cancellationToken).ConfigureAwait(false);
         }
 
         await _sms.TrySendResetNoticeAsync(user, cancellationToken).ConfigureAwait(false);
         return request;
+    }
+
+    /// <summary>
+    /// rc.6: an operator approves a recovery after review. Its cooling-off period starts now, with a fresh cancel link
+    /// sent to the owner (the first one stops working). Returns false when it was no longer waiting.
+    /// </summary>
+    internal async Task<bool> ApproveAsync(MfaResetRequest request, Guid operatorUserId, string reason, string? ipAddress, CancellationToken cancellationToken)
+    {
+        DateTimeOffset now = _clock.UtcNow;
+        string token = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(32));
+        DateTimeOffset effective = now + CoolingOff(request.Privileged);
+        int approved = await _db.MfaResetRequests
+            .Where(r => r.Id == request.Id && r.ReviewStatus == MfaResetReview.Waiting && r.CancelledAt == null && r.AppliedAt == null)
+            .ExecuteUpdateAsync(
+                s => s.SetProperty(r => r.ReviewStatus, MfaResetReview.Approved)
+                    .SetProperty(r => r.ReviewedByUserId, operatorUserId)
+                    .SetProperty(r => r.ReviewedAt, now)
+                    .SetProperty(r => r.ReviewReason, reason)
+                    .SetProperty(r => r.EffectiveAt, effective)
+                    .SetProperty(r => r.CancelTokenHash, Hash(token)),
+                cancellationToken)
+            .ConfigureAwait(false);
+        if (approved == 0)
+        {
+            return false;
+        }
+
+        await _audit.WriteAsync(
+            new AuditEntry(AuditActions.AdminUserMfaRecoveryApprove, AuditActorType.Admin, operatorUserId, TargetType: "user", TargetId: request.UserId,
+                Metadata: JsonSerializer.Serialize(new Dictionary<string, object> { ["request_id"] = request.Id, ["reason"] = reason, ["effective_at"] = effective.ToString("O", CultureInfo.InvariantCulture) }),
+                IpAddress: ipAddress),
+            cancellationToken).ConfigureAwait(false);
+        SangamUser? user = await _users.FindByIdAsync(request.UserId.ToString("D")).ConfigureAwait(false);
+        if (user is not null)
+        {
+            await SendRequestedAsync(user, now, effective, token, cancellationToken).ConfigureAwait(false);
+        }
+
+        return true;
+    }
+
+    /// <summary>rc.6: an operator refuses a recovery after review; the record is cleared and the person told. False when it was no longer waiting.</summary>
+    internal async Task<bool> RefuseAsync(MfaResetRequest request, Guid operatorUserId, string reason, string? ipAddress, CancellationToken cancellationToken)
+    {
+        DateTimeOffset now = _clock.UtcNow;
+        int refused = await _db.MfaResetRequests
+            .Where(r => r.Id == request.Id && r.ReviewStatus == MfaResetReview.Waiting && r.CancelledAt == null && r.AppliedAt == null)
+            .ExecuteUpdateAsync(
+                s => s.SetProperty(r => r.ReviewStatus, MfaResetReview.Refused)
+                    .SetProperty(r => r.ReviewedByUserId, operatorUserId)
+                    .SetProperty(r => r.ReviewedAt, now)
+                    .SetProperty(r => r.ReviewReason, reason)
+                    .SetProperty(r => r.CancelledAt, now)
+                    .SetProperty(r => r.CancelledBy, "review")
+                    .SetProperty(r => r.Record, (string?)null),
+                cancellationToken)
+            .ConfigureAwait(false);
+        if (refused == 0)
+        {
+            return false;
+        }
+
+        await _audit.WriteAsync(
+            new AuditEntry(AuditActions.AdminUserMfaRecoveryRefuse, AuditActorType.Admin, operatorUserId, TargetType: "user", TargetId: request.UserId,
+                Metadata: JsonSerializer.Serialize(new Dictionary<string, object> { ["request_id"] = request.Id, ["reason"] = reason }),
+                IpAddress: ipAddress),
+            cancellationToken).ConfigureAwait(false);
+        SangamUser? user = await _users.FindByIdAsync(request.UserId.ToString("D")).ConfigureAwait(false);
+        if (user is not null)
+        {
+            await SendAsync(user, MessageTemplateKinds.RecoveryRefused, new Dictionary<string, string>(StringComparer.Ordinal) { ["name"] = user.DisplayName }, cancellationToken).ConfigureAwait(false);
+        }
+
+        return true;
+    }
+
+    private async Task SendRequestedAsync(SangamUser user, DateTimeOffset from, DateTimeOffset effective, string token, CancellationToken cancellationToken)
+    {
+        Dictionary<string, string> values = new(StringComparer.Ordinal)
+        {
+            ["name"] = user.DisplayName,
+            ["hours"] = ((int)Math.Round((effective - from).TotalHours)).ToString(CultureInfo.InvariantCulture),
+            ["effective"] = Ist(effective),
+            ["link"] = CancelLink(token),
+        };
+        await SendAsync(user, MessageTemplateKinds.TwoStepResetRequested, values, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task SendAsync(SangamUser user, string kind, Dictionary<string, string> values, CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrEmpty(user.Email))
+        {
+            await _email.SendAsync(await _templates.EmailAsync(kind, user.Locale, null, null, values, user.Email, user.DisplayName, cancellationToken).ConfigureAwait(false), cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
@@ -216,7 +329,7 @@ public sealed class EfMfaResetService : IMfaResetService
         int claimed = await _db.MfaResetRequests
             .Where(r => r.Id == request.Id && r.CancelledAt == null && r.AppliedAt == null)
             .ExecuteUpdateAsync(
-                s => s.SetProperty(r => r.AppliedAt, now).SetProperty(r => r.UrgentByUserId, urgentBy).SetProperty(r => r.UrgentReason, reason),
+                s => s.SetProperty(r => r.AppliedAt, now).SetProperty(r => r.UrgentByUserId, urgentBy).SetProperty(r => r.UrgentReason, reason).SetProperty(r => r.Record, (string?)null),
                 cancellationToken)
             .ConfigureAwait(false);
         if (claimed == 0)
@@ -234,11 +347,15 @@ public sealed class EfMfaResetService : IMfaResetService
         await _users.ResetAuthenticatorKeyAsync(user).ConfigureAwait(false);
         await _users.UpdateSecurityStampAsync(user).ConfigureAwait(false);
         await _portal.RevokeAllSessionsAsync(user.Id, ipAddress, cancellationToken).ConfigureAwait(false);
-        if (!string.IsNullOrEmpty(user.Email))
+
+        // rc.6 (SGM-914 section 5): a person recovered with DigiLocker who was not verified is verified now, so their next
+        // recovery uses the strong match. Their name, date of birth and gender take the record's values, as they agreed.
+        if (RecoveryRecord.Parse(request.Record) is RecoveryRecord record && user.IdentityVerifiedAt is null)
         {
-            Dictionary<string, string> values = new(StringComparer.Ordinal) { ["name"] = user.DisplayName };
-            await _email.SendAsync(await _templates.EmailAsync(MessageTemplateKinds.TwoStepResetNotice, user.Locale, null, null, values, user.Email, user.DisplayName, cancellationToken).ConfigureAwait(false), cancellationToken).ConfigureAwait(false);
+            await _verification.ApplyHashedAsync(user.Id, new Application.Verification.VerifiedIdentity(record.Method, record.SubjectHash, record.Name, record.DateOfBirth, record.Gender), ipAddress, cancellationToken).ConfigureAwait(false);
         }
+
+        await SendAsync(user, MessageTemplateKinds.TwoStepResetNotice, new Dictionary<string, string>(StringComparer.Ordinal) { ["name"] = user.DisplayName }, cancellationToken).ConfigureAwait(false);
 
         await _audit.WriteAsync(
             new AuditEntry(AuditActions.AdminUserMfaReset, urgentBy is null ? AuditActorType.System : AuditActorType.Admin, urgentBy ?? request.RequestedByUserId, TargetType: "user", TargetId: user.Id,
@@ -260,7 +377,7 @@ public sealed class EfMfaResetService : IMfaResetService
         DateTimeOffset now = _clock.UtcNow;
         int cancelled = await _db.MfaResetRequests
             .Where(r => r.Id == request.Id && r.CancelledAt == null && r.AppliedAt == null)
-            .ExecuteUpdateAsync(s => s.SetProperty(r => r.CancelledAt, now).SetProperty(r => r.CancelledBy, by), cancellationToken)
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.CancelledAt, now).SetProperty(r => r.CancelledBy, by).SetProperty(r => r.Record, (string?)null), cancellationToken)
             .ConfigureAwait(false);
         if (cancelled == 0)
         {
@@ -283,7 +400,7 @@ public sealed class EfMfaResetService : IMfaResetService
         return origin + "/account/reset/cancel/" + token;
     }
 
-    private static PendingTwoStepReset View(MfaResetRequest r) => new(r.Id, r.RequestedAt, r.EffectiveAt, r.Privileged, r.VerificationMethod);
+    private static PendingTwoStepReset View(MfaResetRequest r) => new(r.Id, r.RequestedAt, r.EffectiveAt, r.Privileged, r.VerificationMethod, r.ReviewStatus == MfaResetReview.Waiting);
 
     private static string Hash(string token) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
 

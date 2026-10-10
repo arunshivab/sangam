@@ -17,5 +17,6 @@ secret files are never committed: `.gitignore` excludes everything here except t
 | `ConnectionStrings__Imagiqa` | D-I: the demo's own database, `imagiqa_demo`, as its own role (`imagiqa_demo`) — never Sangam's. |
 | `audit_archive.crt` | D-A: the **public** certificate the audit archive is encrypted for. Made once on the founder's own computer with `audit-archive keygen`; the private key (`audit-archive.key.pem`) never comes to the server. Identity server only. |
 | `saml_signing_current.pfx`, `Sangam__Saml__Certificates__0__Password`, `Sangam__Saml__PairwiseKey` | PR-22, only when SAML is switched on (`docker-compose.saml.yml`): a SAML-only signing certificate and its password, and the pairwise key (48+ random characters, never changed) behind each service provider's private NameID. Identity server only. |
+| `Sangam__DigiLocker__ClientId`, `Sangam__DigiLocker__ClientSecret`, `Sangam__DigiLocker__SubjectKey` | PR-26, required from rc.6 (`docker-compose.digilocker.yml`): the client id and secret DigiLocker issues at onboarding, and the subject key (32+ random characters, `openssl rand -base64 48`, never changed) DigiLocker ids are hashed with. The portal and the identity server share the same three files. One offline copy of the subject key with the founder. |
 
 Files ending in `.pfx` or `.crt`, and files named `ignore.*`, are not read as settings.

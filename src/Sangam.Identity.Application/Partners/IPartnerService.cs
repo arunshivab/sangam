@@ -67,6 +67,19 @@ public interface IPartnerService
     /// <summary>Updates branding and sign-in policy. The policy may only be made stricter, never weaker.</summary>
     Task<PartnerResult> UpdateSettingsAsync(Guid userId, Guid appId, string? description, string brandColour, string glyph, SignInPolicy signInPolicy, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// rc.6: who may keep using the application. <paramref name="inactivityLimitYears"/> (1 to 10, or <see langword="null"/>
+    /// for never) ends a person's connection after that long without sign-in (SGM-910 section 7);
+    /// <paramref name="requireIdentityVerification"/> asks people to verify with DigiLocker before entering (SGM-914 section 4),
+    /// and can be switched on only by an administrator who is verified themselves, while DigiLocker is available.
+    /// </summary>
+    /// <param name="userId">The administrator.</param>
+    /// <param name="appId">The application.</param>
+    /// <param name="inactivityLimitYears">The limit, or <see langword="null"/>.</param>
+    /// <param name="requireIdentityVerification">Whether verification is required.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<PartnerResult> UpdateAccessRulesAsync(Guid userId, Guid appId, int? inactivityLimitYears, bool requireIdentityVerification, CancellationToken cancellationToken = default);
+
     /// <summary>The application's password and second-factor policy, against the platform's (PR-16).</summary>
     /// <param name="userId">The administrator.</param>
     /// <param name="appId">The application.</param>

@@ -13,6 +13,9 @@ public sealed class EfSessionService : ISessionService
     /// <summary>How stale a session's last-seen time may be before it is written again.</summary>
     public static readonly TimeSpan TouchInterval = TimeSpan.FromMinutes(5);
 
+    /// <summary>How stale a connection's last-used time may be before it is written again.</summary>
+    public static readonly TimeSpan UseInterval = TimeSpan.FromHours(1);
+
     private readonly IDbContextFactory<SangamDbContext> _contextFactory;
     private readonly IClock _clock;
 
@@ -47,9 +50,29 @@ public sealed class EfSessionService : ISessionService
         {
             db.UserSessions.Add(session);
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+            // rc.6 (SGM-910 section 7): a sign-in keeps the account from being treated as inactive.
+            await db.Users.Where(u => u.Id == userId)
+                .ExecuteUpdateAsync(u => u.SetProperty(x => x.LastSignInAt, now).SetProperty(x => x.InactivityNoticeAt, (DateTimeOffset?)null), cancellationToken)
+                .ConfigureAwait(false);
         }
 
         return session.Id;
+    }
+
+    /// <inheritdoc />
+    public async Task RecordUseAsync(Guid userId, Guid appId, CancellationToken cancellationToken = default)
+    {
+        DateTimeOffset now = _clock.UtcNow;
+        DateTimeOffset stale = now - UseInterval;
+        SangamDbContext db = await _contextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        await using (db.ConfigureAwait(false))
+        {
+            await db.AppGrants
+                .Where(g => g.UserId == userId && g.AppId == appId && g.RevokedAt == null && (g.LastUsedAt == null || g.LastUsedAt < stale || g.InactivityNoticeAt != null))
+                .ExecuteUpdateAsync(u => u.SetProperty(g => g.LastUsedAt, now).SetProperty(g => g.InactivityNoticeAt, (DateTimeOffset?)null), cancellationToken)
+                .ConfigureAwait(false);
+        }
     }
 
     /// <inheritdoc />

@@ -22,7 +22,7 @@ sangam = SangamFastAPI(
         client_secret=os.environ.get("SANGAM_CLIENT_SECRET", "sangam-dev-sample-secret-change-me"),
         base_url=os.environ.get("BASE_URL", f"http://localhost:{PORT}"),
         cookie_secret=os.environ.get("COOKIE_SECRET", "sample-only-cookie-secret-change-me-0123456789"),
-        audit=AuditConfig("sangam-dev-sample", "1.0.0rc5", "development"),
+        audit=AuditConfig("sangam-dev-sample", "1.0.0rc6", "development"),
         audit_buffer=os.environ.get("AUDIT_BUFFER", "sangam-audit/pending.jsonl"),
     )
 )

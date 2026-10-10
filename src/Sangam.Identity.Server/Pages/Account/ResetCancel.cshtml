@@ -18,7 +18,14 @@
   }
   else
   {
-    <p class="sg-card-body">@L["Sangam support was asked to remove the authenticator app from your account. Unless you stop it, this happens on {0}.", Model.EffectiveText]</p>
+    @if (Model.Pending?.AwaitingReview == true)
+    {
+      <p class="sg-card-body">@L["Someone asked to recover your account with DigiLocker, saying you had lost your authenticator. A Sangam operator will review it before anything happens."]</p>
+    }
+    else
+    {
+      <p class="sg-card-body">@L["Someone asked to recover your account with DigiLocker, saying you had lost your authenticator. Unless you stop it, your authenticator is removed on {0}.", Model.EffectiveText]</p>
+    }
     <form method="post">
       <button type="submit" class="sg-btn sg-btn--danger sg-btn--block">@L["This wasn't me — cancel the reset"]</button>
     </form>

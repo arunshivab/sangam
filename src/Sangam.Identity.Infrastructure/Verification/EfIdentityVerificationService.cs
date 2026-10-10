@@ -47,11 +47,36 @@ public sealed class EfIdentityVerificationService : IIdentityVerificationService
     }
 
     /// <inheritdoc />
-    public async Task<VerificationResult> ApplyAsync(Guid userId, VerifiedIdentity identity, string? ipAddress, CancellationToken cancellationToken = default)
+    public Task<VerificationResult> ApplyAsync(Guid userId, VerifiedIdentity identity, string? ipAddress, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(identity);
-        string hash = SubjectHash(identity.Method, identity.Subject);
-        if (await _db.IdentityVerifications.AnyAsync(v => v.Method == identity.Method && v.SubjectHash == hash && v.UserId != userId, cancellationToken).ConfigureAwait(false))
+        return ApplyHashedAsync(userId, identity with { Subject = SubjectHash(identity.Method, identity.Subject) }, ipAddress, cancellationToken);
+    }
+
+    /// <summary>
+    /// Whether this DigiLocker identity already verifies an account other than <paramref name="userId"/> (rc.6: a recovery
+    /// with it is refused, since one identity verifies one account).
+    /// </summary>
+    /// <param name="userId">The account.</param>
+    /// <param name="method">The method.</param>
+    /// <param name="subjectHash">The keyed hash of the provider's id.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public Task<bool> BelongsToAnotherAsync(Guid userId, string method, string subjectHash, CancellationToken cancellationToken = default)
+        => _db.IdentityVerifications.AnyAsync(v => v.Method == method && v.SubjectHash == subjectHash && v.UserId != userId, cancellationToken);
+
+    /// <summary>
+    /// Applies a verification whose provider id is already hashed (<see cref="SubjectHash"/>) in <see cref="VerifiedIdentity.Subject"/>:
+    /// how a recovery stores the identity after its waiting period without ever keeping the DigiLocker id itself (rc.6).
+    /// </summary>
+    /// <param name="userId">The account.</param>
+    /// <param name="identity">The identity, its subject hashed.</param>
+    /// <param name="ipAddress">The caller's address.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task<VerificationResult> ApplyHashedAsync(Guid userId, VerifiedIdentity identity, string? ipAddress, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(identity);
+        string hash = identity.Subject;
+        if (await BelongsToAnotherAsync(userId, identity.Method, hash, cancellationToken).ConfigureAwait(false))
         {
             await _audit.WriteAsync(new AuditEntry(AuditActions.IdentityVerifyRefused, AuditActorType.User, userId, TargetType: "user", TargetId: userId,
                 Metadata: JsonSerializer.Serialize(new { method = identity.Method, reason = "identity_on_another_account" }), IpAddress: ipAddress), cancellationToken).ConfigureAwait(false);

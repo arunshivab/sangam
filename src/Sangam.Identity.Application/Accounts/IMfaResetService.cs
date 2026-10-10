@@ -1,12 +1,13 @@
 namespace Sangam.Identity.Application.Accounts;
 
-/// <summary>A two-step reset waiting out its cooling-off period (D-K).</summary>
+/// <summary>A two-step reset (from rc.6, a recovery with DigiLocker) waiting out its cooling-off period (D-K).</summary>
 /// <param name="Id">The request.</param>
-/// <param name="RequestedAt">When support asked for it.</param>
-/// <param name="EffectiveAt">When it takes effect, unless cancelled.</param>
+/// <param name="RequestedAt">When it was asked for.</param>
+/// <param name="EffectiveAt">When it takes effect, unless cancelled (once approved, if it waits for review).</param>
 /// <param name="Privileged">Whether the account is privileged (72 hours instead of 24).</param>
-/// <param name="VerificationMethod">How support verified the person.</param>
-public sealed record PendingTwoStepReset(Guid Id, DateTimeOffset RequestedAt, DateTimeOffset EffectiveAt, bool Privileged, string VerificationMethod);
+/// <param name="VerificationMethod">How the person was verified (<c>digilocker</c> from rc.6).</param>
+/// <param name="AwaitingReview">Whether it waits for an operator's review, the record not having matched (rc.6).</param>
+public sealed record PendingTwoStepReset(Guid Id, DateTimeOffset RequestedAt, DateTimeOffset EffectiveAt, bool Privileged, string VerificationMethod, bool AwaitingReview = false);
 
 /// <summary>
 /// The owner's side of a support reset of two-step sign-in (D-K): cancel it ("this wasn't me") from the e-mail

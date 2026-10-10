@@ -1,9 +1,10 @@
 namespace Sangam.Identity.Domain.Entities;
 
 /// <summary>
-/// A support request to reset someone's two-step sign-in, waiting out its cooling-off period (D-K): 24 hours for
-/// ordinary accounts, 72 for privileged ones. It is applied only when the period ends and nobody cancelled it, or
-/// at once under an urgent override.
+/// A request to reset someone's two-step sign-in, waiting out its cooling-off period (D-K): 24 hours for ordinary
+/// accounts, 72 for privileged ones. It is applied only when the period ends and nobody cancelled it, or at once under
+/// the founder's urgent override. From rc.6 (SGM-914) it comes from the person's own recovery with DigiLocker, and a
+/// record that does not match the account waits for an operator's review first.
 /// </summary>
 public class MfaResetRequest
 {
@@ -51,6 +52,28 @@ public class MfaResetRequest
 
     /// <summary>When the owner saw the notice at sign-in.</summary>
     public DateTimeOffset? NoticeSeenAt { get; set; }
+
+    /// <summary>
+    /// rc.6 (SGM-914): an operator's review, for a recovery whose DigiLocker record did not match the account:
+    /// <see langword="null"/> when none was needed, else <see cref="MfaResetReview"/>. A request waiting for review never
+    /// takes effect.
+    /// </summary>
+    public string? ReviewStatus { get; set; }
+
+    /// <summary>
+    /// rc.6: what DigiLocker said (name, date of birth, gender, the keyed hash of the DigiLocker id) and which part did
+    /// not match, as JSON — kept only until the request is applied, refused or cancelled, then cleared (SGM-910).
+    /// </summary>
+    public string? Record { get; set; }
+
+    /// <summary>The operator who reviewed it.</summary>
+    public Guid? ReviewedByUserId { get; set; }
+
+    /// <summary>When it was reviewed.</summary>
+    public DateTimeOffset? ReviewedAt { get; set; }
+
+    /// <summary>The reviewer's reason.</summary>
+    public string? ReviewReason { get; set; }
 
     /// <summary>Whether it is still waiting: neither cancelled nor applied.</summary>
     public bool Pending => CancelledAt is null && AppliedAt is null;

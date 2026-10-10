@@ -2,7 +2,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <parent><groupId>in.sangamid</groupId><artifactId>sangam-parent</artifactId><version>1.0.0-rc.5</version></parent>
+  <parent><groupId>in.sangamid</groupId><artifactId>sangam-parent</artifactId><version>1.0.0-rc.6</version></parent>
   <artifactId>sangam-client</artifactId>
   <name>Sangam client for Java</name>
   <description>Who signed in and what they may do in which organisation, step-up, webhook verification, the shared audit event, access-token checks and the management API.</description>

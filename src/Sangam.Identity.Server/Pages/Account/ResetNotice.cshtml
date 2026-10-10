@@ -9,7 +9,14 @@
   <h1 class="sg-card-title sg-card-title--centre">@L["A reset of your two-step sign-in is waiting"]</h1>
   @if (Model.Pending is not null)
   {
-    <p class="sg-card-body">@L["Sangam support was asked to remove the authenticator app from your account, because someone said you had lost it. Unless you stop it, this happens on {0}.", Model.EffectiveText]</p>
+    @if (Model.Pending.AwaitingReview)
+    {
+      <p class="sg-card-body">@L["Someone asked to recover your account with DigiLocker, saying you had lost your authenticator. A Sangam operator will review it before anything happens."]</p>
+    }
+    else
+    {
+      <p class="sg-card-body">@L["Someone asked to recover your account with DigiLocker, saying you had lost your authenticator. Unless you stop it, your authenticator is removed on {0}.", Model.EffectiveText]</p>
+    }
     <p class="sg-card-body">@L["If you did not ask for this, someone may be trying to take over your account. Cancel it now."]</p>
     <form method="post" asp-page-handler="Cancel">
       <input type="hidden" asp-for="ReturnUrl" />
