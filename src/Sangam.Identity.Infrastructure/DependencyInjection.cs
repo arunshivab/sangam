@@ -95,6 +95,8 @@ public static class DependencyInjection
             // R7: authenticator secrets encrypted and recovery codes hashed (ASVS V2.8.2, V2.6.2); authenticator codes
             // accepted once (V2.8.4).
             .AddUserStore<Accounts.SangamUserStore>()
+            // rc.8 (ASVS V2.6.2): 24-character recovery codes.
+            .AddUserManager<Accounts.SangamUserManager>()
             .AddTokenProvider<Accounts.SangamAuthenticatorTokenProvider>(TokenOptions.DefaultAuthenticatorProvider);
 
         // PR-16: platform → application → organisation security policies, and the breached-password check.
@@ -102,6 +104,9 @@ public static class DependencyInjection
         services.AddSingleton(policies);
         services.AddScoped<ISecurityPolicyService, EfSecurityPolicyService>();
         // rc.5 (D-J revised): the built-in list first, then Pwned Passwords by k-anonymity; an outage falls back to the list.
+        // rc.8 (ASVS V9.2.4): every HTTP client checks the server's certificate for revocation (soft fail when the
+        // answer cannot be had); a named client that sets its own handler applies the same check (OutboundHttp).
+        services.ConfigureHttpClientDefaults(b => b.ConfigurePrimaryHttpMessageHandler(Security.TlsRevocation.CreateHandler));
         services.AddHttpClient(PwnedPasswordsChecker.HttpClientName, c => c.DefaultRequestHeaders.UserAgent.ParseAdd("SangamID-breach-check"));
         services.AddSingleton<PwnedPasswordsChecker>();
         services.AddSingleton<IBreachedPasswordChecker>(sp => sp.GetRequiredService<PwnedPasswordsChecker>());
@@ -146,6 +151,7 @@ public static class DependencyInjection
         services.AddScoped<IPartnerService, EfPartnerService>();
         services.AddScoped<IInvitationService, EfInvitationService>();
         services.AddScoped<IMfaService, TotpMfaService>();
+        services.AddScoped<Accounts.TotpReplay>();
         services.AddSingleton<ISessionService, EfSessionService>();
 
         services.AddSingleton<IClock, SystemClock>();
@@ -165,7 +171,7 @@ public static class DependencyInjection
         if (anjal.Configured)
         {
             services.AddSingleton(sp => new AnjalClient(
-                new HttpClient(new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(5) })
+                new HttpClient(Security.TlsRevocation.CreateHandler())
                 {
                     BaseAddress = new Uri(anjal.BaseUrl!.EndsWith('/') ? anjal.BaseUrl : anjal.BaseUrl + "/"),
                     Timeout = TimeSpan.FromSeconds(Math.Max(1, anjal.TimeoutSeconds)),

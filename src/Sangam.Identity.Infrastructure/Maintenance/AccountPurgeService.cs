@@ -138,6 +138,7 @@ public sealed partial class AccountPurgeService : BackgroundService
             List<Guid> ids = [.. due.Select(u => u.Id)];
             await db.UserAttributeValues.Where(v => ids.Contains(v.UserId)).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
             await db.IdentityVerifications.Where(v => ids.Contains(v.UserId)).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+            await ForgetMergesAsync(db, ids, cancellationToken).ConfigureAwait(false);
         }
 
         DateTimeOffset cutoff = now - SessionRetention;
@@ -159,6 +160,24 @@ public sealed partial class AccountPurgeService : BackgroundService
         await Accounts.UnknownAddressLockout.PruneAsync(db, now, cancellationToken).ConfigureAwait(false);
 
         return (due.Count, sessions);
+    }
+
+    /// <summary>
+    /// rc.8 (SGM-910): when an account that others were merged into is deleted, the applied merge records that point at it
+    /// go too. They were kept only so a closed id could answer "merged into" this account; once it is deleted there is
+    /// nothing to point to. Pending merges are left to the merge service, which cancels one whose account is gone.
+    /// </summary>
+    /// <param name="db">Database.</param>
+    /// <param name="deleted">The accounts being deleted.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    /// <returns>How many records were deleted.</returns>
+    public static Task<int> ForgetMergesAsync(SangamDbContext db, IReadOnlyCollection<Guid> deleted, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(db);
+        ArgumentNullException.ThrowIfNull(deleted);
+        return db.AccountMergeRequests
+            .Where(r => r.AppliedAt != null && deleted.Contains(r.SurvivorUserId))
+            .ExecuteDeleteAsync(cancellationToken);
     }
 
     /// <summary>

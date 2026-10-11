@@ -122,6 +122,7 @@ public partial class TemplateEditor : ComponentBase
         MessageTemplateKinds.AppInactivityNotice => L["E-mail: a connection to an application will end for inactivity"],
         MessageTemplateKinds.AppConnectionEnded => L["E-mail: a connection to an application ended for inactivity"],
         MessageTemplateKinds.AccountInactivityNotice => L["E-mail: an unused account will be deleted"],
+        MessageTemplateKinds.AuthenticatorCodeReusedNotice => L["E-mail: an authenticator code was used a second time"],
         MessageTemplateKinds.AccountMergeRequested => L["E-mail: two accounts are about to be merged, with a link to cancel"],
         MessageTemplateKinds.AccountMerged => L["E-mail: the accounts are merged"],
         MessageTemplateKinds.AppAdminMerged => L["E-mail: an administrator merged their accounts and the role moved"],

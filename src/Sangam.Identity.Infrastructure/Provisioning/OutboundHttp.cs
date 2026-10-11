@@ -61,7 +61,7 @@ public static class OutboundHttp
         return null;
     }
 
-    /// <summary>The handler behind the named client: no redirects, and every connection's address checked.</summary>
+    /// <summary>The handler behind the named client: no redirects, every connection's address checked, and the certificate checked for revocation.</summary>
     /// <param name="allowPrivate">Whether private addresses are allowed.</param>
     public static SocketsHttpHandler CreateHandler(bool allowPrivate)
     {
@@ -76,7 +76,8 @@ public static class OutboundHttp
             handler.ConnectCallback = ConnectPublicAsync;
         }
 
-        return handler;
+        // rc.8 (ASVS V9.2.4): the server's certificate is checked for revocation.
+        return Security.TlsRevocation.Apply(handler);
     }
 
     /// <summary>Whether an address is one Sangam must not call without <see cref="AllowPrivateKey"/>.</summary>

@@ -269,9 +269,27 @@ public sealed partial class EfAttributeService : IAttributeService
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<AttributeValueRow>?> GetValuesAsync(Guid? userId, Guid appId, Guid personId, CancellationToken cancellationToken = default)
-        => (userId is not Guid admin || await AdministersAsync(admin, appId, cancellationToken).ConfigureAwait(false)) && await LinkedAsync(appId, personId, cancellationToken).ConfigureAwait(false)
-            ? await RowsAsync(appId, personId, mineOnly: false, cancellationToken).ConfigureAwait(false)
-            : null;
+    {
+        if ((userId is Guid admin && !await AdministersAsync(admin, appId, cancellationToken).ConfigureAwait(false)) || !await LinkedAsync(appId, personId, cancellationToken).ConfigureAwait(false))
+        {
+            return null;
+        }
+
+        IReadOnlyList<AttributeValueRow> rows = await RowsAsync(appId, personId, mineOnly: false, cancellationToken).ConfigureAwait(false);
+
+        // rc.8 (ASVS V8.3.5): reading a person's attributes is recorded, by the console administrator or the application itself.
+        await _audit.WriteAsync(
+            new AuditEntry(
+                AuditActions.AppPeopleView,
+                userId is null ? AuditActorType.Api : AuditActorType.Admin,
+                userId,
+                appId,
+                "user",
+                personId,
+                JsonSerializer.Serialize(new Dictionary<string, object> { ["list"] = "attributes", ["rows"] = rows.Count, ["searched"] = false })),
+            cancellationToken).ConfigureAwait(false);
+        return rows;
+    }
 
     /// <inheritdoc />
     public async Task<PartnerResult> SetValuesAsync(Guid? userId, Guid appId, Guid personId, IReadOnlyDictionary<string, string?> values, CancellationToken cancellationToken = default)

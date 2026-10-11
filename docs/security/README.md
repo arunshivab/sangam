@@ -1,4 +1,4 @@
-# Security evidence (R7, v1.0.0-rc.1; updated to rc.6)
+# Security evidence (R7, v1.0.0-rc.1; updated to rc.8)
 
 Sangam's own security work, ready for an outside tester and an auditor. None of it is a certification or a
 penetration test: those are commissioned by the founder.
@@ -9,12 +9,21 @@ penetration test: those are commissioned by the founder.
 | [zap.md](zap.md) | OWASP ZAP baseline and authenticated full scans of the four hosts, before and after the R7 fixes. |
 | [dependency-scan.md](dependency-scan.md) | How every dependency and image is scanned on every pull request (the `security` CI job), and the R7 results. |
 | [pentest-scope.md](pentest-scope.md) | Scope, rules of engagement, test accounts, method and deliverables for the external penetration test (SGM-506). |
+| [threat-model.md](threat-model.md) | The threat model (STRIDE by trust boundary), reviewed at every release (rc.8, decision 7). |
+| [architecture.md](architecture.md) | Components, data flows, trust boundaries and the security analysis of each remote service (rc.8). |
+| [protection-levels.md](protection-levels.md) | SGM-910's data classes mapped to the protections each gets (rc.8). |
+| [input-output-rules.md](input-output-rules.md) | Input and output rules by kind of data, content and law (rc.8). |
+| [log-content-policy.md](log-content-policy.md) | What the logs hold and never hold (rc.8). |
+| [cache-and-parameters-review.md](cache-and-parameters-review.md) | Copies of personal data outside the database, and data in URLs (rc.8). |
+| [key-compromise.md](key-compromise.md) | Replacing each key and re-encrypting what it protected after a compromise (rc.8). |
+| [decision-memo-rc8.md](decision-memo-rc8.md) | The founder's decisions 1–9 and the risk acceptance, for signature (rc.8). |
 
 ## Automated checks (rc.2)
 
 | Check | When | Fails on | Required to merge |
 |---|---|---|---|
 | `security` (CI) | every pull request and push to main | a high or critical finding in a dependency, the repository or the identity image | yes |
+| `pr-description` (`pr-description.yml`, rc.8) | every pull request, and when its description is edited | a description without a `Release:` line naming a DEF, SGM or ASVS item (decision 6) | to be added to the ruleset by the founder |
 | `migrations` (CI) | every pull request and push to main | an entity change without its migration, in Sangam's database or the imagiQa sample's | yes |
 | CodeQL (`codeql.yml`, `security-extended` since rc.4) | every pull request, push to main, and weekly | through the ruleset's "Require code scanning results": a high or critical security alert | yes |
 | Code-quality review (`tools/security/codeql-quality.sh`, rc.4) | once per release, by hand | nothing by itself: each finding is fixed or recorded below | before each release |

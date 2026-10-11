@@ -18,6 +18,9 @@ patches:
         path: /data/Sangam__PortalUrl
         value: https://account.sangam.test:8443
       - op: replace
+        path: /data/AllowedHosts
+        value: "id.sangam.test;account.sangam.test;admin.sangam.test;partners.sangam.test;localhost"
+      - op: replace
         path: /data/Sangam__Anjal__BaseUrl
         value: http://anjal.sangam-data.svc.cluster.local:8080/
       - op: add
@@ -87,7 +90,7 @@ patches:
             name: sangam-test-ca
   - target:
       kind: Job
-      name: sangam-migrate-1-0-0-rc-7
+      name: sangam-migrate-1-0-0-rc-8
     patch: |
       - op: replace
         path: /spec/template/spec/containers/0/imagePullPolicy

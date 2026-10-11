@@ -244,8 +244,8 @@ public sealed partial class SiemForwarder : IAsyncDisposable
                         TargetHost = string.IsNullOrWhiteSpace(_options.ServerName) ? _options.Host : _options.ServerName,
                         EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
                         ClientCertificates = clients,
-                        CertificateRevocationCheckMode = X509RevocationMode.NoCheck,
-                        RemoteCertificateValidationCallback = (_, certificate, _, errors) => Trusted(certificate, errors, authority),
+                        CertificateChainPolicy = Security.TlsRevocation.Policy(),
+                        RemoteCertificateValidationCallback = (_, certificate, chain, errors) => Trusted(certificate, chain, errors, authority),
                     },
                     timeout.Token).ConfigureAwait(false);
             }
@@ -292,12 +292,13 @@ public sealed partial class SiemForwarder : IAsyncDisposable
     }
 
     /// <summary>Accepts the receiver's certificate: publicly trusted, or — when an authority is configured — issued by
-    /// that authority only. The name must always match.</summary>
-    private static bool Trusted(X509Certificate? certificate, SslPolicyErrors errors, X509Certificate2? authority)
+    /// that authority only. The name must always match. rc.8 (ASVS V9.2.4): a revoked certificate is refused; one whose
+    /// revocation cannot be checked is accepted.</summary>
+    private static bool Trusted(X509Certificate? certificate, X509Chain? presented, SslPolicyErrors errors, X509Certificate2? authority)
     {
         if (authority is null)
         {
-            return errors == SslPolicyErrors.None;
+            return Security.TlsRevocation.Acceptable(errors, presented);
         }
 
         if (certificate is null || (errors & ~SslPolicyErrors.RemoteCertificateChainErrors) != SslPolicyErrors.None)
@@ -309,8 +310,10 @@ public sealed partial class SiemForwarder : IAsyncDisposable
         using X509Chain chain = new();
         chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
         chain.ChainPolicy.CustomTrustStore.Add(authority);
-        chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
-        return chain.Build(leaf);
+        chain.ChainPolicy.RevocationMode = X509RevocationMode.Online;
+        chain.ChainPolicy.RevocationFlag = X509RevocationFlag.ExcludeRoot;
+        chain.ChainPolicy.UrlRetrievalTimeout = Security.TlsRevocation.LookupTimeout;
+        return chain.Build(leaf) || Security.TlsRevocation.OnlyUnknown(chain.ChainStatus);
     }
 
     private async Task CloseAsync()

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Sangam.Identity.Application.Abstractions;
@@ -69,7 +70,7 @@ public sealed class EfPartnerService : IPartnerService
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<RoleDto>> ListRolesAsync(Guid userId, Guid appId, CancellationToken cancellationToken = default)
-        => await GetRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null
+        => await CheckRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null
             ? []
             : await _management.ListRolesAsync(appId, cancellationToken).ConfigureAwait(false);
 
@@ -78,7 +79,7 @@ public sealed class EfPartnerService : IPartnerService
     {
         ArgumentNullException.ThrowIfNull(code);
         ArgumentNullException.ThrowIfNull(input);
-        if (await GetRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
+        if (await CheckRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
         {
             return NotYours;
         }
@@ -91,7 +92,7 @@ public sealed class EfPartnerService : IPartnerService
     public async Task<PartnerResult> RetireRoleAsync(Guid userId, Guid appId, string code, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(code);
-        if (await GetRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
+        if (await CheckRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
         {
             return NotYours;
         }
@@ -105,7 +106,7 @@ public sealed class EfPartnerService : IPartnerService
     /// <inheritdoc />
     public async Task<IReadOnlyList<OrganisationDto>> ListOrganisationsAsync(Guid userId, Guid appId, CancellationToken cancellationToken = default)
     {
-        if (await GetRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
+        if (await CheckRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
         {
             return [];
         }
@@ -128,7 +129,7 @@ public sealed class EfPartnerService : IPartnerService
     public async Task<PartnerResult> UpsertOrganisationAsync(Guid userId, Guid appId, Guid orgId, OrganisationUpsert input, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(input);
-        if (await GetRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
+        if (await CheckRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
         {
             return NotYours;
         }
@@ -142,7 +143,7 @@ public sealed class EfPartnerService : IPartnerService
     /// <inheritdoc />
     public async Task<IReadOnlyList<LinkedUserRow>> SearchLinkedUsersAsync(Guid userId, Guid appId, string? query, int take, CancellationToken cancellationToken = default)
     {
-        if (await GetRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
+        if (await CheckRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
         {
             return [];
         }
@@ -166,13 +167,14 @@ public sealed class EfPartnerService : IPartnerService
             .Select(g => new { g.UserId, g.User!.FirstName, g.User.LastName, g.User.Email, g.GrantedAt })
             .ToListAsync(cancellationToken).ConfigureAwait(false);
 
+        await PeopleViewedAsync(userId, appId, "linked_users", rows.Count, null, !string.IsNullOrWhiteSpace(query), cancellationToken).ConfigureAwait(false);
         return [.. rows.Select(r => new LinkedUserRow(r.UserId, (r.FirstName + " " + r.LastName).Trim(), r.Email ?? string.Empty, r.GrantedAt))];
     }
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<PartnerMemberRow>> ListMembersAsync(Guid userId, Guid appId, Guid orgId, CancellationToken cancellationToken = default)
     {
-        if (await GetRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
+        if (await CheckRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
         {
             return [];
         }
@@ -183,6 +185,7 @@ public sealed class EfPartnerService : IPartnerService
             .Select(m => new { m.UserId, m.User!.FirstName, m.User.LastName, m.User.Email, Role = m.Role!.Code, m.AppliesToDescendants, m.GrantedAt, m.ExpiresAt })
             .ToListAsync(cancellationToken).ConfigureAwait(false);
 
+        await PeopleViewedAsync(userId, appId, "org_members", rows.Count, orgId, false, cancellationToken).ConfigureAwait(false);
         return [.. rows.Select(r => new PartnerMemberRow(r.UserId, (r.FirstName + " " + r.LastName).Trim(), r.Email ?? string.Empty, r.Role, r.AppliesToDescendants, r.GrantedAt, r.ExpiresAt))];
     }
 
@@ -190,7 +193,7 @@ public sealed class EfPartnerService : IPartnerService
     public async Task<PartnerResult> GrantMembershipAsync(Guid userId, Guid appId, Guid orgId, Guid memberUserId, MembershipUpsert input, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(input);
-        if (await GetRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
+        if (await CheckRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
         {
             return NotYours;
         }
@@ -211,7 +214,7 @@ public sealed class EfPartnerService : IPartnerService
     /// <inheritdoc />
     public async Task<PartnerResult> RevokeMembershipAsync(Guid userId, Guid appId, Guid orgId, Guid memberUserId, CancellationToken cancellationToken = default)
     {
-        if (await GetRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
+        if (await CheckRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
         {
             return NotYours;
         }
@@ -226,7 +229,7 @@ public sealed class EfPartnerService : IPartnerService
     /// <inheritdoc />
     public async Task<IReadOnlyList<AppAdminRow>> ListAdminsAsync(Guid userId, Guid appId, CancellationToken cancellationToken = default)
     {
-        if (await GetRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is not AppAdminRole.Owner)
+        if (await CheckRoleAsync(userId, appId, cancellationToken, AppAdminRole.Owner).ConfigureAwait(false) is not AppAdminRole.Owner)
         {
             return [];
         }
@@ -244,7 +247,7 @@ public sealed class EfPartnerService : IPartnerService
     public async Task<PartnerResult> GrantAdminAsync(Guid userId, Guid appId, string email, AppAdminRole role, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(email);
-        if (await GetRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is not AppAdminRole.Owner)
+        if (await CheckRoleAsync(userId, appId, cancellationToken, AppAdminRole.Owner).ConfigureAwait(false) is not AppAdminRole.Owner)
         {
             return PartnerResult.Refused("Only an owner of this application can change its administrators.");
         }
@@ -289,7 +292,7 @@ public sealed class EfPartnerService : IPartnerService
     /// <inheritdoc />
     public async Task<PartnerResult> RevokeAdminAsync(Guid userId, Guid appId, Guid adminUserId, CancellationToken cancellationToken = default)
     {
-        if (await GetRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is not AppAdminRole.Owner)
+        if (await CheckRoleAsync(userId, appId, cancellationToken, AppAdminRole.Owner).ConfigureAwait(false) is not AppAdminRole.Owner)
         {
             return PartnerResult.Refused("Only an owner of this application can change its administrators.");
         }
@@ -316,7 +319,7 @@ public sealed class EfPartnerService : IPartnerService
     /// <inheritdoc />
     public async Task<PartnerAppSettings?> GetSettingsAsync(Guid userId, Guid appId, CancellationToken cancellationToken = default)
     {
-        if (await GetRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
+        if (await CheckRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
         {
             return null;
         }
@@ -331,7 +334,7 @@ public sealed class EfPartnerService : IPartnerService
     /// <inheritdoc />
     public async Task<PartnerResult> UpdateAccessRulesAsync(Guid userId, Guid appId, int? inactivityLimitYears, bool requireIdentityVerification, CancellationToken cancellationToken = default)
     {
-        if (await GetRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
+        if (await CheckRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
         {
             return NotYours;
         }
@@ -386,7 +389,7 @@ public sealed class EfPartnerService : IPartnerService
     {
         ArgumentNullException.ThrowIfNull(brandColour);
         ArgumentNullException.ThrowIfNull(glyph);
-        if (await GetRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
+        if (await CheckRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
         {
             return NotYours;
         }
@@ -451,7 +454,7 @@ public sealed class EfPartnerService : IPartnerService
     /// <inheritdoc />
     public async Task<PolicyView?> GetAppPolicyAsync(Guid userId, Guid appId, CancellationToken cancellationToken = default)
     {
-        if (await GetRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
+        if (await CheckRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
         {
             return null;
         }
@@ -473,7 +476,7 @@ public sealed class EfPartnerService : IPartnerService
     public async Task<PartnerResult> UpdateAppPolicyAsync(Guid userId, Guid appId, PolicyInput input, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(input);
-        if (await GetRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
+        if (await CheckRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
         {
             return NotYours;
         }
@@ -513,7 +516,7 @@ public sealed class EfPartnerService : IPartnerService
     /// <inheritdoc />
     public async Task<PolicyView?> GetOrganisationPolicyAsync(Guid userId, Guid appId, Guid orgId, CancellationToken cancellationToken = default)
     {
-        if (await GetRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
+        if (await CheckRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
         {
             return null;
         }
@@ -535,7 +538,7 @@ public sealed class EfPartnerService : IPartnerService
     public async Task<PartnerResult> UpdateOrganisationPolicyAsync(Guid userId, Guid appId, Guid orgId, PolicyInput input, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(input);
-        if (await GetRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
+        if (await CheckRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false) is null)
         {
             return NotYours;
         }
@@ -619,6 +622,53 @@ public sealed class EfPartnerService : IPartnerService
             ["breach_check"] = breach?.ToString(),
             ["character_types"] = characterTypes?.ToString(),
         });
+
+    /// <summary>
+    /// The caller's role in the application, as <see cref="GetRoleAsync"/>; but when the caller is not an administrator, or not
+    /// the <paramref name="needed"/> rank, the refusal is written to the audit log as <c>access.denied</c> (rc.8, ASVS V7.1.3,
+    /// V7.2.2). Every method of this service checks with this; <see cref="GetRoleAsync"/> itself stays a plain question, for
+    /// the console deciding what to show.
+    /// </summary>
+    private async Task<AppAdminRole?> CheckRoleAsync(Guid userId, Guid appId, CancellationToken cancellationToken, AppAdminRole? needed = null, [CallerMemberName] string operation = "")
+    {
+        AppAdminRole? role = await GetRoleAsync(userId, appId, cancellationToken).ConfigureAwait(false);
+        if (role is not null && (needed is null || role == needed))
+        {
+            return role;
+        }
+
+        // A refusal is recorded against the application only when the application exists (a made-up id is not one).
+        bool known = await _db.Apps.AsNoTracking().AnyAsync(a => a.Id == appId, cancellationToken).ConfigureAwait(false);
+        await _audit.WriteAsync(
+            new AuditEntry(
+                AuditActions.AccessDenied,
+                AuditActorType.Admin,
+                userId,
+                known ? appId : null,
+                "console",
+                Metadata: JsonSerializer.Serialize(new Dictionary<string, string?>
+                {
+                    ["console"] = "partner",
+                    ["operation"] = operation,
+                    ["reason"] = role is null ? "not_admin" : "owner_required",
+                    ["app_id"] = appId.ToString(),
+                })),
+            cancellationToken).ConfigureAwait(false);
+        return role;
+    }
+
+    /// <summary>Records that an administrator read a list of people (rc.8, ASVS V8.3.5); never the search words.</summary>
+    private Task PeopleViewedAsync(Guid userId, Guid appId, string list, int rows, Guid? orgId, bool searched, CancellationToken cancellationToken)
+        => _audit.WriteAsync(
+            new AuditEntry(
+                AuditActions.AppPeopleView,
+                AuditActorType.Admin,
+                userId,
+                appId,
+                orgId is null ? "app" : "organisation",
+                orgId ?? appId,
+                JsonSerializer.Serialize(new Dictionary<string, object> { ["list"] = list, ["rows"] = rows, ["searched"] = searched })),
+            cancellationToken);
 
     private static PartnerResult NotYours { get; } = PartnerResult.Refused("You do not administer this application.");
 

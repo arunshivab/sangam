@@ -142,6 +142,11 @@ public sealed class AdminServiceTests : IAsyncLifetime
         Assert.Null(await Service().OpenUserAsync(_patient, _viewer, null));
         await using SangamDbContext db = _pg.CreateContext();
         Assert.False(await db.AuditEvents.AnyAsync(e => e.Action == AuditActions.AdminUserRead));
+
+        // rc.8 (ASVS V7.1.3, V7.2.2): the refusal itself is recorded.
+        AuditEvent denied = await db.AuditEvents.SingleAsync(e => e.Action == AuditActions.AccessDenied && e.ActorUserId == _patient);
+        Assert.Equal("OpenUserAsync", Meta(denied.Metadata, "operation"));
+        Assert.Equal("not_operator", Meta(denied.Metadata, "reason"));
     }
 
     // ---------------------------------------------------------------- acting on a user
@@ -160,6 +165,14 @@ public sealed class AdminServiceTests : IAsyncLifetime
         Assert.True((await admin.SuspendUserAsync(_support, _patient, "Reported compromise", null)).Succeeded);
         Assert.True((await admin.ReinstateUserAsync(_support, _patient, null)).Succeeded);
         Assert.True((await admin.ForceSignOutAsync(_support, _patient, null)).Succeeded);
+
+        // rc.8 (ASVS V7.1.3, V7.2.2): six refusals, each naming the operation and the rank it needed.
+        await using SangamDbContext db = _pg.CreateContext();
+        List<AuditEvent> denied = await db.AuditEvents.AsNoTracking().Where(e => e.Action == AuditActions.AccessDenied).ToListAsync();
+        Assert.Equal(6, denied.Count);
+        Assert.All(denied, e => Assert.Equal("Support", Meta(e.Metadata, "needed")));
+        Assert.Equal(2, denied.Count(e => Meta(e.Metadata, "operation") == "PlaceHoldAsync"));
+        Assert.Contains(denied, e => e.ActorUserId == _appManager && Meta(e.Metadata, "held") == "AppManager");
     }
 
     [PostgresFact]
@@ -442,5 +455,14 @@ public sealed class AdminServiceTests : IAsyncLifetime
         string code = System.Text.RegularExpressions.Regex.Match(outbox.LatestFor(email)!.Message.TextBody, "[0-9]{6}").Value;
         await accounts.VerifyCodeAsync(id, OneTimeCodePurpose.EmailVerification, code, null);
         return id;
+    }
+
+    /// <summary>One field of an audit row's metadata, as text.</summary>
+    private static string? Meta(string metadata, string key)
+    {
+        using System.Text.Json.JsonDocument doc = System.Text.Json.JsonDocument.Parse(metadata);
+        return doc.RootElement.TryGetProperty(key, out System.Text.Json.JsonElement value)
+            ? value.ValueKind == System.Text.Json.JsonValueKind.String ? value.GetString() : value.GetRawText()
+            : null;
     }
 }

@@ -1,0 +1,59 @@
+DRAFT FOR COUNSEL — not in force. Version 0.1, 11 October 2026. Prepared by Claude (Anthropic) under the direction of the founder (decision 8). Counsel approves before go-live; until then /privacy shows the pending notice.
+
+Sangam privacy notice
+
+Sangam (SangamID) is one sign-in for the applications you use, such as hospital and clinic software. This notice explains what Sangam keeps about you, why, who sees it, how long it is kept, and your rights under the Digital Personal Data Protection Act, 2023.
+
+1. Who is responsible
+
+Sangam is owned and operated by Dr. Arun Shiva Balasubramanian, who is the data fiduciary for the personal data described here. [COUNSEL: replace with the company once it is formed.] Sangam runs on servers in India.
+
+2. What Sangam keeps
+
+Your account: first and last name, date of birth, gender, e-mail address and mobile number, your password (only as a one-way hash), and, if you set them up, your authenticator app (encrypted), your recovery codes (only as one-way hashes) and your passkeys (public keys only).
+
+Your use of Sangam: when you signed in, from which IP address and browser, your sessions, the applications you have connected and the information you agreed to share with each, and a record of security-relevant actions on your account.
+
+If an application uses Sangam for its organisations and roles: the roles that application gave you, and information the application keeps about you in Sangam for its own use (its "attributes"). Sangam refuses attributes that look like health data.
+
+If you verify your identity with DigiLocker: your name, date of birth and gender as DigiLocker gives them, and a one-way keyed code made from your DigiLocker identity so that one identity cannot verify two accounts. Sangam never keeps your Aadhaar or any other document number, or a copy of any document.
+
+If you raise a grievance: your name, contact details and what you wrote.
+
+Sangam never keeps health data of any kind, payment card or bank account numbers, or biometric data. Clinical applications keep their own records in their own systems.
+
+3. Why
+
+To create and protect your account and sign you in (the purpose you agree to when you register); to share with each application only what you agreed to share with it; to keep your account secure, detect misuse and investigate incidents; to answer your grievances and requests; and to meet legal duties, such as keeping security logs.
+
+4. Who sees it
+
+You. Each application you connect, and only the information you agreed to share with it (for example your name and e-mail), and the roles and attributes that application itself manages. Sangam's own operators, only to run the service and help you; every time an operator opens your record it is recorded, and you can see it in your account activity. Service providers that run parts of Sangam for us in India: the hosting provider (E2E Networks), our e-mail and SMS service (Anjal, operated by imagiQa), and DigiLocker if you choose to verify. Authorities, only when the law requires.
+
+Sangam does not sell your data or use it for advertising.
+
+5. How long
+
+While your account exists. If you delete your account, it is removed after 30 days, during which you can change your mind. If you have not signed in for 3 years and use no application through Sangam, we e-mail you and delete the account 30 days later. An application can end your connection to it after a period you have not used it; you are e-mailed 30 days before. Security logs are kept for one year, and an encrypted archive of the security record for seven years, to defend legal claims and investigate incidents. Encrypted backups are kept for up to 12 months, so data deleted from Sangam can remain in a backup for up to 12 months before it is gone. [COUNSEL: confirm the seven-year archive and the one-year logs.]
+
+6. How it is protected
+
+Encryption between your browser and Sangam; passwords hashed with Argon2id and a secret key; encrypted backups kept in another region; access only by the people who run Sangam, with every view recorded; notices to you when your password, e-mail, mobile, authenticator or passkeys change.
+
+7. Your rights
+
+You can see and correct your information on your account page, download a copy of it, withdraw your consent to any application (disconnect it), and delete your account. You can also name a person to exercise your rights if you die or become unable to, by writing to the grievance officer. You can raise a grievance with our grievance officer, and if you are not satisfied, complain to the Data Protection Board of India.
+
+8. Grievances
+
+Grievance officer: [COUNSEL: name], [COUNSEL: postal address], grievance@sangamid.in. Use the "Raise a grievance" link on this page. We acknowledge a grievance within [COUNSEL: working days] and answer within [COUNSEL: days].
+
+9. Children
+
+You must be 18 or older to have a Sangam account.
+
+10. Changes
+
+If this notice changes in a way that matters, we tell you by e-mail and ask again where the law requires.
+
+Questions: help@sangamid.in.

@@ -82,7 +82,8 @@ exist, so there is no production database to act on yet.
       the open questions are in the R3 evidence, `i18n/REVIEW-NOTES.md`).
 - [ ] With SMS on: each Hindi and Malayalam text message registered on the DLT platform and saved, with its
       template id, in the operator console → Defaults. Until then texts go in English.
-- [ ] The root page `/` of the identity server replaced (it is still the PR-01 design-foundation check).
+- [x] The root page `/` of the identity server replaced (done in rc.5: what Sangam is, the way to the account portal,
+      and how to report a security problem; confirmed in rc.8).
 - [ ] `sangam_org` confirmed as the parameter name before partners build against it.
 - [ ] Each partner application's back-channel (and, if wanted, front-channel) logout address registered in the
       operator console → Applications → Logout, and one sign-out seen to reach it.
@@ -352,3 +353,22 @@ Account merging (SGM-914 section 9) and the two rc.6 gaps the founder's procedur
       audit, filtered on that action, at each review.
 - [ ] **Recoveries queue:** opening it is audited (`admin.user.mfa.recovery.queue.view`); nothing to set up.
 
+## Added by rc.8 (v1.0.0-rc.8)
+
+ASVS Level 2 fixes, the vault-ready secret layer and the founder's decisions 1–9 (`docs/security/decision-memo-rc8.md`):
+
+- [ ] **Decision memo signed:** decisions 1–9 and the risk acceptance, signed copy kept offline; date written in the memo.
+- [ ] **Server hardening done** (`deploy/production/README.md` section 6): admin user, SSH keys only, no root or
+      password sign-in, firewall (incoming 22/80/443; outgoing 443, 80 for revocation checks, DNS, Anjal's mail),
+      fail2ban, unattended security updates, secret files mode 600 in a root-only folder.
+- [ ] **Key fingerprints:** the first production start records them (`security.key.recorded` in the audit); a
+      planned rotation is started once with `Sangam__Keys__AcceptChanged=true`, then the setting removed.
+- [ ] **Host names:** each host's `AllowedHosts` lists its public name; a request carrying any other host name gets 400.
+- [ ] **PR description check:** add `pr-description` to the branch ruleset's required checks (decision 6), and review
+      GitHub access (collaborators, deploy keys, tokens, apps) at each release.
+- [ ] **Privacy notice:** counsel approves `docs/legal/privacy-notice/` (decision 8); native speakers check the Hindi
+      and Malayalam; then set `Sangam:Legal:PrivacyPath`.
+- [ ] **Threat model** reviewed at this release and its record updated (`docs/security/threat-model.md` section 7).
+- [ ] **Anjal:** confirm in the Anjal project that Anjal calls its SMS aggregator over HTTPS (decision 4).
+- [ ] **Recovery codes:** people who set up an authenticator before rc.8 keep their old, shorter codes until they make
+      new ones; say so in the release note to pilot users.

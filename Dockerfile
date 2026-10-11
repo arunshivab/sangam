@@ -9,7 +9,8 @@ WORKDIR /src
 COPY . .
 ARG PROJECT=Sangam.Identity.Server
 ARG PROJECT_DIR=src
-RUN dotnet publish "${PROJECT_DIR}/${PROJECT}/${PROJECT}.csproj" -c Release -o /out/app
+# rc.8 (ASVS V14.2.2): development-only pages are not compiled into the image.
+RUN dotnet publish "${PROJECT_DIR}/${PROJECT}/${PROJECT}.csproj" -c Release -o /out/app -p:SangamIncludeDevPages=false
 
 FROM build AS bundle
 # dotnet-ef is pinned in the repository's tool manifest (.config/dotnet-tools.json); a global install

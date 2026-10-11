@@ -6,6 +6,71 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0-rc.8] - eighth release candidate
+
+Sangam 1.0.0-rc.8 closes the small ASVS Level 2 gaps, records the founder's decisions 1–9 of 11 October 2026, and
+prepares for imagiQa's own vault (decision A6: keys stay in files, with new compensating controls, until it exists).
+
+### Accounts and sign-in
+- **Recovery codes are longer and keyed** (ASVS V2.6.2, V2.6.3): 24 characters in six groups of four
+  (`abcd-efgh-…`, 120 bits), from an alphabet without look-alikes; stored as HMAC-SHA-256 under the password pepper,
+  with the pepper's version, so a copy of the database alone cannot be searched. Typed in capitals or without dashes,
+  they still work. Codes made under an older pepper keep working after the pepper is changed. Codes issued before rc.8
+  keep working until the person makes new ones.
+- **A reused authenticator code is a replay** (V2.8.5): refused as before, now audited as `user.mfa.replay`, and the
+  person is e-mailed (at most once an hour) — new e-mail in English, Hindi and Malayalam.
+
+### Audit and logs
+- **Every refusal in the consoles is audited** (V7.1.3, V7.2.2): `access.denied` with the operation, and for the
+  operator console the rank needed and held; for the partner console "not an administrator" or "owner required".
+- **Reads of people are audited** (V8.3.5): partner-console searches and member lists, attribute reads, and the
+  management API's member list write `app.people.view` (which list, how many rows; never the search words).
+- **Logs are JSON** (V1.7.1, V7.3.1): every host's console log is JSON with UTC timestamps and scopes, which escapes
+  line breaks; OpenIddict logs only from Warning (V7.1.1). Development keeps plain text.
+
+### Requests
+- **A protocol parameter sent twice is refused** (V5.1.1): any repeated parameter (except `resource` and `audience`)
+  in a request to `/connect/*` gets `invalid_request` before OpenIddict reads it.
+- **The management API speaks JSON only** (V13.1.5, V13.2.5): 415 for a body of another type, 406 for an `Accept`
+  that rules JSON out.
+- **Only the HTTP methods Sangam uses** (V14.5.1): any other method gets 405 on every host, and every 405 is logged.
+- **Each host answers only its own names** (V14.1.3): `AllowedHosts` per host in the production compose and the
+  Kubernetes settings; the Kubernetes probes say `Host: localhost`.
+
+### Outbound connections
+- **Certificate revocation is checked** (V9.2.4): every outbound TLS connection — Anjal, DigiLocker, Pwned Passwords,
+  SCIM, webhooks, back-channel logout and the SIEM — checks revocation online and refuses a revoked certificate; when
+  no answer can be had it goes ahead (soft fail). The firewall must allow outbound port 80 for OCSP and CRLs.
+
+### Keys and secrets (A6 workaround)
+- **Key-fingerprint check at start-up:** the identity server compares every key file and secret with the fingerprint it
+  recorded at the last start (in the database). A changed key stops the start, is audited (`security.key.mismatch`)
+  and alerts the founder; a planned change is accepted by starting once with `Sangam:Keys:AcceptChanged=true`. New
+  keys are recorded (`security.key.recorded`).
+- **Secret source:** `Sangam:Secrets:Source` is `files` (default) or `vault`, which reads settings from a store speaking
+  the OpenBao / HashiCorp Vault KV version 2 API — the interface imagiQa's vault is to speak — with the token from a
+  secret file. A vault that cannot be read refuses the start.
+
+### Production image and data
+- **Development pages are not in the image** (V14.2.2): the Dockerfile publishes with
+  `-p:SangamIncludeDevPages=false`.
+- **Merge records go with the surviving account** (SGM-910): when an account that others were merged into is deleted,
+  the applied merge records pointing at it are deleted too.
+
+### Process
+- **Every pull request names its release** (decision 6): a `Release:` line naming the DEF, SGM or ASVS items it
+  answers, checked by the new `pr-description` workflow (add it to the branch ruleset).
+
+### Documents
+- New in `docs/security/`: the threat model (reviewed each release, decision 7), architecture with data flows and trust
+  boundaries, protection levels (SGM-910 classes to protections), input and output rules, the log-content policy, the
+  cache and request-parameter review, the key-compromise procedure, and the decision memo for decisions 1–9 with the
+  risk acceptance, for the founder's signature.
+- `docs/legal/privacy-notice/`: the privacy notice drafted in English, Hindi and Malayalam for counsel (decision 8).
+- Deployment guide: server hardening (SSH keys only, no root sign-in, firewall, fail2ban, updates, secret files), key
+  fingerprints, the secret source and host names. Go-live checklist: rc.8 items; the root-page item closed (done in rc.5).
+- ASVS: 25 more requirements Met (187 of 259); four Partly now accepted by the founder.
+
 ## [1.0.0-rc.7] - seventh release candidate
 
 Sangam 1.0.0-rc.7 lets a person merge two of their accounts (SGM-914 section 9), on the rules the founder decided on

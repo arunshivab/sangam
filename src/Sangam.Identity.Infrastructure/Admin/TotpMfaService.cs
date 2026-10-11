@@ -26,15 +26,18 @@ public sealed class TotpMfaService : IMfaService
     private readonly SangamDbContext _db;
     private readonly IAuditWriter _audit;
     private readonly Accounts.SecurityNotices? _notices;
+    private readonly Accounts.TotpReplay? _replay;
 
     /// <summary>Initialises the service.</summary>
     /// <param name="users">Identity user manager.</param>
     /// <param name="db">Database, to check operator status.</param>
     /// <param name="audit">Audit writer.</param>
     /// <param name="notices">Security notices to the person (R7); none when null.</param>
-    public TotpMfaService(UserManager<SangamUser> users, SangamDbContext db, IAuditWriter audit, Accounts.SecurityNotices? notices = null)
+    /// <param name="replay">Set when a correct code was used a second time (rc.8, ASVS V2.8.5); none when null.</param>
+    public TotpMfaService(UserManager<SangamUser> users, SangamDbContext db, IAuditWriter audit, Accounts.SecurityNotices? notices = null, Accounts.TotpReplay? replay = null)
     {
         _notices = notices;
+        _replay = replay;
         _users = users ?? throw new ArgumentNullException(nameof(users));
         _db = db ?? throw new ArgumentNullException(nameof(db));
         _audit = audit ?? throw new ArgumentNullException(nameof(audit));
@@ -114,8 +117,8 @@ public sealed class TotpMfaService : IMfaService
         }
 
         // Two different shapes: an authenticator code is six digits (spaces and dashes are typing
-        // noise), but a recovery code is stored as "XXXXX-XXXXX" and must keep its dash, or no
-        // recovery code could ever match and a lost phone would lock the person out for good.
+        // noise); a recovery code is "abcd-efgh-…" (rc.8). With the pepper its dashes and capitals do not
+        // matter; without one (Development, Testing, codes from before rc.8) it must keep its dash.
         bool valid = await _users.VerifyTwoFactorTokenAsync(user, _users.Options.Tokens.AuthenticatorTokenProvider, Normalise(code)).ConfigureAwait(false)
             || (await _users.RedeemTwoFactorRecoveryCodeAsync(user, code.Replace(" ", string.Empty, StringComparison.Ordinal).Trim()).ConfigureAwait(false)).Succeeded;
 
@@ -127,9 +130,27 @@ public sealed class TotpMfaService : IMfaService
 
         // Wrong codes count towards the same lockout as wrong passwords.
         await _users.AccessFailedAsync(user).ConfigureAwait(false);
-        await _audit.WriteAsync(
-            new AuditEntry(AuditActions.UserMfaFail, AuditActorType.User, userId, TargetType: "user", TargetId: userId, IpAddress: ipAddress),
-            cancellationToken).ConfigureAwait(false);
+        if (_replay?.Detected == true)
+        {
+            // rc.8 (ASVS V2.8.5): a correct code used a second time is a replay: logged as such, and the person told
+            // (at most once an hour, so a double click does not flood their inbox).
+            _replay.Detected = false;
+            DateTimeOffset hourAgo = DateTimeOffset.UtcNow.AddHours(-1);
+            bool toldRecently = await _db.AuditEvents.AnyAsync(e => e.Action == AuditActions.UserMfaReplay && e.TargetId == userId && e.OccurredAt > hourAgo, cancellationToken).ConfigureAwait(false);
+            await _audit.WriteAsync(
+                new AuditEntry(AuditActions.UserMfaReplay, AuditActorType.User, userId, TargetType: "user", TargetId: userId, IpAddress: ipAddress),
+                cancellationToken).ConfigureAwait(false);
+            if (!toldRecently && _notices is not null)
+            {
+                await _notices.SendAsync(MessageTemplateKinds.AuthenticatorCodeReusedNotice, user, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        else
+        {
+            await _audit.WriteAsync(
+                new AuditEntry(AuditActions.UserMfaFail, AuditActorType.User, userId, TargetType: "user", TargetId: userId, IpAddress: ipAddress),
+                cancellationToken).ConfigureAwait(false);
+        }
 
         return await _users.IsLockedOutAsync(user).ConfigureAwait(false) ? MfaResult.LockedOut : MfaResult.Invalid;
     }

@@ -272,6 +272,28 @@ public sealed partial class AccountMergeTests : IAsyncLifetime
     }
 
     [PostgresFact]
+    public async Task WhenTheSurvivorIsDeleted_TheMergeRecordGoesToo()
+    {
+        Assert.True((await Merges().RequestAsync(_new, _old, null)).Succeeded);
+        await DueNowAsync();
+        Assert.Equal(1, await Merges().ApplyDueAsync());
+        Assert.Equal(_new, (await Merges().MergedIntoAsync(_his, _old))?.UserId);
+
+        // rc.8 (SGM-910): the surviving account reaches its deletion date; the record pointing at it is deleted with it.
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            await db.Users.Where(u => u.Id == _new).ExecuteUpdateAsync(s => s.SetProperty(u => u.PurgeAfter, DateTimeOffset.UtcNow.AddMinutes(-1)));
+        }
+
+        Infrastructure.Maintenance.AccountPurgeService purge = _provider.GetServices<Microsoft.Extensions.Hosting.IHostedService>().OfType<Infrastructure.Maintenance.AccountPurgeService>().Single();
+        await purge.RunOnceAsync();
+
+        await using SangamDbContext check = _pg.CreateContext();
+        Assert.False(await check.AccountMergeRequests.AnyAsync());
+        Assert.Null(await Merges().MergedIntoAsync(_his, _old));
+    }
+
+    [PostgresFact]
     public async Task AVerifiedIdentity_MovesToTheSurvivor_AndAnOwnerRoleIsNeverLost()
     {
         await using (SangamDbContext db = _pg.CreateContext())

@@ -26,4 +26,16 @@
     <InternalsVisibleTo Include="Sangam.Identity.Server.Tests" />
   </ItemGroup>
 
+  <!-- rc.8 (ASVS V14.2.2): the development pages (/dev/outbox, /dev/callback) are left out of the production image
+       altogether; the Dockerfile publishes with -p:SangamIncludeDevPages=false. Local builds and the tests keep them,
+       and they still answer 404 outside Development. -->
+  <PropertyGroup>
+    <SangamIncludeDevPages Condition="'$(SangamIncludeDevPages)' == ''">true</SangamIncludeDevPages>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(SangamIncludeDevPages)' != 'true'">
+    <Compile Remove="Pages\Dev\**" />
+    <Content Remove="Pages\Dev\**" />
+    <None Remove="Pages\Dev\**" />
+  </ItemGroup>
+
 </Project>

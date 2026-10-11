@@ -128,6 +128,15 @@ public sealed class PartnerServiceTests : IAsyncLifetime
         Assert.False((await partner.UpsertRoleAsync(_owner, _other, "doctor", new RoleUpsert("Doctor", null, [], null))).Succeeded);
         Assert.Null(await partner.GetSettingsAsync(_owner, _other));
         Assert.False((await partner.UpsertRoleAsync(_nurse, _his, "doctor", new RoleUpsert("Doctor", null, [], null))).Succeeded);
+
+        // rc.8 (ASVS V7.1.3, V7.2.2): each refusal is in the audit log, naming the operation.
+        await using SangamDbContext db = _pg.CreateContext();
+        List<AuditEvent> denied = await db.AuditEvents.AsNoTracking().Where(e => e.Action == AuditActions.AccessDenied).OrderBy(e => e.Id).ToListAsync();
+        Assert.Equal(5, denied.Count(e => e.ActorUserId == _owner && e.ActorAppId == _other));
+        AuditEvent upsert = Assert.Single(denied, e => e.ActorUserId == _nurse);
+        Assert.Equal(_his, upsert.ActorAppId);
+        Assert.Equal("UpsertRoleAsync", Meta(upsert.Metadata, "operation"));
+        Assert.Equal("not_admin", Meta(upsert.Metadata, "reason"));
     }
 
     // ------------------------------------------------------------ the privacy boundary
@@ -143,6 +152,14 @@ public sealed class PartnerServiceTests : IAsyncLifetime
         // Even an exact email of someone on Sangam finds nothing if they never linked this app.
         Assert.Empty(await Service().SearchLinkedUsersAsync(_admin, _his, "stranger@elsewhere.test", 50));
         Assert.Single(await Service().SearchLinkedUsersAsync(_admin, _his, "nurse@lipi", 50));
+
+        // rc.8 (ASVS V8.3.5): every search is recorded, with how many it found — never the words searched for.
+        await using SangamDbContext db = _pg.CreateContext();
+        List<AuditEvent> views = await db.AuditEvents.AsNoTracking().Where(e => e.Action == AuditActions.AppPeopleView && e.ActorUserId == _admin).OrderBy(e => e.Id).ToListAsync();
+        Assert.Equal(3, views.Count);
+        Assert.Equal("3", Meta(views[0].Metadata, "rows"));
+        Assert.Equal("true", Meta(views[2].Metadata, "searched"));
+        Assert.DoesNotContain(views, v => v.Metadata.Contains("stranger", StringComparison.Ordinal) || v.Metadata.Contains("nurse@", StringComparison.Ordinal));
     }
 
     [PostgresFact]
@@ -204,6 +221,11 @@ public sealed class PartnerServiceTests : IAsyncLifetime
         Assert.Empty(await partner.ListAdminsAsync(_admin, _his));
         Assert.False((await partner.GrantAdminAsync(_admin, _his, "nurse@lipi.test", AppAdminRole.Admin)).Succeeded);
         Assert.False((await partner.RevokeAdminAsync(_admin, _his, _owner)).Succeeded);
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            List<AuditEvent> denied = await db.AuditEvents.AsNoTracking().Where(e => e.Action == AuditActions.AccessDenied && e.ActorUserId == _admin).ToListAsync();
+            Assert.Equal(3, denied.Count(e => Meta(e.Metadata, "reason") == "owner_required"));
+        }
 
         Assert.Equal(2, (await partner.ListAdminsAsync(_owner, _his)).Count);
         Assert.True((await partner.GrantAdminAsync(_owner, _his, "nurse@lipi.test", AppAdminRole.Admin)).Succeeded);
@@ -504,5 +526,14 @@ public sealed class PartnerServiceTests : IAsyncLifetime
         string code = System.Text.RegularExpressions.Regex.Match(outbox.LatestFor(email)!.Message.TextBody, "[0-9]{6}").Value;
         await accounts.VerifyCodeAsync(id, OneTimeCodePurpose.EmailVerification, code, null);
         return id;
+    }
+
+    /// <summary>One field of an audit row's metadata, as text.</summary>
+    private static string? Meta(string metadata, string key)
+    {
+        using System.Text.Json.JsonDocument doc = System.Text.Json.JsonDocument.Parse(metadata);
+        return doc.RootElement.TryGetProperty(key, out System.Text.Json.JsonElement value)
+            ? value.ValueKind == System.Text.Json.JsonValueKind.String ? value.GetString() : value.GetRawText()
+            : null;
     }
 }

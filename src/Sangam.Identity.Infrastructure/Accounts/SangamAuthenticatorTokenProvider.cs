@@ -26,14 +26,17 @@ public sealed class SangamAuthenticatorTokenProvider : IUserTwoFactorTokenProvid
 
     private readonly SangamDbContext _db;
     private readonly IClock _clock;
+    private readonly TotpReplay _replay;
 
     /// <summary>Initialises the provider.</summary>
     /// <param name="db">Database.</param>
     /// <param name="clock">Clock.</param>
-    public SangamAuthenticatorTokenProvider(SangamDbContext db, IClock clock)
+    /// <param name="replay">Marks a correct code used a second time (rc.8, ASVS V2.8.5).</param>
+    public SangamAuthenticatorTokenProvider(SangamDbContext db, IClock clock, TotpReplay replay)
     {
         _db = db ?? throw new ArgumentNullException(nameof(db));
         _clock = clock ?? throw new ArgumentNullException(nameof(clock));
+        _replay = replay ?? throw new ArgumentNullException(nameof(replay));
     }
 
     /// <inheritdoc />
@@ -83,6 +86,7 @@ public sealed class SangamAuthenticatorTokenProvider : IUserTwoFactorTokenProvid
                 new NpgsqlParameter("name", StepName),
                 new NpgsqlParameter("step", accepted.ToString(CultureInfo.InvariantCulture)),
             ]).ConfigureAwait(false);
+        _replay.Detected = moved != 1;
         return moved == 1;
     }
 

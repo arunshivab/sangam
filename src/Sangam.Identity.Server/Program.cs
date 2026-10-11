@@ -4,6 +4,7 @@ using Sangam.Identity.Domain;
 using Sangam.Identity.Infrastructure;
 using Sangam.Identity.Infrastructure.Audit;
 using Sangam.Identity.Infrastructure.Persistence;
+using Sangam.Identity.Infrastructure.Security;
 using Sangam.Identity.Infrastructure.Seeding;
 using Sangam.Identity.Infrastructure.Services;
 using Sangam.Identity.Infrastructure.Sms;
@@ -26,7 +27,8 @@ if (args.Length > 0 && args[0] == AuditArchiveCommand.Verb)
 // A refused start is logged at Critical and exits with code 1 (V-08).
 StartupGuard.Install(typeof(Program).Assembly);
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
-builder.Configuration.AddSangamSecretFiles();
+// rc.8 (A6 workaround): secret files today; a Vault-compatible store when Sangam:Secrets:Source is "vault".
+builder.Configuration.AddSangamSecrets();
 
 builder.Services.AddRazorPages(o =>
 {
@@ -62,6 +64,8 @@ builder.Services.AddSingleton<Sangam.Identity.Application.Signatures.ISignatureT
 builder.Services.AddHttpClient(Sangam.Identity.Server.Logout.BackChannelLogoutSender.HttpClientName, c => c.Timeout = TimeSpan.FromSeconds(5))
     .ConfigurePrimaryHttpMessageHandler(sp => Sangam.Identity.Infrastructure.Provisioning.OutboundHttp.CreateHandler(sp.GetRequiredService<Sangam.Identity.Infrastructure.Provisioning.OutboundSettings>().AllowPrivate));
 builder.Services.AddSingleton<Sangam.Identity.Server.Logout.BackChannelLogoutSender>();
+// rc.8 (SGM-911, A6 workaround): a key that changed since the last start stops the start, and alerts.
+builder.Services.AddHostedService<KeyFingerprintCheck>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<Sangam.Identity.Server.Logout.BackChannelLogoutSender>());
 // PR-23/24: SCIM provisioning and webhooks are delivered from here (Sangam-signed SCIM tokens need the signing keys).
 builder.Services.AddSingleton<Sangam.Identity.Infrastructure.Provisioning.IServiceTokenIssuer, Sangam.Identity.Server.Provisioning.ServiceTokenIssuer>();
@@ -249,6 +253,8 @@ app.Lifetime.ApplicationStarted.Register(StartupGuard.MarkStarted);
 
 // Behind Caddy: take the client address from trusted proxies only, before anything reads it (OI-037).
 app.UseForwardedHeaders();
+// rc.8 (ASVS V14.5.1): only the HTTP methods Sangam uses; every 405 is logged.
+app.UseSangamMethodGuard();
 // R7: CSP, framing, nosniff and the other security headers on every response (SGM-503). The identity server frames
 // applications' front-channel logout pages.
 app.UseSangamSecurityHeaders(app.Environment.EnvironmentName, identityServer: true);
@@ -283,6 +289,8 @@ app.UseSangamHttpsRedirection(app.Environment.EnvironmentName, app.Configuration
 app.UseSangamClientContext();
 app.UseSangamRequestCulture();
 app.UseRateLimiter();
+// rc.8 (ASVS V5.1.1): a protocol parameter sent twice to /connect is refused before OpenIddict reads it.
+app.UseSangamDuplicateParameterGuard();
 // OpenIddict answers its endpoints inside UseAuthentication, so the rate limiter stays in front of it.
 app.UseAuthentication();
 // PR-18: the signed-in person's profile language, unless they picked one for this browser.

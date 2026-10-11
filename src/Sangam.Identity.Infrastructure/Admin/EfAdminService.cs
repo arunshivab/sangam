@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Sangam.Identity.Application.Abstractions;
@@ -46,7 +48,7 @@ public sealed partial class EfAdminService : IAdminService
     /// <inheritdoc />
     public async Task<IReadOnlyList<AdminUserRow>> SearchUsersAsync(Guid operatorUserId, string? query, int take, CancellationToken cancellationToken = default)
     {
-        if (await GetRoleAsync(operatorUserId, cancellationToken).ConfigureAwait(false) is null)
+        if (await RequireAsync(operatorUserId, PlatformRole.Viewer, cancellationToken).ConfigureAwait(false) is not null)
         {
             return [];
         }
@@ -104,7 +106,7 @@ public sealed partial class EfAdminService : IAdminService
     /// <inheritdoc />
     public async Task<AdminUserDetail?> OpenUserAsync(Guid operatorUserId, Guid userId, string? ipAddress, CancellationToken cancellationToken = default)
     {
-        if (await GetRoleAsync(operatorUserId, cancellationToken).ConfigureAwait(false) is null)
+        if (await RequireAsync(operatorUserId, PlatformRole.Viewer, cancellationToken).ConfigureAwait(false) is not null)
         {
             return null;
         }
@@ -327,6 +329,7 @@ public sealed partial class EfAdminService : IAdminService
         await _portal.RevokeAllSessionsAsync(userId, ipAddress, cancellationToken).ConfigureAwait(false);
         AccountPurgeService.Pseudonymise(user, _clock.UtcNow);
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await AccountPurgeService.ForgetMergesAsync(_db, [userId], cancellationToken).ConfigureAwait(false);
 
         await _audit.WriteAsync(
             new AuditEntry(AuditActions.AdminUserDeleteNow, AuditActorType.Admin, operatorUserId, TargetType: "user", TargetId: userId,
@@ -338,7 +341,7 @@ public sealed partial class EfAdminService : IAdminService
     /// <inheritdoc />
     public async Task<IReadOnlyList<AdminAppRow>> ListAppsAsync(Guid operatorUserId, CancellationToken cancellationToken = default)
     {
-        if (await GetRoleAsync(operatorUserId, cancellationToken).ConfigureAwait(false) is null)
+        if (await RequireAsync(operatorUserId, PlatformRole.Viewer, cancellationToken).ConfigureAwait(false) is not null)
         {
             return [];
         }
@@ -539,7 +542,7 @@ public sealed partial class EfAdminService : IAdminService
     /// <inheritdoc />
     public async Task<IReadOnlyList<OperatorRow>> ListOperatorsAsync(Guid operatorUserId, CancellationToken cancellationToken = default)
     {
-        if (await GetRoleAsync(operatorUserId, cancellationToken).ConfigureAwait(false) is not PlatformRole.Owner)
+        if (await RequireAsync(operatorUserId, PlatformRole.Owner, cancellationToken).ConfigureAwait(false) is not null)
         {
             return [];
         }
@@ -660,13 +663,36 @@ public sealed partial class EfAdminService : IAdminService
         return AdminResult.Ok("Console access is revoked.");
     }
 
-    /// <summary>Returns a refusal when the operator lacks <paramref name="minimum"/>, else <see langword="null"/>.</summary>
-    private async Task<AdminResult?> RequireAsync(Guid operatorUserId, PlatformRole minimum, CancellationToken cancellationToken)
+    /// <summary>
+    /// Returns a refusal when the operator lacks <paramref name="minimum"/>, else <see langword="null"/>. rc.8 (ASVS V7.1.3,
+    /// V7.2.2): every refusal is written to the audit log as <c>access.denied</c>, naming the operation and the rank it needed.
+    /// </summary>
+    private async Task<AdminResult?> RequireAsync(Guid operatorUserId, PlatformRole minimum, CancellationToken cancellationToken, [CallerMemberName] string operation = "")
     {
         PlatformRole? role = await GetRoleAsync(operatorUserId, cancellationToken).ConfigureAwait(false);
+        if (role is not null && role >= minimum)
+        {
+            return null;
+        }
+
+        await _audit.WriteAsync(
+            new AuditEntry(
+                AuditActions.AccessDenied,
+                AuditActorType.Admin,
+                operatorUserId,
+                TargetType: "console",
+                Metadata: JsonSerializer.Serialize(new Dictionary<string, string?>
+                {
+                    ["console"] = "admin",
+                    ["operation"] = operation,
+                    ["reason"] = role is null ? "not_operator" : "rank_too_low",
+                    ["needed"] = minimum.ToString(),
+                    ["held"] = role?.ToString(),
+                })),
+            cancellationToken).ConfigureAwait(false);
         return role is null
             ? AdminResult.Refused("You do not have console access.")
-            : role < minimum ? AdminResult.Refused($"That needs {PlatformRanks.Label(minimum)} access.") : null;
+            : AdminResult.Refused($"That needs {PlatformRanks.Label(minimum)} access.");
     }
 
     /// <inheritdoc />

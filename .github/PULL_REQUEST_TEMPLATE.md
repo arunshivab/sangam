@@ -1,6 +1,10 @@
 ## What this PR delivers
 
-<!-- One paragraph: what changes and why. Name the release (e.g. rc.7) and any defect (DEF-nnn) or policy (SGM-nnn) it answers. -->
+Release: 1.0.0-rc.N · Answers: DEF-nnn, SGM-nnn, ASVS Vx.y.z
+
+<!-- Required (decision 6; the pr-description check fails without it): keep the line above, starting "Release:", with the
+release this belongs to and at least one defect (DEF-nnn), policy (SGM-nnn) or ASVS requirement it answers — or
+"Answers: none" for a change that answers none. Then one paragraph: what changes and why. -->
 
 ## Checked by the build
 

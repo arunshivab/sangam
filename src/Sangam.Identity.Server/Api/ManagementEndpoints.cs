@@ -1,13 +1,16 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using OpenIddict.Abstractions;
 using OpenIddict.Validation.AspNetCore;
+using Sangam.Identity.Application.Abstractions;
 using Sangam.Identity.Application.Accounts;
 using Sangam.Identity.Application.Apps;
 using Sangam.Identity.Application.Attributes;
 using Sangam.Identity.Application.Partners;
 using Sangam.Identity.Application.Signatures;
 using Sangam.Identity.Application.Tenancy;
+using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Enums;
 using Sangam.Identity.Server.Authentication;
 using Sangam.Shared.Constants;
@@ -44,7 +47,8 @@ public static class ManagementEndpoints
         ArgumentNullException.ThrowIfNull(endpoints);
 
         RouteGroupBuilder api = endpoints.MapGroup("/api/v1").RequireAuthorization(PolicyName).DisableAntiforgery().RequireRateLimiting(AuthRateLimiting.ApiPolicy)
-            .AddEndpointFilter(AccessDeniedAudit.FilterAsync);
+            .AddEndpointFilter(AccessDeniedAudit.FilterAsync)
+            .AddEndpointFilter(JsonOnlyFilter.FilterAsync);
 
         api.MapGet("/roles", async (ClaimsPrincipal caller, IAppDirectory apps, IManagementService mgmt, CancellationToken ct) =>
         {
@@ -82,10 +86,27 @@ public static class ManagementEndpoints
             return app is null ? Results.Forbid() : ToResult(await mgmt.UpsertOrganisationAsync(app.Id, orgId, input, ManagementActor.Api, ct).ConfigureAwait(false));
         }).WithName("UpsertOrganisation");
 
-        api.MapGet("/orgs/{orgId:guid}/members", async (Guid orgId, ClaimsPrincipal caller, IAppDirectory apps, IManagementService mgmt, CancellationToken ct) =>
+        api.MapGet("/orgs/{orgId:guid}/members", async (Guid orgId, ClaimsPrincipal caller, IAppDirectory apps, IManagementService mgmt, IAuditWriter audit, CancellationToken ct) =>
         {
             AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
-            return app is null ? Results.Forbid() : Results.Ok(await mgmt.ListMembersAsync(app.Id, orgId, ct).ConfigureAwait(false));
+            if (app is null)
+            {
+                return Results.Forbid();
+            }
+
+            IReadOnlyList<MembershipDto> members = await mgmt.ListMembersAsync(app.Id, orgId, ct).ConfigureAwait(false);
+
+            // rc.8 (ASVS V8.3.5): an application reading a list of people is recorded, as a console administrator's read is.
+            await audit.WriteAsync(
+                new AuditEntry(
+                    AuditActions.AppPeopleView,
+                    AuditActorType.Api,
+                    ActorAppId: app.Id,
+                    TargetType: "organisation",
+                    TargetId: orgId,
+                    Metadata: JsonSerializer.Serialize(new Dictionary<string, object> { ["list"] = "org_members", ["rows"] = members.Count, ["searched"] = false })),
+                ct).ConfigureAwait(false);
+            return Results.Ok(members);
         }).WithName("ListMembers");
 
         api.MapPut("/orgs/{orgId:guid}/members/{userId:guid}", async (Guid orgId, Guid userId, MembershipUpsert input, ClaimsPrincipal caller, IAppDirectory apps, IManagementService mgmt, CancellationToken ct) =>

@@ -120,6 +120,16 @@ public sealed class MfaAndBootstrapTests : IAsyncLifetime
 
         // R7 (ASVS V2.8.4): a code works once — the one that confirmed the app is refused; the next one is accepted.
         Assert.NotEqual(MfaResult.Valid, await mfa.VerifyAsync(_userId, first, null));
+
+        // rc.8 (ASVS V2.8.5): that second use is a replay — recorded as one, and the person told once.
+        await using (SangamDbContext replays = _pg.CreateContext())
+        {
+            Assert.Equal(1, await replays.AuditEvents.CountAsync(e => e.Action == AuditActions.UserMfaReplay && e.TargetId == _userId));
+            Assert.False(await replays.AuditEvents.AnyAsync(e => e.Action == AuditActions.UserMfaFail && e.TargetId == _userId));
+        }
+
+        InMemoryEmailOutbox outbox = scope.ServiceProvider.GetRequiredService<InMemoryEmailOutbox>();
+        Assert.Equal("An authenticator code was used twice on your Sangam account", outbox.LatestFor("arun@example.in")!.Message.Subject);
         Assert.Equal(MfaResult.Valid, await mfa.VerifyAsync(_userId, await CurrentCodeAsync(TimeSpan.FromSeconds(30)), null));
 
         // Recovery codes keep their dash; a person reading one off paper may add spaces.
@@ -225,6 +235,7 @@ public sealed class MfaAndBootstrapTests : IAsyncLifetime
             Assert.StartsWith(Sangam.Identity.Infrastructure.Accounts.SangamUserStore.ProtectedPrefix, stored, StringComparison.Ordinal);
             Assert.DoesNotContain(enrolment.SharedKey.Replace(" ", string.Empty, StringComparison.Ordinal), stored, StringComparison.OrdinalIgnoreCase);
             string codes = await db.Database.SqlQueryRaw<string>("SELECT value AS \"Value\" FROM user_tokens WHERE user_id = {0} AND name = 'RecoveryCodes'", _userId).SingleAsync();
+            // Testing has no pepper, so the codes are plain SHA-256 (h1); with a pepper they are keyed (h2, RecoveryCodeTests).
             Assert.All(codes.Split(';'), c => Assert.StartsWith(Sangam.Identity.Infrastructure.Accounts.SangamUserStore.HashedPrefix, c, StringComparison.Ordinal));
             Assert.DoesNotContain(confirmation.RecoveryCodes[0], codes, StringComparison.Ordinal);
             Assert.Equal(MfaResult.Valid, await mfa.VerifyAsync(_userId, confirmation.RecoveryCodes[0], null));

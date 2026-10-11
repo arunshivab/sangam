@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Sangam.Identity.Application;
 using Sangam.Identity.Infrastructure;
+using Sangam.Identity.Infrastructure.Security;
 using Sangam.Identity.Infrastructure.Services;
 using Sangam.Identity.Infrastructure.Verification;
 using Sangam.SelfService.Web.Components;
@@ -15,7 +16,8 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 // A refused start is logged at Critical and exits with code 1 (V-08).
 StartupGuard.Install(typeof(Program).Assembly);
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
-builder.Configuration.AddSangamSecretFiles();
+// rc.8 (A6 workaround): secret files today; a Vault-compatible store when Sangam:Secrets:Source is "vault".
+builder.Configuration.AddSangamSecrets();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -112,6 +114,8 @@ app.Lifetime.ApplicationStarted.Register(StartupGuard.MarkStarted);
 
 // Behind Caddy: take the client address from trusted proxies only, before anything reads it (OI-037).
 app.UseForwardedHeaders();
+// rc.8 (ASVS V14.5.1): only the HTTP methods Sangam uses; every 405 is logged.
+app.UseSangamMethodGuard();
 // R7: CSP, framing, nosniff and the other security headers on every response (SGM-503).
 // DigiLocker's sign-in page is where the verification form's answer redirects (form-action covers redirects).
 Sangam.Identity.Infrastructure.Verification.DigiLockerSettings digiLocker = Sangam.Identity.Infrastructure.Verification.DigiLockerSettings.From(app.Configuration);
