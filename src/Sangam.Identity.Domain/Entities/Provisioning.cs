@@ -65,11 +65,17 @@ public static class AppEventTypes
     /// <summary>A role was created, changed or retired.</summary>
     public const string RoleChanged = "role.changed";
 
+    /// <summary>
+    /// rc.7: the person merged this account into another of theirs; <c>data.merged_into</c> is the surviving account's
+    /// <c>sub</c>. Sent for the closed account to every application it was connected to, so each can move its own records.
+    /// </summary>
+    public const string AccountMerged = "account.merged";
+
     /// <summary>A test event sent from the partner console.</summary>
     public const string Ping = "ping";
 
     /// <summary>Every type an endpoint may subscribe to, in the order the console shows them.</summary>
-    public static IReadOnlyList<string> All { get; } = [UserCreated, UserUpdated, UserDeactivated, UserReactivated, MembershipGranted, MembershipRevoked, SessionRevoked, ConsentRevoked, RoleChanged];
+    public static IReadOnlyList<string> All { get; } = [UserCreated, UserUpdated, UserDeactivated, UserReactivated, MembershipGranted, MembershipRevoked, SessionRevoked, ConsentRevoked, RoleChanged, AccountMerged];
 }
 
 /// <summary>An application's SCIM 2.0 server, to which Sangam provisions people (PR-23, SGM-216).</summary>

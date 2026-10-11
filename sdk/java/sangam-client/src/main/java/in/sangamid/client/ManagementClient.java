@@ -127,6 +127,23 @@ public final class ManagementClient {
         return send("POST", "orgs/" + orgId + "/invitations", body);
     }
 
+    /**
+     * Where a person's account went if they merged it into another of theirs (rc.7): the surviving account's
+     * {@code sub}, or {@code null} when the id was not merged or your application never knew it. Use it on
+     * {@code account.merged}.
+     */
+    public String mergedInto(String userId) throws IOException, InterruptedException {
+        try {
+            JsonNode answer = send("GET", "users/" + userId + "/merged", null);
+            return answer != null && answer.hasNonNull("merged_into") ? answer.get("merged_into").asText() : null;
+        } catch (SangamApiException e) {
+            if (e.status() == 404) {
+                return null;
+            }
+            throw e;
+        }
+    }
+
     public JsonNode getAttributes(String userId) throws IOException, InterruptedException {
         return send("GET", "users/" + userId + "/attributes", null);
     }

@@ -104,6 +104,15 @@ public static class MessageTemplateKinds
     /// <summary>To the person: their unused account will be deleted (rc.6, SGM-910 section 7).</summary>
     public const string AccountInactivityNotice = "account_inactivity_notice";
 
+    /// <summary>To both accounts: a merge was asked for, with the date it takes effect and a link to cancel (rc.7, SGM-914 section 9).</summary>
+    public const string AccountMergeRequested = "account_merge_requested";
+
+    /// <summary>To the surviving account: the merge is done (rc.7).</summary>
+    public const string AccountMerged = "account_merged";
+
+    /// <summary>To an application's other owners: one of its administrators merged accounts and the role moved (rc.7).</summary>
+    public const string AppAdminMerged = "app_admin_merged";
+
     /// <summary>Every kind, in the order the consoles list them.</summary>
     public static IReadOnlyList<MessageTemplateKind> All { get; } =
     [
@@ -126,6 +135,9 @@ public static class MessageTemplateKinds
         new(AppInactivityNotice, false, false, ["name", "application", "date"], ["application", "date"]),
         new(AppConnectionEnded, false, false, ["name", "application"], ["application"]),
         new(AccountInactivityNotice, false, false, ["name", "date"], ["date"]),
+        new(AccountMergeRequested, false, false, ["name", "survivor", "closed", "hours", "effective", "link"], ["survivor", "closed", "link"]),
+        new(AccountMerged, false, false, ["name", "closed"], ["closed"]),
+        new(AppAdminMerged, false, false, ["name", "application", "admin"], ["application", "admin"]),
         new(OperatorAlert, false, false, ["summary", "details"], ["summary"]),
         new(GrievanceAcknowledgement, false, false, ["name", "reference", "received", "resolve_by"], ["reference"]),
         new(GrievanceResolution, false, false, ["name", "reference", "resolution"], ["reference", "resolution"]),

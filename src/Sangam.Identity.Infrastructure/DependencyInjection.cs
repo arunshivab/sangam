@@ -260,6 +260,7 @@ public static class DependencyInjection
         services.AddScoped<EfMfaResetService>();
         services.AddScoped<IMfaResetService>(sp => sp.GetRequiredService<EfMfaResetService>());
         services.AddScoped<Application.Verification.IAccountRecoveryService, EfAccountRecoveryService>();
+        services.AddScoped<IAccountMergeService, EfAccountMergeService>();
         services.AddScoped<IPlatformAlerts, PlatformAlerts>();
         services.AddHostedService<MfaResetApplier>();
 

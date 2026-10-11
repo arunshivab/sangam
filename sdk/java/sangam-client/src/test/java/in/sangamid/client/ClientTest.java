@@ -2,6 +2,7 @@ package in.sangamid.client;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -33,7 +34,7 @@ class ClientTest {
             seen.add(exchange.getRequestMethod() + " " + path + " " + exchange.getRequestHeaders().getFirst("authorization") + " "
                     + new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
             String body = answers.getOrDefault(path, "{\"ok\":true}");
-            int status = path.endsWith("/forbidden") ? 403 : 200;
+            int status = path.endsWith("/forbidden") ? 403 : path.endsWith("/missing/merged") ? 404 : 200;
             byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("content-type", "application/json");
             exchange.sendResponseHeaders(status, bytes.length);
@@ -101,6 +102,20 @@ class ClientTest {
             ManagementClient client = new ManagementClient("http://127.0.0.1:" + server.getAddress().getPort() + "/", "app", "s", null);
             client.invite("o1", "asha@example.in", "nurse", true);
             assertEquals("POST /api/v1/orgs/o1/invitations Bearer t1 {\"email\":\"asha@example.in\",\"role\":\"nurse\",\"appliesToDescendants\":true}", seen.get(1));
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void mergedIntoGivesTheSurvivingId_AndNullForAnIdThatWasNotMerged() throws Exception {
+        // rc.7: a 404 is an answer ("not merged, or not yours"), not an error.
+        HttpServer server = serve(Map.of("/connect/token", "{\"access_token\":\"t1\",\"expires_in\":3600}",
+                "/api/v1/users/u-old/merged", "{\"merged_into\":\"u-new\",\"merged_at\":\"2026-10-12T05:00:00Z\"}"), new ArrayList<>());
+        try {
+            ManagementClient client = new ManagementClient("http://127.0.0.1:" + server.getAddress().getPort() + "/", "app", "s", null);
+            assertEquals("u-new", client.mergedInto("u-old"));
+            assertNull(client.mergedInto("missing"));
         } finally {
             server.stop(0);
         }

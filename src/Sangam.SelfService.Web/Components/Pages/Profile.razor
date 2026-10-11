@@ -182,6 +182,12 @@ else
     <a class="sg-btn sg-btn--secondary" href="@PasswordUrl">@L["Change your password"]</a>
   </section>
 
+  <section class="sg-panel" data-panel="merge">
+    <h2 class="sg-panel-title">@L["Two accounts?"]</h2>
+    <p class="sg-panel-body">@L["If you have a second Sangam account — for example one you could not get back into — you can merge the two into one, signed in to both."]</p>
+    <a class="sg-btn sg-btn--secondary" href="@MergeUrl">@L["Merge two of your accounts"]</a>
+  </section>
+
   @if (Passkeys.Enabled)
   {
     <section class="sg-panel" data-panel="passkeys">
@@ -337,6 +343,8 @@ else
     private string PasskeysUrl => (Configuration["Sangam:Authority"] ?? "https://id.sangamid.in").TrimEnd('/') + "/account/passkeys";
 
     private string PasswordUrl => (Configuration["Sangam:Authority"] ?? "https://id.sangamid.in").TrimEnd('/') + "/account/password";
+
+    private string MergeUrl => (Configuration["Sangam:Authority"] ?? "https://id.sangamid.in").TrimEnd('/') + "/account/merge";
 
     protected override async Task OnInitializedAsync()
     {

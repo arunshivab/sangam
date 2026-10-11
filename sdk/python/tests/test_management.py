@@ -25,3 +25,17 @@ def test_the_management_client_caches_its_token_and_calls_api_v1():
     with pytest.raises(SangamApiError) as e:
         client.send("GET", "forbidden")
     assert e.value.status == 403
+
+
+def test_merged_into_gives_the_surviving_id_and_none_for_an_id_that_was_not_merged():
+    # rc.7: a 404 is an answer ("not merged, or not yours"), not an error.
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/connect/token":
+            return httpx.Response(200, json={"access_token": "t1", "expires_in": 3600})
+        if request.url.path == "/api/v1/users/u-old/merged":
+            return httpx.Response(200, json={"merged_into": "u-new", "merged_at": "2026-10-12T05:00:00Z"})
+        return httpx.Response(404, json={})
+
+    client = ManagementClient("https://id.example.in/", "app", "s", client=httpx.Client(transport=httpx.MockTransport(handler)))
+    assert client.merged_into("u-old") == "u-new"
+    assert client.merged_into("u-other") is None

@@ -6,6 +6,46 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0-rc.7] - seventh release candidate
+
+Sangam 1.0.0-rc.7 lets a person merge two of their accounts (SGM-914 section 9), on the rules the founder decided on
+11 October 2026, and closes the two gaps rc.6 left against SGM-914.
+
+### Merging two accounts (SGM-914 section 9)
+- **Only the person, signed in to both.** *Merge two of your accounts* (`/account/merge`, linked from the account
+  portal's profile and the sign-in site's account page): sign in to one account, then to the other, each within
+  15 minutes and each with its own second step, then choose which account stays. No operator, application
+  administrator or application can merge someone's accounts.
+- **The surviving account's own wins.** The other account's applications, consents, roles at organisations and the
+  values applications keep move to it; where both hold the same thing (a role at the same organisation, a value for
+  the same key) the surviving account keeps its own, and the screen shows beforehand what would be lost. A DigiLocker
+  verification moves to the surviving account (its name, date of birth and gender then take DigiLocker's values).
+- **A wait, and a cancel link to both.** Nothing happens for 24 hours — 72 when either account administers an
+  application or organisation — and both accounts are e-mailed a one-click cancel link. The rules are checked again
+  when it is due.
+- **Refused:** the same account twice; an operator's account; a suspended, held or deleting account; an account with a
+  merge or recovery already waiting; and two accounts verified with different DigiLocker identities (two people).
+- **The closed account** is pseudonymised at once: its e-mail and mobile can be used again, its sessions and tokens end,
+  its passkeys and authenticator go. Its connections are revoked rather than deleted, so each application's history
+  stays true.
+- **Applications are told.** A new webhook event, `account.merged` (`data.merged_into` is the surviving `sub`), goes to
+  every application the closed account used; SCIM deactivates the closed person and provisions the surviving one. A new
+  management API call, `GET /api/v1/users/{id}/merged`, answers where a closed id went — only to an application that
+  knew it. Every SDK has the call (.NET `GetMergedIntoAsync`, JavaScript `mergedInto`, Python `merged_into`, Java
+  `mergedInto`). New webhook endpoints have `account.merged` ticked; existing ones must tick it.
+- **Administrators:** an application administrator's role moves with the account; where both accounts administer the
+  same application the surviving one keeps the higher role, so an application never loses its owner. The application's
+  other owners are e-mailed, and its audit records the move (`app.admin.merge`).
+- Three new e-mails (English, Hindi, Malayalam): the merge is asked for, the merge is done, an administrator merged.
+- Retention (SGM-910): a cancelled merge request is deleted after 30 days; an applied one is kept, holding only the two
+  account ids, so the closed id can answer "merged into".
+
+### SGM-914 gaps from rc.6
+- **Opening the Recoveries queue is audited** (`admin.user.mfa.recovery.queue.view`), with how many requests were shown
+  and which — not only each decision (section 7).
+- **An emergency override opens a security incident by itself** (`security.incident.open`, category
+  `emergency_override`), and the alert says *INCIDENT* (section 10, SGM-802).
+
 ## [1.0.0-rc.6] - sixth release candidate
 
 Sangam 1.0.0-rc.6 builds the founder's policies signed on 11 October 2026: data classification and retention

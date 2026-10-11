@@ -47,7 +47,7 @@ spec:
               app.kubernetes.io/name: identity
       containers:
         - name: identity
-          image: sangam/identity:1.0.0-rc.6
+          image: sangam/identity:1.0.0-rc.7
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

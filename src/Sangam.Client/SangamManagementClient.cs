@@ -109,6 +109,26 @@ public sealed class SangamManagementClient : IDisposable
     public Task<JsonNode?> InviteAsync(Guid orgId, string email, string role, bool appliesToDescendants = false, CancellationToken cancellationToken = default)
         => SendAsync(HttpMethod.Post, $"orgs/{orgId:D}/invitations", new { email, role, appliesToDescendants }, cancellationToken);
 
+    /// <summary>
+    /// Where a person's account went if they merged it into another of theirs (rc.7): the surviving account's <c>sub</c>,
+    /// or <see langword="null"/> when the id was not merged or your application never knew it. Use it on
+    /// <c>account.merged</c>, or for an id that stopped signing in, to move what you keep to the surviving id.
+    /// </summary>
+    /// <param name="userId">The id (<c>sub</c>) your application holds.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task<Guid?> GetMergedIntoAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            JsonNode? answer = await SendAsync(HttpMethod.Get, $"users/{userId:D}/merged", null, cancellationToken).ConfigureAwait(false);
+            return Guid.TryParse(answer?["merged_into"]?.GetValue<string>(), out Guid survivor) ? survivor : null;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
+
     /// <summary>The values your application keeps about a person.</summary>
     /// <param name="userId">The person.</param>
     /// <param name="cancellationToken">Cancellation token.</param>

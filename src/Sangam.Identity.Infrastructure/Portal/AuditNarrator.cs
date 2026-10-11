@@ -37,6 +37,10 @@ internal static class AuditNarrator
         AuditActions.AdminUserMfaRecoveryRefuse,
         AuditActions.ConsentInactivityExpire,
         AuditActions.UserAccountInactivityNotice,
+        AuditActions.UserAccountMergeRequest,
+        AuditActions.UserAccountMergeCancel,
+        AuditActions.UserAccountMerge,
+        AuditActions.SecurityIncidentOpen,
     };
 
     public static AuditLine Describe(AuditEvent e, IReadOnlyDictionary<Guid, string> appNames)
@@ -135,6 +139,12 @@ internal static class AuditNarrator
             AuditActions.ConsentInactivityExpire => $"Your connection to {app} ended, because you had not signed in to it for longer than it allows.",
             AuditActions.UserAccountInactivityNotice => "You were told your account will be deleted, because it has not been used for three years.",
             AuditActions.IdentityVerifyRequired => $"{app} asked you to verify your identity with DigiLocker before entering it.",
+            AuditActions.UserAccountMergeRequest => "You asked to merge two of your Sangam accounts. It waits out a cooling-off period, and both accounts were told so either could cancel it.",
+            AuditActions.UserAccountMergeCancel => Read(e.Metadata, "by") is "refused"
+                ? "The merge of your accounts did not happen: one of them could no longer be merged when it was due."
+                : "The merge of your accounts was cancelled.",
+            AuditActions.UserAccountMerge => "Two of your Sangam accounts were merged into this one.",
+            AuditActions.SecurityIncidentOpen => "Sangam opened a security incident about your account, after an operator acted on it at once.",
             _ => e.Action,
         };
 

@@ -98,6 +98,14 @@ public sealed class RetentionSweepTests : IAsyncLifetime
                 Reset(applied: Now.AddDays(-5)),
                 Reset());
 
+            // Account merges (rc.7): a cancelled one 30 days after; an applied one is kept for "merged into".
+            SangamUser other = TestUsers.New("asha.two@retention.test", "+919876506002");
+            db.Users.Add(other);
+            db.AccountMergeRequests.AddRange(
+                Merge(other.Id, cancelled: Now.AddDays(-31)),
+                Merge(other.Id, cancelled: Now.AddDays(-5)),
+                Merge(other.Id, applied: Now.AddDays(-400)));
+
             // SMS log: 180 days.
             db.SmsMessages.AddRange(Sms(Now.AddDays(-181)), Sms(Now.AddDays(-179)));
 
@@ -109,7 +117,7 @@ public sealed class RetentionSweepTests : IAsyncLifetime
         await using (SangamDbContext db = _pg.CreateContext())
         {
             int removed = await RetentionSweep.RunAsync(db, Now, CancellationToken.None);
-            Assert.Equal(12, removed);
+            Assert.Equal(13, removed);
         }
 
         await using (SangamDbContext db = _pg.CreateContext())
@@ -119,11 +127,26 @@ public sealed class RetentionSweepTests : IAsyncLifetime
             Assert.Equal(["accepted-new@x.test", "open@x.test"], await db.Invitations.OrderBy(i => i.Email).Select(i => i.Email).ToListAsync());
             Assert.Equal(["c@x.test"], await db.EmailChangeRequests.Select(r => r.NewEmail).ToListAsync());
             Assert.Equal(2, await db.MfaResetRequests.CountAsync());
+            Assert.Equal(2, await db.AccountMergeRequests.CountAsync());
+            Assert.True(await db.AccountMergeRequests.AnyAsync(r => r.AppliedAt != null));
             Assert.Equal(1, await db.SmsMessages.CountAsync());
             Assert.Equal(["G-OPEN", "G-RECENT"], await db.Grievances.OrderBy(g => g.Reference).Select(g => g.Reference).ToListAsync());
             Assert.Equal(2, await db.GrievanceEntries.CountAsync());
         }
     }
+
+    private AccountMergeRequest Merge(Guid other, DateTimeOffset? cancelled = null, DateTimeOffset? applied = null) => new()
+    {
+        Id = Guid.NewGuid(),
+        SurvivorUserId = _user,
+        ClosedUserId = other,
+        RequestedAt = Now.AddDays(-500),
+        EffectiveAt = Now.AddDays(-499),
+        CancelTokenHash = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N"),
+        CancelledAt = cancelled,
+        CancelledBy = cancelled is null ? null : "owner",
+        AppliedAt = applied,
+    };
 
     private OneTimeCode Code(string hash, DateTimeOffset expires) => new() { Id = Guid.NewGuid(), UserId = _user, Purpose = default, CodeHash = hash, CreatedAt = expires.AddMinutes(-10), ExpiresAt = expires };
 

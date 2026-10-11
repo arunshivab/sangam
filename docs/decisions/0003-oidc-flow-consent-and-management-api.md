@@ -65,7 +65,13 @@ GET    /orgs/{orgId}                       PUT /orgs/{orgId}
 GET    /orgs/{orgId}/members               PUT /orgs/{orgId}/members/{userId}
 DELETE /orgs/{orgId}/members/{userId}
 POST   /orgs/{orgId}/invitations           (rc.5)
+GET    /users/{userId}/merged              (rc.7)
 ```
+
+rc.7 (SGM-914 section 9): `GET /users/{userId}/merged` answers `{"merged_into": "<sub>", "merged_at": "…"}` when the
+person merged that account into another of theirs, following later merges to the account that exists now. It answers
+404 for every id the calling application never had — merged or not — so an application learns nothing about other
+people. Only the person merges accounts; no application and no operator can.
 
 rc.5 (ASVS V4.2.1, consent first): `PUT /orgs/{orgId}/members/{userId}` adds only a person who already uses the
 calling application; for anyone else — or an id that does not exist — it answers 404 with the same message. Such a

@@ -335,3 +335,20 @@ The policies SGM-910 (retention and inactivity) and SGM-914 (identity proofing a
       excepted). Counsel to confirm against the DPDP Rules' Third Schedule (48 hours' notice at least) before the
       public launch.
 - [ ] **Logs one year:** apply the updated `backup/lifecycle.json` (rule `logs-1-year`) to the off-site bucket.
+
+## Added by rc.7 (v1.0.0-rc.7)
+
+Account merging (SGM-914 section 9) and the two rc.6 gaps the founder's procedure named:
+
+- [ ] **A merge seen to work, once:** two test accounts, one an application administrator; sign in to the first,
+      *Merge two of your accounts*, sign in to the second, keep the second. Both e-mails arrive with the cancel link and
+      say 72 hours. Cancel once from the link; start again; after the wait the applications, roles and the administrator
+      role are on the kept account, the other application owner is e-mailed, and the old e-mail can register again.
+- [ ] **Tell partners:** the `account.merged` webhook (tick it on endpoints added before rc.7) and
+      `GET /api/v1/users/{id}/merged` (every SDK has a `mergedInto` call). An application that keeps its own records
+      under the Sangam id should move them to the surviving id.
+- [ ] **Incident register (SGM-802):** an emergency override now opens a security incident by itself
+      (`security.incident.open` in the audit, alert subject *INCIDENT*). Read the register from the operator console's
+      audit, filtered on that action, at each review.
+- [ ] **Recoveries queue:** opening it is audited (`admin.user.mfa.recovery.queue.view`); nothing to set up.
+

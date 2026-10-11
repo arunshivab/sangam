@@ -7,8 +7,9 @@ using Sangam.Identity.Application.Accounts;
 namespace Sangam.Identity.Infrastructure.Maintenance;
 
 /// <summary>
-/// Applies support resets of two-step sign-in once their cooling-off period has passed uncancelled (D-K). Runs every
-/// minute; each request is claimed atomically, so several hosts running this never apply one twice.
+/// Applies support resets of two-step sign-in once their cooling-off period has passed uncancelled (D-K), and from rc.7
+/// account merges once theirs has (SGM-914 section 9). Runs every minute; each request is claimed atomically, so several
+/// hosts running this never apply one twice.
 /// </summary>
 public sealed partial class MfaResetApplier : BackgroundService
 {
@@ -49,6 +50,12 @@ public sealed partial class MfaResetApplier : BackgroundService
                 {
                     LogApplied(applied);
                 }
+
+                int merged = await scope.ServiceProvider.GetRequiredService<IAccountMergeService>().ApplyDueAsync(stoppingToken).ConfigureAwait(false);
+                if (merged > 0)
+                {
+                    LogMerged(merged);
+                }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -60,6 +67,9 @@ public sealed partial class MfaResetApplier : BackgroundService
 
     [LoggerMessage(EventId = 1501, Level = LogLevel.Information, Message = "Applied {Count} two-step reset(s) whose cooling-off period had passed")]
     private partial void LogApplied(int count);
+
+    [LoggerMessage(EventId = 1503, Level = LogLevel.Information, Message = "Applied {Count} account merge(s) whose waiting period had passed")]
+    private partial void LogMerged(int count);
 
     [LoggerMessage(EventId = 1502, Level = LogLevel.Error, Message = "Applying due two-step resets failed")]
     private partial void LogFailed(Exception exception);

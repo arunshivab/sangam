@@ -64,6 +64,20 @@ class ManagementClient:
         """
         return self.send("POST", f"orgs/{org_id}/invitations", {"email": email, "role": role, "appliesToDescendants": applies_to_descendants})
 
+    def merged_into(self, user_id: str) -> str | None:
+        """Where a person's account went if they merged it into another of theirs (rc.7).
+
+        Returns the surviving account's sub, or None when the id was not merged or your application never knew it.
+        Use it on account.merged.
+        """
+        try:
+            answer = self.send("GET", f"users/{user_id}/merged")
+        except SangamApiError as error:
+            if error.status == 404:
+                return None
+            raise
+        return answer.get("merged_into") if isinstance(answer, dict) else None
+
     def get_attributes(self, user_id: str) -> dict[str, str | None]:
         return self.send("GET", f"users/{user_id}/attributes")
 

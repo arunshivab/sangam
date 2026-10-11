@@ -195,6 +195,48 @@
       "body": "നമസ്കാരം {{name}},\n\nനിങ്ങളുടെ Sangam അക്കൗണ്ട് മൂന്ന് വർഷമായി ഉപയോഗിച്ചിട്ടില്ല, ഇപ്പോൾ ഒരു ആപ്ലിക്കേഷനുമായും ബന്ധിപ്പിച്ചിട്ടുമില്ല.\nആവശ്യമുള്ളിടത്തോളം മാത്രമേ Sangam വ്യക്തിഗത ഡാറ്റ സൂക്ഷിക്കുന്നുള്ളൂ, അതിനാൽ {{date}}-ന് നിങ്ങളുടെ അക്കൗണ്ട് ഇല്ലാതാക്കും.\n\nഇത് നിലനിർത്താൻ, അതിനുമുമ്പ് id.sangamid.in-ൽ സൈൻ ഇൻ ചെയ്താൽ മതി.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
     }
   },
+  "account_merge_requested": {
+    "en-IN": {
+      "subject": "Two Sangam accounts are about to be merged",
+      "body": "Hello {{name}},\n\nSomeone signed in to two Sangam accounts and asked to merge them: {{closed}} will be closed into\n{{survivor}}. Its applications, roles and settings move to {{survivor}}; where both accounts hold the same\nthing, {{survivor}}'s own is kept. For your safety, nothing happens for {{hours}} hours: the merge takes effect\nat {{effective}}, and only if nobody stops it. It cannot be undone afterwards.\n\nIf this wasn't you, cancel it now with one click, then change the password of both accounts:\n\n    {{link}}\n\nIf it was you, there is nothing to do; you will be told when it is done.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "दो Sangam खाते मिलाए जाने वाले हैं",
+      "body": "नमस्ते {{name}},\n\nकिसी ने दो Sangam खातों में साइन इन करके उन्हें मिलाने को कहा है: {{closed}} बंद करके {{survivor}} में मिला दिया\nजाएगा। उसके ऐप्लिकेशन, भूमिकाएँ और सेटिंग्स {{survivor}} में चली जाएँगी; जहाँ दोनों खातों में एक ही चीज़ हो, वहाँ\n{{survivor}} की अपनी रखी जाएगी। आपकी सुरक्षा के लिए {{hours}} घंटे तक कुछ नहीं होगा: खाते {{effective}} पर मिलेंगे, और\nकेवल तब जब कोई इसे न रोके। बाद में इसे पलटा नहीं जा सकता।\n\nअगर यह आप नहीं थे, तो अभी एक क्लिक में इसे रद्द करें, फिर दोनों खातों का पासवर्ड बदलें:\n\n    {{link}}\n\nअगर यह आप थे, तो कुछ करने की ज़रूरत नहीं है; पूरा होने पर आपको बता दिया जाएगा।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "രണ്ട് Sangam അക്കൗണ്ടുകൾ ലയിപ്പിക്കാൻ പോകുന്നു",
+      "body": "നമസ്കാരം {{name}},\n\nആരോ രണ്ട് Sangam അക്കൗണ്ടുകളിൽ സൈൻ ഇൻ ചെയ്ത് അവ ലയിപ്പിക്കാൻ ആവശ്യപ്പെട്ടു: {{closed}} അടച്ച്\n{{survivor}}-ൽ ലയിപ്പിക്കും. അതിന്റെ ആപ്ലിക്കേഷനുകളും റോളുകളും ക്രമീകരണങ്ങളും {{survivor}}-ലേക്ക് മാറും;\nരണ്ട് അക്കൗണ്ടുകളിലും ഒരേ കാര്യം ഉള്ളിടത്ത് {{survivor}}-ന്റേത് നിലനിർത്തും. നിങ്ങളുടെ സുരക്ഷയ്ക്കായി {{hours}}\nമണിക്കൂർ ഒന്നും സംഭവിക്കില്ല: {{effective}}-ന് ലയനം നടക്കും, ആരും തടഞ്ഞില്ലെങ്കിൽ മാത്രം. പിന്നീട് ഇത്\nപഴയപടിയാക്കാൻ കഴിയില്ല.\n\nഇത് നിങ്ങളല്ലെങ്കിൽ, ഇപ്പോൾ ഒറ്റ ക്ലിക്കിൽ റദ്ദാക്കുക, തുടർന്ന് രണ്ട് അക്കൗണ്ടുകളുടെയും പാസ്‌വേഡ് മാറ്റുക:\n\n    {{link}}\n\nഇത് നിങ്ങളാണെങ്കിൽ, ഒന്നും ചെയ്യേണ്ടതില്ല; പൂർത്തിയാകുമ്പോൾ അറിയിക്കും.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
+  "account_merged": {
+    "en-IN": {
+      "subject": "Your Sangam accounts are merged",
+      "body": "Hello {{name}},\n\nThe merge you asked for is done: {{closed}} is closed, and its applications, roles and settings are now on\nthis account. Each application it was connected to has been told, so that it can move what it keeps about you.\nThe closed account's e-mail address and mobile number are free again.\n\nIf you did not ask for this, write to help@sangamid.in at once.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "आपके Sangam खाते मिला दिए गए हैं",
+      "body": "नमस्ते {{name}},\n\nआपके कहे अनुसार खाते मिला दिए गए हैं: {{closed}} बंद कर दिया गया है, और उसके ऐप्लिकेशन, भूमिकाएँ और सेटिंग्स अब इस\nखाते पर हैं। जिन ऐप्लिकेशनों से वह जुड़ा था उन्हें बता दिया गया है, ताकि वे आपके बारे में रखी जानकारी स्थानांतरित कर\nसकें। बंद खाते का ई-मेल पता और मोबाइल नंबर फिर से उपलब्ध हैं।\n\nअगर आपने यह नहीं माँगा था, तो तुरंत help@sangamid.in पर लिखें।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "നിങ്ങളുടെ Sangam അക്കൗണ്ടുകൾ ലയിപ്പിച്ചു",
+      "body": "നമസ്കാരം {{name}},\n\nനിങ്ങൾ ആവശ്യപ്പെട്ട ലയനം പൂർത്തിയായി: {{closed}} അടച്ചു, അതിന്റെ ആപ്ലിക്കേഷനുകളും റോളുകളും ക്രമീകരണങ്ങളും\nഇപ്പോൾ ഈ അക്കൗണ്ടിലാണ്. അത് ബന്ധിപ്പിച്ചിരുന്ന ഓരോ ആപ്ലിക്കേഷനെയും അറിയിച്ചിട്ടുണ്ട്, അതിനാൽ അവയ്ക്ക്\nനിങ്ങളെക്കുറിച്ച് സൂക്ഷിക്കുന്നത് മാറ്റാം. അടച്ച അക്കൗണ്ടിന്റെ ഇ-മെയിൽ വിലാസവും മൊബൈൽ നമ്പറും വീണ്ടും\nലഭ്യമാണ്.\n\nഇത് നിങ്ങൾ ആവശ്യപ്പെട്ടതല്ലെങ്കിൽ, ഉടൻ help@sangamid.in-ലേക്ക് എഴുതുക.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
+  "app_admin_merged": {
+    "en-IN": {
+      "subject": "An administrator of {{application}} merged their Sangam accounts",
+      "body": "Hello {{name}},\n\nOne of the administrators of {{application}} merged two of their Sangam accounts. Their administrator role\nnow belongs to {{admin}}; the closed account no longer has it. The change is in {{application}}'s audit on\nthe partner console.\n\nIf you did not expect this, review the administrators on the partner console and write to\nhelp@sangamid.in.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "{{application}} के एक व्यवस्थापक ने अपने Sangam खाते मिला दिए",
+      "body": "नमस्ते {{name}},\n\n{{application}} के एक व्यवस्थापक ने अपने दो Sangam खाते मिला दिए हैं। उनकी व्यवस्थापक भूमिका अब {{admin}} के पास\nहै; बंद खाते के पास अब यह नहीं है। यह बदलाव पार्टनर कंसोल पर {{application}} के ऑडिट में है।\n\nअगर आपको इसकी उम्मीद नहीं थी, तो पार्टनर कंसोल पर व्यवस्थापकों की जाँच करें और help@sangamid.in पर लिखें।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "{{application}}-ന്റെ ഒരു അഡ്മിനിസ്ട്രേറ്റർ തന്റെ Sangam അക്കൗണ്ടുകൾ ലയിപ്പിച്ചു",
+      "body": "നമസ്കാരം {{name}},\n\n{{application}}-ന്റെ അഡ്മിനിസ്ട്രേറ്റർമാരിൽ ഒരാൾ തന്റെ രണ്ട് Sangam അക്കൗണ്ടുകൾ ലയിപ്പിച്ചു. അവരുടെ\nഅഡ്മിനിസ്ട്രേറ്റർ റോൾ ഇപ്പോൾ {{admin}}-ന്റേതാണ്; അടച്ച അക്കൗണ്ടിന് അത് ഇനിയില്ല. ഈ മാറ്റം പാർട്ണർ\nകൺസോളിൽ {{application}}-ന്റെ ഓഡിറ്റിലുണ്ട്.\n\nഇത് പ്രതീക്ഷിച്ചതല്ലെങ്കിൽ, പാർട്ണർ കൺസോളിൽ അഡ്മിനിസ്ട്രേറ്റർമാരെ പരിശോധിച്ച് help@sangamid.in-ലേക്ക്\nഎഴുതുക.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
   "operator_alert": {
     "en-IN": {
       "subject": "SangamID alert: {{summary}}",
