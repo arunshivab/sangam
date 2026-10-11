@@ -42,6 +42,14 @@ The identity server registers the portal, both consoles and the demo from its se
 the hosts use. A missing or short secret, or a non-https address, refuses the start. To rotate a client secret, replace
 its file and restart the identity server and that host.
 
+**Containers (rc.9, ASVS V1.14.5, V1.2.1, V1.14.1).** Every container runs on a read-only filesystem with a private
+`/tmp`, without Linux capabilities, unable to gain privileges, with memory and process limits. Caddy is built here from
+the pinned official image (`caddy/`) and runs as user 1000; the one-off `caddy-volumes` step gives its volumes to that
+user before it starts. The demo reaches PostgreSQL on its own network, `sangam-demo-db`, which the database stack
+creates. **Upgrading from rc.8:** run `docker compose -f postgres/docker-compose.yml up -d` first (it adds that network
+and restarts PostgreSQL with the new limits), then `docker compose up -d --build`. A host that stops with "Read-only
+file system" in its log is writing somewhere it should not: report it rather than removing `read_only`.
+
 The demo (D-I) shows "Demo, not for real patient data" on every page. Sign in with a Sangam account; with registration
 by invitation only (pilot), invite testers first. To give someone a role at a demo hospital, use the partner console.
 
@@ -149,6 +157,10 @@ by invitation only (pilot), invite testers first. To give someone a role at a de
   vault wins over the file. Certificates stay files until the vault signs for Sangam.
 - **Host names (rc.8):** each host answers only its own public name, its service name (for Caddy's health checks) and
   `localhost` (`AllowedHosts` in `docker-compose.yml`). A new host name means a new entry there.
+
+- **Key compromise (rc.9):** the commands for each step run through the identity image, in this folder, with the same
+  `-f` files as the stack: `docker compose run --rm identity key-compromise revoke-tokens --incident <ref>` (and
+  `revoke-key-ring`, `reverify`), and `audit-archive reencrypt`. When to run each: `docs/security/key-compromise.md`.
 
 ## 6. Server hardening (rc.8)
 

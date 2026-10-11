@@ -59,7 +59,8 @@ public sealed partial class EfAccountRecoveryService : IAccountRecoveryService
         }
 
         string hash = _verification.SubjectHash(identity.Method, identity.Subject);
-        if (await _verification.BelongsToAnotherAsync(userId, identity.Method, hash, cancellationToken).ConfigureAwait(false))
+        IReadOnlyCollection<string> hashes = _verification.SubjectHashes(identity.Method, identity.Subject);
+        if (await _verification.BelongsToAnotherAsync(userId, identity.Method, hashes, cancellationToken).ConfigureAwait(false))
         {
             return new RecoveryOutcome("taken");
         }
@@ -70,7 +71,8 @@ public sealed partial class EfAccountRecoveryService : IAccountRecoveryService
         if (verified is not null)
         {
             // Strong match: the same DigiLocker identity that verified this account. Nothing else is compared.
-            bool same = verified.Method == identity.Method && string.Equals(verified.SubjectHash, hash, StringComparison.Ordinal);
+            // rc.9: a hash made with a previous subject key still matches.
+            bool same = verified.Method == identity.Method && hashes.Contains(verified.SubjectHash, StringComparer.Ordinal);
             match = same ? "strong" : "review";
             mismatches = same ? [] : ["identity"];
         }

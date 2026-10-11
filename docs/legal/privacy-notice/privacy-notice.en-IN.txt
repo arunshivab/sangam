@@ -38,7 +38,7 @@ While your account exists. If you delete your account, it is removed after 30 da
 
 6. How it is protected
 
-Encryption between your browser and Sangam; passwords hashed with Argon2id and a secret key; encrypted backups kept in another region; access only by the people who run Sangam, with every view recorded; notices to you when your password, e-mail, mobile, authenticator or passkeys change.
+Encryption between your browser and Sangam; passwords hashed with Argon2id and a secret key; encrypted backups kept in another region; access only by the people who run Sangam, with every view recorded; notices to you when your password, e-mail, mobile, authenticator or passkeys change, and when your account is signed in to from a browser not used before (a small cookie in your browser records the accounts that have signed in from it).
 
 7. Your rights
 

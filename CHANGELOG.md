@@ -6,6 +6,62 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0-rc.9] - ninth release candidate
+
+Sangam 1.0.0-rc.9 acts on the founder's answers of 11 October 2026 on the remaining ASVS Level 2 gaps: 203 of 259
+requirements are now Met (192 at rc.8).
+
+### Accounts and sign-in
+- **A fresh sign-in before sensitive changes** (ASVS V3.7.1, V3.3.4; decision 1): changing the e-mail, the mobile number,
+  the sign-in method, the authenticator or passkeys, ending sessions, downloading or deleting the account needs a
+  sign-in from the last 15 minutes. The portal shows "Sign in again" and comes back to the page afterwards; on the
+  identity server only this browser's sign-in ends. English, Hindi and Malayalam.
+- **New-device sign-in e-mail** (V2.2.3): a sign-in from a browser that has not signed in to the account before
+  e-mails the person with the browser, the network address, the time and a link to the devices page, and writes
+  `user.login.new_device`. Not on the sign-in straight after registering. Sangam does not look up where an address is.
+
+### Key compromise (V1.6.3)
+- **Commands for every step**, run on the server through the identity image with the incident's reference, audited
+  and safe to repeat: `key-compromise revoke-tokens` (every token and authorization), `revoke-key-ring` (new
+  data-protection key; authenticator secrets protected again so people keep them; everyone signed out) and
+  `reverify` (verified people asked, on their profile page, to verify with DigiLocker once more).
+- **`audit-archive reencrypt`** writes every archive file again for a new archive key, leaving the originals.
+- **`Sangam:DigiLocker:PreviousSubjectKeys`**: after the subject key is replaced, one DigiLocker identity still
+  verifies only one account, and recoveries still match.
+- The container now passes its arguments to the application (`docker compose run --rm identity <command>`).
+
+### Monitoring and logs
+- **Never-normal events alert** (V11.1.7): refusals, authenticator replays, refused tokens, unreadable API requests and
+  refused uploads are counted each hour, with an alert above `Sangam:Monitoring:Alerts:*PerHour`, and when one caller
+  is refused again and again.
+- **Validation and deserialisation failures are logged** (V7.1.3): forms that fail validation (event 5102, field names
+  only) and requests that cannot be read (event 5103; `api.request.invalid` in the audit on the management API), never
+  with the values.
+
+### API
+- **Strict JSON** (V13.2.2): a management-API body with a field the API does not know is refused with 400 and a short
+  problem body, before anything runs.
+- A test shows that differently spelled API paths still need the token (V13.1.1).
+
+### Limits
+- **The portal and both consoles are rate-limited** (V11.1.4): per signed-in person (or address) per minute, with a
+  tighter limit on changes (`Sangam:RateLimit:HostRequestsPerMinute`, `HostPostsPerMinute`); 429 with `Retry-After`.
+
+### Supply chain and deployment
+- **Lock files** (V10.3.2): every project restores from `packages.lock.json`, in locked mode on CI. Base images (.NET,
+  Caddy, PostgreSQL) are pinned by digest; Dependabot proposes new ones.
+- **Hardened containers** (V1.14.5, V1.2.1): read-only filesystems with a private `/tmp`, no capabilities,
+  no-new-privileges, memory and process limits for every container. Caddy is built from the pinned image without its
+  file capability and runs as user 1000. Tried in Docker: the hosts, Caddy and PostgreSQL run and answer.
+- **The demo has its own network to the database** (V1.14.1): `sangam-demo-db`. Upgrade the database stack first.
+
+### Database
+- Migration `Rc9IdentityReverify`: `users.identity_reverify_requested_at`.
+
+### Documents
+- `docs/security/key-compromise.md` section 4 (the commands); `asvs-l2.md` and `.csv` updated; log-content policy
+  (events 5102, 5103 and the new audit events); architecture; deployment guide; go-live checklist ("Added by rc.9").
+
 ## [1.0.0-rc.8] - eighth release candidate
 
 Sangam 1.0.0-rc.8 closes the small ASVS Level 2 gaps, records the founder's decisions 1–9 of 11 October 2026, and

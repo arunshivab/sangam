@@ -40,14 +40,14 @@ that meet it in the code or the deployment, and what is left over. "Accepted" po
 | S | Phishing site imitating sign-in | HSTS, the front page warns, passkeys bound to `id.sangamid.in` | People can still be fooled into typing a password elsewhere |
 | T | Request smuggling, host-header tricks | Caddy in front; `AllowedHosts` per host; forwarded headers only from Caddy's network | — |
 | I | Version or stack disclosure | `Server` stripped; no version headers; Development pages not compiled into the image (rc.8) | — |
-| D | Flooding sign-in, token or API endpoints | Rate limits per endpoint, CAPTCHA-free bot checks, request metrics with alerts | A large distributed attack would exhaust the single VM |
+| D | Flooding sign-in, token or API endpoints | Rate limits per endpoint, and per person on the portal and consoles (rc.9); CAPTCHA-free bot checks, request metrics with alerts | A large distributed attack would exhaust the single VM |
 | E | Unexpected HTTP methods or parameter pollution reaching handlers | Only the methods Sangam uses are answered, every 405 logged; a repeated OAuth parameter is refused (rc.8) | — |
 
 ### TB3: a person and their account
 
 | STRIDE | Threat | Controls | Left over |
 |---|---|---|---|
-| S | Credential stuffing, password guessing | Argon2id with pepper, breached-password check, lockout, notifications; authenticator or passkey optional for ordinary people | Single-factor sign-in for ordinary users — **accepted (decision 1)**; a fresh sign-in is required before sensitive changes |
+| S | Credential stuffing, password guessing | Argon2id with pepper, breached-password check, lockout, notifications; authenticator or passkey optional for ordinary people | Single-factor sign-in for ordinary users — **accepted (decision 1)**; a sign-in from the last 15 minutes is required before sensitive changes (rc.9), and a sign-in from a new browser is e-mailed to the person (rc.9) |
 | S | Account takeover by password reset | Reset by e-mailed code; an enrolled authenticator is still asked for after a reset | Whoever controls the mailbox can reset — **accepted (decision 3)** |
 | S | Replay of an authenticator code | A code works once; a reuse is recorded as a replay and the person told (rc.8) | — |
 | S | Guessing recovery codes | 120-bit codes, keyed hashes with the pepper (rc.8), one use each, lockout | — |
@@ -65,14 +65,14 @@ that meet it in the code or the deployment, and what is left over. "Accepted" po
 | I | Reading people who never linked the application | Consent first; searches and lists only over the application's own grants; reads of people audited (rc.8) | — |
 | I | Correlating one person across applications | Pairwise subject ids for SAML; OIDC pairwise ids planned (after rc.9) | OIDC subject ids are the same across applications today |
 | D | Webhook or SCIM endpoint used to make Sangam attack a private network | `OutboundHttp`: https only, no redirects, private addresses refused after DNS | — |
-| E | Using the management API beyond `sangam.manage` | Policy on the whole API group; refusals audited | — |
+| E | Using the management API beyond `sangam.manage` | Policy on the whole API group; refusals audited; bodies bound to strict contracts, unknown fields refused and audited (rc.9) | — |
 
 ### TB5–TB6: partner administrators and operators
 
 | STRIDE | Threat | Controls | Left over |
 |---|---|---|---|
 | S | Console access with a stolen password | Authenticator required for every console user | — |
-| E | Acting above one's rank | Rank or owner check inside each service method; every refusal audited as `access.denied` with the operation and the rank it needed (rc.8) | — |
+| E | Acting above one's rank | Rank or owner check inside each service method; every refusal audited as `access.denied` with the operation and the rank it needed (rc.8); many refusals, or one caller refused again and again, alert the founder (rc.9) | — |
 | R | Operator browsing records unnoticed | Every record opened, export and recovery review audited; the person can see operator views in their activity | — |
 | E | A single operator approving their own risky action | Cooling-off and review for privileged recoveries | A second operator's approval is not yet required (planned) |
 
@@ -91,13 +91,13 @@ that meet it in the code or the deployment, and what is left over. "Accepted" po
 | S | A forged or revoked server certificate (DigiLocker, Anjal, SIEM, partner endpoints) | Certificates validated, revocation checked online (rc.8); a revoked certificate refused | When the revocation answer cannot be had, the connection goes ahead (soft fail); outbound port 80 must be open for OCSP |
 | I | Anjal reading codes in transit | Same VM today; codes short-lived | Anjal is trusted with message content |
 | T | Partner-registered destination turned hostile | Partner's own data only; signed payloads | **Accepted (decision 9)**: partners register their own destinations; the firewall allows only outbound 443 plus mail and DNS to Anjal |
-| E | A vulnerable third-party library | Dependency, image and CodeQL scans on every pull request; Dependabot | Libraries run in-process with full rights — **accepted (decision 5)** |
+| E | A vulnerable third-party library | Dependency, image and CodeQL scans on every pull request; Dependabot; lock files and digest-pinned images (rc.9); every container read-only, without capabilities (rc.9) | Libraries run in-process with full rights — **accepted (decision 5)** |
 
 ### TB9: root on the VM, the host and backups
 
 | STRIDE | Threat | Controls | Left over |
 |---|---|---|---|
-| I | Keys copied from the secret files | Root-only files, never in images or backups, offline copies; fingerprints checked at each start, a changed key stops the start and alerts (rc.8); SSH key-only, no root login | Root can read any key — **accepted (decision A6)** until imagiQa's vault exists |
+| I | Keys copied from the secret files | Root-only files, never in images or backups, offline copies; fingerprints checked at each start, a changed key stops the start and alerts (rc.8); SSH key-only, no root login | Root can read any key — **accepted (decision A6)** until imagiQa's vault exists; after a copy, every key-compromise step has a command (rc.9) |
 | I | Secrets left in process memory | — | .NET strings cannot be wiped — **accepted (decision 5)** |
 | I | Stolen backup | `age`-encrypted before leaving the VM; the private key offline | — |
 | D | Loss of the VM | Nightly off-site backups in another region, restore drills | Hours of downtime while a new VM is built |
@@ -129,3 +129,4 @@ Decisions 1–9 of 11 October 2026 ([decision memo](decision-memo-rc8.md)) and A
 | Release | Date | Reviewed by | Changes |
 |---|---|---|---|
 | 1.0.0-rc.8 | 11 Oct 2026 | Claude, under the direction of the founder | First version in the repository (SGM-203 summarised and brought up to date); rc.8 controls added |
+| 1.0.0-rc.9 | 11 Oct 2026 | Claude, under the direction of the founder | Reviewed; rc.9 controls added (fresh sign-in, new-device e-mail, strict API contracts, host rate limits, hardened containers, key-compromise commands); no new threat found |

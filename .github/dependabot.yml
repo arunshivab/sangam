@@ -68,7 +68,8 @@ updates:
         patterns: ["*"]
 
   - package-ecosystem: docker
-    directory: /
+    # rc.9: the application image and the non-root Caddy image (deploy/production/caddy).
+    directories: ["/", "/deploy/production/caddy"]
     schedule:
       interval: weekly
       day: monday
@@ -76,4 +77,16 @@ updates:
       timezone: Asia/Kolkata
     groups:
       docker:
+        patterns: ["*"]
+
+  # rc.9 (ASVS V10.3.2): the production compose files pin caddy and postgres by digest; Dependabot proposes new digests.
+  - package-ecosystem: docker-compose
+    directories: ["/deploy/production", "/deploy/production/postgres"]
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Kolkata
+    groups:
+      docker-compose:
         patterns: ["*"]

@@ -413,4 +413,34 @@ public static class AuditActions
 
     /// <summary>At start-up a key was seen for the first time and its fingerprint recorded (rc.8, SGM-911).</summary>
     public const string SecurityKeyRecorded = "security.key.recorded";
+
+    /// <summary>
+    /// A management API request was refused because its body could not be read as the expected JSON, or carried fields the API
+    /// does not know (rc.9, ASVS V7.1.3, V13.2.2). Metadata: method, path, client and the reason; never the body.
+    /// </summary>
+    public const string ApiRequestInvalid = "api.request.invalid";
+
+    /// <summary>
+    /// Key compromise (rc.9, ASVS V1.6.3, SGM-911): every refresh token, access token and authorization was revoked by the
+    /// operator's command on the server. Metadata: incident, counts.
+    /// </summary>
+    public const string SecurityTokensRevokeAll = "security.tokens.revoke_all";
+
+    /// <summary>
+    /// Key compromise (rc.9): the data-protection keys were revoked and a new one made; authenticator secrets were protected
+    /// again under it, and everyone was signed out. Metadata: incident, counts.
+    /// </summary>
+    public const string SecurityKeyRingRevoke = "security.keyring.revoke";
+
+    /// <summary>
+    /// Key compromise (rc.9): everyone with a verified identity was asked to verify again, after the DigiLocker subject key was
+    /// replaced. Metadata: incident, count.
+    /// </summary>
+    public const string SecurityIdentityReverify = "security.identity.reverify";
+
+    /// <summary>
+    /// The person signed in from a browser that had not signed in to this account before (no Sangam device cookie for it), and
+    /// was told by e-mail (rc.9, ASVS V2.2.3). The row carries the address and browser, as every sign-in does.
+    /// </summary>
+    public const string UserLoginNewDevice = "user.login.new_device";
 }

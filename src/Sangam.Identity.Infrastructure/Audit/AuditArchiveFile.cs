@@ -47,7 +47,6 @@ public static class AuditArchiveFile
             throw new ArgumentException("An archive needs at least one event.", nameof(events));
         }
 
-        using RSA rsa = certificate.GetRSAPublicKey() ?? throw new InvalidOperationException("The audit-archive certificate has no RSA public key.");
         AuditArchiveHeader header = new(
             1,
             createdAt,
@@ -59,15 +58,49 @@ public static class AuditArchiveFile
             events[0].PrevHash,
             events[^1].Hash,
             certificate.Thumbprint);
+        WriteArchived(path, header, [.. events.Select(Anonymise)], certificate);
+        return header;
+    }
 
+    /// <summary>
+    /// rc.9 (ASVS V1.6.3; key compromise): reads an archive with the old private key, checks it, and writes the same events,
+    /// header and chain again for a new certificate. The original file is not touched (it may be under Object Lock); the new
+    /// file goes to <paramref name="target"/>.
+    /// </summary>
+    /// <param name="source">The archive file.</param>
+    /// <param name="oldKey">The old archive certificate's private key.</param>
+    /// <param name="certificate">The new archive certificate (public key only).</param>
+    /// <param name="target">The new file to create.</param>
+    /// <returns>The new header.</returns>
+    public static AuditArchiveHeader Reencrypt(string source, RSA oldKey, X509Certificate2 certificate, string target)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(oldKey);
+        ArgumentNullException.ThrowIfNull(certificate);
+        ArgumentNullException.ThrowIfNull(target);
+        (AuditArchiveHeader old, IReadOnlyList<ArchivedAuditEvent> events) = Read(source, oldKey);
+        string? problem = AuditArchiveCommand.Check(old, events);
+        if (problem is not null)
+        {
+            throw new InvalidDataException(problem);
+        }
+
+        AuditArchiveHeader header = old with { CertificateThumbprint = certificate.Thumbprint };
+        WriteArchived(target, header, events, certificate);
+        return header;
+    }
+
+    private static void WriteArchived(string path, AuditArchiveHeader header, IReadOnlyList<ArchivedAuditEvent> events, X509Certificate2 certificate)
+    {
+        using RSA rsa = certificate.GetRSAPublicKey() ?? throw new InvalidOperationException("The audit-archive certificate has no RSA public key.");
         byte[] plain;
         using (MemoryStream buffer = new())
         {
             using (GZipStream gzip = new(buffer, CompressionLevel.SmallestSize, leaveOpen: true))
             {
-                foreach (AuditEvent e in events)
+                foreach (ArchivedAuditEvent e in events)
                 {
-                    gzip.Write(JsonSerializer.SerializeToUtf8Bytes(Anonymise(e), Json));
+                    gzip.Write(JsonSerializer.SerializeToUtf8Bytes(e, Json));
                     gzip.WriteByte((byte)'\n');
                 }
             }
@@ -106,7 +139,6 @@ public static class AuditArchiveFile
         }
 
         File.Move(temporary, path);
-        return header;
     }
 
     /// <summary>Reads only the clear-text header (no key needed); <see langword="null"/> when the file is not an archive.</summary>

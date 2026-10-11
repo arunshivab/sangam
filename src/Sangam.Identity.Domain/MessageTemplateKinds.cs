@@ -89,6 +89,9 @@ public static class MessageTemplateKinds
     /// <summary>To the person: a passkey was removed from their account (R7, ASVS V2.5.5).</summary>
     public const string PasskeyRemovedNotice = "passkey_removed_notice";
 
+    /// <summary>To the person: someone signed in to their account from a browser not used before (rc.9, ASVS V2.2.3).</summary>
+    public const string NewDeviceSignInNotice = "new_device_sign_in_notice";
+
     /// <summary>To the person: they asked for a sign-in code, but their sign-in uses a password (rc.2).</summary>
     public const string PasswordAccountCodeNotice = "password_account_code_notice";
 
@@ -132,6 +135,7 @@ public static class MessageTemplateKinds
         new(AuthenticatorCodeReusedNotice, false, false, ["name"], []),
         new(PasskeyAddedNotice, false, false, ["name"], []),
         new(PasskeyRemovedNotice, false, false, ["name"], []),
+        new(NewDeviceSignInNotice, false, false, ["name", "browser", "address", "time", "link"], ["link"]),
         new(PasswordAccountCodeNotice, false, false, ["name"], []),
         new(TwoStepResetRequested, false, false, ["name", "hours", "effective", "link"], ["link"]),
         new(RecoveryReviewWaiting, false, false, ["name", "link"], ["link"]),

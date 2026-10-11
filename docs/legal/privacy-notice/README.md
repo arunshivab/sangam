@@ -26,4 +26,4 @@ Placeholders are marked `[COUNSEL: …]`. In particular:
 5. Whether the Hindi and Malayalam texts, once approved, are equally authoritative or translations of the English.
 6. The DPDP Rules' notice requirements as finally notified (Claude's knowledge ends mid-2026).
 
-Every fact in the notice is drawn from SGM-910 and the code as of 1.0.0-rc.8; when a fact changes, change the notice.
+Every fact in the notice is drawn from SGM-910 and the code as of 1.0.0-rc.9; when a fact changes, change the notice.

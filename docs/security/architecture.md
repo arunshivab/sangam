@@ -63,15 +63,19 @@ flowchart LR
 
 | Component | Function | Runs as | Holds |
 |---|---|---|---|
-| Caddy | Terminates TLS (automatic certificates), redirects HTTP, adds HSTS and security headers, strips `Server`, routes by host name, health-checks the hosts | its container's default user (root inside the container) | TLS certificates and their keys (`caddy_data`) |
+| Caddy | Terminates TLS (automatic certificates), redirects HTTP, adds HSTS and security headers, strips `Server`, routes by host name, health-checks the hosts | user 1000, no capabilities, read-only filesystem (rc.9) | TLS certificates and their keys (`caddy_data`) |
 | Identity server | Sign-in, registration, the eight account screens, OpenID Connect and OAuth 2 (OpenIddict), SAML, the management API, DigiLocker verification at sign-in, back-channel logout, SCIM and webhook delivery, audit archive, retention and inactivity sweeps, monitoring evaluation and alerts, the start-up key-fingerprint check | non-root (`APP_UID`) | Token signing and encryption certificates, key-ring certificate, pepper, SAML keys, DigiLocker subject key, client secrets of the consoles (to register them) |
 | Account portal | A person's own account: profile, security, sessions, consents, export, deletion, merge, DigiLocker verification | non-root | Key-ring certificate, pepper, its client secret, DigiLocker subject key |
 | Operator console | Sangam's own operators: users, applications, operators, recoveries, monitoring, templates, grievances | non-root | Key-ring certificate, pepper, its client secret |
 | Partner console | An application's administrators: roles, organisations, members, attributes, settings, policies, webhooks, evidence packs | non-root | Key-ring certificate, pepper, its client secret |
-| imagiQa demo | A sample partner application (D-I), its own database | non-root | Its client secret, its own data-protection keys |
+| imagiQa demo | A sample partner application (D-I), its own database, reached on its own network (rc.9) | non-root | Its client secret, its own data-protection keys |
 | PostgreSQL 18 | All of Sangam's data: accounts, credentials (hashed or encrypted), grants, tenancy, audit log (hash-chained, append-only for the application role), data-protection key ring (encrypted), metrics, host reports | its image's user | Everything in SGM-910's Confidential and the Restricted credentials |
 | Anjal | imagiQa's mail server: sends Sangam's e-mail (and later SMS) through its API; runs ClamAV for uploaded logos | separate stack and repository | Messages in its own queue |
 | Backup job (cron) | Nightly `pg_dump`, container logs and new audit-archive files, encrypted with `age` for the founder's offline key, uploaded under Object Lock | root on the VM | The `age` public key only |
+
+rc.9 (ASVS V1.14.5, V1.2.1): every container — the hosts, the demo, Caddy and PostgreSQL — runs on a read-only filesystem
+with a private `/tmp`, without Linux capabilities (PostgreSQL keeps the five its start-up needs to hand over to its own
+user), unable to gain privileges, and with memory and process limits. The Kubernetes manifests set the same.
 
 ## 3. Data flows
 

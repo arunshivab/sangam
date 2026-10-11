@@ -48,6 +48,14 @@ public sealed class DigiLockerSettings
     /// <summary>The key DigiLocker ids are hashed with (32 characters or more outside Development).</summary>
     public string SubjectKey { get; set; } = string.Empty;
 
+    /// <summary>
+    /// rc.9 (key compromise, ASVS V1.6.3): the keys used before <see cref="SubjectKey"/> was replaced. Stored hashes made with
+    /// them still count when checking that one DigiLocker identity verifies one account, and when a recovery compares the
+    /// identity with the account's own; each person's hash moves to the new key when they verify again. Remove a previous key
+    /// only when no verification still uses it.
+    /// </summary>
+    public IList<string> PreviousSubjectKeys { get; } = [];
+
     /// <summary>The key in use; a fixed development key when none is set.</summary>
     public string EffectiveSubjectKey => string.IsNullOrWhiteSpace(SubjectKey) ? DevelopmentSubjectKey : SubjectKey;
 

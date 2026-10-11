@@ -42,6 +42,7 @@ internal static class AuditNarrator
         AuditActions.UserAccountMerge,
         AuditActions.SecurityIncidentOpen,
         AuditActions.UserMfaReplay,
+        AuditActions.UserLoginNewDevice,
     };
 
     public static AuditLine Describe(AuditEvent e, IReadOnlyDictionary<Guid, string> appNames)
@@ -77,6 +78,7 @@ internal static class AuditNarrator
             AuditActions.AppInvitationAccept => "You accepted an invitation and joined an organisation in an application.",
             AuditActions.UserLoginSuccess => SignInSentence(e.Metadata),
             AuditActions.UserLoginFail => FailedSignInSentence(e.Metadata),
+            AuditActions.UserLoginNewDevice => "You signed in from a browser not used on this account before. An e-mail told you.", // i18n-key
             AuditActions.UserLogout => "You signed out.",
             AuditActions.UserLogoutApp => $"You signed out from {app}.",
             AuditActions.UserPasswordChange => "You changed your password.",

@@ -21,7 +21,7 @@ namespace Sangam.Identity.Server.Pages.Account;
 public sealed class MergeModel : AuthPageModel
 {
     /// <summary>How recent each sign-in must be.</summary>
-    public static readonly TimeSpan Freshness = TimeSpan.FromMinutes(15);
+    public static readonly TimeSpan Freshness = Sangam.Web.Shared.Security.RecentSignIn.Window;
 
     /// <summary>The cookie's base name; <c>__Secure-</c> over HTTPS.</summary>
     public const string CookieName = "sangam.merge";

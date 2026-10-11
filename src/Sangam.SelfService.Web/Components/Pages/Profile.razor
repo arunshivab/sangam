@@ -16,6 +16,11 @@
 
 <PageHeader Title="@L["Personal details"].Value" Subtitle="@L["What Sangam knows about you, and what you can do with it."].Value" />
 
+@if (_reauth)
+{
+  <ReauthNotice ReturnTo="/profile" />
+}
+
 @* PR-26: the person has just come back from DigiLocker, so the outcome goes at the top where they land. *@
 @if (DigiLockerOutcome is not null && Outcome(DigiLockerOutcome) is (string text, bool good))
 {
@@ -146,6 +151,18 @@ else
       @if (Verified)
       {
         <p class="sg-panel-body">@L["Verified with DigiLocker on {0}. Applications that ask for your profile are told your details are verified.", IndiaTime.LongDate(_user.IdentityVerifiedAt!.Value)]</p>
+        @if (_user.IdentityReverifyRequestedAt is not null && DigiLocker.Enabled)
+        {
+          @* rc.9 (ASVS V1.6.3): after the key that protects DigiLocker ids was replaced, people are asked to verify once more. *@
+          <div class="sg-banner sg-banner--info" role="status" data-reverify="requested">
+            <p>@L["Please verify with DigiLocker once more. We changed a security key that protects your verification; your details stay verified meanwhile."]</p>
+            <form method="post" action="/verify/digilocker">
+              <AntiforgeryToken />
+              <input type="hidden" name="agree" value="true" />
+              <button type="submit" class="sg-btn sg-btn--primary">@L["Verify again"]</button>
+            </form>
+          </div>
+        }
         <form method="post" action="/verify/digilocker/remove">
           <AntiforgeryToken />
           <button type="submit" class="sg-btn sg-btn--secondary">@L["Remove the verification"]</button>
@@ -338,6 +355,21 @@ else
 
     private bool Verified => _user?.IdentityVerifiedAt is not null;
 
+    // rc.9 (ASVS V3.7.1): sensitive changes need a sign-in from the last 15 minutes.
+    private System.Security.Claims.ClaimsPrincipal _principal = new();
+    private bool _reauth;
+
+    private bool Recent()
+    {
+        if (Sangam.Web.Shared.Security.RecentSignIn.IsRecent(_principal, DateTimeOffset.UtcNow))
+        {
+            return true;
+        }
+
+        _reauth = true;
+        return false;
+    }
+
     private string MobileUrl => (Configuration["Sangam:Authority"] ?? "https://id.sangamid.in").TrimEnd('/') + "/account/mobile";
 
     private string PasskeysUrl => (Configuration["Sangam:Authority"] ?? "https://id.sangamid.in").TrimEnd('/') + "/account/passkeys";
@@ -349,6 +381,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         AuthenticationState state = await AuthProvider.GetAuthenticationStateAsync();
+        _principal = state.User;
         _userId = PortalUser.Id(state.User) ?? Guid.Empty;
         await LoadAsync();
     }
@@ -379,6 +412,11 @@ else
 
     private async Task RequestEmailChangeAsync()
     {
+        if (!Recent())
+        {
+            return;
+        }
+
         _working = true;
         _changeMessage = null;
         _changeError = null;
@@ -425,6 +463,12 @@ else
 
     private async Task SaveAsync()
     {
+        // A new mobile number is a sensitive change (it can receive sign-in codes); the other details are not.
+        if (MobileChanging() && !Recent())
+        {
+            return;
+        }
+
         _working = true;
         _error = null;
         Genders.TryParse(_form.Gender, out Gender gender);
@@ -455,6 +499,11 @@ else
 
     private async Task SaveModeAsync()
     {
+        if (!Recent())
+        {
+            return;
+        }
+
         if (SignInModes.TryParse(_mode, out SignInMode mode))
         {
             await Accounts.SetSignInPreferenceAsync(_userId, mode);
@@ -465,6 +514,11 @@ else
 
     private async Task DownloadAsync()
     {
+        if (!Recent())
+        {
+            return;
+        }
+
         _working = true;
         string json = await Portal.ExportAsync(_userId, null);
         _working = false;
@@ -474,6 +528,11 @@ else
 
     private async Task DeleteAsync()
     {
+        if (!Recent())
+        {
+            return;
+        }
+
         _working = true;
         await Portal.RequestDeletionAsync(_userId, null);
         _working = false;
@@ -493,6 +552,11 @@ else
 
     private async Task BeginMfaAsync()
     {
+        if (!Recent())
+        {
+            return;
+        }
+
         _working = true;
         _mfaError = null;
         _recoveryCodes = [];
@@ -522,6 +586,11 @@ else
 
     private async Task DisableMfaAsync()
     {
+        if (!Recent())
+        {
+            return;
+        }
+
         _working = true;
         bool removed = await Mfa.DisableAsync(_userId, null);
         _working = false;
@@ -533,6 +602,14 @@ else
 
     private Task DownloadRecoveryAsync() =>
         Js.InvokeVoidAsync("sangamDownloadText", "sangam-recovery-codes.txt", string.Join(Environment.NewLine, _recoveryCodes)).AsTask();
+
+    /// <summary>Whether the form changes the mobile number (digits compared, so spaces and dashes do not count).</summary>
+    private bool MobileChanging()
+    {
+        (string iso, string national) = SplitMobile(_user?.Mobile);
+        return !string.Equals(iso, _form.CountryIso, StringComparison.Ordinal)
+            || !string.Equals(new string([.. national.Where(char.IsDigit)]), new string([.. (_form.MobileNumber ?? string.Empty).Where(char.IsDigit)]), StringComparison.Ordinal);
+    }
 
     /// <summary>Splits a stored E.164 number back into the country and the national part.</summary>
     private static (string Iso, string National) SplitMobile(string? mobile)

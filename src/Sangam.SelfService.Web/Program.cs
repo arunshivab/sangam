@@ -88,6 +88,8 @@ builder.Services.AddAuthentication(options =>
         o.SaveTokens = true;
         o.GetClaimsFromUserInfoEndpoint = true;
         o.MapInboundClaims = false;
+        // rc.9 (ASVS V3.7.1): keep auth_time, which the recent-sign-in check reads.
+        o.ClaimActions.Remove("auth_time");
         o.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
         o.CallbackPath = "/signin-sangam";
         o.SignedOutCallbackPath = "/signout-sangam";
@@ -108,6 +110,8 @@ builder.Services.AddAntiforgery(o =>
 builder.Services.AddAuthorization(o => o.FallbackPolicy = o.DefaultPolicy);
 
 builder.Services.AddSangamWebHosting(builder.Configuration);
+// rc.9 (ASVS V11.1.4): per-person request limits, as on the identity server.
+builder.Services.AddSangamHostRateLimits(builder.Configuration);
 
 WebApplication app = builder.Build();
 app.Lifetime.ApplicationStarted.Register(StartupGuard.MarkStarted);
@@ -132,6 +136,8 @@ app.UseSangamHttpsRedirection(app.Environment.EnvironmentName, app.Configuration
 app.UseSangamClientContext();
 app.UseSangamRequestCulture();
 app.UseAuthentication();
+// rc.9: counted per signed-in person, so after authentication.
+app.UseRateLimiter();
 // PR-18: the signed-in person's profile language, unless they picked one for this browser.
 app.UseSangamProfileCulture();
 app.UseAuthorization();
@@ -147,6 +153,16 @@ app.MapGet("/signout", (HttpContext context) =>
         [CookieAuthenticationDefaults.AuthenticationScheme, OpenIdConnectDefaults.AuthenticationScheme]);
 })
     .AllowAnonymous();
+
+// rc.9 (ASVS V3.7.1): sign in again at the identity server (max_age=0, so it asks even with a session) and come back with a
+// fresh auth_time; the sensitive pages accept a change only within 15 minutes of it.
+app.MapGet("/reauth", (string? returnUrl) => Results.Challenge(
+    new Microsoft.AspNetCore.Authentication.OpenIdConnect.OpenIdConnectChallengeProperties
+    {
+        RedirectUri = Sangam.Web.Shared.Security.RecentSignIn.LocalReturn(returnUrl, "/profile"),
+        MaxAge = TimeSpan.Zero,
+    },
+    [OpenIdConnectDefaults.AuthenticationScheme]));
 
 // PR-26: verifying the name, date of birth and gender through DigiLocker.
 app.MapDigiLocker();

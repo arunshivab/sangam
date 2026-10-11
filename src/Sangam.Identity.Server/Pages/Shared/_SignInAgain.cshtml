@@ -1,0 +1,7 @@
+@* rc.9 (ASVS V3.7.1): shown where a change needs a sign-in from the last 15 minutes; the button posts the page's Again handler. *@
+<div class="sg-banner sg-banner--error" role="alert" data-reauth="required">
+  <p>@L["For your security, sign in again before you make this change. It takes a moment, and you come straight back here."]</p>
+  <form method="post" asp-page-handler="Again" class="sg-inline-form">
+    <button type="submit" class="sg-btn sg-btn--primary">@L["Sign in again"]</button>
+  </form>
+</div>

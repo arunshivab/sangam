@@ -209,6 +209,51 @@ public sealed class MonitoringTests : IAsyncLifetime
         Assert.Equal(["backup_offsite", "grievance_overdue", "audit_archive"], AlertRules.Evaluate(gaps, new AlertThresholds(), ["identity"], anjalConfigured: true).Select(c => c.Key));
     }
 
+    private static readonly string[] SecurityKeys = ["access_denied", "mfa_replay", "token_refused", "api_invalid", "upload_refused", "access_denied_actor:application 1"];
+
+    [Fact]
+    public void NeverNormalEvents_AlertAboveTheirThresholds_AndOneCallerRefusedRepeatedly()
+    {
+        // rc.9 (ASVS V11.1.7).
+        AlertThresholds t = new();
+        Assert.Empty(AlertRules.EvaluateSecurity(new Dictionary<string, long> { [AuditActions.AccessDenied] = 3, [AuditActions.UserMfaReplay] = 1 }, ("person x", 3), t));
+
+        Dictionary<string, long> busy = new()
+        {
+            [AuditActions.AccessDenied] = 31,
+            [AuditActions.UserMfaReplay] = 4,
+            [AuditActions.TokenRefused] = 51,
+            [AuditActions.ApiRequestInvalid] = 51,
+            [AuditActions.UploadRefused] = 6,
+        };
+        Assert.Equal(
+            SecurityKeys,
+            AlertRules.EvaluateSecurity(busy, ("application 1", 6), t).Select(c => c.Key));
+    }
+
+    [PostgresFact]
+    public async Task RefusalsInTheAuditLog_ReachTheFounder()
+    {
+        Guid prober = Guid.NewGuid();
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            await db.AuditEvents.Where(e => e.Action == AuditActions.AccessDenied).ExecuteDeleteAsync();
+        }
+
+        using (IServiceScope scope = _provider.CreateScope())
+        {
+            Application.Abstractions.IAuditWriter audit = scope.ServiceProvider.GetRequiredService<Application.Abstractions.IAuditWriter>();
+            for (int i = 0; i < 6; i++)
+            {
+                await audit.WriteAsync(new Application.Abstractions.AuditEntry(AuditActions.AccessDenied, AuditActorType.Admin, prober, TargetType: "console"));
+            }
+        }
+
+        IReadOnlyList<AlertCondition> open = await _provider.GetRequiredService<AlertEvaluator>().RunOnceAsync();
+        Assert.Contains(open, c => c.Key == "access_denied_actor:person " + prober.ToString("D"));
+        Assert.Contains(_provider.GetRequiredService<InMemoryEmailOutbox>().Recent, m => m.Message.ToEmail == "founder@example.in" && m.Message.Subject == "SangamID alert: one caller refused repeatedly");
+    }
+
     [PostgresFact]
     public async Task TheBreachList_IsShownAsTheIdentityServerReportsIt_NotFromTheConsolesOwnSettings()
     {

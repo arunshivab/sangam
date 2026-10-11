@@ -146,6 +146,33 @@ public static class AlertRules
         return open;
     }
 
+    /// <summary>
+    /// rc.9 (ASVS V11.1.7): the "never normal" events of the last hour, from the audit log — refusals, replays, refused tokens,
+    /// unreadable API requests and refused uploads — and one caller refused again and again.
+    /// </summary>
+    /// <param name="counts">The last hour's count of each audit action.</param>
+    /// <param name="busiest">The person or application refused most often in the hour, and how often; null when none.</param>
+    /// <param name="t">The thresholds.</param>
+    /// <returns>The conditions open now.</returns>
+    public static IReadOnlyList<AlertCondition> EvaluateSecurity(IReadOnlyDictionary<string, long> counts, (string Actor, long Count)? busiest, AlertThresholds t)
+    {
+        ArgumentNullException.ThrowIfNull(counts);
+        ArgumentNullException.ThrowIfNull(t);
+        List<AlertCondition> open = [];
+        long Count(string action) => counts.TryGetValue(action, out long n) ? n : 0;
+        Over(open, "access_denied", "refused actions high", Count(Domain.AuditActions.AccessDenied), t.AccessDeniedPerHour, "refused actions (access.denied) in the last hour");
+        Over(open, "mfa_replay", "authenticator codes replayed", Count(Domain.AuditActions.UserMfaReplay), t.MfaReplaysPerHour, "authenticator codes used a second time in the last hour");
+        Over(open, "token_refused", "token requests refused", Count(Domain.AuditActions.TokenRefused), t.TokenRefusedPerHour, "refused token requests, reused refresh tokens included, in the last hour");
+        Over(open, "api_invalid", "unreadable API requests", Count(Domain.AuditActions.ApiRequestInvalid), t.InvalidApiRequestsPerHour, "management API requests that could not be read in the last hour");
+        Over(open, "upload_refused", "uploads refused", Count(Domain.AuditActions.UploadRefused), t.UploadsRefusedPerHour, "refused uploads in the last hour");
+        if (busiest is (string actor, long n) && n > t.AccessDeniedPerActorPerHour)
+        {
+            open.Add(new("access_denied_actor:" + actor, "one caller refused repeatedly", string.Create(CultureInfo.InvariantCulture, $"{actor} was refused {n} times in the last hour (threshold {t.AccessDeniedPerActorPerHour}): possibly trying to reach another application's or person's data. Open the audit log, filtered on access.denied.")));
+        }
+
+        return open;
+    }
+
     private static void Over(List<AlertCondition> open, string key, string summary, long value, int threshold, string what)
     {
         if (value > threshold)

@@ -46,6 +46,8 @@ builder.Services.AddRazorPages(o =>
     o.Conventions.AddPageRoute("/Account/Home", "/account");
     o.Conventions.AddPageRoute("/Account/Logout", "/logout");
     o.Conventions.AddPageRoute("/Account/Logout", "/connect/endsession");
+    // rc.9 (ASVS V7.1.3): a form that fails validation is logged (field names only).
+    o.Conventions.ConfigureFilter(new Microsoft.AspNetCore.Mvc.ServiceFilterAttribute(typeof(Sangam.Identity.Server.Pages.ValidationFailureLog)));
 }).AddDataAnnotationsLocalization(o => o.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(Sangam.Web.Shared.Localization.SangamText)));
 // PR-18: every screen's text comes from the shared catalogue (Hindi and Malayalam translated).
 builder.Services.AddSangamLocalization();
@@ -66,6 +68,7 @@ builder.Services.AddHttpClient(Sangam.Identity.Server.Logout.BackChannelLogoutSe
 builder.Services.AddSingleton<Sangam.Identity.Server.Logout.BackChannelLogoutSender>();
 // rc.8 (SGM-911, A6 workaround): a key that changed since the last start stops the start, and alerts.
 builder.Services.AddHostedService<KeyFingerprintCheck>();
+builder.Services.AddScoped<Sangam.Identity.Server.Pages.ValidationFailureLog>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<Sangam.Identity.Server.Logout.BackChannelLogoutSender>());
 // PR-23/24: SCIM provisioning and webhooks are delivered from here (Sangam-signed SCIM tokens need the signing keys).
 builder.Services.AddSingleton<Sangam.Identity.Infrastructure.Provisioning.IServiceTokenIssuer, Sangam.Identity.Server.Provisioning.ServiceTokenIssuer>();
@@ -249,12 +252,21 @@ builder.Services.AddOpenIddict()
 builder.Services.AddSangamWebHosting(builder.Configuration);
 
 WebApplication app = builder.Build();
+
+// rc.9 (ASVS V1.6.3): the key-compromise tool runs with the host's own settings and secrets, then exits without serving.
+if (args.Length > 0 && args[0] == KeyCompromiseCommand.Verb)
+{
+    Environment.Exit(await KeyCompromiseCommand.RunAsync(app.Services, args[1..], Console.Out).ConfigureAwait(false));
+}
+
 app.Lifetime.ApplicationStarted.Register(StartupGuard.MarkStarted);
 
 // Behind Caddy: take the client address from trusted proxies only, before anything reads it (OI-037).
 app.UseForwardedHeaders();
 // rc.8 (ASVS V14.5.1): only the HTTP methods Sangam uses; every 405 is logged.
 app.UseSangamMethodGuard();
+// rc.9 (ASVS V7.1.3): unreadable requests answered 400 and recorded (api.request.invalid on the management API).
+app.UseSangamBadRequestAudit();
 // R7: CSP, framing, nosniff and the other security headers on every response (SGM-503). The identity server frames
 // applications' front-channel logout pages.
 app.UseSangamSecurityHeaders(app.Environment.EnvironmentName, identityServer: true);

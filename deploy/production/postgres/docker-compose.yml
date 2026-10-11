@@ -4,8 +4,18 @@ name: sangam-db
 
 services:
   postgres:
-    image: postgres:18
+    image: postgres:18@sha256:74935e72241653ca55e0414067e6d8763aceb8a810eb51b452253ec3dcfc4336
     restart: unless-stopped
+    # rc.9 (ASVS V1.14.5): a read-only filesystem but for the data, the socket directory and /tmp; only the capabilities
+    # the image's start-up needs to hand over to the postgres user; no privilege gain; memory and process limits.
+    read_only: true
+    tmpfs: ["/tmp:size=64m,mode=1777", "/var/run/postgresql:size=1m,mode=2777"]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 2g
+    shm_size: 256m
+    pids_limit: 512
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
@@ -16,6 +26,8 @@ services:
       - ../../postgres/init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
     networks:
       - sangam-db
+      # rc.9 (ASVS V1.14.1): the demo's separate network to the database.
+      - sangam-demo-db
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -32,3 +44,5 @@ volumes:
 networks:
   sangam-db:
     name: sangam-db
+  sangam-demo-db:
+    name: sangam-demo-db

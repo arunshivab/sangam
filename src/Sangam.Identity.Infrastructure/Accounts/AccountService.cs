@@ -630,7 +630,7 @@ public sealed class AccountService : IAccountService
 
     private static UserSummary ToSummary(SangamUser u) => new(
         u.Id, u.FirstName, u.LastName, u.Email ?? string.Empty, u.EmailConfirmed, u.PhoneNumber, u.PhoneNumberConfirmed,
-        u.DateOfBirth, u.Gender, u.Locale, u.SignInPreference, u.CreatedAt, u.TwoFactorEnabled, u.UpdatedAt, u.SecurityStamp ?? string.Empty, u.IdentityVerifiedAt, u.Status);
+        u.DateOfBirth, u.Gender, u.Locale, u.SignInPreference, u.CreatedAt, u.TwoFactorEnabled, u.UpdatedAt, u.SecurityStamp ?? string.Empty, u.IdentityVerifiedAt, u.Status, u.IdentityReverifyRequestedAt);
 
     private static string PurposeJson(OneTimeCodePurpose purpose, string? reason = null)
         => reason is null

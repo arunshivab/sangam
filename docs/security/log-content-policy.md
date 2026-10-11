@@ -44,6 +44,11 @@ log, and what it never writes.*
 | A changed or new key at start-up (rc.8) | Audit (`security.key.mismatch`, `security.key.recorded`) and an alert |
 | Requests with a method Sangam does not use, or the wrong method for an address (rc.8) | Operational log, event 5100 |
 | A protocol parameter sent twice (rc.8) | Operational log, event 5101 |
+| A form that failed validation (rc.9): page, handler and the names of the fields, never their values | Operational log, event 5102 |
+| A request whose body or parameters could not be read (rc.9): method and path, never the body | Operational log, event 5103; on the management API also Audit (`api.request.invalid`) |
+| A sign-in from a browser new to the account (rc.9) | Audit (`user.login.new_device`) and an e-mail to the person |
+| Each key-compromise command, with the incident's reference and counts (rc.9) | Audit (`security.tokens.revoke_all`, `security.keyring.revoke`, `security.identity.reverify`) |
+| Never-normal events above their hourly thresholds (rc.9) | An alert to the founder |
 | A refused start, with its reason | Operational log, Critical |
 
 ## 5. Injection

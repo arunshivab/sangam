@@ -2571,6 +2571,10 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("hold_reason");
 
+                    b.Property<DateTimeOffset?>("IdentityReverifyRequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("identity_reverify_requested_at");
+
                     b.Property<DateTimeOffset?>("IdentityVerifiedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("identity_verified_at");

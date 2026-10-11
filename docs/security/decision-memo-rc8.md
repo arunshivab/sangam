@@ -32,13 +32,16 @@ Related, decided the same day (vault brief, `sangam/vault-requirements-brief.md`
 | A6 (continued) | Keys stay in files, with compensating controls, until imagiQa's own vault exists: the secret source layer (rc.8), the key-fingerprint check at start-up with an alert (rc.8), SSH hardening, and the offline copies. The vault is a separate imagiQa application, hosted for now on the E2E VM shared with Anjal, serving every imagiQa application, using only approved .NET cryptography, with offline backup keys kept |
 | Hosting | E2E Networks is final. Sangam shares the VM with Anjal for now and moves to its own E2E VM when load requires |
 
-## 2. Risk acceptance (decision 5, expanded)
+## 2. Risk acceptance (decision 5, expanded; R-25 from decision 9)
+
+The IDs are SGM-908's (v1.3).
 
 | Risk | Likelihood | Impact | Why accepted | Compensating controls | Review |
 |---|---|---|---|---|---|
-| Synced passkeys are not attested: a passkey could live on a device or in a manager Sangam does not know | Low | Medium | Synced passkeys (iCloud, Google, Windows) are what people have; attestation would exclude them | Passkeys are one sign-in method among several; operators and administrators still need an authenticator; new passkeys are notified by e-mail | Public launch |
-| Secrets in managed memory cannot be wiped | Low | High (needs root or a memory dump) | A platform limit of .NET | Root-only VM access, SSH hardening; the vault will keep signing keys out of the process | Vault go-live |
-| Third-party libraries run in-process | Low | High | Every .NET web application works this way | Few dependencies, all scanned on every pull request; CodeQL; Dependabot; SGM-304 licence and support record | Each release |
+| R-22: Synced passkeys are not attested: a passkey could live on a device or in a manager Sangam does not know | Low | Medium | Synced passkeys (iCloud, Google, Windows) are what people have; attestation would exclude them | Passkeys are one sign-in method among several; operators and administrators still need an authenticator; new passkeys are notified by e-mail | Public launch |
+| R-23: Secrets in managed memory cannot be wiped | Low | High (needs root or a memory dump) | A platform limit of .NET | Root-only VM access, SSH hardening; the vault will keep signing keys out of the process | Vault go-live |
+| R-24: Third-party libraries run in-process | Low | High | Every .NET web application works this way | Few dependencies, all scanned on every pull request; CodeQL; Dependabot; SGM-304 licence and support record | Each release |
+| R-25: Certificate-revocation checks go ahead when no answer can be had (soft fail) | Low | Medium | A failed lookup must not stop sign-in mail or alerts | A revoked certificate is still refused; outbound 80 opened at deployment for OCSP and CRLs | Deployment |
 
 ## 3. Consequences for ASVS
 

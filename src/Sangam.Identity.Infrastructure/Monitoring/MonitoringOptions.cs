@@ -113,4 +113,22 @@ public sealed class AlertThresholds
 
     /// <summary>Hours between repeated alerts for a condition that stays open.</summary>
     public int RepeatHours { get; set; } = 6;
+
+    /// <summary>Refused actions (<c>access.denied</c>) in an hour, across all callers (rc.8, ASVS V11.1.7).</summary>
+    public int AccessDeniedPerHour { get; set; } = 30;
+
+    /// <summary>Refused actions by one person or one application in an hour: repeated attempts at another tenant's data.</summary>
+    public int AccessDeniedPerActorPerHour { get; set; } = 5;
+
+    /// <summary>Authenticator codes used a second time (<c>user.mfa.replay</c>) in an hour.</summary>
+    public int MfaReplaysPerHour { get; set; } = 3;
+
+    /// <summary>Refused clients and grants at the token endpoint (<c>token.refused</c>), including reused refresh tokens, in an hour.</summary>
+    public int TokenRefusedPerHour { get; set; } = 50;
+
+    /// <summary>Management API requests whose body could not be read (<c>api.request.invalid</c>) in an hour.</summary>
+    public int InvalidApiRequestsPerHour { get; set; } = 50;
+
+    /// <summary>Uploads refused (<c>upload.refused</c>: wrong type, too large, or a virus) in an hour.</summary>
+    public int UploadsRefusedPerHour { get; set; } = 5;
 }

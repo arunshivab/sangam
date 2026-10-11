@@ -391,6 +391,20 @@
       "body": "നമസ്കാരം {{name}},\n\nനിങ്ങളുടെ Sangam അക്കൗണ്ടിൽ നിന്ന് ഇപ്പോൾ ഒരു പാസ്‌കീ നീക്കം ചെയ്തു. അത് സൂക്ഷിച്ചിരുന്ന ഉപകരണത്തിനോ പാസ്‌വേഡ് മാനേജർക്കോ\nഇനി നിങ്ങളെ സൈൻ ഇൻ ചെയ്യിക്കാൻ കഴിയില്ല.\n\nഇത് നിങ്ങൾ ചെയ്തതാണെങ്കിൽ, ഒന്നും ചെയ്യേണ്ടതില്ല. അല്ലെങ്കിൽ, ഉടൻ തന്നെ സൈൻ-ഇൻ പേജിൽ നിന്ന് പാസ്‌വേഡ് റീസെറ്റ് ചെയ്ത്\nhelp@sangamid.in എന്ന വിലാസത്തിലേക്ക് എഴുതുക, അതുവഴി ഞങ്ങൾക്ക് നിങ്ങളുടെ അക്കൗണ്ട് സുരക്ഷിതമാക്കാം.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
     }
   },
+  "new_device_sign_in_notice": {
+    "en-IN": {
+      "subject": "A new sign-in to your Sangam account",
+      "body": "Hello {{name}},\n\nYour Sangam account was just signed in to from a browser it has not been used on before:\n\n  Browser: {{browser}}\n  Network address: {{address}}\n  Time: {{time}}\n\nIf this was you, there is nothing to do. If it was not, end that session at once from your devices page,\nthen change your password:\n\n{{link}}\n\nWrite to help@sangamid.in if you need help.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "आपके Sangam खाते में एक नया साइन-इन",
+      "body": "नमस्ते {{name}},\n\nआपके Sangam खाते में अभी ऐसे ब्राउज़र से साइन इन किया गया जिससे पहले कभी नहीं किया गया था:\n\n  ब्राउज़र: {{browser}}\n  नेटवर्क पता: {{address}}\n  समय: {{time}}\n\nयदि यह आपने किया है, तो कुछ करने की आवश्यकता नहीं है। यदि नहीं, तो तुरंत अपने डिवाइस पेज से वह सत्र समाप्त करें,\nफिर अपना पासवर्ड बदलें:\n\n{{link}}\n\nसहायता के लिए help@sangamid.in पर लिखें।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "നിങ്ങളുടെ Sangam അക്കൗണ്ടിൽ ഒരു പുതിയ സൈൻ-ഇൻ",
+      "body": "നമസ്കാരം {{name}},\n\nമുമ്പ് ഉപയോഗിച്ചിട്ടില്ലാത്ത ഒരു ബ്രൗസറിൽ നിന്ന് നിങ്ങളുടെ Sangam അക്കൗണ്ടിൽ ഇപ്പോൾ സൈൻ ഇൻ ചെയ്തു:\n\n  ബ്രൗസർ: {{browser}}\n  നെറ്റ്‌വർക്ക് വിലാസം: {{address}}\n  സമയം: {{time}}\n\nഇത് നിങ്ങൾ ചെയ്തതാണെങ്കിൽ, ഒന്നും ചെയ്യേണ്ടതില്ല. അല്ലെങ്കിൽ, ഉടൻ നിങ്ങളുടെ ഉപകരണങ്ങളുടെ പേജിൽ നിന്ന് ആ സെഷൻ\nഅവസാനിപ്പിക്കുക, തുടർന്ന് പാസ്‌വേഡ് മാറ്റുക:\n\n{{link}}\n\nസഹായം വേണമെങ്കിൽ help@sangamid.in-ലേക്ക് എഴുതുക.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
   "password_account_code_notice": {
     "en-IN": {
       "subject": "Sign in to Sangam with your password",

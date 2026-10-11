@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Sangam.Identity.Infrastructure.Seeding;
 
 namespace Sangam.Identity.Server.Tests.Oidc;
@@ -92,6 +94,57 @@ public sealed class RequestHardeningTests
         using HttpRequestMessage wrong = new(HttpMethod.Delete, "/api/v1/roles");
         using HttpResponseMessage notHere = await client.SendAsync(wrong);
         Assert.Equal(HttpStatusCode.MethodNotAllowed, notHere.StatusCode);
+    }
+
+    [PostgresFact]
+    public async Task AnUnreadableOrUnknownField_IsRefused_AndAudited_WithoutTheBody()
+    {
+        // rc.9 (ASVS V7.1.3, V13.2.2).
+        using HttpClient client = _factory.CreateClient();
+        string token = await ClientTokenAsync(client);
+
+        using HttpRequestMessage unknown = new(HttpMethod.Put, "/api/v1/roles/rc9_strict")
+        {
+            Content = new StringContent("""{"displayName":"Strict","permissions":[],"isAdmin":true,"secretMarker":"rc9-do-not-log"}""", Encoding.UTF8, "application/json"),
+        };
+        unknown.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        using HttpResponseMessage refused = await client.SendAsync(unknown);
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        Assert.Contains("could not be read", await refused.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+
+        using HttpRequestMessage broken = new(HttpMethod.Put, "/api/v1/roles/rc9_strict")
+        {
+            Content = new StringContent("""{"displayName": "Strict", "permissions": [""", Encoding.UTF8, "application/json"),
+        };
+        broken.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        using HttpResponseMessage unreadable = await client.SendAsync(broken);
+        Assert.Equal(HttpStatusCode.BadRequest, unreadable.StatusCode);
+
+        using IServiceScope scope = _factory.Services.CreateScope();
+        Infrastructure.Persistence.SangamDbContext db = scope.ServiceProvider.GetRequiredService<Infrastructure.Persistence.SangamDbContext>();
+        List<Domain.Entities.AuditEvent> rows = await db.AuditEvents.AsNoTracking().Where(e => e.Action == Domain.AuditActions.ApiRequestInvalid).OrderByDescending(e => e.Id).Take(2).ToListAsync();
+        Assert.Equal(2, rows.Count);
+        Assert.All(rows, r => Assert.DoesNotContain("rc9-do-not-log", r.Metadata, StringComparison.Ordinal));
+        using JsonDocument detail = JsonDocument.Parse(rows[0].Metadata);
+        Assert.Equal("/api/v1/roles/rc9_strict", detail.RootElement.GetProperty("path").GetString());
+        Assert.Equal(DevelopmentSeeder.SampleClientId, detail.RootElement.GetProperty("client_id").GetString());
+    }
+
+    [Theory]
+    [InlineData("/API/V1/roles")]
+    [InlineData("/api/v1/./roles")]
+    [InlineData("/api/v1/x/../roles")]
+    [InlineData("/api/v1/%2e%2e/v1/roles")]
+    [InlineData("/api/v1/roles%2F..%2F..%2Fconnect%2Ftoken")]
+    [InlineData("/api//v1/roles")]
+    public async Task APathSpelledDifferently_StillNeedsTheToken(string path)
+    {
+        // rc.9 (ASVS V13.1.1): Kestrel normalises dot segments and leaves encoded slashes encoded, and routing ignores case,
+        // so no spelling of a management API address reaches it without a token.
+        using HttpClient client = _factory.CreateClient();
+        using HttpRequestMessage request = new(HttpMethod.Get, new Uri(path, UriKind.Relative));
+        using HttpResponseMessage response = await client.SendAsync(request);
+        Assert.True(response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.NotFound, path + " answered " + response.StatusCode);
     }
 
     private static async Task<string> ClientTokenAsync(HttpClient client)

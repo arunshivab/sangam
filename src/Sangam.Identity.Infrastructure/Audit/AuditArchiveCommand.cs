@@ -14,6 +14,9 @@ namespace Sangam.Identity.Infrastructure.Audit;
 /// <item><c>audit-archive list --dir &lt;dir&gt;</c>: the files and their clear-text headers (no key needed).</item>
 /// <item><c>audit-archive read --file &lt;file&gt; --key &lt;key.pem&gt; --password &lt;pass&gt; [--out &lt;file.jsonl&gt;]</c>:
 /// decrypts one file, checks it, and writes its events as JSON lines.</item>
+/// <item><c>audit-archive reencrypt --dir &lt;dir&gt; --key &lt;old key.pem&gt; --password &lt;pass&gt; --cert &lt;new .crt&gt; --out &lt;new dir&gt;</c>:
+/// rc.9 (key compromise, V1.6.3): every file in the directory read with the old key, checked, and written again for the new
+/// certificate into the new directory. The originals are left as they are.</item>
 /// </list>
 /// </summary>
 public static class AuditArchiveCommand
@@ -61,6 +64,31 @@ public static class AuditArchiveCommand
                 return 0;
             }
 
+            if (command == "reencrypt" && options.TryGetValue("dir", out string? from) && options.TryGetValue("key", out string? oldKeyPath)
+                && options.TryGetValue("password", out string? oldPassword) && options.TryGetValue("cert", out string? newCertificate) && options.TryGetValue("out", out string? to))
+            {
+                if (Path.GetFullPath(from) == Path.GetFullPath(to))
+                {
+                    await output.WriteLineAsync("Failed: write the new files to a different directory; the originals are kept.").ConfigureAwait(false);
+                    return 1;
+                }
+
+                using RSA oldKey = RSA.Create();
+                oldKey.ImportFromEncryptedPem(await File.ReadAllTextAsync(oldKeyPath, cancellationToken).ConfigureAwait(false), oldPassword);
+                using X509Certificate2 certificate = new AuditArchiveOptions { CertificatePath = newCertificate }.LoadCertificate();
+                Directory.CreateDirectory(to);
+                int done = 0;
+                foreach (string path in Directory.EnumerateFiles(from, "*" + AuditArchiveFile.Extension).Order(StringComparer.Ordinal))
+                {
+                    AuditArchiveHeader header = AuditArchiveFile.Reencrypt(path, oldKey, certificate, Path.Combine(to, Path.GetFileName(path)));
+                    await output.WriteLineAsync(string.Create(CultureInfo.InvariantCulture, $"{Path.GetFileName(path)}: {header.Count} events written for the new certificate.")).ConfigureAwait(false);
+                    done++;
+                }
+
+                await output.WriteLineAsync(string.Create(CultureInfo.InvariantCulture, $"{done} files re-encrypted. Check them with 'read' and the new key before relying on them.")).ConfigureAwait(false);
+                return 0;
+            }
+
             if (command == "read" && options.TryGetValue("file", out string? file) && options.TryGetValue("key", out string? keyPath) && options.TryGetValue("password", out string? password))
             {
                 using RSA rsa = RSA.Create();
@@ -93,7 +121,7 @@ public static class AuditArchiveCommand
                 return problem is null ? 0 : 1;
             }
         }
-        catch (Exception ex) when (ex is IOException or CryptographicException or InvalidDataException or UnauthorizedAccessException or JsonException)
+        catch (Exception ex) when (ex is IOException or CryptographicException or InvalidDataException or UnauthorizedAccessException or JsonException or InvalidOperationException)
         {
             await output.WriteLineAsync("Failed: " + ex.Message).ConfigureAwait(false);
             return 1;
@@ -102,6 +130,7 @@ public static class AuditArchiveCommand
         await output.WriteLineAsync("Usage: audit-archive keygen --out <directory> --password <12+ characters>").ConfigureAwait(false);
         await output.WriteLineAsync("       audit-archive list --dir <archive directory>").ConfigureAwait(false);
         await output.WriteLineAsync("       audit-archive read --file <archive file> --key <audit-archive.key.pem> --password <password> [--out <file.jsonl>]").ConfigureAwait(false);
+        await output.WriteLineAsync("       audit-archive reencrypt --dir <archive directory> --key <old key.pem> --password <password> --cert <new .crt> --out <new directory>").ConfigureAwait(false);
         return 2;
     }
 
