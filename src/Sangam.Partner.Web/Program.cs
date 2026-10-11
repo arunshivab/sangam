@@ -115,6 +115,8 @@ builder.Services.AddRateLimiter(o =>
 });
 
 builder.Services.AddSangamWebHosting(builder.Configuration);
+// rc.9 (ASVS V11.1.4): per-person request limits, as on the identity server.
+builder.Services.AddSangamHostRateLimits(builder.Configuration);
 
 WebApplication app = builder.Build();
 app.Lifetime.ApplicationStarted.Register(StartupGuard.MarkStarted);

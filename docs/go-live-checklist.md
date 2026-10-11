@@ -372,3 +372,21 @@ ASVS Level 2 fixes, the vault-ready secret layer and the founder's decisions 1â€
 - [ ] **Anjal:** confirm in the Anjal project that Anjal calls its SMS aggregator over HTTPS (decision 4).
 - [ ] **Recovery codes:** people who set up an authenticator before rc.8 keep their old, shorter codes until they make
       new ones; say so in the release note to pilot users.
+
+## Added by rc.9 (v1.0.0-rc.9)
+
+The founder's answers of 11 October 2026 on the remaining ASVS Level 2 gaps:
+
+- [ ] **Containers hardened:** after upgrading (database stack first, `deploy/production/README.md` section 4), every
+      container shows `ReadonlyRootfs=true`, `CapDrop=[ALL]` and `no-new-privileges` in `docker inspect`; Caddy runs as
+      user 1000 (`docker compose exec caddy id`) and still renews certificates; the demo is on `sangam-demo-db`, not on
+      `sangam-db`.
+- [ ] **Key-compromise commands tried once** on a copy (restore-drill database), never on production without an
+      incident: `key-compromise revoke-tokens`, `revoke-key-ring`, `reverify`, and `audit-archive reencrypt`
+      (`docs/security/key-compromise.md` section 4).
+- [ ] **Fresh sign-in:** changing the sign-in method, the e-mail, the mobile number, the authenticator, passkeys, ending
+      sessions, exporting or deleting the account asks for a sign-in when the last one is older than 15 minutes.
+- [ ] **New-device e-mail:** a sign-in from a new browser e-mails the person once (browser, network address, time,
+      link to the devices page). After a key-ring replacement every browser counts as new once.
+- [ ] **Alerts:** the never-normal thresholds (`Sangam:Monitoring:Alerts:*PerHour`) suit the pilot's traffic.
+- [ ] **Lock files:** CI restores in locked mode; a pull request that changes a package updates `packages.lock.json`.

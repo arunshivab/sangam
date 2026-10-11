@@ -253,6 +253,7 @@ h1[tabindex="-1"]:focus { outline: none; }
 .sg-details dt, .sg-details dd { margin: 0; }
 .sg-details .sg-label { margin: 0; }
 .sg-banner--error { border-left-color: var(--sg-danger); background: var(--sg-danger-bg); }
+.sg-banner--info { border-left-color: var(--sg-info); background: var(--sg-info-bg); }
 @media (max-width: 560px) { .sg-details { grid-template-columns: 1fr; } }
 
 /* PR-26: verifying with DigiLocker */

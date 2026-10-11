@@ -26,6 +26,9 @@ public sealed class PasskeysModel : PageModel
     /// <summary>The person's passkeys.</summary>
     public IReadOnlyList<PasskeyRow> Passkeys { get; private set; } = [];
 
+    /// <summary>Whether the person signed in recently enough to add or remove a passkey (rc.9).</summary>
+    public bool Recent { get; private set; }
+
     /// <summary>A confirmation to show.</summary>
     [TempData]
     public string? Notice { get; set; }
@@ -40,14 +43,23 @@ public sealed class PasskeysModel : PageModel
         }
 
         Passkeys = await _passkeys.ListAsync(UserId(), cancellationToken);
+        Recent = RecentSignInGate.IsRecent(this);
         return Page();
     }
+
+    /// <summary>Signs in again, for a change that needs a recent sign-in (rc.9).</summary>
+    public Task<IActionResult> OnPostAgainAsync() => RecentSignInGate.SignInAgainAsync(this, "/account/passkeys");
 
     /// <summary>Removes a passkey.</summary>
     /// <param name="id">The passkey.</param>
     /// <param name="cancellationToken">Cancellation.</param>
     public async Task<IActionResult> OnPostRemoveAsync(Guid id, CancellationToken cancellationToken)
     {
+        if (!RecentSignInGate.IsRecent(this))
+        {
+            return RedirectToPage();
+        }
+
         if (await _passkeys.RemoveAsync(UserId(), id, cancellationToken))
         {
             Notice = L["Passkey removed."];
@@ -60,6 +72,11 @@ public sealed class PasskeysModel : PageModel
     /// <param name="cancellationToken">Cancellation.</param>
     public async Task<IActionResult> OnPostAddOptionsAsync(CancellationToken cancellationToken)
     {
+        if (!RecentSignInGate.IsRecent(this))
+        {
+            return new JsonResult(new { error = L["For your security, sign in again before you make this change. It takes a moment, and you come straight back here."].Value });
+        }
+
         PasskeyCeremony ceremony = await _passkeys.BeginRegistrationAsync(UserId(), cancellationToken);
         return Content($"{{\"challengeId\":\"{ceremony.ChallengeId:D}\",\"options\":{ceremony.OptionsJson}}}", "application/json");
     }
@@ -73,6 +90,11 @@ public sealed class PasskeysModel : PageModel
         {
             // A body that does not bind is a broken or forged request, not a server fault.
             return new BadRequestObjectResult(new { error = L["That passkey answer could not be read. Please try again."].Value });
+        }
+
+        if (!RecentSignInGate.IsRecent(this))
+        {
+            return new JsonResult(new { error = L["For your security, sign in again before you make this change. It takes a moment, and you come straight back here."].Value });
         }
 
         PasskeyResult result = await _passkeys.CompleteRegistrationAsync(UserId(), answer.ChallengeId, answer.Credential, answer.Name ?? string.Empty, cancellationToken);

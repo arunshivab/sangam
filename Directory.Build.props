@@ -16,8 +16,13 @@
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <IsPackable>false</IsPackable>
+    <!-- rc.9 (ASVS V10.3.2): every project restores from a committed packages.lock.json, and CI (where CI=true) refuses a
+         restore that would change it, so no package or version can slip in unseen. Update with the restore option
+         force-evaluate when a package changes. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
     <VersionPrefix>1.0.0</VersionPrefix>
-    <VersionSuffix>rc.8</VersionSuffix>
+    <VersionSuffix>rc.9</VersionSuffix>
   </PropertyGroup>
 
   <PropertyGroup>

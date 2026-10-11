@@ -142,6 +142,38 @@ public sealed class AuditArchiveTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Reencrypt_WritesEachFileForTheNewKey_AndLeavesTheOriginals()
+    {
+        // rc.9 (ASVS V1.6.3): after the archive key is compromised, every file is written again for a new key.
+        string archives = Path.Combine(_dir, "old-archives");
+        Directory.CreateDirectory(archives);
+        AuditEvent[] events =
+        [
+            new() { Id = 1, Action = AuditActions.UserLoginSuccess, OccurredAt = DateTimeOffset.UtcNow.AddYears(-2), IpAddress = "10.4.2.37", PrevHash = null, Hash = "h1" },
+            new() { Id = 2, Action = AuditActions.UserLogout, OccurredAt = DateTimeOffset.UtcNow.AddYears(-2), PrevHash = "h1", Hash = "h2" },
+        ];
+        string original = Path.Combine(archives, "2024-10" + AuditArchiveFile.Extension);
+        using (System.Security.Cryptography.X509Certificates.X509Certificate2 certificate = System.Security.Cryptography.X509Certificates.X509CertificateLoader.LoadCertificateFromFile(_certificate))
+        {
+            AuditArchiveFile.Write(original, events, certificate, DateTimeOffset.UtcNow);
+        }
+
+        byte[] before = await File.ReadAllBytesAsync(original);
+        (string newCertificate, string newKey) = AuditArchiveCommand.KeyGen(Path.Combine(_dir, "new-keys"), "a-new-offline-passphrase");
+        string moved = Path.Combine(_dir, "new-archives");
+        using StringWriter output = new();
+        Assert.Equal(1, await AuditArchiveCommand.RunAsync(["reencrypt", "--dir", archives, "--key", _key, "--password", Password, "--cert", newCertificate, "--out", archives], output));
+        Assert.Equal(0, await AuditArchiveCommand.RunAsync(["reencrypt", "--dir", archives, "--key", _key, "--password", Password, "--cert", newCertificate, "--out", moved], output));
+        Assert.Contains("1 files re-encrypted", output.ToString(), StringComparison.Ordinal);
+
+        Assert.Equal(before, await File.ReadAllBytesAsync(original));
+        string copy = Path.Combine(moved, Path.GetFileName(original));
+        Assert.Equal(0, await AuditArchiveCommand.RunAsync(["read", "--file", copy, "--key", newKey, "--password", "a-new-offline-passphrase"], output));
+        Assert.Contains("2 events read and checked.", output.ToString(), StringComparison.Ordinal);
+        Assert.Equal(1, await AuditArchiveCommand.RunAsync(["read", "--file", copy, "--key", _key, "--password", Password], output));
+    }
+
+    [Fact]
     public void TheStart_IsRefused_ForTheOldDeleteOnlySetting_AHalfSetUpArchive_OrAPrivateKeyOnTheServer()
     {
         Assert.Contains("no longer used", Validate(("Sangam:Audit:RetentionDays", "365")), StringComparison.Ordinal);

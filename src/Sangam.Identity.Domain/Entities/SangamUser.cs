@@ -54,6 +54,13 @@ public sealed class SangamUser : IdentityUser<Guid>
     /// <summary>When the name, date of birth and gender were verified against a government record (PR-26); they are locked while set.</summary>
     public DateTimeOffset? IdentityVerifiedAt { get; set; }
 
+    /// <summary>
+    /// When the person was asked to verify their identity again because the DigiLocker subject key was replaced after a
+    /// compromise (rc.9, ASVS V1.6.3); cleared when they verify again or remove the verification. The verification itself
+    /// still stands meanwhile.
+    /// </summary>
+    public DateTimeOffset? IdentityReverifyRequestedAt { get; set; }
+
     /// <summary>When the person last signed in to Sangam (rc.6, SGM-910 section 7).</summary>
     public DateTimeOffset? LastSignInAt { get; set; }
 

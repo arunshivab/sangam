@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "dependencies": {
+    "net10.0": {
+      "LiPicons.Blazor": {
+        "type": "Direct",
+        "requested": "[1.1.0, )",
+        "resolved": "1.1.0",
+        "contentHash": "ZOQwAcrfbpVkvnQYDlhSLm01ZngZo08z8C/1APEQLOK0T8VQwxnXnLAHiGktyfr2bl+celYHdIwzE3PWWDtH1Q=="
+      },
+      "sangam.identity.application": {
+        "type": "Project",
+        "dependencies": {
+          "Sangam.Identity.Domain": "[1.0.0-rc.8, )",
+          "Sangam.Shared": "[1.0.0-rc.8, )"
+        }
+      },
+      "sangam.identity.domain": {
+        "type": "Project",
+        "dependencies": {
+          "Sangam.Shared": "[1.0.0-rc.8, )"
+        }
+      },
+      "sangam.shared": {
+        "type": "Project"
+      }
+    }
+  }
+}

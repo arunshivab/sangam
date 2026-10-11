@@ -32,8 +32,15 @@ public sealed class SangamUserStore : UserOnlyStore<SangamUser, SangamDbContext,
     /// <summary>The prefix of a recovery code hashed with the pepper (rc.8).</summary>
     public const string KeyedPrefix = "h2:";
 
-    private const string Provider = "[AspNetUserStore]";
-    private const string AuthenticatorKeyName = "AuthenticatorKey";
+    /// <summary>The login provider under which Identity stores its own tokens (the authenticator secret among them).</summary>
+    public const string Provider = "[AspNetUserStore]";
+
+    /// <summary>The token name of the authenticator secret.</summary>
+    public const string AuthenticatorKeyName = "AuthenticatorKey";
+
+    /// <summary>The data-protection purpose the authenticator secret is protected under.</summary>
+    public const string AuthenticatorKeyPurpose = "Sangam.Identity.AuthenticatorKey.v1";
+
     private const string RecoveryCodesName = "RecoveryCodes";
 
     private readonly IDataProtector _protector;
@@ -50,7 +57,7 @@ public sealed class SangamUserStore : UserOnlyStore<SangamUser, SangamDbContext,
     {
         ArgumentNullException.ThrowIfNull(protection);
         ArgumentNullException.ThrowIfNull(hashing);
-        _protector = protection.CreateProtector("Sangam.Identity.AuthenticatorKey.v1");
+        _protector = protection.CreateProtector(AuthenticatorKeyPurpose);
         foreach ((int version, string value) in hashing.PreviousPeppers)
         {
             if (PasswordPepperGuard.Decode(value) is byte[] previous)

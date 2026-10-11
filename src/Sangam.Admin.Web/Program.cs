@@ -110,6 +110,8 @@ builder.Services.AddAntiforgery(o =>
 builder.Services.AddAuthorization(o => o.FallbackPolicy = o.DefaultPolicy);
 
 builder.Services.AddSangamWebHosting(builder.Configuration);
+// rc.9 (ASVS V11.1.4): per-person request limits, as on the identity server.
+builder.Services.AddSangamHostRateLimits(builder.Configuration);
 
 WebApplication app = builder.Build();
 app.Lifetime.ApplicationStarted.Register(StartupGuard.MarkStarted);
@@ -132,6 +134,8 @@ app.UseSangamHttpsRedirection(app.Environment.EnvironmentName, app.Configuration
 app.UseSangamClientContext();
 app.UseSangamRequestCulture();
 app.UseAuthentication();
+// rc.9: counted per signed-in person, so after authentication.
+app.UseRateLimiter();
 // PR-18: the signed-in person's profile language, unless they picked one for this browser.
 app.UseSangamProfileCulture();
 app.UseAuthorization();

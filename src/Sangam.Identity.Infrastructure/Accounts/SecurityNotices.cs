@@ -32,25 +32,45 @@ public sealed partial class SecurityNotices
     /// <param name="kind">The template kind.</param>
     /// <param name="user">The person.</param>
     /// <param name="cancellationToken">Cancellation.</param>
-    public async Task SendAsync(string kind, SangamUser user, CancellationToken cancellationToken = default)
+    public Task SendAsync(string kind, SangamUser user, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+        return SendAsync(kind, user.Id, user.Email, user.FirstName, user.Locale, null, cancellationToken);
+    }
+
+    /// <summary>Sends one notice with more values than the name (rc.9: the new-device notice's browser, address, time and link).</summary>
+    /// <param name="kind">The template kind.</param>
+    /// <param name="userId">The person.</param>
+    /// <param name="email">Their address; nothing is sent without one.</param>
+    /// <param name="firstName">Their first name.</param>
+    /// <param name="locale">Their language.</param>
+    /// <param name="extra">The other values the template uses.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    public async Task SendAsync(string kind, Guid userId, string? email, string firstName, string locale, IReadOnlyDictionary<string, string>? extra, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(kind);
-        ArgumentNullException.ThrowIfNull(user);
-        if (string.IsNullOrWhiteSpace(user.Email))
+        ArgumentNullException.ThrowIfNull(firstName);
+        ArgumentNullException.ThrowIfNull(locale);
+        if (string.IsNullOrWhiteSpace(email))
         {
             return;
         }
 
         try
         {
-            Dictionary<string, string> values = new(StringComparer.Ordinal) { ["name"] = user.FirstName };
+            Dictionary<string, string> values = new(StringComparer.Ordinal) { ["name"] = firstName };
+            foreach ((string key, string value) in extra ?? new Dictionary<string, string>())
+            {
+                values[key] = value;
+            }
+
             await _email.SendAsync(
-                await _templates.EmailAsync(kind, user.Locale, null, null, values, user.Email, user.FirstName, cancellationToken).ConfigureAwait(false),
+                await _templates.EmailAsync(kind, locale, null, null, values, email, firstName, cancellationToken).ConfigureAwait(false),
                 cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            LogNotSent(_logger, kind, user.Id, ex);
+            LogNotSent(_logger, kind, userId, ex);
         }
     }
 

@@ -20,6 +20,7 @@ namespace Sangam.Identity.Application.Accounts;
 /// <param name="SecurityStamp">Rotates on password reset or forced sign-out; a session whose stamp no longer matches is ended.</param>
 /// <param name="IdentityVerifiedAt">When the name, date of birth and gender were verified through DigiLocker (PR-26), if they were.</param>
 /// <param name="Status">The account's status: only an active account may receive tokens (R7).</param>
+/// <param name="IdentityReverifyRequestedAt">When the person was asked to verify their identity again after a key change (rc.9), if they were.</param>
 public sealed record UserSummary(
     Guid Id,
     string FirstName,
@@ -37,7 +38,8 @@ public sealed record UserSummary(
     DateTimeOffset UpdatedAt,
     string SecurityStamp,
     DateTimeOffset? IdentityVerifiedAt = null,
-    UserStatus Status = UserStatus.Active)
+    UserStatus Status = UserStatus.Active,
+    DateTimeOffset? IdentityReverifyRequestedAt = null)
 {
     /// <summary>Gets "First Last".</summary>
     public string DisplayName => string.IsNullOrWhiteSpace(LastName) ? FirstName : FirstName + " " + LastName;

@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Sangam.Identity.Domain.Enums;
 
 namespace Sangam.Identity.Application.Tenancy;
@@ -17,6 +18,7 @@ public sealed record RoleDto(string Code, string DisplayName, string? Descriptio
 /// <param name="Description">Description.</param>
 /// <param name="Permissions">Permission strings (opaque to Sangam).</param>
 /// <param name="OrgId">Restrict to one organisation, or <see langword="null"/> for app-wide.</param>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record RoleUpsert(string DisplayName, string? Description, IReadOnlyList<string> Permissions, Guid? OrgId);
 
 /// <summary>An organisation as exposed on the management API.</summary>
@@ -35,6 +37,7 @@ public sealed record OrganisationDto(Guid Id, string Name, string Type, Guid? Pa
 /// <param name="Type">Type code (from <c>org_types</c>).</param>
 /// <param name="ParentId">Parent organisation, or <see langword="null"/> for a root.</param>
 /// <param name="Metadata">Opaque JSON object; <see langword="null"/> keeps the existing value.</param>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record OrganisationUpsert(string Name, string Type, Guid? ParentId, string? Metadata);
 
 /// <summary>A membership as exposed on the management API.</summary>
@@ -53,12 +56,14 @@ public sealed record MembershipDto(Guid UserId, Guid OrgId, string Role, bool Ap
 /// PR-25: when the role ends by itself (a contractor, an auditor); null for one that lasts until it is taken away. Must be
 /// in the future and at most five years away.
 /// </param>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record MembershipUpsert(string Role, bool AppliesToDescendants, DateTimeOffset? ExpiresAt = null);
 
 /// <summary>An invitation the management API sends (rc.5): how an application brings in someone who does not use it yet.</summary>
 /// <param name="Email">The address to invite.</param>
 /// <param name="Role">Role code in the app's vocabulary.</param>
 /// <param name="AppliesToDescendants">Whether the role flows down the subtree.</param>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record InvitationRequest(string Email, string Role, bool AppliesToDescendants = false);
 
 /// <summary>Outcome of a management call.</summary>

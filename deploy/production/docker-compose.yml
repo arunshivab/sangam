@@ -4,6 +4,15 @@ name: sangam
 
 x-host: &host
   restart: unless-stopped
+  # rc.9 (ASVS V1.14.5, V1.2.1): every host runs as the image's non-root user on a read-only filesystem with a private
+  # /tmp, with no Linux capabilities, unable to gain privileges, and with memory and process limits (the same as the
+  # Kubernetes manifests).
+  read_only: true
+  tmpfs: ["/tmp:size=64m,mode=1777"]
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  mem_limit: 1g
+  pids_limit: 256
   # rc.5: anjal-clamav is the private network on which Anjal's ClamAV listens (README: "Virus scanner").
   networks: [edge, sangam-db, anjal-clamav]
   # D-H: the backup and restore-drill scripts write their status here for the monitoring page.
@@ -143,7 +152,15 @@ services:
   # own database (imagiqa_demo) and role; registered with Sangam by the identity server's settings above.
   demo:
     restart: unless-stopped
-    networks: [edge, sangam-db]
+    # rc.9 (ASVS V1.14.1): the demo reaches the database on its own network, not on Sangam's, so it cannot reach
+    # anything else that listens there.
+    networks: [edge, sangam-demo-db]
+    read_only: true
+    tmpfs: ["/tmp:size=64m,mode=1777"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m
+    pids_limit: 128
     build: { context: ../.., target: app, args: { PROJECT: Imagiqa.Web, PROJECT_DIR: samples } }
     volumes:
       - /srv/sangam/demo-keys:/var/lib/imagiqa/keys
@@ -166,9 +183,39 @@ services:
       - { source: Imagiqa__ClientSecret, target: Sangam__ClientSecret }
       - ConnectionStrings__Imagiqa
 
+  # rc.9 (ASVS V1.14.5): Caddy runs as an ordinary user (1000), not root. Ports below 1024 are opened to unprivileged users
+  # inside its own network namespace only (the sysctl), so it needs no capability at all. This one-off step gives its two
+  # volumes to that user before it starts (volumes made by an earlier release belong to root), with only the rights
+  # chown needs.
+  caddy-volumes:
+    image: caddy:2@sha256:f2a1290d0463aad60660d4ec134943f183ee2a5f6c3eb7bf32dd984f2f020772
+    user: "0:0"
+    entrypoint: ["chown", "-R", "1000:1000", "/data", "/config"]
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+
   caddy:
-    image: caddy:2
+    # Built here from the pinned official image (caddy/Dockerfile): the same binary without its file capability.
+    build: { context: ./caddy }
+    image: sangam/caddy:local
     restart: unless-stopped
+    user: "1000:1000"
+    depends_on:
+      caddy-volumes: { condition: service_completed_successfully }
+    sysctls:
+      net.ipv4.ip_unprivileged_port_start: 0
+    read_only: true
+    tmpfs: ["/tmp:size=16m,mode=1777"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
+    pids_limit: 128
     ports: ["80:80", "443:443"]
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
@@ -204,6 +251,9 @@ networks:
       config:
         - subnet: 172.30.0.0/24
   sangam-db:
+    external: true
+  # rc.9: the demo's own way to the database, created by the database stack (postgres/docker-compose.yml).
+  sangam-demo-db:
     external: true
   # rc.5: created once (docker network create anjal-clamav) and joined by Anjal's ClamAV container only.
   anjal-clamav:

@@ -66,12 +66,43 @@ public sealed partial class AlertEvaluator : BackgroundService
         SangamDbContext db = await contexts.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         await using (db.ConfigureAwait(false))
         {
+            // rc.9 (ASVS V11.1.7): the never-normal events of the last hour, counted from the audit log.
+            open = [.. open, .. await SecurityConditionsAsync(db, snapshot.At, cancellationToken).ConfigureAwait(false)];
             // R7 (PR-33): with two identity replicas evaluating, one at a time keeps the books, so an alert is sent once.
             await ClusterLock.TryRunAsync(db, ClusterLock.Alerts, ct => KeepBooksAsync(db, alerts, open, snapshot.At, ct), cancellationToken).ConfigureAwait(false);
         }
 
         return open;
     }
+
+    private async Task<IReadOnlyList<AlertCondition>> SecurityConditionsAsync(SangamDbContext db, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        DateTimeOffset since = now.AddHours(-1);
+        Dictionary<string, long> counts = await db.AuditEvents.AsNoTracking()
+            .Where(e => e.OccurredAt > since && NeverNormal.Contains(e.Action))
+            .GroupBy(e => e.Action)
+            .Select(g => new { g.Key, Count = g.LongCount() })
+            .ToDictionaryAsync(g => g.Key, g => g.Count, cancellationToken).ConfigureAwait(false);
+        var busiest = await db.AuditEvents.AsNoTracking()
+            .Where(e => e.OccurredAt > since && e.Action == Domain.AuditActions.AccessDenied && (e.ActorUserId != null || e.ActorAppId != null))
+            .GroupBy(e => new { e.ActorUserId, e.ActorAppId })
+            .Select(g => new { g.Key.ActorUserId, g.Key.ActorAppId, Count = g.LongCount() })
+            .OrderByDescending(g => g.Count)
+            .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        (string, long)? top = busiest is null
+            ? null
+            : (busiest.ActorUserId is Guid user ? "person " + user.ToString("D") : "application " + busiest.ActorAppId!.Value.ToString("D"), busiest.Count);
+        return AlertRules.EvaluateSecurity(counts, top, _options.Alerts);
+    }
+
+    private static readonly string[] NeverNormal =
+    [
+        Domain.AuditActions.AccessDenied,
+        Domain.AuditActions.UserMfaReplay,
+        Domain.AuditActions.TokenRefused,
+        Domain.AuditActions.ApiRequestInvalid,
+        Domain.AuditActions.UploadRefused,
+    ];
 
     private async Task KeepBooksAsync(SangamDbContext db, IPlatformAlerts alerts, IReadOnlyList<AlertCondition> open, DateTimeOffset at, CancellationToken cancellationToken)
     {

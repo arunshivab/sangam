@@ -135,6 +135,7 @@ public partial class TemplateEditor : ComponentBase
         MessageTemplateKinds.AuthenticatorRemovedNotice => L["E-mail: notice that the authenticator app was removed"],
         MessageTemplateKinds.PasskeyAddedNotice => L["E-mail: notice that a passkey was added"],
         MessageTemplateKinds.PasskeyRemovedNotice => L["E-mail: notice that a passkey was removed"],
+        MessageTemplateKinds.NewDeviceSignInNotice => L["E-mail: notice of a sign-in from a new browser"],
         _ => L["Text message: confirm an action"],
     };
 

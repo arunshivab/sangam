@@ -2,9 +2,9 @@
 #   docker build --build-arg PROJECT=Sangam.Identity.Server -t sangam/identity .
 #   docker build --target migrator -t sangam/migrator .
 #   docker build --build-arg PROJECT_DIR=samples --build-arg PROJECT=Imagiqa.Web -t sangam/demo .   (D-I)
-ARG DOTNET_VERSION=10.0
-
-FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION} AS build
+# rc.9 (ASVS V10.3.2): base images are pinned by digest as well as tag, so a build always starts from the same bytes;
+# Dependabot proposes the new digest when Microsoft publishes one (security updates still come from apt below).
+FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:e70cdb7f80b0348f5cb85f19a8f670fca061f033d57eed12fa003d58b0e06317 AS build
 WORKDIR /src
 COPY . .
 ARG PROJECT=Sangam.Identity.Server
@@ -20,7 +20,7 @@ RUN dotnet ef migrations bundle --project src/Sangam.Identity.Infrastructure --s
 
 # Runs once per release with the schema owner's connection string, then exits:
 #   docker run --rm -e CONNECTION="..." sangam/migrator
-FROM mcr.microsoft.com/dotnet/aspnet:${DOTNET_VERSION} AS runtime-base
+FROM mcr.microsoft.com/dotnet/aspnet:10.0@sha256:222759b391a1aaf241166672c8f99b2d4ada452e7b5319f3c6e8f265a37b5ad4 AS runtime-base
 # Npgsql loads libgssapi_krb5 at start-up and logs an error when it is missing (V-03). R7: every build also takes the
 # Ubuntu security updates published since the base image (docs/security/dependency-scan.md).
 RUN apt-get update \
@@ -48,4 +48,6 @@ EXPOSE 8080
 # the request, so no curl is added to the image; the port is the first of ASPNETCORE_HTTP_PORTS.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
   CMD ["bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/${ASPNETCORE_HTTP_PORTS%%[;,]*} && printf 'GET /health/live HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && head -n 1 <&3 | grep -q ' 200 '"]
-ENTRYPOINT ["sh", "-c", "exec dotnet \"$SANGAM_PROJECT.dll\""]
+# rc.9: arguments given to the container (docker compose run --rm identity key-compromise ...) reach the application;
+# "sangam" is only the shell's name for itself.
+ENTRYPOINT ["sh", "-c", "exec dotnet \"$SANGAM_PROJECT.dll\" \"$@\"", "sangam"]

@@ -8,6 +8,10 @@
   <h1 class="sg-card-title">@L["Passkeys"]</h1>
   <p class="sg-card-body">@L["A passkey signs you in with your phone, computer or security key — your fingerprint, face or PIN instead of a password. It only works on Sangam's own site, so it cannot be stolen by a fake one."]</p>
   <partial name="_Banner" model="@(("success", Model.Notice ?? string.Empty))" />
+  @if (!Model.Recent)
+  {
+    <partial name="_SignInAgain" />
+  }
 
   @if (Model.Passkeys.Count == 0)
   {

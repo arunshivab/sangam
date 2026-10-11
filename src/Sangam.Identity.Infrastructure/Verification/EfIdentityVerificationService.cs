@@ -50,7 +50,26 @@ public sealed class EfIdentityVerificationService : IIdentityVerificationService
     public Task<VerificationResult> ApplyAsync(Guid userId, VerifiedIdentity identity, string? ipAddress, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(identity);
-        return ApplyHashedAsync(userId, identity with { Subject = SubjectHash(identity.Method, identity.Subject) }, ipAddress, cancellationToken);
+        return ApplyCheckedAsync(userId, identity, ipAddress, cancellationToken);
+    }
+
+    private async Task<VerificationResult> ApplyCheckedAsync(Guid userId, VerifiedIdentity identity, string? ipAddress, CancellationToken cancellationToken)
+    {
+        // rc.9: the identity is also looked for under the previous subject keys, so replacing the key does not let one
+        // identity verify a second account.
+        if (await BelongsToAnotherAsync(userId, identity.Method, SubjectHashes(identity.Method, identity.Subject), cancellationToken).ConfigureAwait(false))
+        {
+            return await RefuseTakenAsync(userId, identity.Method, ipAddress, cancellationToken).ConfigureAwait(false);
+        }
+
+        return await ApplyHashedAsync(userId, identity with { Subject = SubjectHash(identity.Method, identity.Subject) }, ipAddress, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<VerificationResult> RefuseTakenAsync(Guid userId, string method, string? ipAddress, CancellationToken cancellationToken)
+    {
+        await _audit.WriteAsync(new AuditEntry(AuditActions.IdentityVerifyRefused, AuditActorType.User, userId, TargetType: "user", TargetId: userId,
+            Metadata: JsonSerializer.Serialize(new { method, reason = "identity_on_another_account" }), IpAddress: ipAddress), cancellationToken).ConfigureAwait(false);
+        return new VerificationResult(false, "taken");
     }
 
     /// <summary>
@@ -63,6 +82,14 @@ public sealed class EfIdentityVerificationService : IIdentityVerificationService
     /// <param name="cancellationToken">Cancellation token.</param>
     public Task<bool> BelongsToAnotherAsync(Guid userId, string method, string subjectHash, CancellationToken cancellationToken = default)
         => _db.IdentityVerifications.AnyAsync(v => v.Method == method && v.SubjectHash == subjectHash && v.UserId != userId, cancellationToken);
+
+    /// <summary>As <see cref="BelongsToAnotherAsync(Guid, string, string, CancellationToken)"/>, for any of the hashes (rc.9: current and previous keys).</summary>
+    /// <param name="userId">The account.</param>
+    /// <param name="method">The method.</param>
+    /// <param name="subjectHashes">The keyed hashes of the provider's id.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public Task<bool> BelongsToAnotherAsync(Guid userId, string method, IReadOnlyCollection<string> subjectHashes, CancellationToken cancellationToken = default)
+        => _db.IdentityVerifications.AnyAsync(v => v.Method == method && subjectHashes.Contains(v.SubjectHash) && v.UserId != userId, cancellationToken);
 
     /// <summary>
     /// Applies a verification whose provider id is already hashed (<see cref="SubjectHash"/>) in <see cref="VerifiedIdentity.Subject"/>:
@@ -78,9 +105,7 @@ public sealed class EfIdentityVerificationService : IIdentityVerificationService
         string hash = identity.Subject;
         if (await BelongsToAnotherAsync(userId, identity.Method, hash, cancellationToken).ConfigureAwait(false))
         {
-            await _audit.WriteAsync(new AuditEntry(AuditActions.IdentityVerifyRefused, AuditActorType.User, userId, TargetType: "user", TargetId: userId,
-                Metadata: JsonSerializer.Serialize(new { method = identity.Method, reason = "identity_on_another_account" }), IpAddress: ipAddress), cancellationToken).ConfigureAwait(false);
-            return new VerificationResult(false, "taken");
+            return await RefuseTakenAsync(userId, identity.Method, ipAddress, cancellationToken).ConfigureAwait(false);
         }
 
         SangamUser user = await _db.Users.FirstAsync(u => u.Id == userId, cancellationToken).ConfigureAwait(false);
@@ -106,6 +131,7 @@ public sealed class EfIdentityVerificationService : IIdentityVerificationService
         user.DateOfBirth = identity.DateOfBirth;
         user.Gender = identity.Gender;
         user.IdentityVerifiedAt = now;
+        user.IdentityReverifyRequestedAt = null;
         user.UpdatedAt = now;
         await AppEventLog.AddAsync(_db, AppEventTypes.UserUpdated, null, userId, null, new Dictionary<string, object?> { ["identity_verified"] = true }, now, cancellationToken).ConfigureAwait(false);
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -127,6 +153,7 @@ public sealed class EfIdentityVerificationService : IIdentityVerificationService
         DateTimeOffset now = _clock.UtcNow;
         _db.IdentityVerifications.Remove(verification);
         user.IdentityVerifiedAt = null;
+        user.IdentityReverifyRequestedAt = null;
         user.UpdatedAt = now;
         await AppEventLog.AddAsync(_db, AppEventTypes.UserUpdated, null, userId, null, new Dictionary<string, object?> { ["identity_verified"] = false }, now, cancellationToken).ConfigureAwait(false);
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -143,6 +170,16 @@ public sealed class EfIdentityVerificationService : IIdentityVerificationService
         ArgumentNullException.ThrowIfNull(method);
         ArgumentNullException.ThrowIfNull(subject);
         return SmsNumbers.Hash(_settings.EffectiveSubjectKey, method + ":" + subject.Trim());
+    }
+
+    /// <summary>The keyed hashes of a provider's subject id under the current key and every previous key (rc.9).</summary>
+    /// <param name="method">The method.</param>
+    /// <param name="subject">The provider's id.</param>
+    public IReadOnlyCollection<string> SubjectHashes(string method, string subject)
+    {
+        ArgumentNullException.ThrowIfNull(method);
+        ArgumentNullException.ThrowIfNull(subject);
+        return [SubjectHash(method, subject), .. _settings.PreviousSubjectKeys.Where(k => !string.IsNullOrWhiteSpace(k)).Select(k => SmsNumbers.Hash(k, method + ":" + subject.Trim()))];
     }
 
     /// <summary>

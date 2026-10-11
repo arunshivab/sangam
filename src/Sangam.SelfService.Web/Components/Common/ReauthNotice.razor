@@ -1,0 +1,15 @@
+@* rc.9 (ASVS V3.7.1, V3.3.4): shown when a sensitive change needs a sign-in from the last 15 minutes. The link signs in again
+   at the identity server (max_age=0) and comes straight back to this page. *@
+<p class="sg-banner sg-banner--top sg-banner--error" role="alert" data-reauth="required">
+  @L["For your security, sign in again before you make this change. It takes a moment, and you come straight back here."]
+  <a class="sg-btn sg-btn--primary" href="@Href" data-enhance-nav="false">@L["Sign in again"]</a>
+</p>
+
+@code {
+    /// <summary>The page to come back to, a path on the portal.</summary>
+    [Parameter]
+    [EditorRequired]
+    public string ReturnTo { get; set; } = "/";
+
+    private string Href => "/reauth?returnUrl=" + Uri.EscapeDataString(ReturnTo);
+}

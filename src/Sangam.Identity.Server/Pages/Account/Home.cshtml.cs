@@ -44,6 +44,12 @@ public sealed class HomeModel : AuthPageModel
     [BindProperty]
     public string SignInPreference { get; set; } = "password";
 
+    /// <summary>Whether the person signed in recently enough to change the sign-in preference (rc.9).</summary>
+    public bool Recent { get; private set; }
+
+    /// <summary>A change was refused because the sign-in is not recent; the page offers to sign in again.</summary>
+    public bool NeedsSignIn { get; private set; }
+
     /// <summary>Notice after saving.</summary>
     public string? Notice { get; private set; }
 
@@ -70,6 +76,9 @@ public sealed class HomeModel : AuthPageModel
         return Page();
     }
 
+    /// <summary>Signs in again, for a change that needs a recent sign-in (rc.9).</summary>
+    public Task<IActionResult> OnPostAgainAsync() => RecentSignInGate.SignInAgainAsync(this, "/account");
+
     /// <summary>Saves the sign-in preference.</summary>
     public async Task<IActionResult> OnPostPreferenceAsync(CancellationToken cancellationToken)
     {
@@ -81,6 +90,12 @@ public sealed class HomeModel : AuthPageModel
 
         if (!SignInModes.TryParse(posted, out SignInMode mode))
         {
+            return Page();
+        }
+
+        if (!Recent)
+        {
+            NeedsSignIn = true;
             return Page();
         }
 
@@ -105,6 +120,7 @@ public sealed class HomeModel : AuthPageModel
             _ => L["email and password"],
         };
         SignInPreference = SignInModes.ToCode(user.SignInPreference);
+        Recent = RecentSignInGate.IsRecent(this);
         return true;
     }
 }

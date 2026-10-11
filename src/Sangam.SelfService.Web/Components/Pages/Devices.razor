@@ -10,6 +10,11 @@
   </Actions>
 </PageHeader>
 
+@if (_reauth)
+{
+  <ReauthNotice ReturnTo="/devices" />
+}
+
 <p class="sg-note sg-note--wide">
   @L["Sangam shows only what your browser tells it: the browser, the address you connected from, and the time. It never guesses a location. A name like \"First Floor Radiology\" appears only when the application you signed in to supplied it."]
 </p>
@@ -90,9 +95,26 @@ else
     private Guid? _currentSessionId;
     private DateTimeOffset _now = DateTimeOffset.UtcNow;
 
+    // rc.9 (ASVS V3.3.4): ending sessions needs a sign-in from the last 15 minutes.
+    private System.Security.Claims.ClaimsPrincipal _principal = new();
+    private bool _reauth;
+
+    private bool Recent()
+    {
+        if (Sangam.Web.Shared.Security.RecentSignIn.IsRecent(_principal, DateTimeOffset.UtcNow))
+        {
+            return true;
+        }
+
+        _reauth = true;
+        _confirmingAll = false;
+        return false;
+    }
+
     protected override async Task OnInitializedAsync()
     {
         AuthenticationState state = await AuthProvider.GetAuthenticationStateAsync();
+        _principal = state.User;
         _userId = PortalUser.Id(state.User) ?? Guid.Empty;
         _currentSessionId = PortalUser.SessionId(state.User);
         await LoadAsync();
@@ -106,6 +128,11 @@ else
 
     private async Task EndAsync(PortalSession session)
     {
+        if (!Recent())
+        {
+            return;
+        }
+
         _working = true;
         await Portal.RevokeSessionAsync(_userId, session.Id, null);
         _working = false;
@@ -117,6 +144,11 @@ else
 
     private async Task EndAllAsync()
     {
+        if (!Recent())
+        {
+            return;
+        }
+
         _working = true;
         await Portal.RevokeAllSessionsAsync(_userId, null);
         _working = false;

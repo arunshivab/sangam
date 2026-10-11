@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Sangam.Identity.Domain.Enums;
 
 namespace Sangam.Identity.Application.Signatures;
@@ -9,6 +10,7 @@ namespace Sangam.Identity.Application.Signatures;
 /// <param name="DisplayText">What the person is shown about the record.</param>
 /// <param name="ReturnUrl">Where the person goes afterwards; must be one of the application's redirect URIs.</param>
 /// <param name="Signer">The only person who may sign (their Sangam subject), or <see langword="null"/> for whoever the application sends.</param>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record SignatureRequestInput(string RecordId, string RecordHash, string Meaning, string DisplayText, string ReturnUrl, Guid? Signer = null);
 
 /// <summary>A registered request.</summary>

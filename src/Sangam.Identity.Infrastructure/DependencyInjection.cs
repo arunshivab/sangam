@@ -243,6 +243,8 @@ public static class DependencyInjection
             .ConfigurePrimaryHttpMessageHandler(sp => Provisioning.OutboundHttp.CreateHandler(sp.GetRequiredService<Provisioning.OutboundSettings>().AllowPrivate));
         services.AddScoped<Verification.DigiLockerClient>();
         services.AddScoped<Verification.EfIdentityVerificationService>();
+        // rc.9 (ASVS V1.6.3): the key-compromise steps, run by the key-compromise command.
+        services.AddScoped<Security.KeyCompromiseService>();
         services.AddScoped<Application.Verification.IIdentityVerificationService>(sp => sp.GetRequiredService<Verification.EfIdentityVerificationService>());
         services.AddScoped<Provisioning.AppEventDispatcher>();
         services.AddScoped<Provisioning.IntegrationAlerts>();

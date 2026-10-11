@@ -17,6 +17,11 @@
     <div><dt>@L["Signed in with"]</dt><dd>@Model.SessionMode</dd></div>
   </dl>
 
+  @if (Model.NeedsSignIn)
+  {
+    <partial name="_SignInAgain" />
+  }
+
   <form method="post" asp-page-handler="Preference">
     <div class="sg-field-group">
       <label class="sg-label" asp-for="SignInPreference">@L["How you sign in (unless an app decides otherwise)"]</label>

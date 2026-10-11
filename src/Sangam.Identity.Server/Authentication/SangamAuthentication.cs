@@ -176,6 +176,9 @@ public static class SangamAuthentication
 
         await httpContext.SignOutAsync(PendingScheme).ConfigureAwait(false);
         await httpContext.SignInAsync(IdentityConstants.ApplicationScheme, new ClaimsPrincipal(identity)).ConfigureAwait(false);
+
+        // rc.9 (ASVS V2.2.3): a browser new to this account is told to the person by e-mail.
+        await KnownDevices.SignedInAsync(httpContext, user).ConfigureAwait(false);
     }
 
     /// <summary>
