@@ -175,6 +175,13 @@ public sealed class AccountRecoveryTests : IAsyncLifetime
         Assert.Equal("Someone asked to recover your Sangam account", Latest("lost-phone@example.in").Subject);
         Assert.True(await db.AuditEvents.AnyAsync(e => e.Action == AuditActions.AdminUserMfaRecoveryApprove && e.TargetId == _person));
         Assert.Empty(await Recovery().WaitingAsync(_support));
+
+        // rc.7 (SGM-914 section 7): opening the queue is audited each time, with what was shown; a viewer saw nothing and left no trace.
+        List<AuditEvent> views = await db.AuditEvents.Where(e => e.Action == AuditActions.AdminUserMfaRecoveryQueueView).OrderBy(e => e.Id).ToListAsync();
+        Assert.Equal(2, views.Count);
+        Assert.All(views, v => Assert.Equal(_support, v.ActorUserId));
+        Assert.Contains(request.Id.ToString("D"), views[0].Metadata, StringComparison.Ordinal);
+        Assert.Contains("\"waiting\":0", views[1].Metadata.Replace(" ", string.Empty, StringComparison.Ordinal), StringComparison.Ordinal);
     }
 
     [PostgresFact]
@@ -272,7 +279,12 @@ public sealed class AccountRecoveryTests : IAsyncLifetime
         Assert.Contains("night shift", urgent.Metadata, StringComparison.Ordinal);
         Assert.Contains("\"skipped_review\":true", urgent.Metadata.Replace(" ", string.Empty, StringComparison.Ordinal), StringComparison.Ordinal);
         Assert.True(await db.AuditEvents.AnyAsync(e => e.Action == AuditActions.PlatformAlert));
-        Assert.StartsWith("SangamID alert: urgent 2-step reset", Latest("owner@example.in").Subject, StringComparison.Ordinal);
+        Assert.StartsWith("SangamID alert: INCIDENT: urgent 2-step reset", Latest("owner@example.in").Subject, StringComparison.Ordinal);
+
+        // rc.7 (SGM-914 section 10): the override is opened as a security incident in the register, by itself.
+        AuditEvent incident = await db.AuditEvents.SingleAsync(e => e.Action == AuditActions.SecurityIncidentOpen);
+        Assert.Equal((_owner, _person), (incident.ActorUserId!.Value, incident.TargetId!.Value));
+        Assert.Contains("emergency_override", incident.Metadata, StringComparison.Ordinal);
         Assert.False((await Admin().ApplyTwoStepResetNowAsync(_owner, _support, "No request waiting here at all", null)).Succeeded);
     }
 

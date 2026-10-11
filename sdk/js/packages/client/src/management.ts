@@ -86,6 +86,20 @@ export class ManagementClient {
     return this.send("POST", `orgs/${orgId}/invitations`, { email, role, appliesToDescendants });
   }
 
+  /**
+   * Where a person's account went if they merged it into another of theirs (rc.7): the surviving account's `sub`, or
+   * `null` when the id was not merged or your application never knew it. Use it on `account.merged`.
+   */
+  async mergedInto(userId: string): Promise<string | null> {
+    try {
+      const answer = await this.send<{ merged_into: string; merged_at: string }>("GET", `users/${userId}/merged`);
+      return answer.merged_into;
+    } catch (error) {
+      if (error instanceof SangamApiError && error.status === 404) return null;
+      throw error;
+    }
+  }
+
   getAttributes(userId: string) {
     return this.send<Record<string, string | null>>("GET", `users/${userId}/attributes`);
   }

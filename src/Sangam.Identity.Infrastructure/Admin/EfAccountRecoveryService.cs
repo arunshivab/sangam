@@ -1,8 +1,11 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Sangam.Identity.Application.Abstractions;
 using Sangam.Identity.Application.Admin;
 using Sangam.Identity.Application.Verification;
+using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Entities;
 using Sangam.Identity.Domain.Enums;
 using Sangam.Identity.Infrastructure.Persistence;
@@ -23,14 +26,17 @@ public sealed partial class EfAccountRecoveryService : IAccountRecoveryService
     private readonly UserManager<SangamUser> _users;
     private readonly EfMfaResetService _resets;
     private readonly EfIdentityVerificationService _verification;
+    private readonly IAuditWriter _audit;
 
     /// <summary>Initialises the service.</summary>
     /// <param name="db">Database.</param>
     /// <param name="users">Identity user manager.</param>
     /// <param name="resets">The two-step reset requests.</param>
     /// <param name="verification">Identity verification (for the keyed hash).</param>
-    public EfAccountRecoveryService(SangamDbContext db, UserManager<SangamUser> users, EfMfaResetService resets, EfIdentityVerificationService verification)
+    /// <param name="audit">Audit writer (rc.7: opening the review queue is audited).</param>
+    public EfAccountRecoveryService(SangamDbContext db, UserManager<SangamUser> users, EfMfaResetService resets, EfIdentityVerificationService verification, IAuditWriter audit)
     {
+        _audit = audit ?? throw new ArgumentNullException(nameof(audit));
         _db = db ?? throw new ArgumentNullException(nameof(db));
         _users = users ?? throw new ArgumentNullException(nameof(users));
         _resets = resets ?? throw new ArgumentNullException(nameof(resets));
@@ -94,6 +100,12 @@ public sealed partial class EfAccountRecoveryService : IAccountRecoveryService
             .OrderBy(r => r.RequestedAt)
             .Join(_db.Users, r => r.UserId, u => u.Id, (r, u) => new { r.Id, r.UserId, r.RequestedAt, r.Privileged, r.Record, u.FirstName, u.LastName, u.DateOfBirth, u.Gender })
             .ToListAsync(cancellationToken).ConfigureAwait(false);
+        // rc.7 (SGM-914 section 7): seeing the records is audited, not only deciding on them.
+        await _audit.WriteAsync(
+            new AuditEntry(AuditActions.AdminUserMfaRecoveryQueueView, AuditActorType.Admin, operatorUserId, TargetType: "queue",
+                Metadata: JsonSerializer.Serialize(new Dictionary<string, object> { ["waiting"] = rows.Count, ["requests"] = rows.Select(r => r.Id).ToList() })),
+            cancellationToken).ConfigureAwait(false);
+
         List<RecoveryReview> reviews = [];
         foreach (var row in rows)
         {

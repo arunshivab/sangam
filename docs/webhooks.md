@@ -17,9 +17,26 @@ personal data; the application then reads what it is entitled to through tokens 
 | `session.revoked` | A session in which the person used the application was ended: end your own session |
 | `consent.revoked` | The person withdrew their consent to the application |
 | `role.changed` | A role created, changed or retired |
+| `account.merged` | rc.7: the person merged this account into another of theirs; `data.merged_into` is the surviving `sub` |
 | `ping` | *Send a test* on the partner console |
 
-An endpoint receives only the types it chose (`ping` goes only to the endpoint it was sent for).
+An endpoint receives only the types it chose (`ping` goes only to the endpoint it was sent for). An endpoint added
+before rc.7 does not have `account.merged` yet: tick it on the partner console (new endpoints have it ticked).
+
+### `account.merged` (rc.7)
+
+A person who held two Sangam accounts merged them (SGM-914 section 9). The event is sent once to every application the
+closed account was connected to, with `subject.sub` the closed account and `data.merged_into` the account that stays:
+
+```json
+{"id":"evt_…","type":"account.merged","created_at":"2026-10-14T05:00:00Z","app_id":"lipi-his",
+ "subject":{"sub":"019…closed"},"data":{"merged_into":"019…survivor"}}
+```
+
+Move what you keep under the closed id to the surviving one, keeping the surviving id's own record where you have both.
+The closed id never signs in again. A `user.updated` for the surviving id follows (with `data.merged_from`), and the
+surviving id may hold roles the closed one had. An application that missed the event can ask
+`GET /api/v1/users/{closed id}/merged` (every SDK has a `mergedInto` call); it answers only for ids the application knew.
 
 ## The message
 

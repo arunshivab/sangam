@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using OpenIddict.Abstractions;
 using OpenIddict.Validation.AspNetCore;
+using Sangam.Identity.Application.Accounts;
 using Sangam.Identity.Application.Apps;
 using Sangam.Identity.Application.Attributes;
 using Sangam.Identity.Application.Partners;
@@ -119,6 +120,22 @@ public static class ManagementEndpoints
             IReadOnlyList<AttributeValueRow>? rows = await attributes.GetValuesAsync(null, app.Id, userId, ct).ConfigureAwait(false);
             return rows is null ? Results.NotFound() : Results.Ok(rows.ToDictionary(r => r.Key, r => r.Value));
         }).WithName("GetUserAttributes");
+
+        // rc.7 (SGM-914 section 9): where a closed account went, for an application that knew it. 404 for any id the
+        // application never had, merged or not, so the API tells it nothing about other people.
+        api.MapGet("/users/{userId:guid}/merged", async (Guid userId, ClaimsPrincipal caller, IAppDirectory apps, IAccountMergeService merges, CancellationToken ct) =>
+        {
+            AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
+            if (app is null)
+            {
+                return Results.Forbid();
+            }
+
+            MergedInto? merged = await merges.MergedIntoAsync(app.Id, userId, ct).ConfigureAwait(false);
+            return merged is null
+                ? Results.NotFound()
+                : Results.Ok(new { merged_into = merged.UserId.ToString("D"), merged_at = merged.MergedAt.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture) });
+        }).WithName("GetMergedInto");
 
         api.MapPut("/users/{userId:guid}/attributes", async (Guid userId, Dictionary<string, string?> values, ClaimsPrincipal caller, IAppDirectory apps, IAttributeService attributes, CancellationToken ct) =>
         {

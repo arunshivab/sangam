@@ -375,4 +375,22 @@ public static class AuditActions
 
     /// <summary>An application requires DigiLocker verification and the person was asked to verify before entering it (rc.6, SGM-914).</summary>
     public const string IdentityVerifyRequired = "identity.verify.required";
+
+    /// <summary>A person asked to merge two of their accounts; the waiting period started (rc.7, SGM-914 section 9).</summary>
+    public const string UserAccountMergeRequest = "user.account.merge.request";
+
+    /// <summary>A pending merge was cancelled: by the person (either account or the link), or because a rule failed when it was due (rc.7).</summary>
+    public const string UserAccountMergeCancel = "user.account.merge.cancel";
+
+    /// <summary>Two accounts were merged; written on the surviving and the closed account alike (rc.7).</summary>
+    public const string UserAccountMerge = "user.account.merge";
+
+    /// <summary>An application administrator's role moved to their surviving account in a merge, in that application's audit (rc.7).</summary>
+    public const string AppAdminMerge = "app.admin.merge";
+
+    /// <summary>An operator opened the queue of recoveries waiting for review (rc.7, SGM-914 section 7).</summary>
+    public const string AdminUserMfaRecoveryQueueView = "admin.user.mfa.recovery.queue.view";
+
+    /// <summary>A security incident was opened in the register (SGM-802), for example by an emergency override (rc.7, SGM-914 section 10).</summary>
+    public const string SecurityIncidentOpen = "security.incident.open";
 }

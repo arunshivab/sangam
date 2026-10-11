@@ -1,0 +1,104 @@
+@page "/account/merge"
+@using Sangam.Identity.Application.Accounts
+@model MergeModel
+@{
+    ViewData["Title"] = L["Merge two of your accounts"].Value;
+}
+
+<section class="sg-card sg-card--wide">
+  <h1 class="sg-card-title">@L["Merge two of your accounts"]</h1>
+  <partial name="_Banner" model="@(("success", Model.Notice ?? string.Empty))" />
+
+  @if (Model.Pending is not null)
+  {
+    <p class="sg-card-body" data-merge="pending">@L["{0} will be closed into {1} on {2}, unless it is cancelled. Both accounts were e-mailed a link to cancel it.", Model.Pending.ClosedEmail, Model.Pending.SurvivorEmail, MergeModel.When(Model.Pending.EffectiveAt)]</p>
+    <form method="post" asp-page-handler="Cancel">
+      <button type="submit" class="sg-btn sg-btn--secondary sg-btn--block">@L["Cancel the merge"]</button>
+    </form>
+  }
+  else if (Model.Preview is { Refusal: not null } refused)
+  {
+    <partial name="_Banner" model="@(("danger", Model.RefusalText(refused.Refusal)))" />
+    <form method="post" asp-page-handler="Restart">
+      <button type="submit" class="sg-btn sg-btn--secondary sg-btn--block">@L["Start again"]</button>
+    </form>
+  }
+  else if (Model.Preview is MergePreview p)
+  {
+    <p class="sg-card-body">@L["You are signed in to both accounts. Choose the one that stays."]</p>
+    <form method="post" asp-page-handler="Confirm" novalidate>
+      @foreach ((string key, MergeAccountView a, IReadOnlyList<MergeLoss> lost, MergeAccountView other) in new[] { ("first", p.First, p.LostIfFirstSurvives, p.Second), ("second", p.Second, p.LostIfSecondSurvives, p.First) })
+      {
+        <div class="sg-tile" data-merge-account="@key">
+          <label class="sg-check">
+            <input type="radio" name="Survivor" value="@key" required />
+            <strong>@L["Keep {0}", a.Email]</strong>
+          </label>
+          <dl class="sg-facts">
+            <div><dt>@L["Name"]</dt><dd>@a.Name @(a.Verified ? L["(verified with DigiLocker)"] : string.Empty)</dd></div>
+            <div><dt>@L["Applications"]</dt><dd>@(a.Applications.Count == 0 ? L["None"] : string.Join(", ", a.Applications))</dd></div>
+            @if (a.AdminOf.Count > 0)
+            {
+              <div><dt>@L["Administers"]</dt><dd>@string.Join(", ", a.AdminOf)</dd></div>
+            }
+          </dl>
+          @if (lost.Count > 0)
+          {
+            <p class="sg-note">@L["If you keep this account, {0} loses, because this one already has its own:", other.Email]</p>
+            <ul class="sg-not-list">
+              @foreach (MergeLoss l in lost)
+              {
+                <li>@L["{0}: {1} role(s) at organisations, {2} setting(s)", l.Application, l.Memberships, l.Attributes]</li>
+              }
+            </ul>
+          }
+          @if (other.Verified && !a.Verified)
+          {
+            <p class="sg-note">@L["The DigiLocker verification moves to this account: its name, date of birth and gender will take DigiLocker's values and be locked."]</p>
+          }
+        </div>
+      }
+
+      <p class="sg-card-body">@L["Nothing happens for {0} hours. Both accounts are e-mailed a link to cancel. After that, the merge cannot be undone.", p.WaitHours]</p>
+      <label class="sg-check">
+        <input type="checkbox" name="agree" value="true" required />
+        @L["I understand that the other account will be closed and this cannot be undone."]
+      </label>
+      <button type="submit" class="sg-btn sg-btn--primary sg-btn--block" data-merge="confirm">@L["Merge the accounts"]</button>
+    </form>
+    <form method="post" asp-page-handler="Restart">
+      <button type="submit" class="sg-link-button">@L["Start again"]</button>
+    </form>
+  }
+  else
+  {
+    <p class="sg-card-body">@L["If you have two Sangam accounts — for example one you could not get back into and a new one you made — you can merge them into one. Only you can do this, signed in to both accounts, one after the other."]</p>
+    <p class="sg-card-body">@L["The account that stays keeps its own e-mail, mobile, password and second step. The other account's applications, roles and settings move to it; where both accounts have the same thing, the one that stays keeps its own. The other account is then closed, and its e-mail and mobile are free again."]</p>
+    @if (Model.SameAccount)
+    {
+      <partial name="_Banner" model="@(("danger", Model.RefusalText("same")))" />
+    }
+
+    @if (Model.StartRefusal is not null)
+    {
+      <partial name="_Banner" model="@(("danger", Model.RefusalText(Model.StartRefusal)))" />
+    }
+    else if (!Model.Fresh)
+    {
+      <p class="sg-card-body">@L["For your safety, sign in to this account again first."]</p>
+      <form method="post" asp-page-handler="Again">
+        <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Sign in again"]</button>
+      </form>
+    }
+    else
+    {
+      <form method="post" asp-page-handler="Start">
+        <button type="submit" class="sg-btn sg-btn--primary sg-btn--block" data-merge="start">@L["Start: sign in to your other account"]</button>
+      </form>
+      <p class="sg-note">@L["You will be signed out of this account and asked to sign in to the other one within 15 minutes."]</p>
+    }
+  }
+
+  <div class="sg-cord-rule" role="presentation"></div>
+  <a class="sg-tertiary" href="/account">@L["Back to your account"]</a>
+</section>

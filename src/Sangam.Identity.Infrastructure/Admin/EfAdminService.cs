@@ -710,11 +710,17 @@ public sealed partial class EfAdminService : IAdminService
                 Metadata: System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, object> { ["request_id"] = request.Id, ["reason"] = reason.Trim(), ["privileged"] = request.Privileged, ["skipped_review"] = request.ReviewStatus == MfaResetReview.Waiting }),
                 IpAddress: ipAddress),
             cancellationToken).ConfigureAwait(false);
-        await _alerts.SendAsync(
-            "urgent 2-step reset applied",
-            $"An operator applied a two-step reset at once, skipping the cooling-off period.\n\nOperator: {operatorUserId:D}\nAccount: {userId:D}{(request.Privileged ? " (privileged)" : string.Empty)}\nReason: {reason.Trim()}\nRequest: {request.Id:D}",
+        // rc.7 (SGM-914 section 10): an emergency override is a security incident, opened in the register (SGM-802) here.
+        await _audit.WriteAsync(
+            new AuditEntry(AuditActions.SecurityIncidentOpen, AuditActorType.Admin, operatorUserId, TargetType: "user", TargetId: userId,
+                Metadata: System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, object> { ["category"] = "emergency_override", ["source_action"] = AuditActions.AdminUserMfaResetUrgent, ["request_id"] = request.Id, ["reason"] = reason.Trim() }),
+                IpAddress: ipAddress),
             cancellationToken).ConfigureAwait(false);
-        return AdminResult.Ok("Two-step sign-in reset now. The authenticator is removed, every session has ended, the person has been told, and the platform owner has been alerted.");
+        await _alerts.SendAsync(
+            "INCIDENT: urgent 2-step reset",
+            $"An operator applied a two-step reset at once, skipping the cooling-off period. It is opened as a security incident (SGM-802): the audit action security.incident.open, category emergency_override.\n\nOperator: {operatorUserId:D}\nAccount: {userId:D}{(request.Privileged ? " (privileged)" : string.Empty)}\nReason: {reason.Trim()}\nRequest: {request.Id:D}",
+            cancellationToken).ConfigureAwait(false);
+        return AdminResult.Ok("Two-step sign-in reset now. The authenticator is removed, every session has ended, the person has been told, the platform owner has been alerted, and a security incident is opened.");
     }
 
     /// <inheritdoc />

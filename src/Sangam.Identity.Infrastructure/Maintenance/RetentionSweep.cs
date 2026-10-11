@@ -48,6 +48,12 @@ public static class RetentionSweep
             .Where(r => (r.AppliedAt != null && r.AppliedAt < requests) || (r.CancelledAt != null && r.CancelledAt < requests))
             .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
 
+        // rc.7: a cancelled merge goes after 30 days; an applied one is kept (two ids only) so the closed id can still
+        // answer "merged into" to an application that knew it.
+        removed += await db.AccountMergeRequests
+            .Where(r => r.CancelledAt != null && r.CancelledAt < requests)
+            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+
         DateTimeOffset sms = now - SmsRetention;
         removed += await db.SmsMessages.Where(m => m.CreatedAt < sms).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
 

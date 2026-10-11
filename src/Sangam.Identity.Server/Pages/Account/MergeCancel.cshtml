@@ -1,0 +1,26 @@
+@page "/account/merge/cancel/{token}"
+@model MergeCancelModel
+@{
+    ViewData["Title"] = L["Cancel the merge of two Sangam accounts"].Value;
+}
+
+<section class="sg-card">
+  <h1 class="sg-card-title">@L["Cancel the merge of two Sangam accounts"]</h1>
+  @if (Model.Done)
+  {
+    <p class="sg-card-body">@L["The merge is cancelled. Nothing about either account has changed."]</p>
+    <p class="sg-card-body">@L["Someone may have tried to take over your accounts. Consider changing the password of both, and write to help@sangamid.in if you want us to look into it."]</p>
+  }
+  else if (Model.Pending is null)
+  {
+    <p class="sg-card-body">@L["This link no longer works: the merge was already cancelled, or has already happened."]</p>
+    <p class="sg-card-body">@L["If your accounts were merged and you did not ask for it, write to help@sangamid.in at once."]</p>
+  }
+  else
+  {
+    <p class="sg-card-body">@L["Someone signed in to two Sangam accounts and asked to merge them: {0} will be closed into {1} on {2}, unless you stop it.", Model.Pending.ClosedEmail, Model.Pending.SurvivorEmail, MergeModel.When(Model.Pending.EffectiveAt)]</p>
+    <form method="post">
+      <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["This wasn't me — cancel the merge"]</button>
+    </form>
+  }
+</section>

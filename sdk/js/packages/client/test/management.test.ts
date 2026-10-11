@@ -21,3 +21,15 @@ test("the management client caches its token and calls /api/v1", async () => {
   assert.match(calls[0]!.body!, /grant_type=client_credentials/);
   await assert.rejects(client.send("GET", "forbidden"), (e: unknown) => e instanceof SangamApiError && e.status === 403);
 });
+
+test("mergedInto gives the surviving id, and null for an id that was not merged (rc.7)", async () => {
+  const fake: typeof fetch = async (input) => {
+    const url = String(input);
+    if (url.endsWith("/connect/token")) return new Response(JSON.stringify({ access_token: "t1", expires_in: 3600 }));
+    if (url.endsWith("/users/u-old/merged")) return new Response(JSON.stringify({ merged_into: "u-new", merged_at: "2026-10-12T05:00:00Z" }));
+    return new Response("{}", { status: 404 });
+  };
+  const client = new ManagementClient({ authority: "https://id.example.in/", clientId: "app", clientSecret: "s", fetch: fake });
+  assert.equal(await client.mergedInto("u-old"), "u-new");
+  assert.equal(await client.mergedInto("u-other"), null);
+});

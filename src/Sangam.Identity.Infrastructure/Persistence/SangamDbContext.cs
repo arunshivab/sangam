@@ -149,6 +149,9 @@ public sealed class SangamDbContext : IdentityUserContext<SangamUser, Guid>, IDa
     /// <summary>Support requests to reset two-step sign-in, with their cooling-off period (D-K).</summary>
     public DbSet<MfaResetRequest> MfaResetRequests => Set<MfaResetRequest>();
 
+    /// <summary>A person's requests to merge two of their accounts (rc.7, SGM-914 section 9).</summary>
+    public DbSet<AccountMergeRequest> AccountMergeRequests => Set<AccountMergeRequest>();
+
     /// <summary>The ASP.NET Core data-protection key ring, shared by every host (OI-037).</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 

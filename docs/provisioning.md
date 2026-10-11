@@ -15,6 +15,11 @@ A person is provisioned in an application while all of these hold:
 When any of them stops holding, Sangam deactivates them (`active: false`), or deletes them if the application chose
 *Delete people who lose access*. They are removed from every group Sangam put them in.
 
+When a person merges two of their accounts (rc.7), the closed account stops holding and is deactivated (or deleted)
+like anyone else, and the surviving account is provisioned with the roles it now has. SCIM has no merge of its own:
+an application that wants to move its records from the closed person to the surviving one listens for the
+`account.merged` webhook ([webhooks.md](webhooks.md)) or asks `GET /api/v1/users/{id}/merged`.
+
 ## What is sent
 
 ```json

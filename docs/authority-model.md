@@ -59,6 +59,13 @@ See ADR-0006.
 
 Every application administrator must have an authenticator app, like every operator.
 
+## The person, over their own accounts (rc.7)
+
+Only the person merges two of their accounts, signed in to both within 15 minutes, each with its own second step; the
+merge waits 24 hours (72 when either account administers an application or organisation) with a cancel link to both.
+No operator, application administrator or application can merge someone's accounts. An application administrator's
+role moves with the account, and the application's other owners are told; operators' accounts are never merged.
+
 ## Organisation plane
 
 | | Defined by | Sangam's part |

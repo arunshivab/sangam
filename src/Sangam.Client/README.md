@@ -138,6 +138,8 @@ SangamManagementClient sangam = services.GetRequiredService<SangamManagementClie
 await sangam.UpsertMembershipAsync(wardId, personId, "nurse", appliesToDescendants: false, expiresAt: contractEnd);
 // rc.5: that adds only someone who already uses your application. Anyone else is invited, and joins when they accept.
 await sangam.InviteAsync(wardId, "asha@example.in", "nurse");
+// rc.7: on account.merged (or for an id that stopped signing in), find the account the person kept.
+Guid? survivor = await sangam.GetMergedIntoAsync(personId);
 
 // The shared audit event (SGM-208): who, where and from which device are filled in from the request.
 builder.Services.AddSangamAudit(o => { o.AppId = "lims"; o.AppVersion = "1.2.0"; o.BufferPath = "/var/lib/lims/audit.jsonl"; });

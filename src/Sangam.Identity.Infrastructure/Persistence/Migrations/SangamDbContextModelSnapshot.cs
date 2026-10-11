@@ -415,6 +415,75 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                     b.ToTable("openiddict_tokens", (string)null);
                 });
 
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.AccountMergeRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("AppliedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("applied_at");
+
+                    b.Property<string>("CancelTokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("cancel_token_hash");
+
+                    b.Property<DateTimeOffset?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancelled_at");
+
+                    b.Property<string>("CancelledBy")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("cancelled_by");
+
+                    b.Property<Guid>("ClosedUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("closed_user_id");
+
+                    b.Property<DateTimeOffset>("EffectiveAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("effective_at");
+
+                    b.Property<bool>("Privileged")
+                        .HasColumnType("boolean")
+                        .HasColumnName("privileged");
+
+                    b.Property<DateTimeOffset>("RequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("requested_at");
+
+                    b.Property<Guid>("SurvivorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("survivor_user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_account_merge_requests");
+
+                    b.HasIndex("CancelTokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ux_account_merge_requests_cancel_token");
+
+                    b.HasIndex("ClosedUserId")
+                        .HasDatabaseName("idx_account_merge_requests_closed");
+
+                    b.HasIndex("EffectiveAt")
+                        .HasDatabaseName("idx_account_merge_requests_due")
+                        .HasFilter("cancelled_at IS NULL AND applied_at IS NULL");
+
+                    b.HasIndex("SurvivorUserId")
+                        .HasDatabaseName("idx_account_merge_requests_survivor");
+
+                    b.ToTable("account_merge_requests", null, t =>
+                        {
+                            t.HasCheckConstraint("chk_account_merge_requests_two_accounts", "survivor_user_id <> closed_user_id");
+                        });
+                });
+
             modelBuilder.Entity("Sangam.Identity.Domain.Entities.App", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3574,6 +3643,23 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                     b.Navigation("Application");
 
                     b.Navigation("Authorization");
+                });
+
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.AccountMergeRequest", b =>
+                {
+                    b.HasOne("Sangam.Identity.Domain.Entities.SangamUser", null)
+                        .WithMany()
+                        .HasForeignKey("ClosedUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_account_merge_requests_asp_net_users_closed_user_id");
+
+                    b.HasOne("Sangam.Identity.Domain.Entities.SangamUser", null)
+                        .WithMany()
+                        .HasForeignKey("SurvivorUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_account_merge_requests_asp_net_users_survivor_user_id");
                 });
 
             modelBuilder.Entity("Sangam.Identity.Domain.Entities.AppAdmin", b =>

@@ -152,7 +152,7 @@ else
     private WebhookOverview? _view;
     private string _url = string.Empty;
     private string _description = string.Empty;
-    private readonly HashSet<string> _events = [AppEventTypes.MembershipGranted, AppEventTypes.MembershipRevoked, AppEventTypes.UserDeactivated, AppEventTypes.SessionRevoked];
+    private readonly HashSet<string> _events = [AppEventTypes.MembershipGranted, AppEventTypes.MembershipRevoked, AppEventTypes.UserDeactivated, AppEventTypes.SessionRevoked, AppEventTypes.AccountMerged];
     private string? _secret;
     private bool _busy;
     private bool _ok;
@@ -171,6 +171,7 @@ else
         AppEventTypes.SessionRevoked => L["Sessions ended"],
         AppEventTypes.ConsentRevoked => L["Consent withdrawn"],
         AppEventTypes.RoleChanged => L["A role created, changed or retired"],
+        AppEventTypes.AccountMerged => L["A person merged two of their accounts"],
         _ => type,
     };
 
