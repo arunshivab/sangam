@@ -6,6 +6,14 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+### Build
+- **The SDK is pinned exactly** (`global.json`: 10.0.401, no roll-forward). The SDK adds a package of its own to the web
+  projects at the version of the runtime it carries, so a different SDK changed the lock files and CI's locked restore
+  refused it (Dependabot's first NuGet pull request, #35). A new SDK is now taken on purpose: change `global.json` and
+  restore with `--force-evaluate` in the same pull request.
+- OpenIddict 7.7.1 to 7.7.2 (all three packages, kept together) and xunit.runner.visualstudio 4.0.0 to 4.0.1, the
+  updates Dependabot proposed in #35, with the lock files regenerated.
+
 ## [1.0.0-rc.9] - ninth release candidate
 
 Sangam 1.0.0-rc.9 acts on the founder's answers of 11 October 2026 on the remaining ASVS Level 2 gaps: 203 of 259
