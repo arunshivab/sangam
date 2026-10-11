@@ -52,6 +52,8 @@ services:
       <<: *env
       Sangam__Issuer: https://id.sangamid.in
       Sangam__Monitoring__HostName: identity
+      # rc.8 (ASVS V14.1.3): answer only for this host's public name; "identity" for Caddy's health checks, localhost for Docker's.
+      AllowedHosts: "id.sangamid.in;identity;localhost"
       # D-H: the identity server evaluates the thresholds and alerts the founder by e-mail and SMS through Anjal.
       Sangam__Monitoring__Evaluate: "true"
       Sangam__Monitoring__ExpectedHosts: identity,portal,admin,partner
@@ -113,6 +115,8 @@ services:
     environment:
       <<: *env
       Sangam__Monitoring__HostName: portal
+      # rc.8 (ASVS V14.1.3): answer only for this host's public name; "portal" for Caddy's health checks, localhost for Docker's.
+      AllowedHosts: "account.sangamid.in;portal;localhost"
     secrets: [ConnectionStrings__Sangam, Sangam__Portal__ClientSecret, Sangam__Anjal__ApiKey, Sangam__PasswordHashing__Pepper, keyring_current.pfx, Sangam__DataProtection__Certificates__0__Password]
 
   admin:
@@ -121,6 +125,8 @@ services:
     environment:
       <<: *env
       Sangam__Monitoring__HostName: admin
+      # rc.8 (ASVS V14.1.3): answer only for this host's public name; "admin" for Caddy's health checks, localhost for Docker's.
+      AllowedHosts: "admin.sangamid.in;admin;localhost"
     secrets: [ConnectionStrings__Sangam, Sangam__Admin__ClientSecret, Sangam__Anjal__ApiKey, Sangam__PasswordHashing__Pepper, keyring_current.pfx, Sangam__DataProtection__Certificates__0__Password]
 
   partner:
@@ -129,6 +135,8 @@ services:
     environment:
       <<: *env
       Sangam__Monitoring__HostName: partner
+      # rc.8 (ASVS V14.1.3): answer only for this host's public name; "partner" for Caddy's health checks, localhost for Docker's.
+      AllowedHosts: "partners.sangamid.in;partner;localhost"
     secrets: [ConnectionStrings__Sangam, Sangam__Partner__ClientSecret, Sangam__Anjal__ApiKey, Sangam__PasswordHashing__Pepper, keyring_current.pfx, Sangam__DataProtection__Certificates__0__Password]
 
   # D-I: the imagiQa sample at demo.sangamid.in — bannered "Demo, not for real patient data" on every page; its
@@ -150,6 +158,7 @@ services:
       Sangam__Authority: https://id.sangamid.in
       Sangam__ClientId: imagiqa
       Imagiqa__Demo: "true"
+      AllowedHosts: "demo.sangamid.in;demo;localhost"
       Imagiqa__MigrateOnStartup: "true"
       Imagiqa__ForwardedHeaders__KnownNetworks: 172.30.0.0/24
       Imagiqa__DataProtection__KeysDirectory: /var/lib/imagiqa/keys

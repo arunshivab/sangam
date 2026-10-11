@@ -4,6 +4,7 @@ using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Sangam.Admin.Web.Components;
 using Sangam.Identity.Application;
 using Sangam.Identity.Infrastructure;
+using Sangam.Identity.Infrastructure.Security;
 using Sangam.Identity.Infrastructure.Seeding;
 using Sangam.Identity.Infrastructure.Services;
 using Sangam.Shared.Constants;
@@ -14,7 +15,8 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 // A refused start is logged at Critical and exits with code 1 (V-08).
 StartupGuard.Install(typeof(Program).Assembly);
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
-builder.Configuration.AddSangamSecretFiles();
+// rc.8 (A6 workaround): secret files today; a Vault-compatible store when Sangam:Secrets:Source is "vault".
+builder.Configuration.AddSangamSecrets();
 
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 // PR-18: every screen's text comes from the shared catalogue (Hindi and Malayalam translated).
@@ -114,6 +116,8 @@ app.Lifetime.ApplicationStarted.Register(StartupGuard.MarkStarted);
 
 // Behind Caddy: take the client address from trusted proxies only, before anything reads it (OI-037).
 app.UseForwardedHeaders();
+// rc.8 (ASVS V14.5.1): only the HTTP methods Sangam uses; every 405 is logged.
+app.UseSangamMethodGuard();
 // R7: CSP, framing, nosniff and the other security headers on every response (SGM-503).
 app.UseSangamSecurityHeaders(app.Environment.EnvironmentName, identityServer: false, authority);
 app.UseSangamRequestMetrics();

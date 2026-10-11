@@ -7,6 +7,8 @@ metadata:
   namespace: sangam
 data:
   ASPNETCORE_ENVIRONMENT: Production
+  # rc.8 (ASVS V14.1.3): requests are answered only for Sangam's own names (and localhost, for the probes).
+  AllowedHosts: "id.sangamid.in;account.sangamid.in;admin.sangamid.in;partners.sangamid.in;localhost"
   SANGAM_SECRETS_DIR: /run/secrets
   # The ingress controller's pods forward the client address; trust only the cluster's pod network.
   Sangam__ForwardedHeaders__KnownNetworks: 10.0.0.0/8

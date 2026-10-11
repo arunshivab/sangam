@@ -349,6 +349,20 @@
       "body": "നമസ്കാരം {{name}},\n\nനിങ്ങളുടെ Sangam അക്കൗണ്ടിൽ നിന്ന് ഓതന്റിക്കേറ്റർ ആപ്പ് ഇപ്പോൾ നീക്കം ചെയ്തു. ഇനി സൈൻ ഇൻ ചെയ്യുമ്പോൾ അതിലെ കോഡ്\nചോദിക്കില്ല, അതിനാൽ നിങ്ങളുടെ അക്കൗണ്ട് ഇപ്പോൾ പാസ്‌വേഡ് കൊണ്ട് മാത്രമാണ് സംരക്ഷിച്ചിരിക്കുന്നത്.\n\nഇത് നിങ്ങൾ ചെയ്തതാണെങ്കിൽ, ഒന്നും ചെയ്യേണ്ടതില്ല. അല്ലെങ്കിൽ, ഉടൻ തന്നെ സൈൻ-ഇൻ പേജിൽ നിന്ന് പാസ്‌വേഡ് റീസെറ്റ് ചെയ്ത്\nhelp@sangamid.in എന്ന വിലാസത്തിലേക്ക് എഴുതുക, അതുവഴി ഞങ്ങൾക്ക് നിങ്ങളുടെ അക്കൗണ്ട് സുരക്ഷിതമാക്കാം.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
     }
   },
+  "authenticator_code_reused_notice": {
+    "en-IN": {
+      "subject": "An authenticator code was used twice on your Sangam account",
+      "body": "Hello {{name}},\n\nSomeone entered a code from your authenticator app that had already been used, and Sangam refused it.\nA code works only once.\n\nIf you simply pressed the button twice, there is nothing to do. If not, someone may know your password and\nhave seen a code: change your password at once and write to help@sangamid.in.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "आपके Sangam खाते पर एक ऑथेंटिकेटर कोड दो बार इस्तेमाल हुआ",
+      "body": "नमस्ते {{name}},\n\nकिसी ने आपके ऑथेंटिकेटर ऐप का ऐसा कोड डाला जो पहले ही इस्तेमाल हो चुका था, और Sangam ने उसे अस्वीकार कर दिया।\nएक कोड केवल एक बार काम करता है।\n\nअगर आपने बस बटन दो बार दबा दिया था, तो कुछ करने की ज़रूरत नहीं है। अगर नहीं, तो हो सकता है किसी को आपका पासवर्ड\nपता हो और उसने कोड देख लिया हो: तुरंत अपना पासवर्ड बदलें और help@sangamid.in पर लिखें।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "നിങ്ങളുടെ Sangam അക്കൗണ്ടിൽ ഒരു ഓതന്റിക്കേറ്റർ കോഡ് രണ്ടുതവണ ഉപയോഗിച്ചു",
+      "body": "നമസ്കാരം {{name}},\n\nഇതിനകം ഉപയോഗിച്ച ഒരു ഓതന്റിക്കേറ്റർ കോഡ് ആരോ വീണ്ടും നൽകി, Sangam അത് നിരസിച്ചു. ഒരു കോഡ്\nഒരിക്കൽ മാത്രമേ പ്രവർത്തിക്കൂ.\n\nനിങ്ങൾ ബട്ടൺ രണ്ടുതവണ അമർത്തിയതാണെങ്കിൽ, ഒന്നും ചെയ്യേണ്ടതില്ല. അല്ലെങ്കിൽ, ആർക്കെങ്കിലും നിങ്ങളുടെ പാസ്‌വേഡ് അറിയാമായിരിക്കും,\nഒരു കോഡ് കണ്ടിരിക്കാം: ഉടൻ പാസ്‌വേഡ് മാറ്റി help@sangamid.in-ലേക്ക് എഴുതുക.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
   "passkey_added_notice": {
     "en-IN": {
       "subject": "A passkey was added to your Sangam account",

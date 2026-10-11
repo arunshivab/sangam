@@ -80,6 +80,9 @@ public static class MessageTemplateKinds
     /// <summary>To the person: the authenticator app was removed from their account (R7, ASVS V2.5.5).</summary>
     public const string AuthenticatorRemovedNotice = "authenticator_removed_notice";
 
+    /// <summary>To the person: an authenticator code that had already been used was tried again (rc.8, ASVS V2.8.5).</summary>
+    public const string AuthenticatorCodeReusedNotice = "authenticator_code_reused_notice";
+
     /// <summary>To the person: a passkey was added to their account (R7, ASVS V2.5.5).</summary>
     public const string PasskeyAddedNotice = "passkey_added_notice";
 
@@ -126,6 +129,7 @@ public static class MessageTemplateKinds
         new(PasswordChangedNotice, false, false, ["name"], []),
         new(AuthenticatorAddedNotice, false, false, ["name"], []),
         new(AuthenticatorRemovedNotice, false, false, ["name"], []),
+        new(AuthenticatorCodeReusedNotice, false, false, ["name"], []),
         new(PasskeyAddedNotice, false, false, ["name"], []),
         new(PasskeyRemovedNotice, false, false, ["name"], []),
         new(PasswordAccountCodeNotice, false, false, ["name"], []),

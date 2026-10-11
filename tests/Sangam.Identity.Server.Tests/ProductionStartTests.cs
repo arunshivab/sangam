@@ -77,6 +77,10 @@ public sealed class ProductionStartTests : IDisposable
             b.UseSetting("Sangam:DataProtection:Certificates:0:Path", keyRing);
             b.UseSetting("Sangam:DataProtection:Certificates:0:Password", Password);
             b.UseSetting("Sangam:Sms:Enabled", "false");
+
+            // rc.8: the key-fingerprint check needs the database and records each run's fresh certificates; it has its
+            // own tests (KeyFingerprintCheckTests), and this test also runs where there is no database.
+            b.UseSetting("Sangam:Keys:FingerprintCheck", "false");
         });
         using HttpClient client = production.CreateClient();
 
@@ -107,6 +111,7 @@ public sealed class ProductionStartTests : IDisposable
             b.UseSetting("Sangam:DataProtection:Certificates:0:Password", Password);
             b.UseSetting("Sangam:Sms:Enabled", "true");
             b.UseSetting("Sangam:Sms:Provider", "outbox");
+            b.UseSetting("Sangam:Keys:FingerprintCheck", "false");
         });
 
         InvalidOperationException refused = Assert.Throws<InvalidOperationException>(() => production.CreateClient().Dispose());

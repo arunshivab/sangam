@@ -47,7 +47,7 @@ spec:
               app.kubernetes.io/name: partner
       containers:
         - name: partner
-          image: sangam/partner:1.0.0-rc.7
+          image: sangam/partner:1.0.0-rc.8
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -78,12 +78,20 @@ spec:
             httpGet:
               path: /health/live
               port: http
+              # rc.8: the host filter (AllowedHosts) answers only known names; the probe says it is localhost.
+              httpHeaders:
+                - name: Host
+                  value: localhost
             periodSeconds: 5
             failureThreshold: 36
           livenessProbe:
             httpGet:
               path: /health/live
               port: http
+              # rc.8: the host filter (AllowedHosts) answers only known names; the probe says it is localhost.
+              httpHeaders:
+                - name: Host
+                  value: localhost
             periodSeconds: 15
             timeoutSeconds: 5
             failureThreshold: 3
@@ -91,6 +99,10 @@ spec:
             httpGet:
               path: /health/ready
               port: http
+              # rc.8: the host filter (AllowedHosts) answers only known names; the probe says it is localhost.
+              httpHeaders:
+                - name: Host
+                  value: localhost
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3

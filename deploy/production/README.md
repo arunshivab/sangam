@@ -136,6 +136,56 @@ by invitation only (pilot), invite testers first. To give someone a role at a de
   SMS log (after 180 days) and closed grievances (after 3 years). It ends a person's connection to an application that
   set an inactivity limit, 30 days after telling them, and deletes accounts that use no partner application and have
   not signed in for 3 years, 30 days after telling them (operators and application administrators excepted).
+- **Key fingerprints (rc.8, SGM-911):** nothing to install. Each time the identity server starts it compares every key
+  file and secret (token, key-ring and SAML certificates; pepper; DigiLocker subject key; SAML pairwise key) with the
+  fingerprint it recorded at the last start, in the database. A changed key stops the start, is written to the audit
+  log and alerts the founder. After a planned change (rotation, SGM-911) start once with
+  `Sangam__Keys__AcceptChanged: "true"` in the identity service's environment, then remove it. If you did not change a
+  key, treat it as a compromise (`docs/security/key-compromise.md`).
+- **Secret source (rc.8):** `Sangam__Secrets__Source` is `files` (the default: the files in `secrets/`). When imagiQa's
+  vault is ready, set it to `vault` with `Sangam__Secrets__Vault__Address` (https, private network),
+  `Sangam__Secrets__Vault__Path` (for example `sangam/identity`), optionally `__Mount` (default `secret`) and
+  `__CaCertificatePath`, and the token as the secret file `vault_token`. Settings move one at a time: a value in the
+  vault wins over the file. Certificates stay files until the vault signs for Sangam.
+- **Host names (rc.8):** each host answers only its own public name, its service name (for Caddy's health checks) and
+  `localhost` (`AllowedHosts` in `docker-compose.yml`). A new host name means a new entry there.
+
+## 6. Server hardening (rc.8)
+
+Do these once on the VM, before the first start, and check them at every release. They protect the secret files
+until the vault exists (decision A6).
+
+1. **An admin user, no root sign-in.** Create a user for yourself (`adduser arun && usermod -aG sudo,docker arun`),
+   copy your SSH public key to it, and sign in as it from now on.
+2. **SSH keys only.** In `/etc/ssh/sshd_config.d/10-sangam.conf`:
+
+       PermitRootLogin no
+       PasswordAuthentication no
+       KbdInteractiveAuthentication no
+       PubkeyAuthentication yes
+       AuthenticationMethods publickey
+       MaxAuthTries 3
+       LoginGraceTime 30
+       X11Forwarding no
+       AllowTcpForwarding no
+       AllowAgentForwarding no
+       AllowUsers arun
+
+   Then `sshd -t && systemctl reload ssh`. Keep the current session open and test a new one before closing it.
+   Use an Ed25519 key with a passphrase (`ssh-keygen -t ed25519`); keep a second key offline for emergencies, and
+   the E2E console's serial access as the last resort.
+3. **Firewall** (`ufw`): incoming 22 (only from your own addresses if they are fixed), 80 and 443; deny everything
+   else. Outgoing (decision 9): 443; 80 for certificate revocation checks (OCSP and CRL, rc.8 — without it every
+   check soft-fails); DNS; mail only from Anjal. `ufw default deny incoming && ufw default deny outgoing`, then allow
+   each.
+4. **Brute force:** `apt install fail2ban` with the default `sshd` jail.
+5. **Updates:** `apt install unattended-upgrades` and enable security updates; reboot in a quiet hour when a kernel
+   update asks.
+6. **Secret files:** `secrets/` owned by root, mode 700; each file mode 600. `ls -l secrets` at every release.
+7. **Docker:** only the admin user in the `docker` group (membership is equal to root); the Docker socket never
+   mounted into a container.
+8. **Record it:** write the date and what was checked in the go-live checklist and, after go-live, in the release
+   notes (SGM-605).
 
 Not verified in Claude's environment: the Caddyfile under Caddy, Anjal's real API, and DigiLocker's real service. The
 images build and the identity server starts in Production in Docker (release evidence); certificates, secret files,

@@ -393,4 +393,24 @@ public static class AuditActions
 
     /// <summary>A security incident was opened in the register (SGM-802), for example by an emergency override (rc.7, SGM-914 section 10).</summary>
     public const string SecurityIncidentOpen = "security.incident.open";
+
+    /// <summary>A correct authenticator code was used a second time and refused: a replay (rc.8, ASVS V2.8.5).</summary>
+    public const string UserMfaReplay = "user.mfa.replay";
+
+    /// <summary>
+    /// An application's administrator or the application itself (through the management API) read a list of people: a search
+    /// of linked users, an organisation's members, or a person's attributes (rc.8, ASVS V8.3.5). Metadata says which list and
+    /// how many rows; the search words are never recorded, as they may themselves be personal data.
+    /// </summary>
+    public const string AppPeopleView = "app.people.view";
+
+    /// <summary>
+    /// At start-up a key (certificate file or secret) differed from the fingerprint recorded at the last start (rc.8,
+    /// SGM-911). Metadata names the keys and whether the change was accepted (<c>Sangam:Keys:AcceptChanged</c>) or the
+    /// start refused.
+    /// </summary>
+    public const string SecurityKeyMismatch = "security.key.mismatch";
+
+    /// <summary>At start-up a key was seen for the first time and its fingerprint recorded (rc.8, SGM-911).</summary>
+    public const string SecurityKeyRecorded = "security.key.recorded";
 }
