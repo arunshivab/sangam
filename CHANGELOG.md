@@ -6,6 +6,16 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+### Deployment
+- **The operator console is off the internet** (OI-059, ASVS V1.14.1; founder's choice, 12 Oct 2026): Caddy serves
+  `admin.sangamid.in` only on port 8443, published on the VM's loopback address, and closes the connection for that
+  name on port 443. Operators open an SSH tunnel (`ssh -N -L 8443:127.0.0.1:8443 …`) with a hosts-file line, then use
+  `https://admin.sangamid.in:8443/` with its normal certificate (deployment guide, section 5a). SSH allows forwarding
+  to that address only; a forward-only account without a shell is described for other operators. The console's client
+  registration and the alert e-mail's link use port 8443; the monitoring TLS check no longer probes the console.
+  Kubernetes still publishes it (noted in `deploy/kubernetes/README.md`). Next: passkey-only sign-in for operators,
+  then client certificates.
+
 ### Security
 - **Paths at the edge** (OI-058, ASVS V13.1.1): a CI step shows that the production Caddy image and snippet forward every
   spelling of a path unchanged (`tools/security/edge-path-check.sh caddy`), and a new test shows that the identity server

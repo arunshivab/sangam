@@ -240,15 +240,15 @@
   "operator_alert": {
     "en-IN": {
       "subject": "SangamID alert: {{summary}}",
-      "body": "SangamID alert: {{summary}}\n\n{{details}}\n\nCheck the operator console's monitoring page: admin.sangamid.in/monitoring\n\nSangam operations"
+      "body": "SangamID alert: {{summary}}\n\n{{details}}\n\nCheck the operator console's monitoring page: admin.sangamid.in:8443/monitoring\n\nSangam operations"
     },
     "hi-IN": {
       "subject": "SangamID चेतावनी: {{summary}}",
-      "body": "SangamID चेतावनी: {{summary}}\n\n{{details}}\n\nऑपरेटर कंसोल का मॉनिटरिंग पेज देखें: admin.sangamid.in/monitoring\n\nSangam संचालन"
+      "body": "SangamID चेतावनी: {{summary}}\n\n{{details}}\n\nऑपरेटर कंसोल का मॉनिटरिंग पेज देखें: admin.sangamid.in:8443/monitoring\n\nSangam संचालन"
     },
     "ml-IN": {
       "subject": "SangamID മുന്നറിയിപ്പ്: {{summary}}",
-      "body": "SangamID മുന്നറിയിപ്പ്: {{summary}}\n\n{{details}}\n\nഓപ്പറേറ്റർ കൺസോളിലെ മോണിറ്ററിംഗ് പേജ് പരിശോധിക്കുക: admin.sangamid.in/monitoring\n\nSangam പ്രവർത്തനങ്ങൾ"
+      "body": "SangamID മുന്നറിയിപ്പ്: {{summary}}\n\n{{details}}\n\nഓപ്പറേറ്റർ കൺസോളിലെ മോണിറ്ററിംഗ് പേജ് പരിശോധിക്കുക: admin.sangamid.in:8443/monitoring\n\nSangam പ്രവർത്തനങ്ങൾ"
     }
   },
   "invitation": {

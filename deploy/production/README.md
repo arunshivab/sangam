@@ -162,6 +162,39 @@ by invitation only (pilot), invite testers first. To give someone a role at a de
   `-f` files as the stack: `docker compose run --rm identity key-compromise revoke-tokens --incident <ref>` (and
   `revoke-key-ring`, `reverify`), and `audit-archive reencrypt`. When to run each: `docs/security/key-compromise.md`.
 
+## 5a. Operator console (OI-059)
+
+The operator console is not on the internet: `admin.sangamid.in` answers only on port 8443 of the VM's loopback
+address, reached through SSH (ASVS V1.14.1). Nothing to install beyond the SSH you already use.
+
+Once per computer, add the name to the hosts file, so the browser sends the console's own name (and its certificate
+matches) to the tunnel:
+
+    # Windows, PowerShell as administrator
+    Add-Content C:\Windows\System32\drivers\etc\hosts "127.0.0.1 admin.sangamid.in"
+    # Linux or macOS
+    echo "127.0.0.1 admin.sangamid.in" | sudo tee -a /etc/hosts
+
+Each time you work in the console, open the tunnel and leave it running:
+
+    ssh -N -L 8443:127.0.0.1:8443 arun@<VM address>
+
+then open **https://admin.sangamid.in:8443/** and sign in as usual (sign-in itself happens at id.sangamid.in). Close
+the tunnel (Ctrl+C) when done. Without the tunnel the address does not answer, from anywhere.
+
+For another operator later, give them their own SSH account that can only open this tunnel — no shell:
+
+    # /etc/ssh/sshd_config.d/20-console.conf
+    Match User ops-<name>
+        AllowTcpForwarding local
+        PermitOpen 127.0.0.1:8443
+        PermitListen none
+        PermitTTY no
+        ForceCommand /usr/sbin/nologin
+
+(add the account to `AllowUsers`; never to the `docker` or `sudo` groups). The planned next steps are passkey-only
+sign-in for operators, then client certificates when the console has more users (founder, 12 Oct 2026).
+
 ## 6. Server hardening (rc.8)
 
 Do these once on the VM, before the first start, and check them at every release. They protect the secret files
@@ -179,15 +212,20 @@ until the vault exists (decision A6).
        MaxAuthTries 3
        LoginGraceTime 30
        X11Forwarding no
-       AllowTcpForwarding no
        AllowAgentForwarding no
        AllowUsers arun
+       # OI-059: the only forwarding allowed is the tunnel to the operator console.
+       AllowTcpForwarding local
+       PermitOpen 127.0.0.1:8443
+       PermitListen none
 
    Then `sshd -t && systemctl reload ssh`. Keep the current session open and test a new one before closing it.
    Use an Ed25519 key with a passphrase (`ssh-keygen -t ed25519`); keep a second key offline for emergencies, and
    the E2E console's serial access as the last resort.
 3. **Firewall** (`ufw`): incoming 22 (only from your own addresses if they are fixed), 80 and 443; deny everything
-   else. Outgoing (decision 9): 443; 80 for certificate revocation checks (OCSP and CRL, rc.8 — without it every
+   else. Docker's published ports bypass `ufw`, so any port that must not be public is published on `127.0.0.1` in
+   `docker-compose.yml` (the operator console's 8443 is); check with `ss -tlnp` that only 22, 80 and 443 listen on
+   the public address. Outgoing (decision 9): 443; 80 for certificate revocation checks (OCSP and CRL, rc.8 — without it every
    check soft-fails); DNS; mail only from Anjal. `ufw default deny incoming && ufw default deny outgoing`, then allow
    each.
 4. **Brute force:** `apt install fail2ban` with the default `sshd` jail.
@@ -199,6 +237,7 @@ until the vault exists (decision A6).
 8. **Record it:** write the date and what was checked in the go-live checklist and, after go-live, in the release
    notes (SGM-605).
 
-Not verified in Claude's environment: the Caddyfile under Caddy, Anjal's real API, and DigiLocker's real service. The
+Not verified in Claude's environment: Anjal's real API and DigiLocker's real service. The Caddyfile runs under the
+production Caddy image in CI (the path check) and was tried with the hardened stack in Docker (rc.9, OI-059). The
 images build and the identity server starts in Production in Docker (release evidence); certificates, secret files,
 health checks and the migration bundle against an empty database are covered by tests.

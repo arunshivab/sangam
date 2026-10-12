@@ -26,8 +26,17 @@ account.sangamid.in {
   import sangam portal
 }
 
-admin.sangamid.in {
+# OI-059 (ASVS V1.14.1): the operator console is not on the internet. Caddy serves it only on port 8443, which
+# docker-compose.yml publishes on the VM's loopback address alone; operators reach it through an SSH tunnel
+# (README.md, "Operator console"). The certificate is the normal public one: DNS still points admin.sangamid.in at the
+# VM, so the certificate authority's check on port 80 passes, but nothing answers for this name on port 443.
+admin.sangamid.in:8443 {
   import sangam admin
+}
+
+# On the public port the console's name gets nothing: the connection is closed.
+admin.sangamid.in {
+  abort
 }
 
 partners.sangamid.in {

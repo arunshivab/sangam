@@ -19,7 +19,7 @@ exist, so there is no production database to act on yet.
       inbox and read the headers: SPF, DKIM and DMARC must all say **pass**. Under a strict
       `p=reject` policy one misaligned header means every code is silently dropped.
 - [ ] Redirect and post-logout URIs registered for the real hosts only
-      (`account.sangamid.in`, `admin.sangamid.in`, `partners.sangamid.in`).
+      (`account.sangamid.in`, `admin.sangamid.in:8443` (OI-059), `partners.sangamid.in`).
 - [ ] `is_platform` is **true** on exactly Sangam's own three clients and nothing else. Migration
       `PlatformApps` sets it for the client ids `sangam-portal`, `sangam-admin` and `sangam-partner`;
       if production registers them under different ids, set it by hand. Without it the operator
@@ -233,7 +233,8 @@ The first owner is made on the production database, once:
    It grants Owner, writes a `system` audit row, and refuses forever after.
 4. Sign in to `account.sangamid.in` → Personal details → set up an authenticator app.
 5. Save the ten recovery codes **offline**, somewhere that survives the phone being lost.
-6. Open `admin.sangamid.in` and confirm the console opens.
+6. Open the SSH tunnel and `https://admin.sangamid.in:8443/` (deployment guide, "Operator console") and confirm the
+   console opens.
 
 ## Two owners, on two phones
 
@@ -392,3 +393,6 @@ The founder's answers of 11 October 2026 on the remaining ASVS Level 2 gaps:
 - [ ] **Lock files:** CI restores in locked mode; a pull request that changes a package updates `packages.lock.json`.
 - [ ] **Paths at the edge (OI-058):** after the stack is up, `bash tools/security/edge-path-check.sh deployed https://id.sangamid.in`
       passes: every spelling of a management-API path answers 400, 401 or 404.
+- [ ] **Operator console off the internet (OI-059):** from outside the VM, `https://admin.sangamid.in/` and
+      `https://admin.sangamid.in:8443/` do not answer; through the tunnel the console opens; `ss -tlnp` shows only 22,
+      80 and 443 on the public address; the SSH settings allow forwarding to `127.0.0.1:8443` only.
