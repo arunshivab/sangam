@@ -1,10 +1,7 @@
 using System.Net;
 using System.Text.RegularExpressions;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
-using Sangam.Identity.Domain.Entities;
-using Sangam.Identity.Domain.Enums;
 using Sangam.Identity.Infrastructure.Services;
 
 namespace Sangam.Identity.Server.Tests;
@@ -26,8 +23,9 @@ public sealed partial class RecentSignInTests
     }
 
     [PostgresFact]
-    public async Task AnOldSignIn_CannotChangeTheSignInPreference_UntilThePersonSignsInAgain()
+    public async Task AnOldSignIn_CannotAddAPasskey_UntilThePersonSignsInAgain()
     {
+        // rc.10: the sign-in preference moved to the portal; on the identity server the passkeys page is the sensitive one.
         MovableClock clock = new();
         using WebApplicationFactory<Program> host = _factory.WithWebHostBuilder(b => b.ConfigureServices(s => s.AddSingleton<TimeProvider>(clock)));
         using BrowserSession s = new(host);
@@ -35,30 +33,27 @@ public sealed partial class RecentSignInTests
         string email = $"recent-{Guid.NewGuid():N}@example.in";
         await RegisterAndVerifyAsync(s, outbox, email);
 
-        // Just signed in: no banner, and the change goes through.
+        // Just signed in: no banner, and adding a passkey starts.
         (_, string fresh) = await s.GetAsync("/account/passkeys");
         Assert.DoesNotContain(Banner, fresh, StringComparison.Ordinal);
-        (HttpStatusCode ok, _, _) = await s.PostFormAsync("/account", new Dictionary<string, string> { ["SignInPreference"] = "password_and_otp" }, handler: "Preference");
-        Assert.Equal(HttpStatusCode.Found, ok);
+        (HttpStatusCode ok, _, string started) = await s.PostFormAsync("/account/passkeys", [], handler: "AddOptions");
+        Assert.Equal(HttpStatusCode.OK, ok);
+        Assert.Contains("challengeId", started, StringComparison.Ordinal);
 
-        // Twenty minutes later the same change is refused and the page asks for a fresh sign-in.
+        // Twenty minutes later the same step is refused and the page asks for a fresh sign-in.
         clock.Advance(TimeSpan.FromMinutes(20));
         (_, string stale) = await s.GetAsync("/account/passkeys");
         Assert.Contains(Banner, stale, StringComparison.Ordinal);
-        (HttpStatusCode refused, _, string refusedHtml) = await s.PostFormAsync("/account", new Dictionary<string, string> { ["SignInPreference"] = "password" }, handler: "Preference");
+        (HttpStatusCode refused, _, string refusedJson) = await s.PostFormAsync("/account/passkeys", [], handler: "AddOptions");
         Assert.Equal(HttpStatusCode.OK, refused);
-        Assert.Contains(Banner, refusedHtml, StringComparison.Ordinal);
-        using (IServiceScope scope = host.Services.CreateScope())
-        {
-            UserManager<SangamUser> users = scope.ServiceProvider.GetRequiredService<UserManager<SangamUser>>();
-            Assert.Equal(SignInMode.PasswordAndOtp, (await users.FindByEmailAsync(email))!.SignInPreference);
-        }
+        Assert.Contains("sign in again", refusedJson, StringComparison.Ordinal);
+        Assert.DoesNotContain("challengeId", refusedJson, StringComparison.Ordinal);
 
         // "Sign in again" ends this browser's sign-in and comes back to the page afterwards.
         (HttpStatusCode again, string? to, _) = await s.PostFormAsync("/account/passkeys", [], handler: "Again");
         Assert.Equal(HttpStatusCode.Redirect, again);
         Assert.Equal("/login?returnUrl=%2Faccount%2Fpasskeys", to);
-        (HttpStatusCode signedOut, string? signedOutTo, _) = await s.GetWithLocationAsync("/account");
+        (HttpStatusCode signedOut, string? signedOutTo, _) = await s.GetWithLocationAsync("/account/passkeys");
         Assert.Equal(HttpStatusCode.Redirect, signedOut);
         Assert.Contains("/login", signedOutTo, StringComparison.Ordinal);
     }

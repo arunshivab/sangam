@@ -55,6 +55,7 @@ that meet it in the code or the deployment, and what is left over. "Accepted" po
 | R | "I never did that" | Hash-chained audit log; every sensitive action and its notification e-mail | — |
 | I | Account enumeration | Same answer whether or not an account exists (D-L) | Timing differences not measured under load |
 | E | Merging into someone else's account | Signed in to both accounts within 15 minutes, a waiting period, e-mails to both with a one-click cancel (rc.7) | — |
+| T | Leaving an organisation to strip it of its only administrator, or someone leaving on another's behalf | "Leave organisation" (rc.10) needs a sign-in from the last 15 minutes; the last organisation administrator of an application cannot leave that role; it goes through the same revoke path as the management API, audited as the person; the person and every organisation administrator of each affected application are e-mailed | Roles held at a parent organisation are not touched |
 
 ### TB4: a partner application
 
@@ -71,7 +72,7 @@ that meet it in the code or the deployment, and what is left over. "Accepted" po
 
 | STRIDE | Threat | Controls | Left over |
 |---|---|---|---|
-| S | Console access with a stolen password | Authenticator required for every console user; the operator console is not on the internet — only through an SSH tunnel with a key (OI-059) | Partner console stays public by design |
+| S | Console access with a stolen password | Authenticator required for every console user, and the session itself must have been signed in with two-step (`acr` level 2 or more, rc.10); the operator console is not on the internet — only through an SSH tunnel with a key (OI-059) | Partner console stays public by design |
 | E | Acting above one's rank | Rank or owner check inside each service method; every refusal audited as `access.denied` with the operation and the rank it needed (rc.8); many refusals, or one caller refused again and again, alert the founder (rc.9) | — |
 | R | Operator browsing records unnoticed | Every record opened, export and recovery review audited; the person can see operator views in their activity | — |
 | E | A single operator approving their own risky action | Cooling-off and review for privileged recoveries | A second operator's approval is not yet required (planned) |
@@ -131,3 +132,4 @@ Decisions 1–9 of 11 October 2026 ([decision memo](decision-memo-rc8.md)) and A
 | 1.0.0-rc.8 | 11 Oct 2026 | Claude, under the direction of the founder | First version in the repository (SGM-203 summarised and brought up to date); rc.8 controls added |
 | 1.0.0-rc.9 | 11 Oct 2026 | Claude, under the direction of the founder | Reviewed; rc.9 controls added (fresh sign-in, new-device e-mail, strict API contracts, host rate limits, hardened containers, key-compromise commands); no new threat found |
 | After rc.9 | 12 Oct 2026 | Claude, under the direction of the founder | OI-058 (paths unchanged at the edge) and OI-059 (operator console off the internet, SSH tunnel) |
+| 1.0.0-rc.10 | 12 Oct 2026 | Claude, under the direction of the founder | Consoles require a two-step session; "Leave organisation" reviewed (fresh sign-in, the last organisation administrator of an application cannot leave that role, every organisation administrator told, audited as the person); client-secret age shown; no new threat found |

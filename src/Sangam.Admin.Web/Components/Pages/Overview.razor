@@ -1,0 +1,129 @@
+@page "/"
+@inject IAdminService Admin
+@inject NavigationManager Nav
+
+@* rc.10 (O1): each rank starts where its work is; only an owner stays here for the platform overview. *@
+<PageTitle>@L["Platform overview · Operator console"]</PageTitle>
+
+@if (_overview is null)
+{
+  <p class="sg-muted">@L["Loading…"]</p>
+}
+else
+{
+  <h1 class="sg-h1">@L["Platform overview"]</h1>
+  <p class="sg-lede">@L["How Sangam stands today, and what is waiting for a decision."]</p>
+
+  <div class="sg-stats" data-panel="stats">
+    <div class="sg-stat">
+      <span class="sg-label-mono">@L["People"]</span>
+      <span class="sg-stat-value">@Number(_overview.People)</span>
+      <span class="sg-stat-note">@L["{0} new this week", Number(_overview.NewThisWeek)]</span>
+    </div>
+    <div class="sg-stat">
+      <span class="sg-label-mono">@L["Sign-ins, last 24 hours"]</span>
+      <span class="sg-stat-value">@Number(_overview.SignInsToday)</span>
+      <span class="sg-stat-note">@L["Sessions begun"]</span>
+    </div>
+    <div class="sg-stat">
+      <span class="sg-label-mono">@L["Applications"]</span>
+      <span class="sg-stat-value">@Number(_overview.Applications)</span>
+      <span class="sg-stat-note">@L["Active"]</span>
+    </div>
+    <div class="sg-stat">
+      <span class="sg-label-mono">@L["Needs attention"]</span>
+      <span class="sg-stat-value">@Number(_overview.Attention.Count)</span>
+      <span class="sg-stat-note">@L["Listed below"]</span>
+    </div>
+  </div>
+
+  <div class="sg-grid">
+    <section class="sg-panel sg-panel--accent" data-panel="attention">
+      <h2 class="sg-h2">@L["Needs attention"]</h2>
+      @if (_overview.Attention.Count == 0)
+      {
+        <p class="sg-muted">@L["Nothing is waiting."]</p>
+      }
+      else
+      {
+        <ul class="sg-attention">
+          @foreach (AttentionItem item in _overview.Attention)
+          {
+            <li>
+              <span class="sg-dot @(item.Kind is AttentionKind.GrievancesDue or AttentionKind.Alert ? "sg-dot--danger" : "sg-dot--warn")" aria-hidden="true"></span>
+              <span class="sg-grow">
+                <span class="sg-name">@Text(item)</span>
+                @if (item.Due is DateTimeOffset due)
+                {
+                  <span class="sg-sub">@L["Next deadline {0}", IndiaTime.Stamp(due)]</span>
+                }
+              </span>
+              <a href="@item.Link">@L["Open →"]</a>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <section class="sg-panel" data-panel="trail">
+      <h2 class="sg-h2">@L["Recent audit trail"]</h2>
+      <p class="sg-muted">@L["What operators and Sangam itself did last. People's own actions are in their Activity."]</p>
+      @if (_overview.Trail.Count == 0)
+      {
+        <p class="sg-muted">@L["Nothing yet."]</p>
+      }
+      else
+      {
+        <div class="sg-table-wrap" tabindex="0" role="region" aria-label="@L["Recent audit trail"]">
+          <table class="sg-table sg-table--compact sg-trail">
+            <thead><tr><th>@L["When"]</th><th>@L["Who"]</th><th>@L["Action"]</th></tr></thead>
+            <tbody>
+              @foreach (TrailRow row in _overview.Trail)
+              {
+                <tr class="@(row.Failed ? "sg-row--failed" : null)">
+                  <td class="sg-mono">@IndiaTime.Compact(row.At)</td>
+                  <td>@(row.Actor == "Sangam" ? L["Sangam"] : row.Actor)</td>
+                  <td><span class="sg-mono">@row.Action</span>@if (row.TargetType is not null) { <span class="sg-sub">@row.TargetType</span> }</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  </div>
+}
+
+@code {
+    [CascadingParameter]
+    public ConsoleContext? Context { get; set; }
+
+    private AdminOverview? _overview;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Context is null)
+        {
+            return;
+        }
+
+        if (!Context.IsOwner)
+        {
+            Nav.NavigateTo(Context.Home, replace: true);
+            return;
+        }
+
+        _overview = await Admin.OverviewAsync(Context.UserId);
+    }
+
+    private static string Number(int value) => value.ToString("N0", CultureInfo.CurrentCulture);
+
+    private string Text(AttentionItem item) => item.Kind switch
+    {
+        AttentionKind.GrievancesDue => item.Count == 1 ? L["1 grievance overdue or due within two days"] : L["{0} grievances overdue or due within two days", item.Count],
+        AttentionKind.RecoveriesWaiting => item.Count == 1 ? L["1 recovery request waiting for a decision"] : L["{0} recovery requests waiting for a decision", item.Count],
+        AttentionKind.AppWithoutOwner => L["{0} has no partner owner yet", item.Subject],
+        AttentionKind.SecretOld => L["The client secret of {0} is over a year old", item.Subject],
+        _ => item.Subject,
+    };
+}

@@ -10,23 +10,7 @@
 else
 {
   <PageTitle>@_info.AppName · Sangam partners</PageTitle>
-  <a class="sg-back" href="/">@L["← Your applications"]</a>
-  <h1 class="sg-h1">@_info.AppName</h1>
-
-  <nav class="sg-tabs" aria-label="@L["Sections"]">
-    <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("people")" Match="NavLinkMatch.All">@L["Organisations & people"]</NavLink>
-    <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("roles")">@L["Roles"]</NavLink>
-    @if (_info.IsOwner)
-    {
-      <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("admins")">@L["Administrators"]</NavLink>
-    }
-    <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("settings")">@L["Settings"]</NavLink>
-    <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("messages")">@L["Messages"]</NavLink>
-    <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("provisioning")">@L["Provisioning"]</NavLink>
-    <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("webhooks")">@L["Webhooks"]</NavLink>
-    <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("attributes")">@L["Attributes & claims"]</NavLink>
-    <NavLink class="sg-tab" ActiveClass="sg-tab--on" href="@Link("evidence")">@L["Evidence"]</NavLink>
-  </nav>
+  <h1 class="sg-h1">@_info.AppName · @SectionName</h1>
 
   @switch (CurrentTab)
   {
@@ -35,6 +19,10 @@ else
       break;
     case "admins" when _info.IsOwner:
       <AdminsTab Info="_info" />
+      break;
+    case "people":
+    case "admins":
+      <OrganisationsTab Info="_info" />
       break;
     case "settings":
       <SettingsTab Info="_info" />
@@ -56,7 +44,7 @@ else
       <TemplateEditor UserId="_info.UserId" Scope="CustomisationScope.App" ScopeId="_info.AppId" Heading="@L["Messages"].Value" PreviewHeading="@_info.AppName" Key="app-templates" />
       break;
     default:
-      <OrganisationsTab Info="_info" />
+      <OverviewTab Info="_info" />
       break;
   }
 }
@@ -66,7 +54,7 @@ else
     [Parameter]
     public Guid AppId { get; set; }
 
-    /// <summary>The section; organisations and people when absent.</summary>
+    /// <summary>The section; the application's overview when absent (rc.10).</summary>
     [Parameter]
     public string? Tab { get; set; }
 
@@ -76,7 +64,23 @@ else
 
     private WorkspaceInfo? _info;
 
-    private string CurrentTab => Tab ?? "people";
+    private string CurrentTab => Tab ?? "overview";
+
+    // rc.10: the sections are in the sidebar; the heading names the one open.
+    private string SectionName => CurrentTab switch
+    {
+        "people" => L["Organisations & people"],
+        "admins" when _info?.IsOwner == true => L["Administrators"],
+        "admins" => L["Organisations & people"],
+        "roles" => L["Roles"],
+        "settings" => L["Sign-in rules & branding"],
+        "messages" => L["Messages"],
+        "attributes" => L["Attributes & claims"],
+        "provisioning" => L["Provisioning"],
+        "webhooks" => L["Webhooks"],
+        "evidence" => L["Compliance evidence"],
+        _ => L["Overview"],
+    };
 
     protected override void OnParametersSet()
     {
@@ -85,6 +89,4 @@ else
         PartnerAppRow? app = Context?.Apps.FirstOrDefault(a => a.AppId == AppId);
         _info = app is null ? null : new WorkspaceInfo(Context!.UserId, app.AppId, app.DisplayName, app.Role);
     }
-
-    private string Link(string tab) => tab == "people" ? $"/apps/{AppId:D}" : $"/apps/{AppId:D}/{tab}";
 }

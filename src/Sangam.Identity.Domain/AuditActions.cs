@@ -443,4 +443,11 @@ public static class AuditActions
     /// was told by e-mail (rc.9, ASVS V2.2.3). The row carries the address and browser, as every sign-in does.
     /// </summary>
     public const string UserLoginNewDevice = "user.login.new_device";
+
+    /// <summary>
+    /// The person left an organisation from their portal (rc.10, P4): the metadata names the organisation, the applications
+    /// whose roles ended and those kept because the person is their only organisation admin there. Each role that ended has
+    /// its own <see cref="OrgMembershipRevoke"/> row, with the person as the actor.
+    /// </summary>
+    public const string UserOrganisationLeave = "user.organisation.leave";
 }

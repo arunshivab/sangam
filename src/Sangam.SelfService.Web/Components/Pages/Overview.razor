@@ -1,68 +1,87 @@
 @page "/"
 @inject IPortalService Portal
+@inject IPortalRolesService Roles
+@inject IAccountService Accounts
+@inject IMfaService Mfa
+@inject Sangam.Identity.Application.Passkeys.IPasskeyService Passkeys
 @inject AuthenticationStateProvider AuthProvider
+@inject IConfiguration Configuration
 
 <PageTitle>@L["Overview · sangam"]</PageTitle>
 
 <h1 class="sg-greeting">@L["Namaste, {0}", FirstName]</h1>
 <p class="sg-subtitle">@L["This is your Sangam account. Everything an application can see about you, and everything you can take back, is here."]</p>
 
-@if (_overview is null)
+@if (_apps is null || _user is null)
 {
   <p class="sg-note">@L["Loading…"]</p>
 }
 else
 {
-  <div class="sg-stats">
-    <div class="sg-stat">
-      <span class="sg-stat-label">@L["Connected apps"]</span>
-      <span class="sg-stat-value">@_overview.LinkedApps</span>
-      <span class="sg-stat-note">@(_overview.LinkedApps == 0 ? L["none yet"] : L["you can revoke any of them"])</span>
-    </div>
-    <div class="sg-stat">
-      <span class="sg-stat-label">@L["Organisations"]</span>
-      <span class="sg-stat-value">@_overview.Organisations</span>
-      <span class="sg-stat-note">@(_overview.Organisations == 0 ? L["none yet"] : L["roles given to you by apps"])</span>
-    </div>
-    <div class="sg-stat">
-      <span class="sg-stat-label">@L["Last sign-in"]</span>
-      <span class="sg-stat-value sg-stat-value--small">@(_overview.LastSignInAt is null ? "—" : Relative.Describe(_overview.LastSignInAt.Value, _now))</span>
-      <span class="sg-stat-note">@(_overview.ActiveSessions == 1 ? L["{0} active session", _overview.ActiveSessions] : L["{0} active sessions", _overview.ActiveSessions])</span>
-    </div>
-  </div>
-
-  @if (_overview.TwoFactorSuggested)
+  @foreach (PortalRole ending in _endingSoon)
   {
-    <p class="sg-nudge"><span class="sg-cord-dot" aria-hidden="true"></span>@L.Markup("You sign in with a password only. {0} for a second step.", LocalizedMarkup.Link("/profile", L["Add an emailed code"]))</p>
+    <p class="sg-banner sg-banner--info" role="status" data-panel="ending-soon">@L["Your {0} role in {1} ends on {2}. Only the organisation that gave it can extend it.", ending.RoleName, ending.AppName, IndiaTime.LongDate(ending.Until!.Value)]</p>
   }
 
-  <div class="sg-cards">
-    <a class="sg-tile-card" href="/apps">
-      <h2 class="sg-tile-title">@L["Connected apps"]</h2>
-      <p class="sg-tile-body">@L["See every application you have allowed, exactly what it can read, and withdraw that access."]</p>
-      <span class="sg-tile-link">@L["Manage →"]</span>
-    </a>
-    <a class="sg-tile-card" href="/devices">
-      <h2 class="sg-tile-title">@L["Devices and sessions"]</h2>
-      <p class="sg-tile-body">@L["Where you are signed in right now. End a single session, or sign out everywhere at once."]</p>
-      <span class="sg-tile-link">@L["Manage →"]</span>
-    </a>
-    <a class="sg-tile-card" href="/audit">
-      <h2 class="sg-tile-title">@L["Audit log"]</h2>
-      <p class="sg-tile-body">@L["Every sign-in, consent and change to your account, and who made it."]</p>
-      <span class="sg-tile-link">@L["Manage →"]</span>
-    </a>
-    <a class="sg-tile-card" href="/profile">
-      <h2 class="sg-tile-title">@L["Personal details"]</h2>
-      <p class="sg-tile-body">@L["Your name and language, how you sign in, a copy of your data, and account deletion."]</p>
-      <span class="sg-tile-link">@L["Manage →"]</span>
-    </a>
+  <div class="sg-overview">
+    <section class="sg-panel" data-panel="your-apps">
+      <h2 class="sg-panel-title">@L["Your apps"]</h2>
+      @if (_apps.Count == 0)
+      {
+        <p class="sg-panel-body">@L["When you sign in to an application with your Sangam account, it appears here."]</p>
+      }
+      else
+      {
+        <ul class="sg-launch">
+          @foreach (LinkedApp app in _apps.Where(a => a.ClientId != _portalClientId).Take(6))
+          {
+            <li class="sg-launch-tile">
+              <span class="sg-app-tile" style="background:@app.BrandColour" aria-hidden="true">@app.Glyph</span>
+              <span class="sg-app-text">
+                <span class="sg-app-name">@app.DisplayName</span>
+                <span class="sg-app-desc">@(app.Organisations.Count == 0 ? (app.Description ?? app.OwnerCompanyName) : app.Organisations.Count == 1 ? app.Organisations[0] : L["{0}, +{1} more", app.Organisations[0], app.Organisations.Count - 1])</span>
+              </span>
+              @if (SafeHome(app.HomepageUrl) is string home)
+              {
+                <a class="sg-launch-open" href="@home" rel="noopener">@L["Open →"]</a>
+              }
+            </li>
+          }
+        </ul>
+        <a class="sg-tile-link" href="/apps">@L["See every app and what it can see →"]</a>
+      }
+    </section>
+
+    <section class="sg-panel" data-panel="checkup">
+      <h2 class="sg-panel-title">@L["Security checkup"]</h2>
+      @if (_checkup.Count == 0)
+      {
+        <p class="sg-panel-body"><span class="sg-cord-dot sg-cord-dot--active" aria-hidden="true"></span>@L["Nothing to do. Your account is well protected."]</p>
+      }
+      else
+      {
+        <p class="sg-panel-body">@(_checkup.Count == 1 ? L["1 thing would make your account safer."] : L["{0} things would make your account safer.", _checkup.Count])</p>
+        <ul class="sg-checkup">
+          @foreach (CheckupItem item in _checkup)
+          {
+            <li>
+              <span class="sg-cord-dot sg-cord-dot--expiring" aria-hidden="true"></span>
+              <span class="sg-grow">@CheckupText(item)</span>
+              <a href="@CheckupLink(item)">@L["Fix →"]</a>
+            </li>
+          }
+        </ul>
+      }
+    </section>
   </div>
 }
 
 @code {
-    private PortalOverview? _overview;
-    private DateTimeOffset _now = DateTimeOffset.UtcNow;
+    private UserSummary? _user;
+    private IReadOnlyList<LinkedApp>? _apps;
+    private IReadOnlyList<CheckupItem> _checkup = [];
+    private List<PortalRole> _endingSoon = [];
+    private string _portalClientId = "sangam-portal";
     private string FirstName { get; set; } = "there";
 
     protected override async Task OnInitializedAsync()
@@ -70,10 +89,40 @@ else
         AuthenticationState state = await AuthProvider.GetAuthenticationStateAsync();
         Guid? userId = PortalUser.Id(state.User);
         FirstName = PortalUser.Name(state.User).Split(' ')[0];
-        if (userId is not null)
+        _portalClientId = Configuration["Sangam:Portal:ClientId"] ?? "sangam-portal";
+        if (userId is not Guid id)
         {
-            _now = DateTimeOffset.UtcNow;
-            _overview = await Portal.GetOverviewAsync(userId.Value);
+            return;
         }
+
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        _user = await Accounts.FindByIdAsync(id);
+        _apps = await Portal.GetLinkedAppsAsync(id);
+        bool authenticator = await Mfa.IsEnrolledAsync(id);
+        int passkeys = Passkeys.Enabled ? (await Passkeys.ListAsync(id)).Count : 0;
+        _checkup = _user is null ? [] : SecurityCheckup.For(_user, authenticator, passkeys, [.. _apps.Where(a => a.ClientId != _portalClientId)], now);
+        // rc.10 (P1): a role ending in the next 30 days is said here, where the person will see it.
+        _endingSoon = [.. (await Roles.GetAsync(id)).SelectMany(o => o.Roles).Where(r => r.Until is DateTimeOffset until && until - now <= TimeSpan.FromDays(30)).OrderBy(r => r.Until)];
     }
+
+    /// <summary>Only an https address (http on this computer, in development) is offered as a link.</summary>
+    private static string? SafeHome(string? url)
+        => Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) && (uri.Scheme == Uri.UriSchemeHttps || (uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback)) ? uri.AbsoluteUri : null;
+
+    private string CheckupText(CheckupItem item) => item switch
+    {
+        CheckupItem.AddStrongMethod => L["Add an authenticator app or a passkey: stronger than a password and an emailed code."],
+        CheckupItem.TwoStepEveryTime => L["A password alone signs you in. Turn on two-step sign-in every time."],
+        CheckupItem.VerifyMobile => L["Verify your mobile number, so it can help you get back into your account."],
+        CheckupItem.DormantApps => L["Apps you have not used for three months still have access."],
+        _ => L["Verify with DigiLocker once more: Sangam changed a key that protects your verification."],
+    };
+
+    private string CheckupLink(CheckupItem item) => item switch
+    {
+        CheckupItem.VerifyMobile => (Configuration["Sangam:Authority"] ?? "https://id.sangamid.in").TrimEnd('/') + "/account/mobile",
+        CheckupItem.DormantApps => "/apps",
+        CheckupItem.Reverify => "/profile",
+        _ => "/security",
+    };
 }

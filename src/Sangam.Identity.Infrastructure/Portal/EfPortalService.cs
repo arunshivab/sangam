@@ -126,7 +126,8 @@ public sealed class EfPortalService : IPortalService
                 lastIssued.FirstOrDefault(l => l.AppId == grant.AppId)?.At,
                 [.. consents.Where(c => c.AppId == grant.AppId).SelectMany(c => c.Scope.Split(' ', StringSplitOptions.RemoveEmptyEntries)).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
                 [.. memberships.Where(m => m.AppId == grant.AppId).Select(m => m.OrgName).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
-                live));
+                live,
+                grant.App.HomepageUrl));
         }
 
         return [.. result.OrderByDescending(a => a.LastUsedAt ?? a.LinkedAt)];
@@ -214,7 +215,11 @@ public sealed class EfPortalService : IPortalService
     }
 
     /// <inheritdoc />
-    public async Task<AuditPage> GetAuditAsync(Guid userId, DateTimeOffset? since, int page, int pageSize, CancellationToken cancellationToken = default)
+    public Task<AuditPage> GetAuditAsync(Guid userId, DateTimeOffset? since, int page, int pageSize, CancellationToken cancellationToken = default)
+        => GetActivityAsync(userId, since, ActivityFilter.All, page, pageSize, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<AuditPage> GetActivityAsync(Guid userId, DateTimeOffset? since, ActivityFilter filter, int page, int pageSize, CancellationToken cancellationToken = default)
     {
         page = Math.Max(0, page);
         pageSize = Math.Clamp(pageSize, 1, 200);
@@ -225,6 +230,20 @@ public sealed class EfPortalService : IPortalService
         {
             query = query.Where(e => e.OccurredAt >= from);
         }
+
+        query = filter switch
+        {
+            ActivityFilter.SignIns => query.Where(e =>
+                e.Action.StartsWith("user.login") || e.Action.StartsWith("user.logout") || e.Action.StartsWith("user.otp.")
+                || e.Action.StartsWith("user.mfa.") || e.Action.StartsWith("user.passkey.") || e.Action.StartsWith("user.stepup.")
+                || e.Action.StartsWith("user.session.") || e.Action.StartsWith("device.")),
+            ActivityFilter.Apps => query.Where(e =>
+                e.Action.StartsWith("consent.") || e.Action.StartsWith("token.") || e.Action.StartsWith("saml.assertion")
+                || e.Action == AuditActions.AppAccessRevoke || e.Action == AuditActions.UserLogoutApp || e.Action.StartsWith("attribute.values")),
+            ActivityFilter.Roles => query.Where(e => e.Action.StartsWith("org_membership.") || e.Action == AuditActions.UserOrganisationLeave),
+            ActivityFilter.ByOthers => query.Where(e => e.ActorUserId != userId || e.ActorUserId == null || e.ActorType != AuditActorType.User),
+            _ => query,
+        };
 
         int total = await query.CountAsync(cancellationToken).ConfigureAwait(false);
         List<AuditEvent> events = await query

@@ -19,6 +19,12 @@ public interface IPartnerService
     /// <summary>The applications the person administers, with their rank over each.</summary>
     Task<IReadOnlyList<PartnerAppRow>> GetMyAppsAsync(Guid userId, CancellationToken cancellationToken = default);
 
+    /// <summary>rc.10 (R1, R2): how one application stands; <see langword="null"/> when the person does not administer it.</summary>
+    /// <param name="userId">The signed-in administrator.</param>
+    /// <param name="appId">The application.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<PartnerAppOverview?> GetOverviewAsync(Guid userId, Guid appId, CancellationToken cancellationToken = default);
+
     /// <summary>Their rank over one application, or <see langword="null"/> when they administer it not at all.</summary>
     Task<AppAdminRole?> GetRoleAsync(Guid userId, Guid appId, CancellationToken cancellationToken = default);
 

@@ -98,4 +98,10 @@ public sealed class App
 
     /// <summary>When the app was disabled (UTC).</summary>
     public DateTimeOffset? DisabledAt { get; set; }
+
+    /// <summary>
+    /// rc.10: when the client secret was last set (recorded by the client registration at start-up when the configured
+    /// secret changes); <see langword="null"/> for a public client, and for a secret set before rc.10.
+    /// </summary>
+    public DateTimeOffset? SecretSetAt { get; set; }
 }

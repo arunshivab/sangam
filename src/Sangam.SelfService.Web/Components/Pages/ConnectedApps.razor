@@ -4,9 +4,9 @@
 @inject IConfiguration Configuration
 @inject Sangam.Identity.Application.Attributes.IAttributeService Attributes
 
-<PageTitle>@L["Connected apps · sangam"]</PageTitle>
+<PageTitle>@L["Apps · sangam"]</PageTitle>
 
-<PageHeader Title="@L["Connected apps"].Value" Subtitle="@L["Applications you have allowed to use your Sangam account."].Value" />
+<PageHeader Title="@L["Apps"].Value" Subtitle="@L["Applications you have allowed to use your Sangam account, most recently used first."].Value" />
 
 @if (_apps is null)
 {
@@ -26,7 +26,7 @@ else
   <div class="sg-table sg-table--apps" role="table">
     <div class="sg-tr sg-tr--head" role="row">
       <span role="columnheader">@L["APPLICATION"]</span>
-      <span role="columnheader">@L["LINKED"]</span>
+      <span role="columnheader">@L["ALLOWED SINCE"]</span>
       <span role="columnheader">@L["LAST USED"]</span>
       <span role="columnheader">@L["CAN SEE"]</span>
       <span role="columnheader"></span>

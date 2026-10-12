@@ -100,6 +100,18 @@ builder.Services.AddAuthentication(options =>
         o.Scope.Add(SangamScopes.Email);
         o.TokenValidationParameters.NameClaimType = Claims.Name;
         o.TokenValidationParameters.RoleClaimType = Claims.Role;
+        // rc.10: keep how and when the operator signed in; the gate opens only for a two-step sign-in, and the strip
+        // says which it was.
+        o.ClaimActions.Remove("acr");
+        o.ClaimActions.Remove("amr");
+        o.ClaimActions.Remove("auth_time");
+        // rc.10: every console sign-in asks for two-step sign-in (a passkey counts), so an identity-server session that
+        // began with one factor is stepped up rather than reused.
+        o.Events.OnRedirectToIdentityProvider = context =>
+        {
+            context.ProtocolMessage.AcrValues = SangamAcr.TwoFactor;
+            return Task.CompletedTask;
+        };
     });
 
 builder.Services.AddAntiforgery(o =>
@@ -149,6 +161,17 @@ app.MapGet("/signout", (HttpContext context) =>
         new Microsoft.AspNetCore.Authentication.AuthenticationProperties { RedirectUri = "/" },
         [CookieAuthenticationDefaults.AuthenticationScheme, OpenIdConnectDefaults.AuthenticationScheme]);
 })
+    .AllowAnonymous();
+
+// rc.10: "Sign in again" on the strip, and the way through the gate for a session that was not signed in with two-step
+// sign-in: the identity server asks again (max_age=0) at two-step strength, and a fresh session with a new lifetime begins.
+app.MapGet("/reauth", (string? returnUrl) => Results.Challenge(
+    new OpenIdConnectChallengeProperties
+    {
+        RedirectUri = Sangam.Web.Shared.Security.RecentSignIn.LocalReturn(returnUrl, "/"),
+        MaxAge = TimeSpan.Zero,
+    },
+    [OpenIdConnectDefaults.AuthenticationScheme]))
     .AllowAnonymous();
 
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode(o =>

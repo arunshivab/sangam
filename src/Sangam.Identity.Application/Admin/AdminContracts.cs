@@ -85,7 +85,102 @@ public sealed record OperatorRow(Guid UserId, string DisplayName, string Email, 
 /// <param name="IsPlatform">Whether it is one of Sangam's own clients: never disabled here, never given partner owners.</param>
 /// <param name="BackChannelLogoutUri">Where Sangam posts a signed logout token when a session ends (PR-20); null for none.</param>
 /// <param name="FrontChannelLogoutUri">The page Sangam loads in a hidden frame when a session ends in the browser (PR-20); null for none.</param>
-public sealed record AdminAppRow(Guid Id, string ClientId, string DisplayName, string OwnerCompanyName, AppStatus Status, SignInPolicy SignInPolicy, int Users, int Organisations, int PartnerOwners, bool IsPlatform, string? BackChannelLogoutUri = null, string? FrontChannelLogoutUri = null);
+/// <param name="SecretSetAt">rc.10: when the client secret was last set, if Sangam has recorded it.</param>
+/// <param name="HasSecret">rc.10: whether the application signs in with a client secret at all (a public client has none);
+/// <see langword="null"/> when its registration is not found.</param>
+public sealed record AdminAppRow(Guid Id, string ClientId, string DisplayName, string OwnerCompanyName, AppStatus Status, SignInPolicy SignInPolicy, int Users, int Organisations, int PartnerOwners, bool IsPlatform, string? BackChannelLogoutUri = null, string? FrontChannelLogoutUri = null, DateTimeOffset? SecretSetAt = null, bool? HasSecret = null)
+{
+    /// <summary>rc.10 (founder decision, 12 Oct 2026): a client secret older than this is flagged for a change.</summary>
+    public static readonly TimeSpan SecretWarnAge = TimeSpan.FromDays(365);
+
+    /// <summary>Whether the secret is older than <see cref="SecretWarnAge"/> at <paramref name="now"/>.</summary>
+    /// <param name="now">The time now.</param>
+    /// <returns><see langword="true"/> when it is due a change.</returns>
+    public bool SecretIsOld(DateTimeOffset now) => SecretSetAt is DateTimeOffset at && now - at > SecretWarnAge;
+}
+
+/// <summary>rc.10 (O2): what the users list is filtered by, and which page of it to show.</summary>
+/// <param name="Text">Name, e-mail or mobile; empty for everyone.</param>
+/// <param name="Status">Only accounts in this state; <see langword="null"/> for any.</param>
+/// <param name="Organisation">Only people holding a live role in an organisation whose name contains this.</param>
+/// <param name="Page">The page, from 1.</param>
+/// <param name="PageSize">Rows a page.</param>
+public sealed record AdminUserQuery(string? Text, UserStatus? Status, string? Organisation, int Page, int PageSize);
+
+/// <summary>rc.10 (O2): one page of the users list.</summary>
+/// <param name="Rows">The people on this page, newest account first.</param>
+/// <param name="Total">How many match altogether.</param>
+/// <param name="Page">This page, from 1.</param>
+/// <param name="PageSize">Rows a page.</param>
+public sealed record AdminUserPage(IReadOnlyList<AdminUserRow> Rows, int Total, int Page, int PageSize);
+
+/// <summary>rc.10 (O4): what kind of work a queue item is.</summary>
+public enum WorkKind
+{
+    /// <summary>A DigiLocker recovery whose record did not match the account; an operator decides.</summary>
+    Recovery = 0,
+
+    /// <summary>A recovery that matched and is waiting out its cooling-off period; an operator may withdraw it.</summary>
+    TwoStepReset = 1,
+
+    /// <summary>An open grievance, with its DPDP deadlines.</summary>
+    Grievance = 2,
+}
+
+/// <summary>rc.10 (O4): one thing waiting for an operator. It names the account, never the DigiLocker record.</summary>
+/// <param name="Kind">What it is.</param>
+/// <param name="Id">The request or grievance.</param>
+/// <param name="Subject">The account's name, or for a grievance its reference and the complainant's name.</param>
+/// <param name="Since">When it arrived.</param>
+/// <param name="Due">The clock it runs against: the grievance deadline, or when the reset takes effect.</param>
+/// <param name="Privileged">A privileged account (an owner decides; 72-hour wait).</param>
+/// <param name="Link">Where it is dealt with.</param>
+/// <param name="Overdue">Past its deadline.</param>
+public sealed record WorkItem(WorkKind Kind, Guid Id, string Subject, DateTimeOffset Since, DateTimeOffset? Due, bool Privileged, string Link, bool Overdue);
+
+/// <summary>rc.10 (O1): what needs an owner's attention.</summary>
+public enum AttentionKind
+{
+    /// <summary>Grievances overdue or due within two days.</summary>
+    GrievancesDue = 0,
+
+    /// <summary>Recoveries waiting for a decision.</summary>
+    RecoveriesWaiting = 1,
+
+    /// <summary>An open monitoring alert.</summary>
+    Alert = 2,
+
+    /// <summary>A partner application nobody can manage yet (no partner owner).</summary>
+    AppWithoutOwner = 3,
+
+    /// <summary>A client secret more than a year old.</summary>
+    SecretOld = 4,
+}
+
+/// <summary>rc.10 (O1): one line under "Needs attention".</summary>
+/// <param name="Kind">What it is.</param>
+/// <param name="Subject">The application or alert it is about; empty for a count.</param>
+/// <param name="Count">How many, for a count.</param>
+/// <param name="Due">The nearest deadline, if any.</param>
+/// <param name="Link">Where to deal with it.</param>
+public sealed record AttentionItem(AttentionKind Kind, string Subject, int Count, DateTimeOffset? Due, string Link);
+
+/// <summary>rc.10 (O1): one row of the recent audit trail — what operators and Sangam itself did.</summary>
+/// <param name="At">When.</param>
+/// <param name="Actor">The operator's name, or <c>Sangam</c> for the system.</param>
+/// <param name="Action">The audit action code.</param>
+/// <param name="TargetType">What kind of thing it was done to.</param>
+/// <param name="Failed">Whether it was a refusal or a failure.</param>
+public sealed record TrailRow(DateTimeOffset At, string Actor, string Action, string? TargetType, bool Failed);
+
+/// <summary>rc.10 (O1): the owner's platform overview.</summary>
+/// <param name="People">Accounts that are not deleted.</param>
+/// <param name="NewThisWeek">Accounts made in the last seven days.</param>
+/// <param name="SignInsToday">Sessions begun in the last 24 hours.</param>
+/// <param name="Applications">Active applications.</param>
+/// <param name="Attention">What needs attention, soonest deadline first.</param>
+/// <param name="Trail">The latest operator and system actions, newest first.</param>
+public sealed record AdminOverview(int People, int NewThisWeek, int SignInsToday, int Applications, IReadOnlyList<AttentionItem> Attention, IReadOnlyList<TrailRow> Trail);
 
 /// <summary>Outcome of a console action.</summary>
 /// <param name="Succeeded">Whether it was applied.</param>

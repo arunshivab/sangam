@@ -6,7 +6,7 @@ using Sangam.Identity.Application.Portal;
 
 namespace Sangam.SelfService.Web.Tests;
 
-/// <summary>The five portal screens, rendered by the real host against a real database.</summary>
+/// <summary>The portal's six screens (rc.10), rendered by the real host against a real database.</summary>
 [Collection("portal-db")]
 public sealed class PortalScreenTests : IClassFixture<PortalFactory>, IAsyncLifetime
 {
@@ -34,7 +34,7 @@ public sealed class PortalScreenTests : IClassFixture<PortalFactory>, IAsyncLife
     public async Task EveryPageRequiresSignIn()
     {
         using HttpClient client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        foreach (string path in new[] { "/", "/apps", "/devices", "/audit", "/profile" })
+        foreach (string path in new[] { "/", "/apps", "/security", "/devices", "/roles", "/activity", "/audit", "/profile" })
         {
             using HttpRequestMessage request = new(HttpMethod.Get, path);
             request.Headers.Add("X-Test-Anonymous", "1");
@@ -44,16 +44,75 @@ public sealed class PortalScreenTests : IClassFixture<PortalFactory>, IAsyncLife
     }
 
     [PostgresFact]
-    public async Task Overview_ShowsTheCountersAndTheFourDestinations()
+    public async Task Overview_ShowsYourApps_TheSecurityCheckup_AndTheSixTabsInOrder()
     {
-        string html = await GetAsync("/");
+        // rc.10 (P1): no counters and no link cards; the apps you use and what would make the account safer.
+        string html = System.Net.WebUtility.HtmlDecode(await GetAsync("/"));
 
         Assert.Contains("Namaste, Ravi", html, StringComparison.Ordinal);
-        Assert.Contains("CONNECTED APPS", html, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("Devices and sessions", html, StringComparison.Ordinal);
-        Assert.Contains("Audit log", html, StringComparison.Ordinal);
-        Assert.Contains("Personal details", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("href=\"http", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("data-panel=\"your-apps\"", html, StringComparison.Ordinal);
+        Assert.Contains("LiPi HIS", html, StringComparison.Ordinal);
+        Assert.Contains("data-panel=\"checkup\"", html, StringComparison.Ordinal);
+        Assert.Contains("Add an authenticator app or a passkey", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Working as", html, StringComparison.Ordinal);
+
+        string[] tabs = ["Overview", "Apps", "Sign-in & security", "Organisations & roles", "Activity", "Profile & data"];
+        int at = 0;
+        foreach (string tab in tabs)
+        {
+            int next = html.IndexOf(">" + tab + "<", at, StringComparison.Ordinal);
+            Assert.True(next > at, $"{tab} is not after the tab before it");
+            at = next;
+        }
+
+        Assert.DoesNotContain("src=\"http", html, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [PostgresFact]
+    public async Task SignInAndSecurity_ListsTheWaysStrongestFirst_AndTheTwoStepChoice()
+    {
+        // rc.10 (P3): passkey, authenticator, code by email, code by text, password; then two-step sign-in; then sessions.
+        string html = System.Net.WebUtility.HtmlDecode(await GetAsync("/security"));
+        int passkey = html.IndexOf("data-way=\"passkey\"", StringComparison.Ordinal);
+        int authenticator = html.IndexOf("data-way=\"authenticator\"", StringComparison.Ordinal);
+        int email = html.IndexOf("data-way=\"email-code\"", StringComparison.Ordinal);
+        int text = html.IndexOf("data-way=\"text-code\"", StringComparison.Ordinal);
+        int password = html.IndexOf("data-way=\"password\"", StringComparison.Ordinal);
+        Assert.True(passkey > 0 && passkey < authenticator && authenticator < email && email < text && text < password, $"{passkey} {authenticator} {email} {text} {password}");
+        Assert.Contains("href=\"https://id.example.invalid/account/passkeys\"", html, StringComparison.Ordinal);
+        Assert.Contains("Add a passkey", html, StringComparison.Ordinal);
+        Assert.Contains("href=\"https://id.example.invalid/account/mobile\"", html, StringComparison.Ordinal);
+        Assert.Contains("Every time", html, StringComparison.Ordinal);
+        Assert.Contains("Only when an app asks", html, StringComparison.Ordinal);
+        Assert.Contains("Use a code instead of a password", html, StringComparison.Ordinal);
+        Assert.Contains("data-panel=\"locked-out\"", html, StringComparison.Ordinal);
+        Assert.True(html.IndexOf("data-panel=\"sessions\"", StringComparison.Ordinal) > password);
+    }
+
+    [PostgresFact]
+    public async Task OrganisationsAndRoles_ShowTheRoleAsTheApplicationNamedIt_AndOfferToLeave()
+    {
+        using (IServiceScope scope = _factory.Services.CreateScope())
+        {
+            Sangam.Identity.Infrastructure.Persistence.SangamDbContext db = scope.ServiceProvider.GetRequiredService<Sangam.Identity.Infrastructure.Persistence.SangamDbContext>();
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            Guid orgId = Guid.NewGuid();
+            db.Organisations.Add(new Sangam.Identity.Domain.Entities.Organisation { Id = orgId, Name = "Apulki Medical Center", OrgTypeCode = "hospital", Path = Sangam.Identity.Domain.Entities.OrganisationPath.ForRoot(orgId), RegisteredViaAppId = _appId, CreatedAt = now, UpdatedAt = now });
+            Sangam.Identity.Domain.Entities.Role role = new() { Id = Guid.NewGuid(), AppId = _appId, Code = "doc", DisplayName = "Doctor", CreatedAt = now };
+            db.Roles.Add(role);
+            db.OrgMemberships.Add(new Sangam.Identity.Domain.Entities.OrgMembership { Id = Guid.NewGuid(), UserId = PortalFactory.UserId, OrgId = orgId, AppId = _appId, RoleId = role.Id, GrantedAt = now, ExpiresAt = now.AddDays(12) });
+            await db.SaveChangesAsync();
+        }
+
+        string html = System.Net.WebUtility.HtmlDecode(await GetAsync("/roles"));
+        Assert.Contains("Apulki Medical Center", html, StringComparison.Ordinal);
+        Assert.Contains(">Doctor<", html, StringComparison.Ordinal);
+        Assert.Contains("as named by LiPi HIS", html, StringComparison.Ordinal);
+        Assert.DoesNotContain(">doc<", html, StringComparison.Ordinal);
+        Assert.Contains("Leave organisation", html, StringComparison.Ordinal);
+
+        // A role ending within 30 days is said on the overview too.
+        Assert.Contains("data-panel=\"ending-soon\"", await GetAsync("/"), StringComparison.Ordinal);
     }
 
     [PostgresFact]
@@ -87,6 +146,9 @@ public sealed class PortalScreenTests : IClassFixture<PortalFactory>, IAsyncLife
     public async Task Audit_NarratesEventsAndOffersTheRangeSelector()
     {
         string html = await GetAsync("/audit");
+        // rc.10 (P5): Activity, filtered by kind.
+        Assert.Contains("Changed by someone else", html, StringComparison.Ordinal);
+        Assert.Contains("Apps &amp; permissions", html, StringComparison.Ordinal);
 
         Assert.Contains("You signed in with your password.", html, StringComparison.Ordinal);
         Assert.Contains("30 days", html, StringComparison.Ordinal);
@@ -102,10 +164,11 @@ public sealed class PortalScreenTests : IClassFixture<PortalFactory>, IAsyncLife
         Assert.Contains("Download my data", html, StringComparison.Ordinal);
         Assert.Contains("Delete your account", html, StringComparison.Ordinal);
         Assert.Contains("30 days", html, StringComparison.Ordinal);
-        Assert.Contains("How you sign in", html, StringComparison.Ordinal);
-        Assert.Contains("href=\"https://id.example.invalid/account/passkeys\"", html, StringComparison.Ordinal);
-        Assert.Contains("Add a passkey", html, StringComparison.Ordinal);
+        Assert.Contains("data-panel=\"merge\"", html, StringComparison.Ordinal);
         Assert.Contains("href=\"https://id.example.invalid/account/mobile\"", html, StringComparison.Ordinal);
+        // rc.10 (P6): how you sign in is on Sign-in & security now, and deleting comes last.
+        Assert.DoesNotContain("data-way=", html, StringComparison.Ordinal);
+        Assert.True(html.IndexOf("Delete your account", StringComparison.Ordinal) > html.IndexOf("Download my data", StringComparison.Ordinal));
         Assert.DoesNotContain("argon2", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("SecurityStamp", html, StringComparison.OrdinalIgnoreCase);
     }
@@ -138,7 +201,7 @@ public sealed class PortalScreenTests : IClassFixture<PortalFactory>, IAsyncLife
     [PostgresFact]
     public async Task PagesAreInteractive_SoButtonsActuallyWork()
     {
-        foreach (string path in new[] { "/", "/apps", "/devices", "/audit", "/profile" })
+        foreach (string path in new[] { "/", "/apps", "/security", "/roles", "/activity", "/profile" })
         {
             string html = await GetAsync(path);
             // Look only in the body: the <head> outlet is interactive too and carries the same

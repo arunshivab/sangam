@@ -24,6 +24,15 @@ public interface IPortalService
     /// <summary>A page of the user's audit trail within <paramref name="since"/>.</summary>
     Task<AuditPage> GetAuditAsync(Guid userId, DateTimeOffset? since, int page, int pageSize, CancellationToken cancellationToken = default);
 
+    /// <summary>rc.10 (P5): a page of the person's Activity, narrowed to one kind of event.</summary>
+    /// <param name="userId">The person.</param>
+    /// <param name="since">Only events from this time on; everything when absent.</param>
+    /// <param name="filter">Which events.</param>
+    /// <param name="page">Zero-based page.</param>
+    /// <param name="pageSize">Lines a page.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<AuditPage> GetActivityAsync(Guid userId, DateTimeOffset? since, ActivityFilter filter, int page, int pageSize, CancellationToken cancellationToken = default);
+
     /// <summary>Everything Sangam holds about the user, as indented JSON (DPDPA portability).</summary>
     Task<string> ExportAsync(Guid userId, string? ipAddress, CancellationToken cancellationToken = default);
 

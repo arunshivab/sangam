@@ -96,6 +96,16 @@ builder.Services.AddAuthentication(options =>
         o.Scope.Add(SangamScopes.Email);
         o.TokenValidationParameters.NameClaimType = Claims.Name;
         o.TokenValidationParameters.RoleClaimType = Claims.Role;
+        // rc.10: keep how and when the administrator signed in; the gate opens only for a two-step sign-in.
+        o.ClaimActions.Remove("acr");
+        o.ClaimActions.Remove("amr");
+        o.ClaimActions.Remove("auth_time");
+        // rc.10: every partner console sign-in asks for two-step sign-in (a passkey counts).
+        o.Events.OnRedirectToIdentityProvider = context =>
+        {
+            context.ProtocolMessage.AcrValues = SangamAcr.TwoFactor;
+            return Task.CompletedTask;
+        };
     });
 
 builder.Services.AddAntiforgery(o =>
@@ -155,9 +165,19 @@ app.MapGet("/signout", (HttpContext context) =>
 })
     .AllowAnonymous();
 
+// rc.10: "Sign in again", and the way through the gate for a session that was not signed in with two-step sign-in.
+app.MapGet("/reauth", (string? returnUrl) => Results.Challenge(
+    new OpenIdConnectChallengeProperties
+    {
+        RedirectUri = Sangam.Web.Shared.Security.RecentSignIn.LocalReturn(returnUrl, "/"),
+        MaxAge = TimeSpan.Zero,
+    },
+    [OpenIdConnectDefaults.AuthenticationScheme]))
+    .AllowAnonymous();
+
 // PR-32 (CAP-110): an application's evidence pack, as a download. The form carries the antiforgery token (checked by
 // the framework for form-bound endpoints); the console's own gate is repeated here: signed in, an authenticator
-// enrolled, and administering the application (the service checks the rank).
+// enrolled, this session signed in with two-step sign-in (rc.10), and administering the application (the service checks the rank).
 app.MapPost("/apps/{appId:guid}/evidence", async (Guid appId, [Microsoft.AspNetCore.Mvc.FromForm] string from, [Microsoft.AspNetCore.Mvc.FromForm] string to, HttpContext context, IMfaService mfa, IEvidencePackService evidence, CancellationToken cancellationToken) =>
 {
     if (SignedInUser.Id(context.User) is not Guid userId)
@@ -165,7 +185,7 @@ app.MapPost("/apps/{appId:guid}/evidence", async (Guid appId, [Microsoft.AspNetC
         return Results.Unauthorized();
     }
 
-    if (!await mfa.IsEnrolledAsync(userId, cancellationToken).ConfigureAwait(false))
+    if (!await mfa.IsEnrolledAsync(userId, cancellationToken).ConfigureAwait(false) || !Sangam.Web.Shared.Security.ConsoleSession.IsTwoStep(context.User))
     {
         return Results.Forbid();
     }

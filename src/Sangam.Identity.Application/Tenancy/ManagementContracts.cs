@@ -115,6 +115,10 @@ public sealed record ManagementActor(AuditActorType Type, Guid? UserId)
     /// <param name="userId">Their Sangam user id.</param>
     public static ManagementActor AppAdmin(Guid userId) => new(AuditActorType.Admin, userId);
 
+    /// <summary>rc.10 (P4): the person themselves, ending their own roles from their portal.</summary>
+    /// <param name="userId">Their Sangam user id.</param>
+    public static ManagementActor Self(Guid userId) => new(AuditActorType.User, userId);
+
     /// <summary>The person themselves, accepting an invitation the application sent through the API (rc.5).</summary>
     /// <param name="userId">Their Sangam user id.</param>
     public static ManagementActor Person(Guid userId) => new(AuditActorType.User, userId);

@@ -1,28 +1,12 @@
 @inherits LayoutComponentBase
 
 <OperatorGate PortalUrl="@PortalUrl">
-    <div class="sg-console">
-      <header class="sg-bar">
-        <span class="sg-bar-brand">sangam <span class="sg-bar-scope">@L["console"]</span></span>
-        <nav class="sg-bar-nav">
-          <NavLink class="sg-bar-link" ActiveClass="sg-bar-link--on" href="/" Match="NavLinkMatch.All">@L["Users"]</NavLink>
-          <NavLink class="sg-bar-link" ActiveClass="sg-bar-link--on" href="/apps">@L["Applications"]</NavLink>
-          <NavLink class="sg-bar-link" ActiveClass="sg-bar-link--on" href="/operators">@L["Operators"]</NavLink>
-          <NavLink class="sg-bar-link" ActiveClass="sg-bar-link--on" href="/customisation">@L["Defaults"]</NavLink>
-          <NavLink class="sg-bar-link" ActiveClass="sg-bar-link--on" href="/grievances">@L["Grievances"]</NavLink>
-          <NavLink class="sg-bar-link" ActiveClass="sg-bar-link--on" href="/recoveries">@L["Recoveries"]</NavLink>
-          <NavLink class="sg-bar-link" ActiveClass="sg-bar-link--on" href="/monitoring">@L["Monitoring"]</NavLink>
-        </nav>
-        <ConsoleWho />
-      </header>
-      <main class="sg-main">@Body</main>
-    </div>
+  <ConsoleShell>@Body</ConsoleShell>
 </OperatorGate>
-<footer class="sg-lang-footer"><LanguagePicker /></footer>
 
 @code {
     [Inject]
     private IConfiguration Configuration { get; set; } = null!;
 
-    private string PortalUrl => (Configuration["Sangam:PortalUrl"] ?? "https://account.sangamid.in") + "/profile";
+    private string PortalUrl => (Configuration["Sangam:PortalUrl"] ?? "https://account.sangamid.in") + "/security";
 }

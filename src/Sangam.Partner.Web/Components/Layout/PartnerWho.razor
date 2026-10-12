@@ -1,10 +1,11 @@
-<span class="sg-bar-who">
+<div class="sg-side-foot">
   @if (Context is not null)
   {
-    <span class="sg-bar-name">@Context.Name</span>
+    <span class="sg-name">@Context.Name</span>
   }
-  <a class="sg-bar-out" href="/signout">@L["Sign out"]</a>
-</span>
+  <a class="sg-side-out" href="/signout">@L["Sign out"]</a>
+  <LanguagePicker />
+</div>
 
 @code {
     /// <summary>The signed-in administrator, cascaded by the gate.</summary>

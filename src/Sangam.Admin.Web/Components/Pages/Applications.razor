@@ -1,7 +1,7 @@
 @page "/apps"
 @inject IAdminService Admin
 
-<PageTitle>@L["Applications · Sangam console"]</PageTitle>
+<PageTitle>@L["Applications · Operator console"]</PageTitle>
 
 <h1 class="sg-h1">@L["Applications"]</h1>
 <p class="sg-lede">@L.Markup("Every application registered with Sangam. Disabling one stops all of its sign-ins at once; it does not reach inside the application's own data. {0} are the application's own staff who manage it on the partner console; an application with none cannot be managed by its partner yet. Those marked {1} are Sangam's own and can neither be disabled nor handed to a partner here.", LocalizedMarkup.Tag("em", L["Partner owners"]), LocalizedMarkup.Tag("em", L["platform"]))</p>
@@ -15,19 +15,21 @@ else
 {
   <div class="sg-table-wrap" tabindex="0" role="region" aria-label="@L["Applications"]">
     <table class="sg-table">
-      <thead><tr><th>@L["Application"]</th><th>@L["Client id"]</th><th>@L["Sign-in rule"]</th><th>@L["Users"]</th><th>@L["Orgs"]</th><th>@L["Partner owners"]</th><th>@L["Status"]</th><th></th></tr></thead>
+      <thead><tr><th>@L["Application"]</th><th>@L["Operated by"]</th><th>@L["People"]</th><th>@L["Sign-in rule"]</th><th>@L["Client secret"]</th><th>@L["Status"]</th><th></th></tr></thead>
       <tbody>
         @foreach (AdminAppRow row in _rows)
         {
           <tr>
-            <td><span class="sg-name">@row.DisplayName</span><span class="sg-sub">@row.OwnerCompanyName</span></td>
-            <td class="sg-mono">@row.ClientId</td>
-            <td>@PolicyName(row.SignInPolicy)</td>
-            <td>@row.Users</td>
-            <td>@row.Organisations</td>
-            <td>@if (row.IsPlatform) { <span class="sg-muted">—</span> } else if (row.PartnerOwners == 0) { <span class="sg-warn-text">@L["none"]</span> } else { @row.PartnerOwners }</td>
-            <td><span class="sg-pill sg-pill--@row.Status.ToString().ToLowerInvariant()">@(row.Status == AppStatus.Active ? L["active"] : L["disabled"])</span></td>
+            <td><span class="sg-name">@row.DisplayName</span><span class="sg-sub sg-mono">@row.ClientId</span></td>
             <td>
+              <span class="sg-name">@row.OwnerCompanyName</span>
+              <span class="sg-sub">@if (row.IsPlatform) { @L["Sangam's own"] } else if (row.PartnerOwners == 0) { <span class="sg-warn-text">@L["no partner owner yet"]</span> } else { @L["{0} partner owners", row.PartnerOwners] }</span>
+            </td>
+            <td><span class="sg-name">@L["{0} people", row.Users]</span><span class="sg-sub">@L["{0} organisations", row.Organisations]</span></td>
+            <td>@PolicyName(row.SignInPolicy)</td>
+            <td data-cell="secret">@SecretText(row)</td>
+            <td><span class="sg-pill sg-pill--@row.Status.ToString().ToLowerInvariant()">@(row.Status == AppStatus.Active ? L["active"] : L["disabled"])</span></td>
+            <td class="sg-row-actions-cell">
               @if (row.IsPlatform)
               {
                 <span class="sg-pill sg-pill--platform" title="@L["Part of Sangam itself: never disabled here, never given partner owners"]">@L["platform"]</span>
@@ -196,12 +198,36 @@ else
         await LoadAsync();
     }
 
+    // rc.10: a secret's age, flagged after a year (founder decision, 12 Oct 2026). Sangam records the date from rc.10 on.
+    private RenderFragment SecretText(AdminAppRow row) => builder =>
+    {
+        if (row.HasSecret == false)
+        {
+            builder.AddContent(0, L["None (public client)"]);
+        }
+        else if (row.SecretSetAt is not DateTimeOffset set)
+        {
+            builder.AddContent(1, row.HasSecret == true ? L["Set before rc.10; date not recorded"] : "—");
+        }
+        else if (row.SecretIsOld(DateTimeOffset.UtcNow))
+        {
+            builder.OpenElement(2, "span");
+            builder.AddAttribute(3, "class", "sg-warn-text");
+            builder.AddContent(4, L["Over a year old · plan a change (set {0})", IndiaTime.Date(set)]);
+            builder.CloseElement();
+        }
+        else
+        {
+            builder.AddContent(5, L["Set on {0}", IndiaTime.Date(set)]);
+        }
+    };
+
     // The same words the partner console uses for the same rules.
     private string PolicyName(SignInPolicy policy) => policy switch
     {
         SignInPolicy.Password => L["Password only"],
         SignInPolicy.OtpOnly => L["Email code only"],
-        SignInPolicy.PasswordAndOtp => L["Always two-step"],
+        SignInPolicy.PasswordAndOtp => L["Two-step sign-in every time"],
         _ => L["Each person's choice"],
     };
 }

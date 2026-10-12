@@ -1,0 +1,89 @@
+@inject NavigationManager Nav
+@implements IDisposable
+
+@* rc.10 (R-shell): the application switcher, then the chosen application's sections grouped by job. Only the
+   applications this person administers are ever listed. *@
+@if (Context is not null)
+{
+  <nav class="sg-side-nav" aria-label="@L["Partner console"]">
+    <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="/" Match="NavLinkMatch.All">@L["All your applications"]</NavLink>
+    @if (Context.Apps.Count > 0)
+    {
+      <details class="sg-switch" data-panel="app-switcher">
+        <summary>
+          @if (Current is PartnerAppRow chosen)
+          {
+            <span class="sg-tile-glyph sg-tile-glyph--small" style="background:@chosen.BrandColour" aria-hidden="true">@chosen.Glyph</span>
+            <span class="sg-tile-text"><span class="sg-name">@chosen.DisplayName</span><span class="sg-sub">@RoleText(chosen.Role)</span></span>
+          }
+          else
+          {
+            <span class="sg-tile-text"><span class="sg-name">@L["Choose an application"]</span></span>
+          }
+        </summary>
+        <ul class="sg-switch-list">
+          @foreach (PartnerAppRow app in Context.Apps)
+          {
+            <li>
+              <a href="@($"/apps/{app.AppId:D}")" aria-current="@(app.AppId == Current?.AppId ? "page" : null)">
+                <span class="sg-tile-glyph sg-tile-glyph--small" style="background:@app.BrandColour" aria-hidden="true">@app.Glyph</span>
+                <span class="sg-tile-text"><span class="sg-name">@app.DisplayName</span><span class="sg-sub">@RoleText(app.Role)</span></span>
+              </a>
+            </li>
+          }
+        </ul>
+      </details>
+    }
+    @if (Current is PartnerAppRow current)
+    {
+      <p class="sg-side-group">@L["Application"]</p>
+      <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@Link(current, null)" Match="NavLinkMatch.All">@L["Overview"]</NavLink>
+      <p class="sg-side-group">@L["Access"]</p>
+      <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@Link(current, "people")">@L["Organisations & people"]</NavLink>
+      <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@Link(current, "roles")">@L["Roles"]</NavLink>
+      @if (current.Role == AppAdminRole.Owner)
+      {
+        <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@Link(current, "admins")">@L["Administrators"]</NavLink>
+      }
+      <p class="sg-side-group">@L["Sign-in"]</p>
+      <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@Link(current, "settings")">@L["Sign-in rules & branding"]</NavLink>
+      <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@Link(current, "messages")">@L["Messages"]</NavLink>
+      <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@Link(current, "attributes")">@L["Attributes & claims"]</NavLink>
+      <p class="sg-side-group">@L["Integration"]</p>
+      <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@Link(current, "provisioning")">@L["Provisioning"]</NavLink>
+      <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@Link(current, "webhooks")">@L["Webhooks"]</NavLink>
+      <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@Link(current, "evidence")">@L["Compliance evidence"]</NavLink>
+    }
+  </nav>
+}
+
+@code {
+    /// <summary>The signed-in administrator, cascaded by the gate.</summary>
+    [CascadingParameter]
+    public PartnerContext? Context { get; set; }
+
+    /// <summary>The application in the address, when it is one this person administers.</summary>
+    private PartnerAppRow? Current
+    {
+        get
+        {
+            string path = "/" + Nav.ToBaseRelativePath(Nav.Uri).Split('?', '#')[0];
+            string[] parts = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            return parts.Length >= 2 && parts[0] == "apps" && Guid.TryParse(parts[1], out Guid id)
+                ? Context?.Apps.FirstOrDefault(a => a.AppId == id)
+                : null;
+        }
+    }
+
+    /// <inheritdoc />
+    protected override void OnInitialized() => Nav.LocationChanged += OnLocationChanged;
+
+    /// <inheritdoc />
+    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) => InvokeAsync(StateHasChanged);
+
+    private static string Link(PartnerAppRow app, string? section) => section is null ? $"/apps/{app.AppId:D}" : $"/apps/{app.AppId:D}/{section}";
+
+    private string RoleText(AppAdminRole role) => role == AppAdminRole.Owner ? L["Owner"] : L["Administrator"];
+}

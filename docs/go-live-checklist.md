@@ -396,3 +396,19 @@ The founder's answers of 11 October 2026 on the remaining ASVS Level 2 gaps:
 - [ ] **Operator console off the internet (OI-059):** from outside the VM, `https://admin.sangamid.in/` and
       `https://admin.sangamid.in:8443/` do not answer; through the tunnel the console opens; `ss -tlnp` shows only 22,
       80 and 443 on the public address; the SSH settings allow forwarding to `127.0.0.1:8443` only.
+
+## Added by rc.10 (v1.0.0-rc.10)
+
+The founder's design review of 12 October 2026 (`docs/design/rc10-standards.md`):
+
+- [ ] **Two-step console sessions:** every operator and partner administrator signs in to their console with an
+      authenticator app or a passkey; a session signed in with a password alone is refused with "Sign in again with
+      two-step sign-in".
+- [ ] **Region on the strip:** `Sangam:Region` is right (unset means `India`) and the operator console's strip reads
+      `PRODUCTION · India` in production; staging shows its own colour.
+- [ ] **Client secrets:** applications registered before rc.10 show "date not recorded"; change each confidential
+      application's secret once so its age is known (the registry warns after 12 months).
+- [ ] **Leave organisation:** on a copy, leave an organisation as a test person; the confirmation lists the roles,
+      the last organisation administrator is kept, and both e-mails arrive (`OrganisationLeft`,
+      `OrganisationMemberLeft`).
+- [ ] **Languages:** a native Hindi and Malayalam speaker reviews the new strings of the three reworked surfaces.

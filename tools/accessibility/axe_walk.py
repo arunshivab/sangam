@@ -314,19 +314,23 @@ with sync_playwright() as p:
         pg.goto(B + req['ceremonyPath']); shot('sign-record')
 
         # Account portal.
-        for path, name in [('/', 'portal-overview'), ('/apps', 'portal-connected-apps'), ('/devices', 'portal-devices'), ('/audit', 'portal-audit-log'), ('/profile', 'portal-personal-details')]:
+        # rc.10: the portal's six tabs.
+        for path, name in [('/', 'portal-overview'), ('/apps', 'portal-apps'), ('/security', 'portal-sign-in-and-security'), ('/roles', 'portal-organisations-and-roles'),
+                           ('/activity', 'portal-activity'), ('/profile', 'portal-profile-and-data')]:
             pg.goto(PORTAL + path); login(pg, owner, None, mfa=True) if '/login' in pg.url else None
             if not pg.url.startswith(PORTAL):
                 pg.goto(PORTAL + path)
             shot(name, blazor=True)
         # Operator console.
-        for path, name in [('/', 'admin-users'), (f'/users/{person_id}', 'admin-user-detail'), ('/apps', 'admin-applications'), ('/operators', 'admin-operators'), ('/customisation', 'admin-defaults'), ('/monitoring', 'admin-monitoring'), ('/grievances', 'admin-grievances'), (f'/grievances/{gid}', 'admin-grievance-record'), ('/apps/saml', 'admin-saml-providers')]:
+        # rc.10: the owner's platform overview, the paged users list and the work queue.
+        for path, name in [('/', 'admin-overview'), ('/users', 'admin-users'), ('/queue', 'admin-work-queue'), ('/recoveries', 'admin-recovery-requests'), (f'/users/{person_id}', 'admin-user-detail'), ('/apps', 'admin-applications'), ('/operators', 'admin-operators'), ('/customisation', 'admin-branding-and-messages'), ('/monitoring', 'admin-monitoring'), ('/grievances', 'admin-grievances'), (f'/grievances/{gid}', 'admin-grievance-record'), ('/apps/saml', 'admin-saml-providers')]:
             pg.goto(ADMIN + path)
             if '/login' in pg.url:
                 login(pg, owner, pg.url, mfa=True); pg.goto(ADMIN + path)
             shot(name, blazor=True)
         # Partner console.
-        for path, name in [('/', 'partner-home'), (f'/apps/{app_id}', 'partner-organisations'), (f'/apps/{app_id}/roles', 'partner-roles'),
+        # rc.10: an application opens on its overview; organisations and people have their own address.
+        for path, name in [('/', 'partner-home'), (f'/apps/{app_id}', 'partner-overview'), (f'/apps/{app_id}/people', 'partner-organisations'), (f'/apps/{app_id}/roles', 'partner-roles'),
                            (f'/apps/{app_id}/admins', 'partner-administrators'), (f'/apps/{app_id}/settings', 'partner-settings'), (f'/apps/{app_id}/messages', 'partner-messages')]:
             pg.goto(PARTNER + path)
             if '/login' in pg.url:
@@ -334,7 +338,7 @@ with sync_playwright() as p:
             shot(name, blazor=True)
         # rc.2: add an organisation and select it, so the people panel and its editors render (before rc.1 this ended the
         # circuit), then open the invitation form.
-        pg.goto(PARTNER + f'/apps/{app_id}')
+        pg.goto(PARTNER + f'/apps/{app_id}/people')
         pg.wait_for_load_state('networkidle'); pg.wait_for_timeout(1200)
         org_name = f'Walk Hospital {uuid.uuid4().hex[:6]}'
         pg.fill('#org-name', org_name); pg.select_option('#org-type', index=1); pg.wait_for_timeout(300)

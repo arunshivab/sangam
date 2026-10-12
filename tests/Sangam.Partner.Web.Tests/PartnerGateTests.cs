@@ -79,7 +79,7 @@ public sealed class PartnerGateTests : IClassFixture<PartnerFactory>
 
         string html = await GetAsync(owner, "/");
         Assert.Contains("Set up two-step sign-in first", html, StringComparison.Ordinal);
-        Assert.Contains("https://account.example.invalid/profile", html, StringComparison.Ordinal);
+        Assert.Contains("https://account.example.invalid/security", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Enrol HIS", html, StringComparison.Ordinal);
     }
 
@@ -152,13 +152,13 @@ public sealed class PartnerGateTests : IClassFixture<PartnerFactory>
         // Text now comes from the catalogue and is HTML-encoded ("person&#x27;s"); compare what a reader sees.
         string html = System.Net.WebUtility.HtmlDecode(await GetAsync(admin, $"/apps/{app:D}/settings"));
         Assert.Contains("Each person's own choice", html, StringComparison.Ordinal);
-        Assert.Contains("Always two-step", html, StringComparison.Ordinal);
+        Assert.Contains("Two-step sign-in every time", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Password only", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Email code only", html, StringComparison.Ordinal);
 
         // PR-16: passkey only, and the password and second-factor policy, with what is not yet available said plainly.
         Assert.Contains("Passkey only", html, StringComparison.Ordinal);
-        Assert.Contains("Passwords and second factor", html, StringComparison.Ordinal);
+        Assert.Contains("Passwords and two-step sign-in", html, StringComparison.Ordinal);
         Assert.Contains("Shortest password allowed", html, StringComparison.Ordinal);
         Assert.Contains("Required for this application", html, StringComparison.Ordinal);
         // rc.5: the breached-password check is on for everyone by default, so it shows as required by the platform;
@@ -179,7 +179,7 @@ public sealed class PartnerGateTests : IClassFixture<PartnerFactory>
         string html = await GetAsync(admin, $"/apps/{app:D}/settings");
         Assert.Contains("Email code only, no password", html, StringComparison.Ordinal);
         Assert.Contains("set by Sangam", html, StringComparison.Ordinal);
-        Assert.Contains("Always two-step", html, StringComparison.Ordinal);
+        Assert.Contains("Two-step sign-in every time", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Each person's own choice", html, StringComparison.Ordinal);
     }
 
@@ -220,6 +220,45 @@ public sealed class PartnerGateTests : IClassFixture<PartnerFactory>
 
     private static string[] Paths(Guid app)
         => ["/", $"/apps/{app:D}", $"/apps/{app:D}/roles", $"/apps/{app:D}/admins", $"/apps/{app:D}/settings", $"/apps/{app:D}/messages"];
+
+    [PostgresFact]
+    public async Task AnApplication_OpensOnItsOverview_WithTheChecklistAndHealth_AndTheSidebarSections()
+    {
+        // rc.10 (R1, R2).
+        Guid app = await _factory.SeedAppAsync("Overview HIS");
+        Guid owner = await _factory.SeedUserAsync(mfa: true, "Owner");
+        await _factory.MakeAdminAsync(app, owner, AppAdminRole.Owner);
+
+        string home = System.Net.WebUtility.HtmlDecode(await GetAsync(owner, "/"));
+        Assert.Contains("data-panel=\"apps\"", home, StringComparison.Ordinal);
+        Assert.Contains("1 people · 0 organisations", home, StringComparison.Ordinal);
+
+        string overview = System.Net.WebUtility.HtmlDecode(await GetAsync(owner, $"/apps/{app:D}"));
+        Assert.Contains("data-panel=\"go-live\"", overview, StringComparison.Ordinal);
+        Assert.Contains("data-panel=\"health\"", overview, StringComparison.Ordinal);
+        Assert.Contains("Roles are defined", overview, StringComparison.Ordinal);
+        Assert.Contains("Sangam knows where to end sessions", overview, StringComparison.Ordinal);
+        Assert.Contains("data-panel=\"app-switcher\"", overview, StringComparison.Ordinal);
+        foreach (string section in new[] { "people", "roles", "admins", "settings", "messages", "attributes", "provisioning", "webhooks", "evidence" })
+        {
+            Assert.Contains($"href=\"/apps/{app:D}/{section}\"", overview, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("Compliance evidence", overview, StringComparison.Ordinal);
+    }
+
+    [PostgresFact]
+    public async Task ASessionNotSignedInWithTwoStep_IsAskedToSignInAgain()
+    {
+        Guid app = await _factory.SeedAppAsync("Weak HIS");
+        Guid owner = await _factory.SeedUserAsync(mfa: true, "Owner");
+        await _factory.MakeAdminAsync(app, owner, AppAdminRole.Owner);
+
+        using HttpClient client = _factory.ClientFor(owner, "urn:sangam:acr:1");
+        string html = await client.GetStringAsync(new Uri($"/apps/{app:D}", UriKind.Relative));
+        Assert.Contains("data-panel=\"two-step-required\"", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Weak HIS", html, StringComparison.Ordinal);
+    }
 
     private async Task<string> GetAsync(Guid userId, string path)
     {

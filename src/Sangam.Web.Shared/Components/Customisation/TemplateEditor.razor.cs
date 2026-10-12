@@ -126,6 +126,8 @@ public partial class TemplateEditor : ComponentBase
         MessageTemplateKinds.AccountMergeRequested => L["E-mail: two accounts are about to be merged, with a link to cancel"],
         MessageTemplateKinds.AccountMerged => L["E-mail: the accounts are merged"],
         MessageTemplateKinds.AppAdminMerged => L["E-mail: an administrator merged their accounts and the role moved"],
+        MessageTemplateKinds.OrganisationLeft => L["E-mail: you left an organisation"],
+        MessageTemplateKinds.OrganisationMemberLeft => L["E-mail: someone left your organisation"],
         MessageTemplateKinds.OperatorAlert => L["E-mail: alert to the platform owner"],
         MessageTemplateKinds.GrievanceAcknowledgement => L["E-mail: acknowledgement of a grievance"],
         MessageTemplateKinds.GrievanceResolution => L["E-mail: the answer to a grievance"],

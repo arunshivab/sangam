@@ -1,22 +1,49 @@
 @page "/"
+@inject IPartnerService Partners
 
 <PageTitle>@L["Your applications · Sangam partners"]</PageTitle>
 
 <h1 class="sg-h1">@L["Your applications"]</h1>
-<p class="sg-lede">@L["The applications on Sangam you help run. Everything you change here is recorded in your name, and people see in their own Sangam activity log when their roles change."]</p>
+<p class="sg-lede">@L["The applications on Sangam you help run. Everything you change here is recorded in your name, and people see in their own Sangam Activity when their roles change."]</p>
 
 @if (Context is not null)
 {
-  <ul class="sg-tiles">
-    @foreach (PartnerAppRow app in Context.Apps)
+  @* rc.10 (R1): an application that needs action comes first. *@
+  <ul class="sg-tiles" data-panel="apps">
+    @foreach (PartnerAppRow app in Ordered)
     {
+      PartnerAppOverview? o = _overviews.GetValueOrDefault(app.AppId);
       <li>
         <a class="sg-tile" href="@($"/apps/{app.AppId:D}")">
-          <span class="sg-tile-glyph" style="background:@app.BrandColour">@app.Glyph</span>
-          <span class="sg-tile-text">
-            <span class="sg-name">@app.DisplayName</span>
-            <span class="sg-sub">@(app.Role == AppAdminRole.Owner ? L["Owner"] : L["Administrator"])@(app.Status == AppStatus.Active ? string.Empty : " · " + L["disabled by Sangam"])</span>
+          <span class="sg-tile-head">
+            <span class="sg-tile-glyph" style="background:@app.BrandColour" aria-hidden="true">@app.Glyph</span>
+            <span class="sg-tile-text">
+              <span class="sg-name">@app.DisplayName</span>
+              <span class="sg-sub">@(app.Role == AppAdminRole.Owner ? L["Owner"] : L["Administrator"])</span>
+            </span>
           </span>
+          @if (o is not null)
+          {
+            <ul class="sg-tile-lines">
+              @if (app.Status != AppStatus.Active)
+              {
+                <li><span class="sg-dot sg-dot--danger" aria-hidden="true"></span>@L["Disabled by Sangam: nobody can sign in"]</li>
+              }
+              <li><span class="sg-dot" aria-hidden="true"></span>@L["{0} people · {1} organisations", o.People, o.Organisations]</li>
+              @if (o.ProvisioningFailing || o.WebhooksFailing > 0)
+              {
+                <li><span class="sg-dot sg-dot--danger" aria-hidden="true"></span>@L["An integration is failing"]</li>
+              }
+              else
+              {
+                <li><span class="sg-dot sg-dot--ok" aria-hidden="true"></span>@L["{0} used it in the last 24 hours", o.SignIns24h]</li>
+              }
+              @if (o.SecretIsOld(DateTimeOffset.UtcNow))
+              {
+                <li><span class="sg-dot sg-dot--warn" aria-hidden="true"></span>@L["Client secret over a year old"]</li>
+              }
+            </ul>
+          }
         </a>
       </li>
     }
@@ -27,4 +54,27 @@
     /// <summary>The signed-in administrator.</summary>
     [CascadingParameter]
     public PartnerContext? Context { get; set; }
+
+    private readonly Dictionary<Guid, PartnerAppOverview> _overviews = [];
+
+    private IEnumerable<PartnerAppRow> Ordered => (Context?.Apps ?? [])
+        .OrderBy(a => _overviews.TryGetValue(a.AppId, out PartnerAppOverview? o) && o.NeedsAction(DateTimeOffset.UtcNow) ? 0 : 1)
+        .ThenBy(a => a.DisplayName, StringComparer.CurrentCulture);
+
+    /// <inheritdoc />
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Context is null)
+        {
+            return;
+        }
+
+        foreach (PartnerAppRow app in Context.Apps)
+        {
+            if (await Partners.GetOverviewAsync(Context.UserId, app.AppId) is PartnerAppOverview overview)
+            {
+                _overviews[app.AppId] = overview;
+            }
+        }
+    }
 }

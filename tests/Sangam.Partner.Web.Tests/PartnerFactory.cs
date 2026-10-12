@@ -24,6 +24,9 @@ public sealed class PartnerFactory : WebApplicationFactory<Program>
     public const string SchemeName = "TestPartner";
     public const string UserHeader = "X-Test-User";
 
+    /// <summary>rc.10: the sign-in level the stub claims (acr); two-step sign-in unless a test says otherwise.</summary>
+    public const string LevelHeader = "X-Test-Acr";
+
     public static string? TestConnection => Environment.GetEnvironmentVariable(ConnectionEnvironmentVariable);
 
     public static bool HasDatabase => !string.IsNullOrWhiteSpace(TestConnection);
@@ -147,11 +150,16 @@ public sealed class PartnerFactory : WebApplicationFactory<Program>
         await db.SaveChangesAsync();
     }
 
-    /// <summary>A client that is signed in as <paramref name="userId"/>.</summary>
-    public HttpClient ClientFor(Guid userId)
+    /// <summary>A client that is signed in as <paramref name="userId"/>, with two-step sign-in unless <paramref name="acr"/> says otherwise.</summary>
+    public HttpClient ClientFor(Guid userId, string? acr = null)
     {
         HttpClient client = CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         client.DefaultRequestHeaders.Add(UserHeader, userId.ToString("D"));
+        if (acr is not null)
+        {
+            client.DefaultRequestHeaders.Add(LevelHeader, acr);
+        }
+
         return client;
     }
 
@@ -172,6 +180,7 @@ public sealed class PartnerFactory : WebApplicationFactory<Program>
             ClaimsIdentity identity = new(
             [
                 new Claim("sub", value.ToString()),
+                new Claim("acr", Request.Headers.TryGetValue(LevelHeader, out Microsoft.Extensions.Primitives.StringValues level) ? level.ToString() : "urn:sangam:acr:2"),
                 new Claim("name", "Test Partner"),
             ], SchemeName, "name", "role");
 

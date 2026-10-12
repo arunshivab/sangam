@@ -604,6 +604,10 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("require_identity_verification");
 
+                    b.Property<DateTimeOffset?>("SecretSetAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("secret_set_at");
+
                     b.Property<string>("SignInPolicy")
                         .IsRequired()
                         .HasMaxLength(20)

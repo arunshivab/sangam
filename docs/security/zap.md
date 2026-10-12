@@ -6,7 +6,7 @@ security fixes and once after. These scans are internal evidence. They do not re
 
 | Host | Port (development) | Scans |
 |---|---|---|
-| Identity server (`id.`) | 5100 | baseline, authenticated full scan from `/account` |
+| Identity server (`id.`) | 5100 | baseline, authenticated full scan from `/account/password` (`/account` sends the person to the portal since rc.10) |
 | Account portal (`account.`) | 5200 | baseline, authenticated full scan |
 | Operator console (`admin.`) | 5300 | baseline, authenticated full scan |
 | Partner console (`partners.`) | 5400 | baseline, authenticated full scan |
@@ -98,6 +98,6 @@ python3 zap_cookies.py
 docker run --rm --network host -e JAVA_OPTS=-Xmx1536m -v "$PWD:/zap/wrk:rw" ghcr.io/zaproxy/zaproxy:stable \
   zap-baseline.py -t http://localhost:5100/ -m 2 -J baseline-5100.json -r baseline-5100.html -I
 docker run --rm --network host -e JAVA_OPTS=-Xmx1536m -v "$PWD:/zap/wrk:rw" ghcr.io/zaproxy/zaproxy:stable \
-  zap-full-scan.py -t http://localhost:5100/account -m 3 -T 20 -J full-5100.json -r full-5100.html -I \
+  zap-full-scan.py -t http://localhost:5100/account/password -m 3 -T 20 -J full-5100.json -r full-5100.html -I \
   --hook=/zap/wrk/hook.py -z "-config replacer.full_list(0).matchtype=REQ_HEADER -config replacer.full_list(0).matchstr=Cookie ..."
 ```

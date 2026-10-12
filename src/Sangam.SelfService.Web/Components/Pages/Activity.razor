@@ -1,15 +1,23 @@
+@page "/activity"
 @page "/audit"
 @inject IPortalService Portal
 @inject AuthenticationStateProvider AuthProvider
 
-<PageTitle>@L["Audit log · sangam"]</PageTitle>
+@* rc.10 (P5): Activity, filtered by kind; what someone else did is marked with an ochre rule. "/audit" stays for old links. *@
+<PageTitle>@L["Activity · sangam"]</PageTitle>
 
-<PageHeader Title="@L["Audit log"].Value" Subtitle="@L["Everything that has happened on your account, and who did it."].Value" />
+<PageHeader Title="@L["Activity"].Value" Subtitle="@L["Everything that has happened on your account, and who did it."].Value" />
 
-<div class="sg-filters" role="group" aria-label="@L["Time range"]">
+<div class="sg-filters" role="group" aria-label="@L["Show"]">
+  @foreach ((string label, ActivityFilter filter) in Kinds)
+  {
+    <button type="button" class="sg-filter @(_filter == filter ? "sg-filter--active" : "")" aria-pressed="@(_filter == filter ? "true" : "false")" @onclick="() => SetKindAsync(filter)">@label</button>
+  }
+</div>
+<div class="sg-filters sg-filters--range" role="group" aria-label="@L["Time range"]">
   @foreach ((string label, int? days) in Ranges)
   {
-    <button type="button" class="sg-filter @(_days == days ? "sg-filter--active" : "")" @onclick="() => SetRangeAsync(days)">@label</button>
+    <button type="button" class="sg-filter @(_days == days ? "sg-filter--active" : "")" aria-pressed="@(_days == days ? "true" : "false")" @onclick="() => SetRangeAsync(days)">@label</button>
   }
 </div>
 
@@ -26,10 +34,10 @@ else
   <ol class="sg-audit">
     @foreach (AuditLine line in _page.Lines)
     {
-      <li class="sg-audit-row @(line.IsSecuritySensitive ? "sg-audit-row--flagged" : "")">
+      <li class="sg-audit-row @(ByOthers(line) ? "sg-audit-row--others" : "")">
         <span class="sg-audit-when" title="@Relative.Full(line.OccurredAt)">@Relative.Describe(line.OccurredAt, _now)</span>
         <span class="sg-audit-what">
-          <span class="sg-audit-summary">@L[line.Summary]</span>
+          <span class="sg-audit-summary">@L[line.Summary]@if (line.IsSecuritySensitive) { <span class="sg-badge sg-badge--security">@L["Security"]</span> }</span>
           <span class="sg-audit-meta">@L[line.Actor]@(line.IpAddress is null ? "" : " · ")<span class="sg-mono">@line.IpAddress</span></span>
         </span>
       </li>
@@ -44,6 +52,15 @@ else
 }
 
 @code {
+    private (string Label, ActivityFilter Filter)[] Kinds =>
+    [
+        (L["All"], ActivityFilter.All),
+        (L["Sign-ins"], ActivityFilter.SignIns),
+        (L["Apps & permissions"], ActivityFilter.Apps),
+        (L["Roles"], ActivityFilter.Roles),
+        (L["Changed by someone else"], ActivityFilter.ByOthers),
+    ];
+
     private (string Label, int? Days)[] Ranges =>
     [
         (L["30 days"], 30),
@@ -52,8 +69,12 @@ else
         (L["Everything"], null),
     ];
 
+    // The narrator's actor for the person themselves; anything else was done by someone else (rc.10, P5).
+    private static bool ByOthers(AuditLine line) => line.Actor != "You"; // i18n-ignore: the narrator's code, never shown
+
     private AuditPage? _page;
     private int? _days = 90;
+    private ActivityFilter _filter = ActivityFilter.All;
     private Guid _userId;
     private DateTimeOffset _now = DateTimeOffset.UtcNow;
 
@@ -70,10 +91,16 @@ else
         await GoAsync(0);
     }
 
+    private async Task SetKindAsync(ActivityFilter filter)
+    {
+        _filter = filter;
+        await GoAsync(0);
+    }
+
     private async Task GoAsync(int page)
     {
         _now = DateTimeOffset.UtcNow;
         DateTimeOffset? since = _days is int d ? _now.AddDays(-d) : null;
-        _page = _userId == Guid.Empty ? new AuditPage([], 0, 0, 50) : await Portal.GetAuditAsync(_userId, since, page, 50);
+        _page = _userId == Guid.Empty ? new AuditPage([], 0, 0, 50) : await Portal.GetActivityAsync(_userId, since, _filter, page, 50);
     }
 }

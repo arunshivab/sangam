@@ -1,6 +1,7 @@
 @inject IPartnerService Partners
 @inject IMfaService Mfa
 @inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Nav
 
 @if (_state == GateState.Checking)
 {
@@ -15,17 +16,31 @@ else if (_state == GateState.NotAnAdministrator)
         </p>
         <a class="sg-btn sg-btn--secondary" href="/signout">@L["Sign out"]</a>
     </section>
+    <footer class="sg-lang-footer"><LanguagePicker /></footer>
 }
 else if (_state == GateState.MfaRequired)
 {
     <section class="sg-shut">
         <h1 class="sg-shut-title">@L["Set up two-step sign-in first"]</h1>
         <p class="sg-shut-body">
-            @L["Application administrators must have an authenticator app. Open your Sangam account portal, turn on two-step sign-in under Personal details, then sign in here again."]
+            @L["Application administrators must have an authenticator app. Open your Sangam account portal, set one up under Sign-in & security, then sign in here again."]
         </p>
         <a class="sg-btn sg-btn--primary" href="@PortalUrl">@L["Go to your account portal"]</a>
         <a class="sg-btn sg-btn--secondary" href="/signout">@L["Sign out"]</a>
     </section>
+    <footer class="sg-lang-footer"><LanguagePicker /></footer>
+}
+else if (_state == GateState.TwoStepRequired)
+{
+    <section class="sg-shut" data-panel="two-step-required">
+        <h1 class="sg-shut-title">@L["Sign in again with two-step sign-in"]</h1>
+        <p class="sg-shut-body">
+            @L["The partner console opens only for a sign-in that used two-step sign-in or a passkey, and this one did not. Sign in again: Sangam will ask for your authenticator app or your passkey."]
+        </p>
+        <a class="sg-btn sg-btn--primary" href="@ReauthUrl">@L["Sign in again"]</a>
+        <a class="sg-btn sg-btn--secondary" href="/signout">@L["Sign out"]</a>
+    </section>
+    <footer class="sg-lang-footer"><LanguagePicker /></footer>
 }
 else
 {
@@ -33,17 +48,19 @@ else
 }
 
 @code {
-    /// <summary>The console, shown only once both bars are cleared.</summary>
+    /// <summary>The console, shown only once every bar is cleared.</summary>
     [Parameter]
     [EditorRequired]
     public RenderFragment? ChildContent { get; set; }
 
     /// <summary>Where to send an administrator who still needs an authenticator.</summary>
     [Parameter]
-    public string PortalUrl { get; set; } = "https://account.sangamid.in/profile";
+    public string PortalUrl { get; set; } = "https://account.sangamid.in/security";
 
     private GateState _state = GateState.Checking;
     private PartnerContext _context = new(Guid.Empty, "Administrator", []);
+
+    private string ReauthUrl => "/reauth?returnUrl=" + Uri.EscapeDataString("/" + Nav.ToBaseRelativePath(Nav.Uri));
 
     protected override async Task OnInitializedAsync()
     {
@@ -70,7 +87,18 @@ else
             return;
         }
 
-        _context = new PartnerContext(userId.Value, SignedInUser.Name(state.User), apps);
+        // rc.10: having an authenticator is not enough; this session must have been signed in with it (or a passkey).
+        if (!ConsoleSession.IsTwoStep(state.User))
+        {
+            _state = GateState.TwoStepRequired;
+            return;
+        }
+
+        _context = new PartnerContext(userId.Value, SignedInUser.Name(state.User), apps)
+        {
+            SignInLevel = ConsoleSession.Level(state.User),
+            SessionEndsAt = ConsoleSession.EndsAt(state.User),
+        };
         _state = GateState.Open;
     }
 
@@ -79,6 +107,7 @@ else
         Checking,
         NotAnAdministrator,
         MfaRequired,
+        TwoStepRequired,
         Open,
     }
 }

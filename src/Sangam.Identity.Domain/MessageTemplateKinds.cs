@@ -119,6 +119,12 @@ public static class MessageTemplateKinds
     /// <summary>To an application's other owners: one of its administrators merged accounts and the role moved (rc.7).</summary>
     public const string AppAdminMerged = "app_admin_merged";
 
+    /// <summary>To the person: they left an organisation, and which of their roles ended (rc.10, P4).</summary>
+    public const string OrganisationLeft = "organisation_left";
+
+    /// <summary>To an organisation's organisation admins: someone left it, and which of their roles ended (rc.10, P4).</summary>
+    public const string OrganisationMemberLeft = "organisation_member_left";
+
     /// <summary>Every kind, in the order the consoles list them.</summary>
     public static IReadOnlyList<MessageTemplateKind> All { get; } =
     [
@@ -146,6 +152,8 @@ public static class MessageTemplateKinds
         new(AccountMergeRequested, false, false, ["name", "survivor", "closed", "hours", "effective", "link"], ["survivor", "closed", "link"]),
         new(AccountMerged, false, false, ["name", "closed"], ["closed"]),
         new(AppAdminMerged, false, false, ["name", "application", "admin"], ["application", "admin"]),
+        new(OrganisationLeft, false, false, ["name", "organisation", "roles"], ["organisation", "roles"]),
+        new(OrganisationMemberLeft, false, false, ["name", "member", "organisation", "application", "roles"], ["member", "organisation", "roles"]),
         new(OperatorAlert, false, false, ["summary", "details"], ["summary"]),
         new(GrievanceAcknowledgement, false, false, ["name", "reference", "received", "resolve_by"], ["reference"]),
         new(GrievanceResolution, false, false, ["name", "reference", "resolution"], ["reference", "resolution"]),

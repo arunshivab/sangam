@@ -1,19 +1,12 @@
 @inherits LayoutComponentBase
 
 <PartnerGate PortalUrl="@PortalUrl">
-    <div class="sg-console">
-      <header class="sg-bar">
-        <a class="sg-bar-brand" href="/">sangam <span class="sg-bar-scope">partners</span></a>
-        <PartnerWho />
-      </header>
-      <main class="sg-main">@Body</main>
-    </div>
+  <PartnerShell>@Body</PartnerShell>
 </PartnerGate>
-<footer class="sg-lang-footer"><LanguagePicker /></footer>
 
 @code {
     [Inject]
     private IConfiguration Configuration { get; set; } = null!;
 
-    private string PortalUrl => (Configuration["Sangam:PortalUrl"] ?? "https://account.sangamid.in") + "/profile";
+    private string PortalUrl => (Configuration["Sangam:PortalUrl"] ?? "https://account.sangamid.in") + "/security";
 }

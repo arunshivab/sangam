@@ -26,6 +26,29 @@ public interface IAdminService
     /// <param name="cancellationToken">Cancellation token.</param>
     Task<IReadOnlyList<AdminUserRow>> SearchUsersAsync(Guid operatorUserId, string? query, int take, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// rc.10 (O2): one page of the users list, filtered by text, status and organisation. Like searching, listing is not
+    /// audited; opening a record is.
+    /// </summary>
+    /// <param name="operatorUserId">The signed-in operator.</param>
+    /// <param name="query">The filters and page.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<AdminUserPage> ListUsersAsync(Guid operatorUserId, AdminUserQuery query, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// rc.10 (O4): everything waiting for an operator, soonest clock first. Recoveries and resets are shown from Support
+    /// up; grievances to every rank. The DigiLocker records themselves stay on the recovery requests page, where seeing
+    /// them is audited.
+    /// </summary>
+    /// <param name="operatorUserId">The signed-in operator.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<IReadOnlyList<WorkItem>> WorkQueueAsync(Guid operatorUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>rc.10 (O1): the platform overview. Owners only; <see langword="null"/> for anyone else.</summary>
+    /// <param name="operatorUserId">The signed-in operator.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<AdminOverview?> OverviewAsync(Guid operatorUserId, CancellationToken cancellationToken = default);
+
     /// <summary>Opens a user's record, writing an audit row the user can see in their own log.</summary>
     /// <param name="operatorUserId">The signed-in operator.</param>
     /// <param name="userId">The user being looked at.</param>
