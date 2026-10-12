@@ -6,6 +6,13 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+### Security
+- **Paths at the edge** (OI-058, ASVS V13.1.1): a CI step shows that the production Caddy image and snippet forward every
+  spelling of a path unchanged (`tools/security/edge-path-check.sh caddy`), and a new test shows that the identity server
+  on real Kestrel, not the in-memory test server, answers every spelling of a management-API path (dot segments, encoded
+  dots and slashes, case, doubled slashes, NUL, matrix parameters, backslashes) with 400, 401 or 404. The same check runs
+  against the deployed stack (`edge-path-check.sh deployed https://id.sangamid.in`, go-live checklist).
+
 ### Build
 - **The SDK is pinned exactly** (`global.json`: 10.0.401, no roll-forward). The SDK adds a package of its own to the web
   projects at the version of the runtime it carries, so a different SDK changed the lock files and CI's locked restore

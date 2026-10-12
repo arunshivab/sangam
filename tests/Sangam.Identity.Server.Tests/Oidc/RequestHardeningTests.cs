@@ -139,8 +139,9 @@ public sealed class RequestHardeningTests
     [InlineData("/api//v1/roles")]
     public async Task APathSpelledDifferently_StillNeedsTheToken(string path)
     {
-        // rc.9 (ASVS V13.1.1): Kestrel normalises dot segments and leaves encoded slashes encoded, and routing ignores case,
-        // so no spelling of a management API address reaches it without a token.
+        // rc.9 (ASVS V13.1.1): routing ignores case and encoded slashes stay encoded, so no spelling of a management API
+        // address reaches it without a token. This runs on the in-memory test server; EdgePathTests repeats it on real
+        // Kestrel, which also removes dot segments.
         using HttpClient client = _factory.CreateClient();
         using HttpRequestMessage request = new(HttpMethod.Get, new Uri(path, UriKind.Relative));
         using HttpResponseMessage response = await client.SendAsync(request);

@@ -390,3 +390,5 @@ The founder's answers of 11 October 2026 on the remaining ASVS Level 2 gaps:
       link to the devices page). After a key-ring replacement every browser counts as new once.
 - [ ] **Alerts:** the never-normal thresholds (`Sangam:Monitoring:Alerts:*PerHour`) suit the pilot's traffic.
 - [ ] **Lock files:** CI restores in locked mode; a pull request that changes a package updates `packages.lock.json`.
+- [ ] **Paths at the edge (OI-058):** after the stack is up, `bash tools/security/edge-path-check.sh deployed https://id.sangamid.in`
+      passes: every spelling of a management-API path answers 400, 401 or 404.
