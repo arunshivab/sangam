@@ -243,6 +243,11 @@ jobs:
             docker run --rm ghcr.io/aquasecurity/trivy:0.75.0 image --severity HIGH,CRITICAL --ignore-unfixed "$image"
           done
 
+      # OI-058 (ASVS V13.1.1): the production Caddy image and snippet forward every spelling of a path unchanged, so the
+      # identity server alone reads it (EdgePathTests shows how, on real Kestrel).
+      - name: Edge forwards paths unchanged (Caddy)
+        run: bash tools/security/edge-path-check.sh caddy
+
       # PR-33: the Kubernetes manifests render and match the Kubernetes schemas.
       - name: Kubernetes manifests (kustomize and kubeconform)
         run: |
