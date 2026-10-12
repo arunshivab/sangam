@@ -71,7 +71,7 @@ that meet it in the code or the deployment, and what is left over. "Accepted" po
 
 | STRIDE | Threat | Controls | Left over |
 |---|---|---|---|
-| S | Console access with a stolen password | Authenticator required for every console user | — |
+| S | Console access with a stolen password | Authenticator required for every console user; the operator console is not on the internet — only through an SSH tunnel with a key (OI-059) | Partner console stays public by design |
 | E | Acting above one's rank | Rank or owner check inside each service method; every refusal audited as `access.denied` with the operation and the rank it needed (rc.8); many refusals, or one caller refused again and again, alert the founder (rc.9) | — |
 | R | Operator browsing records unnoticed | Every record opened, export and recovery review audited; the person can see operator views in their activity | — |
 | E | A single operator approving their own risky action | Cooling-off and review for privileged recoveries | A second operator's approval is not yet required (planned) |
@@ -130,3 +130,4 @@ Decisions 1–9 of 11 October 2026 ([decision memo](decision-memo-rc8.md)) and A
 |---|---|---|---|
 | 1.0.0-rc.8 | 11 Oct 2026 | Claude, under the direction of the founder | First version in the repository (SGM-203 summarised and brought up to date); rc.8 controls added |
 | 1.0.0-rc.9 | 11 Oct 2026 | Claude, under the direction of the founder | Reviewed; rc.9 controls added (fresh sign-in, new-device e-mail, strict API contracts, host rate limits, hardened containers, key-compromise commands); no new threat found |
+| After rc.9 | 12 Oct 2026 | Claude, under the direction of the founder | OI-058 (paths unchanged at the edge) and OI-059 (operator console off the internet, SSH tunnel) |

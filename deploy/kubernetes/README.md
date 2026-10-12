@@ -22,6 +22,7 @@ deploy/kubernetes/
 | Rate limits | Kept per replica, in memory, so the effective limit is the configured limit × replicas. The account lockout is shared, because it is in the database. |
 | Monitoring | Replicas of one host report under the host's name: counters add up; gauges show the latest replica. |
 | Database | Not part of this folder. Use a managed PostgreSQL 16+ with a standby, or an operator such as CloudNativePG with synchronous replication. Sangam needs one read-write endpoint. |
+| Operator console (OI-059) | **Not yet like the VM.** The base ingress still publishes `admin.sangamid.in`; on the VM the console is off the internet, reached by an SSH tunnel. Before this path carries production, put the admin host on an internal-only ingress (reachable from the cluster's own network or a bastion) or behind client certificates. |
 
 ## Install
 

@@ -21,7 +21,7 @@ flowchart LR
     subgraph edge["Docker network: edge"]
       ID[Identity server<br/>id.sangamid.in]
       PO[Account portal<br/>account.sangamid.in]
-      AD[Operator console<br/>admin.sangamid.in]
+      AD[Operator console<br/>admin.sangamid.in:8443<br/>SSH tunnel only]
       PA[Partner console<br/>partners.sangamid.in]
       DE[imagiQa demo<br/>demo.sangamid.in]
     end
@@ -66,7 +66,7 @@ flowchart LR
 | Caddy | Terminates TLS (automatic certificates), redirects HTTP, adds HSTS and security headers, strips `Server`, routes by host name, health-checks the hosts | user 1000, no capabilities, read-only filesystem (rc.9) | TLS certificates and their keys (`caddy_data`) |
 | Identity server | Sign-in, registration, the eight account screens, OpenID Connect and OAuth 2 (OpenIddict), SAML, the management API, DigiLocker verification at sign-in, back-channel logout, SCIM and webhook delivery, audit archive, retention and inactivity sweeps, monitoring evaluation and alerts, the start-up key-fingerprint check | non-root (`APP_UID`) | Token signing and encryption certificates, key-ring certificate, pepper, SAML keys, DigiLocker subject key, client secrets of the consoles (to register them) |
 | Account portal | A person's own account: profile, security, sessions, consents, export, deletion, merge, DigiLocker verification | non-root | Key-ring certificate, pepper, its client secret, DigiLocker subject key |
-| Operator console | Sangam's own operators: users, applications, operators, recoveries, monitoring, templates, grievances | non-root | Key-ring certificate, pepper, its client secret |
+| Operator console | Sangam's own operators: users, applications, operators, recoveries, monitoring, templates, grievances. Not on the internet: reached only through an SSH tunnel to the VM's loopback (OI-059) | non-root | Key-ring certificate, pepper, its client secret |
 | Partner console | An application's administrators: roles, organisations, members, attributes, settings, policies, webhooks, evidence packs | non-root | Key-ring certificate, pepper, its client secret |
 | imagiQa demo | A sample partner application (D-I), its own database, reached on its own network (rc.9) | non-root | Its client secret, its own data-protection keys |
 | PostgreSQL 18 | All of Sangam's data: accounts, credentials (hashed or encrypted), grants, tenancy, audit log (hash-chained, append-only for the application role), data-protection key ring (encrypted), metrics, host reports | its image's user | Everything in SGM-910's Confidential and the Restricted credentials |
@@ -101,12 +101,12 @@ user), unable to gain privileges, and with memory and process limits. The Kubern
 
 | Boundary | Between | What is checked as data crosses it |
 |---|---|---|
-| TB1 Internet ↔ Caddy | Anyone ↔ the VM | TLS; only the five host names are routed; the firewall admits 80, 443 and SSH (key-only, section 6 of the deployment guide) |
+| TB1 Internet ↔ Caddy | Anyone ↔ the VM | TLS; only four host names are routed publicly — the operator console only on the VM's loopback, through SSH (OI-059); the firewall admits 80, 443 and SSH (key-only, section 6 of the deployment guide) |
 | TB2 Caddy ↔ hosts | The edge ↔ the applications | Forwarded headers trusted only from Caddy's network; `AllowedHosts` per host (rc.8); only the HTTP methods Sangam uses (rc.8) |
 | TB3 Person ↔ Sangam | An unauthenticated or signed-in person ↔ their account | Authentication, step-up and fresh sign-in for sensitive changes; every action limited to the person's own account |
 | TB4 Application ↔ Sangam | A partner application ↔ Sangam's data | The application's client identity; everything scoped to its own grants, organisations and people; consent first |
 | TB5 Partner administrator ↔ Sangam | An application's staff ↔ that application's data | Administrator role checked in each service method; owner-only actions; refusals and reads audited (rc.8) |
-| TB6 Operator ↔ Sangam | Sangam's staff ↔ all accounts | Rank checked in each service method; authenticator required; every read and refusal audited |
+| TB6 Operator ↔ Sangam | Sangam's staff ↔ all accounts | Reachable only through an SSH tunnel (key-only SSH, forwarding to the console alone); rank checked in each service method; authenticator required; every read and refusal audited |
 | TB7 Hosts ↔ PostgreSQL | Application code ↔ the data | Separate owner and application roles; parameterised queries (EF Core); audit table protected by a trigger |
 | TB8 Sangam ↔ outside services | Sangam ↔ Anjal, DigiLocker, Pwned Passwords, partner endpoints, SIEM, backup storage | Certificates validated with revocation (rc.8); outbound to partner addresses only through `OutboundHttp`; backups encrypted before leaving |
 | TB9 Root on the VM ↔ everything | The operator of the machine | Not a boundary Sangam can enforce today (decision A6): secrets are files. Compensated by the key-fingerprint check, SSH hardening and the offline key copies, until imagiQa's vault exists |
