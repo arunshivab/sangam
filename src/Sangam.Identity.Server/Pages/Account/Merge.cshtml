@@ -73,7 +73,7 @@
   else
   {
     <p class="sg-card-body">@L["If you have two Sangam accounts — for example one you could not get back into and a new one you made — you can merge them into one. Only you can do this, signed in to both accounts, one after the other."]</p>
-    <p class="sg-card-body">@L["The account that stays keeps its own e-mail, mobile, password and second step. The other account's applications, roles and settings move to it; where both accounts have the same thing, the one that stays keeps its own. The other account is then closed, and its e-mail and mobile are free again."]</p>
+    <p class="sg-card-body">@L["The account that stays keeps its own e-mail, mobile, password and two-step sign-in. The other account's applications, roles and settings move to it; where both accounts have the same thing, the one that stays keeps its own. The other account is then closed, and its e-mail and mobile are free again."]</p>
     @if (Model.SameAccount)
     {
       <partial name="_Banner" model="@(("danger", Model.RefusalText("same")))" />

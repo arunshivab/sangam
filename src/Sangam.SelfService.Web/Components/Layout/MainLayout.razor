@@ -4,12 +4,14 @@
   <a class="sg-topbar-brand" href="/" aria-label="@L["Sangam account home"]">
     <SangamLockup MarkSize="24" />
   </a>
+  @* rc.10 (P-shell): one tab per job, in the order people need them. *@
   <nav class="sg-tabs" aria-label="@L["Account sections"]">
     <NavLink class="sg-tab" ActiveClass="sg-tab--active" href="/" Match="NavLinkMatch.All">@L["Overview"]</NavLink>
-    <NavLink class="sg-tab" ActiveClass="sg-tab--active" href="/apps">@L["Connected apps"]</NavLink>
-    <NavLink class="sg-tab" ActiveClass="sg-tab--active" href="/devices">@L["Devices"]</NavLink>
-    <NavLink class="sg-tab" ActiveClass="sg-tab--active" href="/audit">@L["Audit log"]</NavLink>
-    <NavLink class="sg-tab" ActiveClass="sg-tab--active" href="/profile">@L["Personal details"]</NavLink>
+    <NavLink class="sg-tab" ActiveClass="sg-tab--active" href="/apps">@L["Apps"]</NavLink>
+    <NavLink class="sg-tab" ActiveClass="sg-tab--active" href="/security">@L["Sign-in & security"]</NavLink>
+    <NavLink class="sg-tab" ActiveClass="sg-tab--active" href="/roles">@L["Organisations & roles"]</NavLink>
+    <NavLink class="sg-tab" ActiveClass="sg-tab--active" href="/activity">@L["Activity"]</NavLink>
+    <NavLink class="sg-tab" ActiveClass="sg-tab--active" href="/profile">@L["Profile & data"]</NavLink>
   </nav>
   <div class="sg-topbar-user">
     <AuthorizeView>

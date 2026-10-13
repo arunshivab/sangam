@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Sangam.Identity.Domain;
+using Sangam.Identity.Domain.Enums;
 using Sangam.Identity.Infrastructure.Persistence;
 using Sangam.Identity.Infrastructure.Services;
 using Sangam.Identity.Infrastructure.Sms;
@@ -28,10 +29,7 @@ public sealed partial class SmsScreenTests
         using BrowserSession s = new(_factory);
         (string _, string mobile) = await RegisterAsync(s);
 
-        (HttpStatusCode status, string home) = await s.GetAsync("/account");
-        Assert.Equal(HttpStatusCode.OK, status);
-        Assert.Contains("href=\"/account/mobile\"", home, StringComparison.Ordinal);
-
+        // rc.10: the portal links here (the identity server's own account page is retired).
         string page = WebUtility.HtmlDecode((await s.GetAsync("/account/mobile")).Html);
         Assert.Contains("not yet verified", page, StringComparison.Ordinal);
         Assert.Contains("••••••" + mobile[^4..], page, StringComparison.Ordinal);
@@ -49,9 +47,6 @@ public sealed partial class SmsScreenTests
         await s.PostFormAsync("/account/mobile", new Dictionary<string, string> { ["Code"] = TextedCode(mobile) }, handler: "Verify");
         (_, string done) = await s.GetAsync("/account/mobile");
         Assert.Contains("Your mobile number is verified", done, StringComparison.Ordinal);
-        string homeAfter = WebUtility.HtmlDecode((await s.GetAsync("/account")).Html);
-        Assert.Contains("· verified", homeAfter, StringComparison.Ordinal);
-        Assert.DoesNotContain("Verify it now", homeAfter, StringComparison.Ordinal);
     }
 
     [PostgresFact]
@@ -60,7 +55,7 @@ public sealed partial class SmsScreenTests
         using BrowserSession s = new(_factory);
         (string email, string mobile) = await RegisterAsync(s);
         await VerifyMobileAsync(s, mobile);
-        await s.PostFormAsync("/account", new Dictionary<string, string> { ["SignInPreference"] = "password_and_otp" }, handler: "Preference");
+        await TestAccounts.SetPreferenceAsync(_factory.Services, email, SignInMode.PasswordAndOtp);
         await s.PostFormAsync("/logout", []);
 
         (_, string? loc, _) = await s.PostFormAsync("/login", new Dictionary<string, string> { ["Email"] = email, ["Password"] = Password });
@@ -94,7 +89,7 @@ public sealed partial class SmsScreenTests
     {
         using BrowserSession s = new(_factory);
         (string email, _) = await RegisterAsync(s);
-        await s.PostFormAsync("/account", new Dictionary<string, string> { ["SignInPreference"] = "password_and_otp" }, handler: "Preference");
+        await TestAccounts.SetPreferenceAsync(_factory.Services, email, SignInMode.PasswordAndOtp);
         await s.PostFormAsync("/logout", []);
         await s.PostFormAsync("/login", new Dictionary<string, string> { ["Email"] = email, ["Password"] = Password });
 
@@ -111,7 +106,7 @@ public sealed partial class SmsScreenTests
         using BrowserSession owner = new(_factory);
         (string email, string mobile) = await RegisterAsync(owner);
         await VerifyMobileAsync(owner, mobile);
-        await owner.PostFormAsync("/account", new Dictionary<string, string> { ["SignInPreference"] = "otp_only" }, handler: "Preference");
+        await TestAccounts.SetPreferenceAsync(_factory.Services, email, SignInMode.OtpOnly);
         await owner.PostFormAsync("/logout", []);
         await owner.PostFormAsync("/login/code", new Dictionary<string, string> { ["Email"] = email });
         await owner.PostFormAsync("/login/verify", [], handler: "Sms");

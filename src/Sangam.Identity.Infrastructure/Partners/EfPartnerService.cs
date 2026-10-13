@@ -18,7 +18,7 @@ namespace Sangam.Identity.Infrastructure.Partners;
 /// go through the same <see cref="IManagementService"/> the HTTP API uses, so the rules are one set;
 /// this layer adds who may call it, whom they may see, and the audit attribution.
 /// </summary>
-public sealed class EfPartnerService : IPartnerService
+public sealed partial class EfPartnerService : IPartnerService
 {
     private readonly SangamDbContext _db;
     private readonly IManagementService _management;

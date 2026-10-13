@@ -130,6 +130,8 @@ public static class DependencyInjection
         services.AddScoped<ITenancyQuery, EfTenancyQuery>();
         services.AddScoped<IManagementService, EfManagementService>();
         services.AddScoped<IPortalService, EfPortalService>();
+        // rc.10 (P4): the roles a person holds, and leaving an organisation.
+        services.AddScoped<IPortalRolesService, EfPortalRolesService>();
         services.AddScoped<IEmailChangeService, EfEmailChangeService>();
         // D-G: passkeys on ASP.NET Core Identity's built-in WebAuthn support (Fido2NetLib removed).
         services.Configure<IdentityPasskeyOptions>(o => PasskeySettings.Apply(o, configuration));

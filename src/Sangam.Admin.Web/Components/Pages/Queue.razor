@@ -1,0 +1,104 @@
+@page "/queue"
+@inject IAdminService Admin
+
+@* rc.10 (O4): one queue for everything waiting on an operator, soonest clock first. It names the account and the
+   clock, never the DigiLocker record: that stays on the recovery requests page, where seeing it is audited. *@
+<PageTitle>@L["Work queue · Operator console"]</PageTitle>
+
+<h1 class="sg-h1">@L["Work queue"]</h1>
+<p class="sg-lede">@L["Everything waiting for an operator: recovery requests to decide first, then the soonest deadline — two-step resets in their cooling-off period, and grievances with their DPDP deadlines."]</p>
+
+@if (_items is null)
+{
+  <p class="sg-muted">@L["Loading…"]</p>
+}
+else
+{
+  <div class="sg-chips" role="group" aria-label="@L["Show"]">
+    @foreach ((string key, string label) in Filters)
+    {
+      <a class="sg-chip@(key == Current ? " sg-chip--on" : string.Empty)" href="@(key == "all" ? "/queue" : "/queue?kind=" + key)" aria-current="@(key == Current ? "true" : null)">
+        @label <span class="sg-mono">@Count(key)</span>
+      </a>
+    }
+  </div>
+
+  @if (Shown.Count == 0)
+  {
+    <p class="sg-muted">@L["Nothing is waiting."]</p>
+  }
+  else
+  {
+    <ul class="sg-queue" data-panel="queue">
+      @foreach (WorkItem item in Shown)
+      {
+        <li class="sg-queue-row" data-kind="@KindKey(item.Kind)">
+          <span class="sg-label-mono">@KindText(item.Kind)</span>
+          <span>
+            <span class="sg-name">@item.Subject</span>
+            <span class="sg-sub">@L["Arrived {0}", IndiaTime.Stamp(item.Since)]@if (item.Privileged) { <text> · </text><strong>@L["Privileged account: an owner decides"]</strong> }</span>
+          </span>
+          <span class="sg-queue-clock@(ClockClass(item))">
+            @if (item.Due is DateTimeOffset due)
+            {
+              <span class="sg-dot @(item.Overdue ? "sg-dot--danger" : due - DateTimeOffset.UtcNow < TimeSpan.FromDays(1) ? "sg-dot--warn" : string.Empty)" aria-hidden="true"></span>
+              @(item.Overdue ? L["Overdue since {0}", IndiaTime.Compact(due)] : item.Kind == WorkKind.TwoStepReset ? L["Takes effect {0}", IndiaTime.Compact(due)] : L["Due {0}", IndiaTime.Compact(due)])
+            }
+            else
+            {
+              @L["Waiting for a decision"]
+            }
+          </span>
+          <a class="sg-btn sg-btn--ghost" href="@item.Link">@L["Open"]</a>
+        </li>
+      }
+    </ul>
+  }
+}
+
+@code {
+    [CascadingParameter]
+    public ConsoleContext? Context { get; set; }
+
+    /// <summary>Which kind to show: <c>recovery</c>, <c>reset</c> or <c>grievance</c>; everything when absent.</summary>
+    [SupplyParameterFromQuery(Name = "kind")]
+    public string? Kind { get; set; }
+
+    private IReadOnlyList<WorkItem>? _items;
+
+    private string Current => Kind is "recovery" or "reset" or "grievance" ? Kind : "all";
+
+    // Recoveries and resets are Support's and the owners' work; other ranks see the grievances only.
+    private IEnumerable<(string Key, string Label)> Filters => Context?.CanAct == true
+        ? [("all", L["All"]), ("recovery", L["Recovery requests"]), ("reset", L["Two-step resets"]), ("grievance", L["Grievances"])]
+        : [("all", L["All"]), ("grievance", L["Grievances"])];
+
+    private List<WorkItem> Shown => [.. (_items ?? []).Where(i => Current == "all" || KindKey(i.Kind) == Current)];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Context is not null)
+        {
+            _items = await Admin.WorkQueueAsync(Context.UserId);
+        }
+    }
+
+    private int Count(string key) => (_items ?? []).Count(i => key == "all" || KindKey(i.Kind) == key);
+
+    private static string KindKey(WorkKind kind) => kind switch
+    {
+        WorkKind.Recovery => "recovery",
+        WorkKind.TwoStepReset => "reset",
+        _ => "grievance",
+    };
+
+    private string KindText(WorkKind kind) => kind switch
+    {
+        WorkKind.Recovery => L["Recovery"],
+        WorkKind.TwoStepReset => L["Two-step reset"],
+        _ => L["Grievance"],
+    };
+
+    private static string ClockClass(WorkItem item)
+        => item.Overdue ? " sg-queue-clock--late" : item.Due is DateTimeOffset due && due - DateTimeOffset.UtcNow < TimeSpan.FromDays(1) ? " sg-queue-clock--soon" : string.Empty;
+}

@@ -1,0 +1,55 @@
+@inject IServiceScopeFactory Scopes
+
+@* rc.10 (O-shell): grouped by job, in working-day order; a rank sees only what it can open. *@
+<nav class="sg-side-nav" aria-label="@L["Operator console"]">
+  @if (Context?.IsOwner == true)
+  {
+    <p class="sg-side-group">@L["Overview"]</p>
+    <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="/" Match="NavLinkMatch.All">@L["Platform overview"]</NavLink>
+  }
+  <p class="sg-side-group">@L["People"]</p>
+  <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="/queue">
+    @L["Work queue"]
+    @if (_waiting > 0)
+    {
+      <span class="sg-side-count" aria-label="@L["{0} waiting", _waiting]">@_waiting</span>
+    }
+  </NavLink>
+  <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="/users">@L["Users"]</NavLink>
+  @if (Context?.CanAct == true)
+  {
+    <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="/recoveries">@L["Recovery requests"]</NavLink>
+  }
+  <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="/grievances">@L["Grievances"]</NavLink>
+
+  <p class="sg-side-group">@L["Platform"]</p>
+  <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="/apps" Match="NavLinkMatch.All">@L["Applications"]</NavLink>
+  <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="/apps/saml">@L["SAML providers"]</NavLink>
+  <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="/customisation">@L["Branding & messages"]</NavLink>
+
+  <p class="sg-side-group">@L["Operations"]</p>
+  <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="/monitoring">@L["Monitoring"]</NavLink>
+  @if (Context?.IsOwner == true)
+  {
+    <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="/operators">@L["Operators"]</NavLink>
+  }
+</nav>
+
+@code {
+    /// <summary>The signed-in operator, cascaded by the gate.</summary>
+    [CascadingParameter]
+    public ConsoleContext? Context { get; set; }
+
+    private int _waiting;
+
+    /// <inheritdoc />
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Context is not null)
+        {
+            // Its own scope (and so its own database context): the page renders at the same time and uses the circuit's.
+            await using AsyncServiceScope scope = Scopes.CreateAsyncScope();
+            _waiting = (await scope.ServiceProvider.GetRequiredService<IAdminService>().WorkQueueAsync(Context.UserId)).Count;
+        }
+    }
+}

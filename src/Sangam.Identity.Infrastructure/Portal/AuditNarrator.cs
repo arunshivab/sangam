@@ -43,6 +43,7 @@ internal static class AuditNarrator
         AuditActions.SecurityIncidentOpen,
         AuditActions.UserMfaReplay,
         AuditActions.UserLoginNewDevice,
+        AuditActions.UserOrganisationLeave,
     };
 
     public static AuditLine Describe(AuditEvent e, IReadOnlyDictionary<Guid, string> appNames)
@@ -108,7 +109,11 @@ internal static class AuditNarrator
             AuditActions.OrgMembershipGrant => Read(e.Metadata, "role") is string role
                 ? $"{ByWhom(e, actor, app)} gave you a role in an organisation ({role})."
                 : $"{ByWhom(e, actor, app)} gave you a role in an organisation.",
+            AuditActions.OrgMembershipRevoke when e.ActorType == AuditActorType.User => "You ended one of your organisation roles.", // i18n-key
             AuditActions.OrgMembershipRevoke => $"{ByWhom(e, actor, app)} removed one of your organisation roles.",
+            AuditActions.UserOrganisationLeave => Read(e.Metadata, "organisation") is string left
+                ? $"You left {left}."
+                : "You left an organisation.", // i18n-key
             AuditActions.OrgMembershipExpire => Read(e.Metadata, "role") is string ended
                 ? $"Your time-limited role in {app} ended ({ended})."
                 : $"Your time-limited role in {app} ended.",
@@ -119,8 +124,8 @@ internal static class AuditNarrator
             AuditActions.AdminUserRead => "A Sangam operator opened your account record.",
             AuditActions.AdminUserReinstate => "A Sangam operator lifted the suspension on your account.",
             AuditActions.AdminUserDeleteNow => "A Sangam operator deleted your account.",
-            AuditActions.AdminOperatorGrant => "You were given Sangam console access.",
-            AuditActions.AdminOperatorRevoke => "Your Sangam console access was removed.",
+            AuditActions.AdminOperatorGrant => "You were given operator console access.",
+            AuditActions.AdminOperatorRevoke => "Your operator console access was removed.",
             AuditActions.UserMfaEnable => "You set up an authenticator app for two-step sign-in.",
             AuditActions.UserMfaDisable => "You removed your authenticator app.",
             AuditActions.UserMfaFail => "An authenticator code was refused.",

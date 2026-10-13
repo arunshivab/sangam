@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Sangam.Identity.Application.Accounts;
 using Sangam.Identity.Application.Admin;
 using Sangam.Identity.Domain.Entities;
+using Sangam.Identity.Domain.Enums;
 using Sangam.Identity.Infrastructure.Services;
 
 namespace Sangam.Identity.Server.Tests;
@@ -195,16 +196,18 @@ public sealed partial class AuthScreenTests
         Assert.Equal("/verified", okLoc);
 
         // 4. Verified → signed in
-        (HttpStatusCode accSt, string accHtml) = await s.GetAsync("/account");
-        Assert.Equal(HttpStatusCode.OK, accSt);
-        Assert.Contains("Namaste, Rajesh", accHtml, StringComparison.Ordinal);
-        Assert.Contains("verified", accHtml, StringComparison.Ordinal);
+        // rc.10: the identity server's own account page is retired; /account sends a signed-in person to the portal.
+        (HttpStatusCode accSt, string? accLoc, _) = await s.GetWithLocationAsync("/account");
+        Assert.Equal(HttpStatusCode.Redirect, accSt);
+        Assert.Equal("https://account.sangamid.in/", accLoc);
+        (HttpStatusCode signedIn, _) = await s.GetAsync("/account/password");
+        Assert.Equal(HttpStatusCode.OK, signedIn);
 
         // Sign out ends the session
         (HttpStatusCode outSt, string? outLoc, _) = await s.PostFormAsync("/logout", []);
         Assert.Equal(HttpStatusCode.Found, outSt);
         Assert.StartsWith("/login", outLoc, StringComparison.Ordinal);
-        (HttpStatusCode afterOut, _) = await s.GetAsync("/account");
+        (HttpStatusCode afterOut, _) = await s.GetAsync("/account/password");
         Assert.Equal(HttpStatusCode.Found, afterOut);
 
         // 5. Forgot → /reset regardless of the address
@@ -271,9 +274,10 @@ public sealed partial class AuthScreenTests
         });
         Assert.Equal(HttpStatusCode.Found, okSt);
         Assert.StartsWith("/account?passwordChanged=", okLoc, StringComparison.OrdinalIgnoreCase);
-        (HttpStatusCode accSt, string accHtml) = await s.GetAsync(okLoc!);
-        Assert.Equal(HttpStatusCode.OK, accSt);
-        Assert.Contains("Your password is changed.", accHtml, StringComparison.Ordinal);
+        // rc.10: the notice is shown on the portal's Sign-in & security page.
+        (HttpStatusCode accSt, string? accLoc, _) = await s.GetWithLocationAsync(okLoc!);
+        Assert.Equal(HttpStatusCode.Redirect, accSt);
+        Assert.Equal("https://account.sangamid.in/security?notice=password-changed", accLoc);
         Assert.Equal("Your Sangam password was changed", outbox.LatestFor(email)!.Message.Subject);
 
         await s.PostFormAsync("/logout", []);
@@ -294,8 +298,7 @@ public sealed partial class AuthScreenTests
         await RegisterAndVerifyAsync(s, outbox, email, mobile);
 
         // Set two-step, sign out, sign in → code screen → account
-        (HttpStatusCode pSt, _, _) = await s.PostFormAsync("/account", new Dictionary<string, string> { ["SignInPreference"] = "password_and_otp" }, handler: "Preference");
-        Assert.Equal(HttpStatusCode.Found, pSt);
+        await TestAccounts.SetPreferenceAsync(_factory.Services, email, SignInMode.PasswordAndOtp);
         await s.PostFormAsync("/logout", []);
 
         (_, string? loc, _) = await s.PostFormAsync("/login", new Dictionary<string, string> { ["Email"] = email, ["Password"] = "Correct-Horse-2026!" });
@@ -306,11 +309,9 @@ public sealed partial class AuthScreenTests
         string code = Code(outbox.LatestFor(email)!.Message.TextBody);
         (_, string? afterCode, _) = await s.PostFormAsync("/login/verify", new Dictionary<string, string> { ["Code"] = code });
         Assert.Equal("/account", afterCode);
-        (_, string accHtml) = await s.GetAsync("/account");
-        Assert.Contains("password and emailed code", accHtml, StringComparison.Ordinal);
 
         // Set passwordless, sign out, use /login/code
-        await s.PostFormAsync("/account", new Dictionary<string, string> { ["SignInPreference"] = "otp_only" }, handler: "Preference");
+        await TestAccounts.SetPreferenceAsync(_factory.Services, email, SignInMode.OtpOnly);
         await s.PostFormAsync("/logout", []);
         (_, string? codeLoc, _) = await s.PostFormAsync("/login/code", new Dictionary<string, string> { ["Email"] = email });
         Assert.Equal("/login/verify", codeLoc);

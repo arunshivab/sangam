@@ -1,0 +1,23 @@
+@using Microsoft.Extensions.Localization
+@using Sangam.Shared
+@using Sangam.Web.Shared.Localization
+@using Sangam.Web.Shared.Security
+@inject IStringLocalizer<SangamText> L
+@inject NavigationManager Navigation
+
+@* rc.10: which environment this is, and how this session stands. Permanent chrome, never a toast. *@
+<div class="sg-strip@(ConsoleSession.IsProduction(EnvironmentName) ? string.Empty : " sg-strip--other")" data-panel="strip">
+  <span class="sg-strip-env">@EnvironmentLabel</span>
+  @if (SignInLevel >= ConsoleSession.RequiredLevel)
+  {
+    <span class="sg-strip-session">
+      <span class="sg-dot sg-dot--ok" aria-hidden="true"></span>
+      <span>@(SignInLevel >= 3 ? L["Signed in with a passkey"] : L["Signed in with two-step sign-in"])</span>
+      @if (SessionEndsAt is DateTimeOffset ends)
+      {
+        <span class="sg-muted">· @L["session ends by {0}, or after two hours idle", IndiaTime.Format(ends, "HH:mm") + " " + IndiaTime.Suffix]</span>
+      }
+      <a class="sg-btn sg-btn--ghost" href="@ReauthUrl">@L["Sign in again"]</a>
+    </span>
+  }
+</div>

@@ -362,10 +362,14 @@ public sealed partial class EfAdminService : IAdminService
                 a.IsPlatform,
                 a.BackChannelLogoutUri,
                 a.FrontChannelLogoutUri,
+                a.SecretSetAt,
             })
             .ToListAsync(cancellationToken).ConfigureAwait(false);
+        Dictionary<string, bool> confidential = await ConfidentialByClientIdAsync(cancellationToken).ConfigureAwait(false);
 
-        return [.. rows.Select(r => new AdminAppRow(r.Id, r.ClientId, r.DisplayName, r.OwnerCompanyName, r.Status, r.SignInPolicy, r.Users, r.Organisations, r.PartnerOwners, r.IsPlatform, r.BackChannelLogoutUri, r.FrontChannelLogoutUri))];
+        return [.. rows.Select(r => new AdminAppRow(
+            r.Id, r.ClientId, r.DisplayName, r.OwnerCompanyName, r.Status, r.SignInPolicy, r.Users, r.Organisations, r.PartnerOwners, r.IsPlatform, r.BackChannelLogoutUri, r.FrontChannelLogoutUri,
+            r.SecretSetAt, confidential.TryGetValue(r.ClientId, out bool hasSecret) ? hasSecret : null))];
     }
 
     /// <inheritdoc />

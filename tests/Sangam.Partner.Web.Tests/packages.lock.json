@@ -640,15 +640,15 @@
         "type": "Project",
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.12, )",
-          "Sangam.Identity.Domain": "[1.0.0-rc.9, )",
-          "Sangam.Shared": "[1.0.0-rc.9, )"
+          "Sangam.Identity.Domain": "[1.0.0-rc.10, )",
+          "Sangam.Shared": "[1.0.0-rc.10, )"
         }
       },
       "sangam.identity.domain": {
         "type": "Project",
         "dependencies": {
           "Microsoft.Extensions.Identity.Stores": "[10.0.12, )",
-          "Sangam.Shared": "[1.0.0-rc.9, )"
+          "Sangam.Shared": "[1.0.0-rc.10, )"
         }
       },
       "sangam.identity.infrastructure": {
@@ -661,19 +661,19 @@
           "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, )",
           "OpenIddict.EntityFrameworkCore": "[7.7.2, )",
           "QRCoder": "[1.8.0, )",
-          "Sangam.Identity.Application": "[1.0.0-rc.9, )",
-          "Sangam.Identity.Domain": "[1.0.0-rc.9, )",
-          "Sangam.Shared": "[1.0.0-rc.9, )"
+          "Sangam.Identity.Application": "[1.0.0-rc.10, )",
+          "Sangam.Identity.Domain": "[1.0.0-rc.10, )",
+          "Sangam.Shared": "[1.0.0-rc.10, )"
         }
       },
       "sangam.partner.web": {
         "type": "Project",
         "dependencies": {
           "Microsoft.AspNetCore.Authentication.OpenIdConnect": "[10.0.12, )",
-          "Sangam.Identity.Application": "[1.0.0-rc.9, )",
-          "Sangam.Identity.Infrastructure": "[1.0.0-rc.9, )",
-          "Sangam.Shared": "[1.0.0-rc.9, )",
-          "Sangam.Web.Shared": "[1.0.0-rc.9, )"
+          "Sangam.Identity.Application": "[1.0.0-rc.10, )",
+          "Sangam.Identity.Infrastructure": "[1.0.0-rc.10, )",
+          "Sangam.Shared": "[1.0.0-rc.10, )",
+          "Sangam.Web.Shared": "[1.0.0-rc.10, )"
         }
       },
       "sangam.shared": {
@@ -683,7 +683,7 @@
         "type": "Project",
         "dependencies": {
           "LiPicons.Blazor": "[1.1.0, )",
-          "Sangam.Identity.Application": "[1.0.0-rc.9, )"
+          "Sangam.Identity.Application": "[1.0.0-rc.10, )"
         }
       },
       "EFCore.NamingConventions": {

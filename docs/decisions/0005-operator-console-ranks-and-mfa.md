@@ -49,6 +49,20 @@ and shown once. Wrong codes count towards the same lockout as wrong passwords.
 The TOTP option is open to every user, not only operators — it is stronger than an emailed code
 because it does not depend on a mailbox.
 
+### rc.10: this session must have used two-step sign-in
+
+The two bars above say the operator *has* an authenticator; from rc.10 the console also checks
+that *this session* was signed in with it. The console asks the identity server for
+`acr_values=urn:sangam:acr:2`, keeps the `acr`, `amr` and `auth_time` claims, and `OperatorGate`
+refuses a session below level 2 with "Sign in again with two-step sign-in". A person whose own
+choice is "password only for some apps" therefore cannot reach the console on a password alone.
+The partner console does the same, and its evidence download checks the level again.
+
+The top strip shows the environment from configuration (`PRODUCTION · India`, from
+`Sangam:Region`), how the session was signed in and when it ends (the 12-hour absolute limit; two
+hours idle still applies). "Sign in again" starts a fresh sign-in (`/reauth`, `max_age=0`); it
+never extends a session.
+
 ## Looking is recorded
 
 Opening a user's record writes `admin.user.read` **before** anything is returned, and the user

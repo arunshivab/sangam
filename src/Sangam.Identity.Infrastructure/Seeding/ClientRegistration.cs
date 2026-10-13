@@ -212,6 +212,13 @@ public sealed partial class ClientRegistration
                 : [Requirements.Features.ProofKeyForCodeExchange];
         string clientType = confidential ? ClientTypes.Confidential : ClientTypes.Public;
         bool secretChanged = confidential && (existing is null || !await _applications.ValidateClientSecretAsync(existing, spec.Secret, cancellationToken).ConfigureAwait(false));
+        // rc.10: the consoles show how old a client secret is (flagged after a year); a public client has none.
+        if (secretChanged || (!confidential && app.SecretSetAt is not null))
+        {
+            app.SecretSetAt = secretChanged ? now : null;
+            await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+
         changed |= existing is null
             || secretChanged
             || descriptor.ClientType != clientType

@@ -3,18 +3,17 @@
 @inject IAccountService Accounts
 @inject AuthenticationStateProvider AuthProvider
 @inject IJSRuntime Js
-@inject IMfaService Mfa
-@inject IAdminService Admin
 @inject IEmailChangeService EmailChanges
-@inject Sangam.Identity.Application.Passkeys.IPasskeyService Passkeys
 @inject Sangam.Identity.Application.Sms.ISmsCodeService Sms
 @inject IConfiguration Configuration
 @inject NavigationManager Navigation
 @inject Sangam.Identity.Infrastructure.Verification.DigiLockerSettings DigiLocker
 
-<PageTitle>@L["Personal details · sangam"]</PageTitle>
+@* rc.10 (P6): your details, then a copy of your data and merging, then deleting the account — last and alone. How you
+   sign in moved to Sign-in & security. *@
+<PageTitle>@L["Profile & data · sangam"]</PageTitle>
 
-<PageHeader Title="@L["Personal details"].Value" Subtitle="@L["What Sangam knows about you, and what you can do with it."].Value" />
+<PageHeader Title="@L["Profile & data"].Value" Subtitle="@L["What Sangam knows about you, and what you can do with it."].Value" />
 
 @if (_reauth)
 {
@@ -38,8 +37,8 @@ else
     <EditForm Model="_form" OnValidSubmit="SaveAsync" FormName="profile">
       <DataAnnotationsValidator />
       <div class="sg-two">
-        <label class="sg-field-group"><span class="sg-label">@L["First name"]</span><InputText class="sg-field" @bind-Value="_form.FirstName" disabled="@Verified" /></label>
-        <label class="sg-field-group"><span class="sg-label">@L["Last name"]</span><InputText class="sg-field" @bind-Value="_form.LastName" disabled="@Verified" /></label>
+        <label class="sg-field-group"><span class="sg-label">@L["First name"]</span><InputText class="sg-field" @bind-Value="_form.FirstName" disabled="@Verified" />@if (Verified) { <span class="sg-locked-hint">@L["From DigiLocker"]</span> }</label>
+        <label class="sg-field-group"><span class="sg-label">@L["Last name"]</span><InputText class="sg-field" @bind-Value="_form.LastName" disabled="@Verified" />@if (Verified) { <span class="sg-locked-hint">@L["From DigiLocker"]</span> }</label>
       </div>
       @if (Verified)
       {
@@ -54,6 +53,10 @@ else
             <option value="other">@L["Other"]</option>
             <option value="prefer_not_to_say">@L["Prefer not to say"]</option>
           </InputSelect>
+          @if (Verified)
+          {
+            <span class="sg-locked-hint">@L["From DigiLocker"]</span>
+          }
         </label>
         <label class="sg-field-group">
           <span class="sg-label">@L["Language"]</span>
@@ -180,109 +183,19 @@ else
     </section>
   }
 
-  <section class="sg-panel">
-    <h2 class="sg-panel-title" id="sign-in-mode-title">@L["How you sign in"]</h2>
-    <div class="sg-field-group">
-      <InputSelect class="sg-field" aria-labelledby="sign-in-mode-title" Value="_mode" ValueChanged="@((string v) => _mode = v)" ValueExpression="() => _mode">
-        <option value="password">@L["Email and password"]</option>
-        <option value="password_and_otp">@L["Password, then an emailed code"]</option>
-        <option value="otp_only">@L["An emailed code only (no password)"]</option>
-      </InputSelect>
-      <p class="sg-note">@L["An application can require a stronger method than the one you choose here."]</p>
-    </div>
-    <button type="button" class="sg-btn sg-btn--secondary" @onclick="SaveModeAsync">@L["Save preference"]</button>
-  </section>
-
-  <section class="sg-panel" data-panel="password">
-    <h2 class="sg-panel-title">@L["Password"]</h2>
-    <p class="sg-panel-body">@L["Change your password on the Sangam sign-in site. You will be asked for the current one first, and your other devices will be signed out."]</p>
-    <a class="sg-btn sg-btn--secondary" href="@PasswordUrl">@L["Change your password"]</a>
-  </section>
-
-  <section class="sg-panel" data-panel="merge">
-    <h2 class="sg-panel-title">@L["Two accounts?"]</h2>
-    <p class="sg-panel-body">@L["If you have a second Sangam account — for example one you could not get back into — you can merge the two into one, signed in to both."]</p>
-    <a class="sg-btn sg-btn--secondary" href="@MergeUrl">@L["Merge two of your accounts"]</a>
-  </section>
-
-  @if (Passkeys.Enabled)
-  {
-    <section class="sg-panel" data-panel="passkeys">
-      <h2 class="sg-panel-title">@L["Passkeys"]</h2>
-      @if (_passkeys.Count == 0)
-      {
-        <p class="sg-panel-body">@L["Sign in with your fingerprint, face or device PIN instead of a password. A passkey only works on Sangam's own site, so a fake site cannot steal it."]</p>
-      }
-      else
-      {
-        <p class="sg-panel-body">@(_passkeys.Count == 1 ? L["1 passkey is set up: {0}.", string.Join(", ", _passkeys.Select(p => p.Name))] : L["{0} passkeys are set up: {1}.", _passkeys.Count, string.Join(", ", _passkeys.Select(p => p.Name))])</p>
-      }
-      <p class="sg-note">@L["Passkeys are added and removed on the Sangam sign-in site, which is the only place they work."]</p>
-      <a class="sg-btn sg-btn--secondary" href="@PasskeysUrl">@(_passkeys.Count == 0 ? L["Add a passkey"] : L["Manage passkeys"])</a>
+  <div class="sg-two sg-two--panels">
+    <section class="sg-panel" data-panel="export">
+      <h2 class="sg-panel-title">@L["A copy of your data"]</h2>
+      <p class="sg-panel-body">@L["Download everything Sangam holds about you as a JSON file: your profile, the applications you have allowed, your organisations and roles, your sessions and your full activity log. Your password is not included — it is stored only as a one-way hash."]</p>
+      <button type="button" class="sg-btn sg-btn--secondary" @onclick="DownloadAsync" disabled="@_working">@L["Download my data"]</button>
     </section>
-  }
 
-  <section class="sg-panel">
-    <h2 class="sg-panel-title">@L["Two-step sign-in"]</h2>
-    @if (_mfaEnrolled)
-    {
-      <p class="sg-panel-body">@L["An authenticator app is set up on your account. You are asked for a code from it every time you sign in."]</p>
-      @if (_isOperator)
-      {
-        <p class="sg-note">@L["You hold Sangam console access, so two-step sign-in cannot be switched off."]</p>
-      }
-      else
-      {
-        <button type="button" class="sg-btn sg-btn--danger" @onclick="DisableMfaAsync" disabled="@_working">@L["Remove the authenticator"]</button>
-      }
-    }
-    else if (_enrolment is null)
-    {
-      <p class="sg-panel-body">@L["Add a second step with an authenticator app such as Google Authenticator, Aegis or 1Password. It is stronger than an emailed code, because it does not depend on your mailbox."]</p>
-      <button type="button" class="sg-btn sg-btn--secondary" @onclick="BeginMfaAsync" disabled="@_working">@L["Set up an authenticator app"]</button>
-    }
-    else
-    {
-      <p class="sg-panel-body">@L["Scan this with your authenticator app, then type the six-digit code it shows."]</p>
-      <div class="sg-qr">@((MarkupString)_enrolment.QrCodeSvg)</div>
-      <p class="sg-note">@L.Markup("Cannot scan? Type this key into the app instead, and choose {0}:", LocalizedMarkup.Tag("strong", L["Time based"]))</p>
-      <p class="sg-key-box"><span class="sg-mono sg-key">@_enrolment.SharedKey</span></p>
-      <p class="sg-note">@L["It contains only letters and the digits 2 to 7 — never 0, 1, 8 or 9. Spaces don't matter."]</p>
-      <div class="sg-field-group">
-        <label class="sg-label" for="mfa-code">@L["Code from the app"]</label>
-        <input id="mfa-code" class="sg-field sg-field--confirm" @bind="_mfaCode" @bind:event="oninput" inputmode="numeric" maxlength="7" />
-      </div>
-      @if (_mfaError is not null)
-      {
-        <p class="sg-field-error">@_mfaError</p>
-      }
-      <div class="sg-confirm-actions">
-        <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _enrolment = null">@L["Cancel"]</button>
-        <button type="button" class="sg-btn sg-btn--primary" @onclick="ConfirmMfaAsync" disabled="@_working">@L["Turn on two-step sign-in"]</button>
-      </div>
-    }
-
-    @if (_recoveryCodes.Count > 0)
-    {
-      <div class="sg-recovery">
-        <h3 class="sg-recovery-title">@L["Save these recovery codes now"]</h3>
-        <p class="sg-note">@L["Each one signs you in once if you lose your phone. They are shown only this time."]</p>
-        <ul class="sg-recovery-list">
-          @foreach (string recoveryCode in _recoveryCodes)
-          {
-            <li class="sg-mono">@recoveryCode</li>
-          }
-        </ul>
-        <button type="button" class="sg-btn sg-btn--secondary" @onclick="DownloadRecoveryAsync">@L["Download them"]</button>
-      </div>
-    }
-  </section>
-
-  <section class="sg-panel">
-    <h2 class="sg-panel-title">@L["A copy of your data"]</h2>
-    <p class="sg-panel-body">@L["Download everything Sangam holds about you as a JSON file: your profile, the applications you have allowed, your organisations and roles, your sessions and your full activity log. Your password is not included — it is stored only as a one-way hash."]</p>
-    <button type="button" class="sg-btn sg-btn--secondary" @onclick="DownloadAsync" disabled="@_working">@L["Download my data"]</button>
-  </section>
+    <section class="sg-panel" data-panel="merge">
+      <h2 class="sg-panel-title">@L["Two accounts?"]</h2>
+      <p class="sg-panel-body">@L["If you have a second Sangam account — for example one you could not get back into — you can merge the two into one, signed in to both."]</p>
+      <a class="sg-btn sg-btn--secondary" href="@MergeUrl">@L["Merge two of your accounts"]</a>
+    </section>
+  </div>
 
   <section class="sg-panel sg-panel--danger">
     <h2 class="sg-panel-title">@L["Delete your account"]</h2>
@@ -332,18 +245,11 @@ else
     private UserSummary? _user;
     private DeletionState? _deletion;
     private readonly ProfileForm _form = new();
-    private string _mode = "password";
     private bool _confirmingDelete;
     private string _confirmText = string.Empty;
     private bool _working;
     private string? _message;
     private string? _error;
-    private bool _mfaEnrolled;
-    private bool _isOperator;
-    private MfaEnrolment? _enrolment;
-    private string _mfaCode = string.Empty;
-    private string? _mfaError;
-    private IReadOnlyList<string> _recoveryCodes = [];
     private Guid _userId;
     private PendingEmailChange? _pendingChange;
     private string _newEmail = string.Empty;
@@ -351,7 +257,6 @@ else
     private string _changeCode = string.Empty;
     private string? _changeMessage;
     private string? _changeError;
-    private IReadOnlyList<Sangam.Identity.Application.Passkeys.PasskeyRow> _passkeys = [];
 
     private bool Verified => _user?.IdentityVerifiedAt is not null;
 
@@ -372,10 +277,6 @@ else
 
     private string MobileUrl => (Configuration["Sangam:Authority"] ?? "https://id.sangamid.in").TrimEnd('/') + "/account/mobile";
 
-    private string PasskeysUrl => (Configuration["Sangam:Authority"] ?? "https://id.sangamid.in").TrimEnd('/') + "/account/passkeys";
-
-    private string PasswordUrl => (Configuration["Sangam:Authority"] ?? "https://id.sangamid.in").TrimEnd('/') + "/account/password";
-
     private string MergeUrl => (Configuration["Sangam:Authority"] ?? "https://id.sangamid.in").TrimEnd('/') + "/account/merge";
 
     protected override async Task OnInitializedAsync()
@@ -394,11 +295,8 @@ else
         }
 
         _user = await Accounts.FindByIdAsync(_userId);
-        _mfaEnrolled = await Mfa.IsEnrolledAsync(_userId);
-        _isOperator = await Admin.GetRoleAsync(_userId) is not null;
         _deletion = await Portal.GetDeletionStateAsync(_userId);
         _pendingChange = await EmailChanges.GetPendingAsync(_userId);
-        _passkeys = Passkeys.Enabled ? await Passkeys.ListAsync(_userId) : [];
         if (_user is not null)
         {
             _form.FirstName = _user.FirstName;
@@ -406,7 +304,6 @@ else
             _form.Locale = _user.Locale;
             _form.Gender = Genders.ToCode(_user.Gender);
             (_form.CountryIso, _form.MobileNumber) = SplitMobile(_user.Mobile);
-            _mode = SignInModes.ToCode(_user.SignInPreference);
         }
     }
 
@@ -497,21 +394,6 @@ else
         await LoadAsync();
     }
 
-    private async Task SaveModeAsync()
-    {
-        if (!Recent())
-        {
-            return;
-        }
-
-        if (SignInModes.TryParse(_mode, out SignInMode mode))
-        {
-            await Accounts.SetSignInPreferenceAsync(_userId, mode);
-            _message = L["Your sign-in preference has been saved."];
-            await LoadAsync();
-        }
-    }
-
     private async Task DownloadAsync()
     {
         if (!Recent())
@@ -549,59 +431,6 @@ else
         _message = L["Your account is no longer scheduled for deletion."];
         await LoadAsync();
     }
-
-    private async Task BeginMfaAsync()
-    {
-        if (!Recent())
-        {
-            return;
-        }
-
-        _working = true;
-        _mfaError = null;
-        _recoveryCodes = [];
-        _enrolment = await Mfa.BeginEnrolmentAsync(_userId);
-        _working = false;
-    }
-
-    private async Task ConfirmMfaAsync()
-    {
-        _working = true;
-        _mfaError = null;
-        MfaConfirmation confirmation = await Mfa.ConfirmEnrolmentAsync(_userId, _mfaCode, null);
-        _working = false;
-
-        if (!confirmation.Succeeded)
-        {
-            _mfaError = L["That code is not correct. Authenticator codes change every 30 seconds — try the current one."];
-            return;
-        }
-
-        _enrolment = null;
-        _mfaCode = string.Empty;
-        _recoveryCodes = confirmation.RecoveryCodes;
-        _message = L["Two-step sign-in is on. You will be asked for a code next time you sign in."];
-        await LoadAsync();
-    }
-
-    private async Task DisableMfaAsync()
-    {
-        if (!Recent())
-        {
-            return;
-        }
-
-        _working = true;
-        bool removed = await Mfa.DisableAsync(_userId, null);
-        _working = false;
-        _message = removed
-            ? L["Your authenticator app has been removed."]
-            : L["Two-step sign-in cannot be removed from an account with console access."];
-        await LoadAsync();
-    }
-
-    private Task DownloadRecoveryAsync() =>
-        Js.InvokeVoidAsync("sangamDownloadText", "sangam-recovery-codes.txt", string.Join(Environment.NewLine, _recoveryCodes)).AsTask();
 
     /// <summary>Whether the form changes the mobile number (digits compared, so spaces and dashes do not count).</summary>
     private bool MobileChanging()

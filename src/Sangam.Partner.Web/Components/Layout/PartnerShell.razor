@@ -1,0 +1,29 @@
+@inject IWebHostEnvironment Environment
+@inject IConfiguration Configuration
+
+@* rc.10: the partner console's shell — the application switcher and its sections, the strip, and the page. Same parts
+   as the operator console, on the partner's own slate ground. *@
+<div class="sg-shell">
+  <aside class="sg-side">
+    <a class="sg-side-head" href="/">
+      <SangamLockup MarkSize="22" Mode="SangamMarkMode.Reversed" />
+      <span class="sg-badge">@L["Partners"]</span>
+    </a>
+    <PartnerNav />
+    <PartnerWho />
+  </aside>
+  <div class="sg-work">
+    <ConsoleStrip EnvironmentName="@Environment.EnvironmentName" EnvironmentLabel="@ConsoleSession.EnvironmentLabel(Environment.EnvironmentName, Configuration)" SignInLevel="@(Context?.SignInLevel ?? 0)" SessionEndsAt="@Context?.SessionEndsAt" />
+    <main class="sg-main">@ChildContent</main>
+  </div>
+</div>
+
+@code {
+    /// <summary>The page.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>The signed-in administrator, cascaded by the gate.</summary>
+    [CascadingParameter]
+    public PartnerContext? Context { get; set; }
+}

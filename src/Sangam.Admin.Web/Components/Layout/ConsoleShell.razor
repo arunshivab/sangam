@@ -1,0 +1,29 @@
+@inject IWebHostEnvironment Environment
+@inject IConfiguration Configuration
+
+@* rc.10: the operator console's shell — sidebar grouped by job, the strip, and the page. Inside the gate, so it is
+   only ever drawn for an operator who has cleared it. *@
+<div class="sg-shell">
+  <aside class="sg-side">
+    <a class="sg-side-head" href="/">
+      <SangamLockup MarkSize="22" Mode="SangamMarkMode.Reversed" />
+      <span class="sg-badge">@L["Operator"]</span>
+    </a>
+    <ConsoleNav />
+    <ConsoleWho />
+  </aside>
+  <div class="sg-work">
+    <ConsoleStrip EnvironmentName="@Environment.EnvironmentName" EnvironmentLabel="@ConsoleSession.EnvironmentLabel(Environment.EnvironmentName, Configuration)" SignInLevel="@(Context?.SignInLevel ?? 0)" SessionEndsAt="@Context?.SessionEndsAt" />
+    <main class="sg-main">@ChildContent</main>
+  </div>
+</div>
+
+@code {
+    /// <summary>The page.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>The signed-in operator, cascaded by the gate.</summary>
+    [CascadingParameter]
+    public ConsoleContext? Context { get; set; }
+}

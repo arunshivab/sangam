@@ -1,0 +1,30 @@
+@* One line of a checklist: done or still to do, why it matters, and where to do it. *@
+<li>
+  <span class="sg-checklist-mark @(Done ? "sg-checklist-mark--done" : "sg-checklist-mark--todo")" aria-hidden="true">@(Done ? "✓" : "–")</span>
+  <span class="sg-grow">
+    <span class="sg-name">@Text <span class="sg-muted">· @(Done ? L["done"] : L["to do"])</span></span>
+    <span class="sg-sub">@Hint</span>
+  </span>
+  @if (!Done && Link is not null)
+  {
+    <a href="@Link">@L["Open →"]</a>
+  }
+</li>
+
+@code {
+    /// <summary>Whether it is done.</summary>
+    [Parameter]
+    public bool Done { get; set; }
+
+    /// <summary>What it is.</summary>
+    [Parameter]
+    public string Text { get; set; } = string.Empty;
+
+    /// <summary>Why it matters.</summary>
+    [Parameter]
+    public string Hint { get; set; } = string.Empty;
+
+    /// <summary>Where to do it, if this person can.</summary>
+    [Parameter]
+    public string? Link { get; set; }
+}

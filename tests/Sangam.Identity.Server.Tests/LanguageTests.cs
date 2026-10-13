@@ -93,12 +93,13 @@ public sealed partial class LanguageTests
         await s.PostFormAsync("/logout", []);
         (_, string? afterLogin, _) = await s.PostFormAsync("/login", new Dictionary<string, string> { ["Email"] = email, ["Password"] = Password });
         Assert.NotNull(afterLogin);
-        (_, string home) = await s.GetAsync("/account");
+        // rc.10: a signed-in page on the identity server (its own account page is retired).
+        (_, string home) = await s.GetAsync("/account/password");
         home = WebUtility.HtmlDecode(home);
         Assert.Contains("lang=\"ml-IN\"", home, StringComparison.Ordinal);
-        Assert.Contains("നമസ്കാരം", home, StringComparison.Ordinal);
+        Assert.Contains("നിങ്ങളുടെ പാസ്‌വേഡ് മാറ്റുക", home, StringComparison.Ordinal);
 
-        (_, string picked) = await s.GetAsync("/account?culture=hi-IN");
+        (_, string picked) = await s.GetAsync("/account/password?culture=hi-IN");
         Assert.Contains("lang=\"hi-IN\"", picked, StringComparison.Ordinal);
     }
 

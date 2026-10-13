@@ -1,126 +1,33 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Sangam.Identity.Application.Accounts;
-using Sangam.Identity.Application.Passkeys;
-using Sangam.Identity.Application.Sms;
-using Sangam.Identity.Domain;
-using Sangam.Identity.Domain.Enums;
-using Sangam.Identity.Server.Authentication;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Sangam.Identity.Server.Pages.Account;
 
-/// <summary>The signed-in page on the identity server: the essentials, the sign-in preference, and the settings that must live here (mobile verification, passkeys).</summary>
+/// <summary>
+/// rc.10 (design review, 12 Oct 2026): the identity server's own "Your account" page is retired — it repeated the account
+/// portal. <c>/account</c> now sends a signed-in person to the portal (Sign-in &amp; security after a password change). The
+/// task pages that must stay here, because only the identity server can do them, remain: <c>/account/password</c>,
+/// <c>/account/passkeys</c>, <c>/account/mobile</c> and <c>/account/merge</c>.
+/// </summary>
 [Authorize]
-public sealed class HomeModel : AuthPageModel
+public sealed class HomeModel : PageModel
 {
-    private readonly IAccountService _accounts;
-    private readonly ISmsCodeService _sms;
-    private readonly IPasskeyService _passkeys;
+    private readonly IConfiguration _configuration;
 
     /// <summary>Initialises the page.</summary>
-    /// <param name="accounts">Account service.</param>
-    /// <param name="sms">SMS codes, to offer mobile verification.</param>
-    /// <param name="passkeys">Passkeys, to offer managing them.</param>
-    public HomeModel(IAccountService accounts, ISmsCodeService sms, IPasskeyService passkeys)
+    /// <param name="configuration">Configuration, for the portal's address.</param>
+    public HomeModel(IConfiguration configuration)
     {
-        _accounts = accounts ?? throw new ArgumentNullException(nameof(accounts));
-        _sms = sms ?? throw new ArgumentNullException(nameof(sms));
-        _passkeys = passkeys ?? throw new ArgumentNullException(nameof(passkeys));
+        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
     }
 
-    /// <summary>Whether the mobile can be verified by SMS here.</summary>
-    public bool OfferMobileVerification => _sms.Enabled && !User.MobileVerified && _sms.IsCountryAllowed(User.Mobile);
-
-    /// <summary>Whether passkeys are offered.</summary>
-    public bool OfferPasskeys => _passkeys.Enabled;
-
-    /// <summary>The signed-in user.</summary>
-    public new UserSummary User { get; private set; } = null!;
-
-    /// <summary>Mode the session was established with.</summary>
-    public string SessionMode { get; private set; } = string.Empty;
-
-    /// <summary>Selected preference (snake_case).</summary>
-    [BindProperty]
-    public string SignInPreference { get; set; } = "password";
-
-    /// <summary>Whether the person signed in recently enough to change the sign-in preference (rc.9).</summary>
-    public bool Recent { get; private set; }
-
-    /// <summary>A change was refused because the sign-in is not recent; the page offers to sign in again.</summary>
-    public bool NeedsSignIn { get; private set; }
-
-    /// <summary>Notice after saving.</summary>
-    public string? Notice { get; private set; }
-
-    /// <summary>Renders the page.</summary>
-    /// <param name="saved">The preference was just saved.</param>
-    /// <param name="passwordChanged">The password was just changed (R7).</param>
-    /// <param name="cancellationToken">Cancellation.</param>
-    public async Task<IActionResult> OnGetAsync(bool saved, bool passwordChanged, CancellationToken cancellationToken)
+    /// <summary>Sends the person to the account portal.</summary>
+    /// <param name="passwordChanged">The password was just changed (from <c>/account/password</c>).</param>
+    /// <returns>The redirect.</returns>
+    public IActionResult OnGet(bool passwordChanged)
     {
-        if (!await LoadAsync(cancellationToken))
-        {
-            return RedirectToPage("/Account/Login");
-        }
-
-        if (saved)
-        {
-            Notice = L["Your sign-in preference has been saved."];
-        }
-        else if (passwordChanged)
-        {
-            Notice = L["Your password is changed. Your other devices are being signed out."];
-        }
-
-        return Page();
-    }
-
-    /// <summary>Signs in again, for a change that needs a recent sign-in (rc.9).</summary>
-    public Task<IActionResult> OnPostAgainAsync() => RecentSignInGate.SignInAgainAsync(this, "/account");
-
-    /// <summary>Saves the sign-in preference.</summary>
-    public async Task<IActionResult> OnPostPreferenceAsync(CancellationToken cancellationToken)
-    {
-        string posted = SignInPreference;
-        if (!await LoadAsync(cancellationToken))
-        {
-            return RedirectToPage("/Account/Login");
-        }
-
-        if (!SignInModes.TryParse(posted, out SignInMode mode))
-        {
-            return Page();
-        }
-
-        if (!Recent)
-        {
-            NeedsSignIn = true;
-            return Page();
-        }
-
-        await _accounts.SetSignInPreferenceAsync(User.Id, mode, cancellationToken);
-        return RedirectToPage("/Account/Home", new { saved = true });
-    }
-
-    private async Task<bool> LoadAsync(CancellationToken cancellationToken)
-    {
-        Guid? id = SangamAuthentication.UserId(base.User);
-        UserSummary? user = id is null ? null : await _accounts.FindByIdAsync(id.Value, cancellationToken);
-        if (user is null)
-        {
-            return false;
-        }
-
-        User = user;
-        SessionMode = base.User.FindFirst(SangamAuthentication.SessionModeClaim)?.Value switch
-        {
-            "password_and_otp" => L["password and emailed code"],
-            "otp_only" => L["emailed code"],
-            _ => L["email and password"],
-        };
-        SignInPreference = SignInModes.ToCode(user.SignInPreference);
-        Recent = RecentSignInGate.IsRecent(this);
-        return true;
+        string portal = (_configuration["Sangam:PortalUrl"] ?? "https://account.sangamid.in").TrimEnd('/');
+        return Redirect(passwordChanged ? portal + "/security?notice=password-changed" : portal + "/");
     }
 }

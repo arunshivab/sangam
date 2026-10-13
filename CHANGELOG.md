@@ -6,6 +6,56 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0-rc.10] - tenth release candidate
+
+Sangam 1.0.0-rc.10 rebuilds the operator console, the partner console and the self-service portal from the founder's
+design review of 12 October 2026. The standards and the decisions taken in the review, including where the code
+departs from the design handoff, are in `docs/design/rc10-standards.md`.
+
+### Consoles
+- **A two-step session is required** (ADR-0005): the operator and partner consoles ask for `acr` level 2 and refuse a
+  session signed in with a password alone, with "Sign in again with two-step sign-in". The partner console's evidence
+  download checks the level again.
+- **One shell for both consoles** (`sangam-console.css`): a sidebar with grouped sections and counts, and a top strip
+  showing the environment (`PRODUCTION · India`, from `Sangam:Region`; any other environment in another colour), how
+  the session was signed in and when it ends, with "Sign in again" (a fresh sign-in; nothing extends a session).
+- **Operator console**: each rank starts where its work is (owner: a platform overview with counts, what needs
+  attention and the recent audit trail; support: a work queue of recovery requests, two-step resets and grievances
+  with their clocks; app manager: applications; viewer: monitoring). Users are searchable by name, e-mail, mobile,
+  status and organisation, 25 to a page. The user record puts "Delete now" last and alone. The application registry
+  shows who operates each application, how many people and organisations use it, its sign-in rule and its client
+  secret's age, warning after 12 months.
+- **Partner console**: a card per application, those needing action first; each application opens on an overview
+  with a go-live checklist and integration health; sections in the sidebar instead of tabs, with an application
+  switcher.
+
+### Self-service portal
+- Six tabs: Overview · Apps · Sign-in & security · Organisations & roles · Activity · Profile & data.
+- **Overview**: roles ending soon, your apps with the organisation you use each through, and a security checkup.
+- **Sign-in & security** (was Devices, plus the identity server's account page): sign-in methods strongest first
+  (passkey, authenticator app, email code, text code, password), two-step sign-in as two choices (*Every time*,
+  *Only when an app asks*), what to do if locked out, and sessions, with "Sign out of all devices" last.
+- **Organisations & roles**: roles grouped by organisation, shown exactly as the application named them.
+  **Leave organisation**: after a sign-in from the last 15 minutes and an inline confirmation; the last
+  organisation administrator of an application cannot leave that role; audited as `user.organisation.leave`; the
+  person and every organisation administrator of each affected application are e-mailed (two new message templates,
+  in English, Hindi and Malayalam).
+- **Activity** (was Audit log) filters sign-ins, apps and permissions, roles, and changes made by someone else.
+- The identity server's own account page now sends people to the portal.
+
+### Data
+- Migration `Rc10ClientSecretAge`: `apps.secret_set_at`, set whenever a client secret is set or changed. Applications
+  registered earlier show "date not recorded" until their secret is next changed.
+
+### Languages and accessibility
+- 228 new strings in Hindi and Malayalam (machine-assisted; a native review is on the go-live list); 83 unused strings
+  removed. Role names are never translated. Malayalam uses the system font until LiPi Sans has Malayalam.
+- The accessibility walk covers the new pages in all three languages.
+
+### Open items (SGM-701, document set v25)
+- Organisation context in tokens (A6, an `org_id` claim), ward tablets (T1), break-glass access (M12), an organisation
+  console (G1–G2) and zero-downtime client-secret rotation.
+
 ### Deployment
 - **The operator console is off the internet** (OI-059, ASVS V1.14.1; founder's choice, 12 Oct 2026): Caddy serves
   `admin.sangamid.in` only on port 8443, published on the VM's loopback address, and closes the connection for that

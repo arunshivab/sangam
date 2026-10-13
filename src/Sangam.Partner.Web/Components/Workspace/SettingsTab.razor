@@ -55,7 +55,7 @@ else
       }
       <label class="sg-check">
         <input type="radio" name="policy" checked="@(_policy == SignInPolicy.PasswordAndOtp)" @onchange="() => _policy = SignInPolicy.PasswordAndOtp" />
-        @L["Always two-step"] <span class="sg-muted">@L["— password, then a code by email, for everyone"]</span>
+        @L["Two-step sign-in every time"] <span class="sg-muted">@L["— password, then a code by email, for everyone"]</span>
       </label>
       <label class="sg-check">
         <input type="radio" name="policy" checked="@(_policy == SignInPolicy.PasskeyOnly)" @onchange="() => _policy = SignInPolicy.PasskeyOnly" />
@@ -72,7 +72,7 @@ else
   @if (_security is not null)
   {
     <div class="sg-panel" data-panel="security-policy">
-      <h2 class="sg-h3">@L["Passwords and second factor"]</h2>
+      <h2 class="sg-h3">@L["Passwords and two-step sign-in"]</h2>
       <PolicyEditor View="_security" Key="app" InheritLabel="Sangam" Busy="_busy" OnSave="SavePolicyAsync"
                     Explanation="@L["Rules for everyone who signs in to {0}. They can only be stricter than Sangam's own, and each organisation can tighten them further.", Info.AppName].Value" />
     </div>
@@ -158,7 +158,7 @@ else
     {
         SignInPolicy.Password => L["Password only"],
         SignInPolicy.OtpOnly => L["Email code only, no password"],
-        SignInPolicy.PasswordAndOtp => L["Always two-step"],
+        SignInPolicy.PasswordAndOtp => L["Two-step sign-in every time"],
         SignInPolicy.PasskeyOnly => L["Passkey only"],
         _ => L["Each person's own choice"],
     };

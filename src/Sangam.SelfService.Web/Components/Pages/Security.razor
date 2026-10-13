@@ -1,0 +1,432 @@
+@page "/security"
+@page "/devices"
+@inject IPortalService Portal
+@inject IAccountService Accounts
+@inject AuthenticationStateProvider AuthProvider
+@inject IJSRuntime Js
+@inject IMfaService Mfa
+@inject IAdminService Admin
+@inject Sangam.Identity.Application.Passkeys.IPasskeyService Passkeys
+@inject Sangam.Identity.Application.Sms.ISmsCodeService Sms
+@inject IConfiguration Configuration
+
+@* rc.10 (P3): every way to sign in, strongest first; whether two-step sign-in is asked every time; what gets you back in;
+   and where you are signed in. "/devices" stays, because new-device e-mails link to it. *@
+<PageTitle>@L["Sign-in & security · sangam"]</PageTitle>
+
+<PageHeader Title="@L["Sign-in & security"].Value" Subtitle="@L["How you sign in, how you would get back in, and where you are signed in now."].Value" />
+
+@if (_reauth)
+{
+  <ReauthNotice ReturnTo="/security" />
+}
+
+@if (Notice == "password-changed")
+{
+  <p class="sg-banner sg-banner--top" role="status">@L["Your password is changed. Your other devices are being signed out."]</p>
+}
+
+@if (_user is null)
+{
+  <p class="sg-note">@L["Loading…"]</p>
+}
+else
+{
+  <section class="sg-panel" data-panel="ways">
+    <h2 class="sg-panel-title">@L["Ways to sign in"]</h2>
+    <p class="sg-panel-body">@L["Strongest first. An application can ask for a stronger way than the one you use."]</p>
+    <ul class="sg-ways">
+      @if (Passkeys.Enabled)
+      {
+        <li class="sg-way" data-way="passkey">
+          <span class="sg-way-text">
+            <span class="sg-way-name">@L["Passkey"]</span>
+            <span class="sg-way-status">@(_passkeys.Count == 0 ? L["None yet. Your fingerprint, face or device PIN; a fake site cannot steal it."] : _passkeys.Count == 1 ? L["1 passkey: {0}", _passkeys[0].Name] : L["{0} passkeys: {1}", _passkeys.Count, string.Join(", ", _passkeys.Select(p => p.Name))])</span>
+          </span>
+          <a class="sg-btn sg-btn--secondary sg-btn--row" href="@PasskeysUrl">@(_passkeys.Count == 0 ? L["Add a passkey"] : L["Manage passkeys"])</a>
+        </li>
+      }
+      <li class="sg-way" data-way="authenticator">
+        <span class="sg-way-text">
+          <span class="sg-way-name">@L["Authenticator app"]</span>
+          <span class="sg-way-status">@(_mfaEnrolled ? L["On. Every sign-in with your password asks for a code from it."] : L["Off. An app such as Google Authenticator, Aegis or 1Password; stronger than an emailed code."])</span>
+        </span>
+        @if (_mfaEnrolled)
+        {
+          @if (_isOperator)
+          {
+            <span class="sg-way-status">@L["Required: you hold operator console access."]</span>
+          }
+          else
+          {
+            <button type="button" class="sg-btn sg-btn--danger sg-btn--row" @onclick="DisableMfaAsync" disabled="@_working">@L["Remove"]</button>
+          }
+        }
+        else if (_enrolment is null)
+        {
+          <button type="button" class="sg-btn sg-btn--secondary sg-btn--row" @onclick="BeginMfaAsync" disabled="@_working">@L["Set up"]</button>
+        }
+      </li>
+      @if (_enrolment is not null)
+      {
+        <li class="sg-way-detail" data-panel="enrol">
+          <p class="sg-panel-body">@L["Scan this with your authenticator app, then type the six-digit code it shows."]</p>
+          <div class="sg-qr">@((MarkupString)_enrolment.QrCodeSvg)</div>
+          <p class="sg-note">@L.Markup("Cannot scan? Type this key into the app instead, and choose {0}:", LocalizedMarkup.Tag("strong", L["Time based"]))</p>
+          <p class="sg-key-box"><span class="sg-mono sg-key">@_enrolment.SharedKey</span></p>
+          <p class="sg-note">@L["It contains only letters and the digits 2 to 7 — never 0, 1, 8 or 9. Spaces don't matter."]</p>
+          <div class="sg-field-group">
+            <label class="sg-label" for="mfa-code">@L["Code from the app"]</label>
+            <input id="mfa-code" class="sg-field sg-field--confirm" @bind="_mfaCode" @bind:event="oninput" inputmode="numeric" maxlength="7" />
+          </div>
+          @if (_mfaError is not null)
+          {
+            <p class="sg-field-error">@_mfaError</p>
+          }
+          <div class="sg-confirm-actions">
+            <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _enrolment = null">@L["Cancel"]</button>
+            <button type="button" class="sg-btn sg-btn--primary" @onclick="ConfirmMfaAsync" disabled="@_working">@L["Turn on two-step sign-in"]</button>
+          </div>
+        </li>
+      }
+      @if (_recoveryCodes.Count > 0)
+      {
+        <li class="sg-way-detail">
+          <div class="sg-recovery">
+            <h3 class="sg-recovery-title">@L["Save these recovery codes now"]</h3>
+            <p class="sg-note">@L["Each one signs you in once if you lose your phone. They are shown only this time."]</p>
+            <ul class="sg-recovery-list">
+              @foreach (string recoveryCode in _recoveryCodes)
+              {
+                <li class="sg-mono">@recoveryCode</li>
+              }
+            </ul>
+            <button type="button" class="sg-btn sg-btn--secondary" @onclick="DownloadRecoveryAsync">@L["Download them"]</button>
+          </div>
+        </li>
+      }
+      <li class="sg-way" data-way="email-code">
+        <span class="sg-way-text">
+          <span class="sg-way-name">@L["Code by email"]</span>
+          <span class="sg-way-status">
+            @if (_user.SignInPreference == SignInMode.OtpOnly)
+            {
+              @L["You sign in with a code sent to {0} instead of a password.", _user.Email]
+            }
+            else
+            {
+              @L["Sent to {0}: after your password, or instead of it.", _user.Email]
+            }
+          </span>
+        </span>
+        @if (_user.SignInPreference == SignInMode.OtpOnly)
+        {
+          <button type="button" class="sg-btn sg-btn--secondary sg-btn--row" @onclick="() => SetModeAsync(SignInMode.Password)" disabled="@_working">@L["Use my password again"]</button>
+        }
+        else
+        {
+          <button type="button" class="sg-btn sg-btn--secondary sg-btn--row" @onclick="() => SetModeAsync(SignInMode.OtpOnly)" disabled="@_working">@L["Use a code instead of a password"]</button>
+        }
+      </li>
+      @if (Sms.Enabled)
+      {
+        <li class="sg-way" data-way="text-code">
+          <span class="sg-way-text">
+            <span class="sg-way-name">@L["Code by text"]</span>
+            <span class="sg-way-status">@(_user.MobileVerified ? L["To {0}, when the sign-in page offers it.", _user.Mobile ?? string.Empty] : L["Verify your mobile number first."])</span>
+          </span>
+          @if (!_user.MobileVerified && Sms.IsCountryAllowed(_user.Mobile))
+          {
+            <a class="sg-btn sg-btn--secondary sg-btn--row" href="@MobileUrl">@L["Verify mobile"]</a>
+          }
+        </li>
+      }
+      <li class="sg-way" data-way="password">
+        <span class="sg-way-text">
+          <span class="sg-way-name">@L["Password"]</span>
+          <span class="sg-way-status">@L["Changed on the Sangam sign-in site; your other devices are then signed out."]</span>
+        </span>
+        <a class="sg-btn sg-btn--secondary sg-btn--row" href="@PasswordUrl">@L["Change your password"]</a>
+      </li>
+    </ul>
+  </section>
+
+  <section class="sg-panel" data-panel="two-step">
+    <h2 class="sg-panel-title" id="two-step-title">@L["Two-step sign-in"]</h2>
+    @if (_mfaEnrolled)
+    {
+      <p class="sg-panel-body">@L["Your authenticator app is your two-step sign-in: every sign-in with your password asks for its code. The choice below applies only if you remove it."]</p>
+    }
+    else if (_user.SignInPreference == SignInMode.OtpOnly)
+    {
+      <p class="sg-panel-body">@L["You sign in with an emailed code instead of a password. Choosing below goes back to your password, with or without a code after it."]</p>
+    }
+    else
+    {
+      <p class="sg-panel-body">@L["After your password, Sangam can send a code to your email every time, or only when an application asks for two-step sign-in."]</p>
+    }
+    <div class="sg-options" role="radiogroup" aria-labelledby="two-step-title">
+      <label class="sg-option @(_twoStep == "every" ? "sg-option--on" : string.Empty)">
+        <input type="radio" name="two-step" value="every" checked="@(_twoStep == "every")" @onchange="@(() => _twoStep = "every")" />
+        <span><span class="sg-option-name">@L["Every time"]</span><span class="sg-option-hint">@L["Your password, then a code by email. Recommended."]</span></span>
+      </label>
+      <label class="sg-option @(_twoStep == "app" ? "sg-option--on" : string.Empty)">
+        <input type="radio" name="two-step" value="app" checked="@(_twoStep == "app")" @onchange="@(() => _twoStep = "app")" />
+        <span><span class="sg-option-name">@L["Only when an app asks"]</span><span class="sg-option-hint">@L["Your password alone, unless the application you sign in to asks for more."]</span></span>
+      </label>
+    </div>
+    <button type="button" class="sg-btn sg-btn--primary" @onclick="SaveTwoStepAsync" disabled="@_working">@L["Save"]</button>
+  </section>
+
+  <section class="sg-panel" data-panel="locked-out">
+    <h2 class="sg-panel-title">@L["If you're locked out"]</h2>
+    <dl class="sg-facts">
+      <div><dt>@L["Mobile"]</dt><dd>@(_user.Mobile ?? "—") · @(_user.MobileVerified ? L["verified"] : L["not yet verified"])</dd></div>
+      <div><dt>@L["Recovery codes"]</dt><dd>@(_mfaEnrolled ? L["Given to you when you set up your authenticator app. Each signs you in once."] : L["You get them when you set up an authenticator app."])</dd></div>
+      <div><dt>@L["DigiLocker"]</dt><dd>@(_user.IdentityVerifiedAt is not null ? L["Verified. If you lose your authenticator and your recovery codes, you can recover your account with DigiLocker from the sign-in page."] : L["Not verified. Verifying under Profile & data lets you recover your account with DigiLocker if you lose your authenticator."])</dd></div>
+    </dl>
+  </section>
+
+  <section class="sg-panel" data-panel="sessions" id="sessions">
+    <h2 class="sg-panel-title">@L["Where you're signed in"]</h2>
+    <p class="sg-panel-body">@L["Sangam shows only what your browser tells it: the browser, the address you connected from, and the time. It never guesses a location. A name like \"First Floor Radiology\" appears only when the application you signed in to supplied it."]</p>
+    @if (_sessions is not null)
+    {
+      <div class="sg-table sg-table--devices" role="table">
+        <div class="sg-tr sg-tr--head" role="row">
+          <span role="columnheader">@L["DEVICE"]</span>
+          <span role="columnheader">@L["SIGNED IN"]</span>
+          <span role="columnheader">@L["LAST SEEN"]</span>
+          <span role="columnheader"></span>
+        </div>
+        @foreach (PortalSession session in _sessions)
+        {
+          <div class="sg-tr @(session.IsCurrent ? "sg-tr--current" : "")" role="row">
+            <span class="sg-device-cell" role="cell">
+              <span class="sg-device-name">
+                @(session.DeviceLabel ?? session.Browser)
+                @if (session.IsCurrent)
+                {
+                  <span class="sg-badge">@L["This device"]</span>
+                }
+              </span>
+              <span class="sg-device-meta">
+                @if (session.DeviceLabel is not null)
+                {
+                  <span>@session.Browser · </span>
+                }
+                <span class="sg-mono">@(session.IpAddress ?? L["address unknown"])</span>
+                @if (session.AppName is not null)
+                {
+                  <span> · @L["via {0}", session.AppName]</span>
+                }
+              </span>
+            </span>
+            <span role="cell" title="@Relative.Full(session.CreatedAt)">@Relative.Describe(session.CreatedAt, _now)</span>
+            <span role="cell" title="@Relative.Full(session.LastSeenAt)">@Relative.Describe(session.LastSeenAt, _now)</span>
+            <span role="cell">
+              <button type="button" class="sg-btn sg-btn--secondary sg-btn--row" @onclick="() => EndAsync(session)" disabled="@_working">
+                @(session.IsCurrent ? L["Sign out here"] : L["End session"])
+              </button>
+            </span>
+          </div>
+        }
+      </div>
+
+      <div class="sg-danger-zone">
+        @if (_confirmingAll)
+        {
+          <div class="sg-confirm" role="alertdialog" aria-labelledby="all-title">
+            <h3 class="sg-confirm-title" id="all-title">@L["Sign out of all devices?"]</h3>
+            <p class="sg-confirm-body">@L["Every session ends, including this one, and applications holding access on your behalf are asked to sign you in again. Your password does not change. Use this if you have lost a device."]</p>
+            <div class="sg-confirm-actions">
+              <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _confirmingAll = false">@L["Cancel"]</button>
+              <button type="button" class="sg-btn sg-btn--danger" @onclick="EndAllAsync" disabled="@_working">@L["Sign out everywhere"]</button>
+            </div>
+          </div>
+        }
+        else
+        {
+          <button type="button" class="sg-btn sg-btn--danger" @onclick="() => _confirmingAll = true" disabled="@(_sessions.Count == 0)">@L["Sign out of all devices"]</button>
+        }
+      </div>
+    }
+  </section>
+}
+
+@if (_message is not null)
+{
+  <p class="sg-banner sg-banner--success" role="status">@_message</p>
+}
+
+@code {
+    /// <summary>A notice from the identity server's task pages (rc.10: the old id. account page is retired).</summary>
+    [SupplyParameterFromQuery(Name = "notice")]
+    public string? Notice { get; set; }
+
+    private UserSummary? _user;
+    private Guid _userId;
+    private Guid? _currentSessionId;
+    private bool _working;
+    private string? _message;
+    private bool _mfaEnrolled;
+    private bool _isOperator;
+    private MfaEnrolment? _enrolment;
+    private string _mfaCode = string.Empty;
+    private string? _mfaError;
+    private IReadOnlyList<string> _recoveryCodes = [];
+    private IReadOnlyList<Sangam.Identity.Application.Passkeys.PasskeyRow> _passkeys = [];
+    private IReadOnlyList<PortalSession>? _sessions;
+    private bool _confirmingAll;
+    private string _twoStep = "app";
+    private DateTimeOffset _now = DateTimeOffset.UtcNow;
+
+    // rc.9 (ASVS V3.7.1, V3.3.4): sensitive changes need a sign-in from the last 15 minutes.
+    private System.Security.Claims.ClaimsPrincipal _principal = new();
+    private bool _reauth;
+
+    private string Authority => (Configuration["Sangam:Authority"] ?? "https://id.sangamid.in").TrimEnd('/');
+
+    private string MobileUrl => Authority + "/account/mobile";
+
+    private string PasskeysUrl => Authority + "/account/passkeys";
+
+    private string PasswordUrl => Authority + "/account/password";
+
+    private bool Recent()
+    {
+        if (Sangam.Web.Shared.Security.RecentSignIn.IsRecent(_principal, DateTimeOffset.UtcNow))
+        {
+            return true;
+        }
+
+        _reauth = true;
+        _confirmingAll = false;
+        return false;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthProvider.GetAuthenticationStateAsync();
+        _principal = state.User;
+        _userId = PortalUser.Id(state.User) ?? Guid.Empty;
+        _currentSessionId = PortalUser.SessionId(state.User);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        if (_userId == Guid.Empty)
+        {
+            return;
+        }
+
+        _now = DateTimeOffset.UtcNow;
+        _user = await Accounts.FindByIdAsync(_userId);
+        _mfaEnrolled = await Mfa.IsEnrolledAsync(_userId);
+        _isOperator = await Admin.GetRoleAsync(_userId) is not null;
+        _passkeys = Passkeys.Enabled ? await Passkeys.ListAsync(_userId) : [];
+        _sessions = await Portal.GetSessionsAsync(_userId, _currentSessionId);
+        _twoStep = _user?.SignInPreference == SignInMode.PasswordAndOtp ? "every" : "app";
+    }
+
+    private async Task SetModeAsync(SignInMode mode)
+    {
+        if (!Recent())
+        {
+            return;
+        }
+
+        _working = true;
+        await Accounts.SetSignInPreferenceAsync(_userId, mode);
+        _working = false;
+        _message = L["Your sign-in preference has been saved."];
+        await LoadAsync();
+    }
+
+    private Task SaveTwoStepAsync() => SetModeAsync(_twoStep == "every" ? SignInMode.PasswordAndOtp : SignInMode.Password);
+
+    private async Task BeginMfaAsync()
+    {
+        if (!Recent())
+        {
+            return;
+        }
+
+        _working = true;
+        _mfaError = null;
+        _recoveryCodes = [];
+        _enrolment = await Mfa.BeginEnrolmentAsync(_userId);
+        _working = false;
+    }
+
+    private async Task ConfirmMfaAsync()
+    {
+        _working = true;
+        _mfaError = null;
+        MfaConfirmation confirmation = await Mfa.ConfirmEnrolmentAsync(_userId, _mfaCode, null);
+        _working = false;
+
+        if (!confirmation.Succeeded)
+        {
+            _mfaError = L["That code is not correct. Authenticator codes change every 30 seconds — try the current one."];
+            return;
+        }
+
+        _enrolment = null;
+        _mfaCode = string.Empty;
+        _recoveryCodes = confirmation.RecoveryCodes;
+        _message = L["Two-step sign-in is on. You will be asked for a code next time you sign in."];
+        await LoadAsync();
+    }
+
+    private async Task DisableMfaAsync()
+    {
+        if (!Recent())
+        {
+            return;
+        }
+
+        _working = true;
+        bool removed = await Mfa.DisableAsync(_userId, null);
+        _working = false;
+        _message = removed
+            ? L["Your authenticator app has been removed."]
+            : L["Two-step sign-in cannot be removed from an account with operator console access."];
+        await LoadAsync();
+    }
+
+    private Task DownloadRecoveryAsync() =>
+        Js.InvokeVoidAsync("sangamDownloadText", "sangam-recovery-codes.txt", string.Join(Environment.NewLine, _recoveryCodes)).AsTask();
+
+    private async Task EndAsync(PortalSession session)
+    {
+        if (!Recent())
+        {
+            return;
+        }
+
+        _working = true;
+        await Portal.RevokeSessionAsync(_userId, session.Id, null);
+        _working = false;
+        _message = session.IsCurrent
+            ? L["That session has ended. You will be signed out here shortly."]
+            : L["The session on {0} has ended.", session.DeviceLabel ?? session.Browser];
+        await LoadAsync();
+    }
+
+    private async Task EndAllAsync()
+    {
+        if (!Recent())
+        {
+            return;
+        }
+
+        _working = true;
+        await Portal.RevokeAllSessionsAsync(_userId, null);
+        _working = false;
+        _confirmingAll = false;
+        _message = L["All sessions have ended. You will be signed out of this one shortly."];
+        await LoadAsync();
+    }
+}

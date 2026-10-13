@@ -16,6 +16,7 @@ namespace Sangam.Identity.Application.Portal;
 /// <param name="Scopes">Scopes the user consented to.</param>
 /// <param name="Organisations">Organisations the user holds a role in for this app.</param>
 /// <param name="LiveTokens">Live tokens the app currently holds.</param>
+/// <param name="HomepageUrl">rc.10 (P1): where the person opens the application, when it has an address.</param>
 public sealed record LinkedApp(
     Guid AppId,
     string ClientId,
@@ -29,7 +30,8 @@ public sealed record LinkedApp(
     DateTimeOffset? LastUsedAt,
     IReadOnlyList<string> Scopes,
     IReadOnlyList<string> Organisations,
-    int LiveTokens)
+    int LiveTokens,
+    string? HomepageUrl = null)
 {
     /// <summary>Status used for the cord-dot: active, expiring or dormant.</summary>
     /// <param name="now">Current time.</param>
@@ -143,4 +145,23 @@ public sealed record ProfileUpdateResult(bool Succeeded, string? Field, string? 
     /// <param name="field">The field at fault.</param>
     /// <param name="message">What to tell the user.</param>
     public static ProfileUpdateResult Failed(string field, string message) => new(false, field, message, false);
+}
+
+/// <summary>rc.10 (P5): which events the Activity page shows.</summary>
+public enum ActivityFilter
+{
+    /// <summary>Everything.</summary>
+    All = 0,
+
+    /// <summary>Signing in and out, codes, two-step sign-in and sessions.</summary>
+    SignIns = 1,
+
+    /// <summary>Applications: permission given or withdrawn, access, tokens, details they keep.</summary>
+    Apps = 2,
+
+    /// <summary>Roles in organisations, given, ended or expired.</summary>
+    Roles = 3,
+
+    /// <summary>What someone else did: an operator, an application's administrators, an application itself, or Sangam.</summary>
+    ByOthers = 4,
 }

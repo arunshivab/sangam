@@ -4,7 +4,7 @@
 @inject PersistentComponentState ApplicationState
 @implements IDisposable
 
-<PageTitle>@(_detail?.Row.DisplayName ?? L["User"]) · @L["Sangam console"]</PageTitle>
+<PageTitle>@(_detail?.Row.DisplayName ?? L["User"]) · @L["Operator console"]</PageTitle>
 
 @if (_detail is null)
 {
@@ -12,11 +12,11 @@
 }
 else
 {
-  <a class="sg-back" href="/">@L["← Users"]</a>
+  <a class="sg-back" href="/users">@L["← Users"]</a>
   <h1 class="sg-h1">@_detail.Row.DisplayName</h1>
   <p class="sg-lede sg-mono">@_detail.Row.Email@(_detail.Row.Mobile is null ? "" : " · " + _detail.Row.Mobile)</p>
 
-  <p class="sg-read-note">@L["You opened this record. It appears in this person's own audit log, with your name."]</p>
+  <p class="sg-read-note">@L["You opened this record. It appears in this person's own Activity, with your name."]</p>
 
   <div class="sg-grid">
     <div class="sg-panel">
@@ -24,7 +24,7 @@ else
       <dl class="sg-facts">
         <div><dt>@L["Status"]</dt><dd>@StatusText(_detail.Row.Status)</dd></div>
         <div><dt>@L["Email"]</dt><dd>@(_detail.Row.EmailVerified ? L["verified"] : L["not verified"])</dd></div>
-        <div><dt>@L["Two-step"]</dt><dd>@(_detail.Row.MfaEnrolled ? L["authenticator enrolled"] : L["none"])</dd></div>
+        <div><dt>@L["Two-step sign-in"]</dt><dd>@(_detail.Row.MfaEnrolled ? L["authenticator app"] : L["none"])</dd></div>
         <div><dt>@L["Date of birth"]</dt><dd>@_detail.DateOfBirth.ToString("d MMM yyyy", CultureInfo.CurrentCulture)</dd></div>
         <div><dt>@L["Signs in with"]</dt><dd>@ModeText(_detail.SignInPreference)</dd></div>
         <div><dt>@L["Last sign-in"]</dt><dd>@((_detail.LastSignInAt is DateTimeOffset lastSignIn ? IndiaTime.Stamp(lastSignIn) : null) ?? L["never"])</dd></div>
@@ -88,18 +88,11 @@ else
     else
     {
       <div class="sg-form-row">
-        <label class="sg-label" for="reason">@L["Reason — recorded in the audit log"]</label>
+        <label class="sg-label" for="reason">@L["Reason — recorded in the audit trail"]</label>
         <input id="reason" class="sg-input" @bind="_reason" @bind:event="oninput" placeholder="@L["Why are you doing this?"]" />
       </div>
-      <div class="sg-actions">
-        @if (_detail.Row.Status == UserStatus.Suspended)
-        {
-          <button type="button" class="sg-btn sg-btn--primary" @onclick="ReinstateAsync" disabled="@_busy">@L["Reinstate"]</button>
-        }
-        else
-        {
-          <button type="button" class="sg-btn sg-btn--warn" @onclick="SuspendAsync" disabled="@(_busy || !HasReason)">@L["Suspend"]</button>
-        }
+      @* rc.10 (O3): safest first, the destructive action last and alone. *@
+      <div class="sg-actions" data-panel="actions">
         <button type="button" class="sg-btn sg-btn--ghost" @onclick="SignOutAsync" disabled="@_busy">@L["Sign out everywhere"]</button>
         @if (_detail.Row.OnHold)
         {
@@ -109,14 +102,24 @@ else
         {
           <button type="button" class="sg-btn sg-btn--ghost" @onclick="PlaceHoldAsync" disabled="@(_busy || !HasReason)">@L["Hold deletion"]</button>
         }
-        @if (Context.IsOwner)
+        @if (_detail.Row.Status == UserStatus.Suspended)
         {
-          <button type="button" class="sg-btn sg-btn--danger" @onclick="() => _confirmDelete = true" disabled="@(_busy || !HasReason)">@L["Delete now"]</button>
+          <button type="button" class="sg-btn sg-btn--primary" @onclick="ReinstateAsync" disabled="@_busy">@L["Reinstate"]</button>
+        }
+        else
+        {
+          <button type="button" class="sg-btn sg-btn--warn" @onclick="SuspendAsync" disabled="@(_busy || !HasReason)">@L["Suspend"]</button>
         }
       </div>
       @if (!HasReason)
       {
         <p class="sg-muted">@L["Suspending, holding and deleting need a reason."]</p>
+      }
+      @if (Context.IsOwner)
+      {
+        <div class="sg-actions sg-actions-danger">
+          <button type="button" class="sg-btn sg-btn--danger" @onclick="() => _confirmDelete = true" disabled="@(_busy || !HasReason)">@L["Delete now"]</button>
+        </div>
       }
       @if (_pendingReset is not null)
       {
@@ -124,7 +127,7 @@ else
           <h3 class="sg-h3">@L["A recovery of this account is waiting"]</h3>
           @if (_pendingReset.AwaitingReview)
           {
-            <p class="sg-muted">@L.Markup("Asked for {0} with DigiLocker. The record did not match the account, so it waits for review on {1}.", When(_pendingReset.RequestedAt), LocalizedMarkup.Link("/recoveries", L["Recoveries"]))</p>
+            <p class="sg-muted">@L.Markup("Asked for {0} with DigiLocker. The record did not match the account, so it waits for review on {1}.", When(_pendingReset.RequestedAt), LocalizedMarkup.Link("/recoveries", L["Recovery requests"]))</p>
           }
           else
           {

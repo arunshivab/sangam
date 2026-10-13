@@ -43,7 +43,7 @@ public sealed class ConsoleGateTests : IClassFixture<ConsoleFactory>
         string html = await GetAsync(owner, "/");
 
         Assert.Contains("Set up two-step sign-in first", html, StringComparison.Ordinal);
-        Assert.Contains("https://account.example.invalid/profile", html, StringComparison.Ordinal);
+        Assert.Contains("https://account.example.invalid/security", html, StringComparison.Ordinal);
         Assert.DoesNotContain("sg-table", html, StringComparison.Ordinal);
     }
 
@@ -53,7 +53,7 @@ public sealed class ConsoleGateTests : IClassFixture<ConsoleFactory>
         Guid viewer = await _factory.SeedAsync(PlatformRole.Viewer, mfa: true, "Viewer");
         Guid someone = await _factory.SeedAsync(role: null, mfa: false, "Someone");
 
-        string users = await GetAsync(viewer, "/");
+        string users = await GetAsync(viewer, "/users");
         Assert.Contains("sg-table", users, StringComparison.Ordinal);
         Assert.Contains(">viewer<", users, StringComparison.Ordinal);
 
@@ -245,6 +245,103 @@ public sealed class ConsoleGateTests : IClassFixture<ConsoleFactory>
             string body = html[html.IndexOf("<body", StringComparison.Ordinal)..];
             Assert.Contains("<!--Blazor:{\"type\":\"server\"", body, StringComparison.Ordinal);
         }
+    }
+
+    [PostgresFact]
+    public async Task EachRank_StartsWhereItsWorkIs()
+    {
+        // rc.10 (O1): an owner sees the platform overview; support the work queue; an app manager the applications; a viewer monitoring.
+        Guid owner = await _factory.SeedAsync(PlatformRole.Owner, mfa: true, "Home");
+        string overview = await GetAsync(owner, "/");
+        Assert.Contains("data-panel=\"stats\"", overview, StringComparison.Ordinal);
+        Assert.Contains("data-panel=\"attention\"", overview, StringComparison.Ordinal);
+        Assert.Contains("data-panel=\"trail\"", overview, StringComparison.Ordinal);
+
+        foreach ((PlatformRole rank, string home) in new[] { (PlatformRole.Support, "/queue"), (PlatformRole.AppManager, "/apps"), (PlatformRole.Viewer, "/monitoring") })
+        {
+            Guid someone = await _factory.SeedAsync(rank, mfa: true, "Home");
+            using HttpClient client = _factory.ClientFor(someone);
+            using HttpResponseMessage response = await client.GetAsync(new Uri("/", UriKind.Relative));
+            Assert.True(response.StatusCode is HttpStatusCode.Found or HttpStatusCode.Redirect, $"{rank}: {(int)response.StatusCode}");
+            Uri location = response.Headers.Location!;
+            Assert.Equal(home, location.IsAbsoluteUri ? location.PathAndQuery : location.OriginalString);
+        }
+    }
+
+    [PostgresFact]
+    public async Task ASessionNotSignedInWithTwoStep_IsAskedToSignInAgain_AndSeesNoData()
+    {
+        // rc.10: an authenticator on the account is not enough; this session must have used it (or a passkey).
+        Guid owner = await _factory.SeedAsync(PlatformRole.Owner, mfa: true, "Weak");
+        using HttpClient client = _factory.ClientFor(owner, "urn:sangam:acr:1");
+        string html = await client.GetStringAsync(new Uri("/users", UriKind.Relative));
+        Assert.Contains("data-panel=\"two-step-required\"", html, StringComparison.Ordinal);
+        Assert.Contains("href=\"/reauth?returnUrl=%2Fusers\"", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("sg-table", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("@example.in", html, StringComparison.Ordinal);
+    }
+
+    [PostgresFact]
+    public async Task TheStrip_SaysWhichEnvironment_AndHowThisSessionSignedIn()
+    {
+        Guid viewer = await _factory.SeedAsync(PlatformRole.Viewer, mfa: true, "Strip");
+        string html = System.Net.WebUtility.HtmlDecode(await GetAsync(viewer, "/monitoring"));
+        Assert.Contains("data-panel=\"strip\"", html, StringComparison.Ordinal);
+        Assert.Contains("TESTING · India", html, StringComparison.Ordinal);
+        Assert.Contains("sg-strip--other", html, StringComparison.Ordinal);
+        Assert.Contains("Signed in with two-step sign-in", html, StringComparison.Ordinal);
+        Assert.Contains("href=\"/reauth?returnUrl=", html, StringComparison.Ordinal);
+
+        using HttpClient passkey = _factory.ClientFor(viewer, "urn:sangam:acr:3");
+        Assert.Contains("Signed in with a passkey", await passkey.GetStringAsync(new Uri("/monitoring", UriKind.Relative)), StringComparison.Ordinal);
+    }
+
+    [PostgresFact]
+    public async Task TheSidebar_ShowsEachRankOnlyWhatItCanOpen()
+    {
+        Guid viewer = await _factory.SeedAsync(PlatformRole.Viewer, mfa: true, "Side");
+        string seen = await GetAsync(viewer, "/users");
+        Assert.Contains("href=\"/queue\"", seen, StringComparison.Ordinal);
+        Assert.Contains("href=\"/customisation\"", seen, StringComparison.Ordinal);
+        Assert.DoesNotContain("href=\"/operators\"", seen, StringComparison.Ordinal);
+        Assert.DoesNotContain("href=\"/recoveries\"", seen, StringComparison.Ordinal);
+
+        Guid owner = await _factory.SeedAsync(PlatformRole.Owner, mfa: true, "Side");
+        string all = await GetAsync(owner, "/users");
+        Assert.Contains("href=\"/operators\"", all, StringComparison.Ordinal);
+        Assert.Contains("href=\"/recoveries\"", all, StringComparison.Ordinal);
+        Assert.Contains("Branding &amp; messages", all, StringComparison.Ordinal);
+    }
+
+    [PostgresFact]
+    public async Task TheWorkQueue_AndTheUsersPager_Render()
+    {
+        Guid support = await _factory.SeedAsync(PlatformRole.Support, mfa: true, "Queue");
+        string queue = System.Net.WebUtility.HtmlDecode(await GetAsync(support, "/queue"));
+        Assert.Contains("Work queue", queue, StringComparison.Ordinal);
+        Assert.Contains("href=\"/queue?kind=recovery\"", queue, StringComparison.Ordinal);
+        Assert.Contains("href=\"/queue?kind=grievance\"", queue, StringComparison.Ordinal);
+
+        Guid viewer = await _factory.SeedAsync(PlatformRole.Viewer, mfa: true, "Queue");
+        Assert.DoesNotContain("href=\"/queue?kind=recovery\"", await GetAsync(viewer, "/queue"), StringComparison.Ordinal);
+        string users = System.Net.WebUtility.HtmlDecode(await GetAsync(viewer, "/users"));
+        Assert.Contains("data-panel=\"pager\"", users, StringComparison.Ordinal);
+        Assert.Contains("Showing 1–", users, StringComparison.Ordinal);
+    }
+
+    [PostgresFact]
+    public async Task TheUserRecord_PutsTheDestructiveActionLast_AndAlone()
+    {
+        // rc.10 (O3): safest first; "Delete now" stands apart after the others.
+        Guid owner = await _factory.SeedAsync(PlatformRole.Owner, mfa: true, "Order");
+        Guid someone = await _factory.SeedAsync(role: null, mfa: false, "Someone");
+        string html = await GetAsync(owner, $"/users/{someone:D}");
+        int signOut = html.IndexOf("Sign out everywhere", StringComparison.Ordinal);
+        int hold = html.IndexOf(">Hold deletion<", StringComparison.Ordinal);
+        int suspend = html.IndexOf(">Suspend<", StringComparison.Ordinal);
+        int delete = html.IndexOf(">Delete now<", StringComparison.Ordinal);
+        Assert.True(signOut > 0 && signOut < hold && hold < suspend && suspend < delete, $"{signOut} {hold} {suspend} {delete}");
+        Assert.Contains("sg-actions-danger", html, StringComparison.Ordinal);
     }
 
     private async Task<string> GetAsync(Guid userId, string path)

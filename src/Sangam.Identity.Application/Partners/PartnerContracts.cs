@@ -100,3 +100,49 @@ public sealed record PolicyView(
 /// <param name="RequireCharacterTypes">Character-type rule (rc.5): only <see langword="true"/> is stricter.</param>
 public sealed record PolicyInput(SignInPolicy? SignIn, int? MinPasswordLength, MfaRequirement? Mfa, bool? BreachedPasswordCheck, bool? RequireCharacterTypes = null);
 
+/// <summary>rc.10 (R1, R2): how one application stands, for the partner console's overview and home cards.</summary>
+/// <param name="People">People who have linked the application.</param>
+/// <param name="Organisations">Organisations registered through it.</param>
+/// <param name="Roles">Roles it defines (not retired).</param>
+/// <param name="Administrators">Its administrators on the partner console, owners included.</param>
+/// <param name="SignIns24h">People who used it in a Sangam session begun in the last 24 hours.</param>
+/// <param name="ProvisioningOn">Whether SCIM provisioning is switched on.</param>
+/// <param name="ProvisioningFailing">Whether provisioning is failing now.</param>
+/// <param name="ProvisioningLastSuccess">When provisioning last succeeded.</param>
+/// <param name="Webhooks">Webhook endpoints switched on.</param>
+/// <param name="WebhooksFailing">Endpoints failing now.</param>
+/// <param name="DeliveriesWaiting">Webhook deliveries not yet delivered.</param>
+/// <param name="LogoutConfigured">Whether Sangam knows where to tell the application a session ended.</param>
+/// <param name="SecretSetAt">When its client secret was last set, if recorded.</param>
+/// <param name="HasSecret">Whether it signs in with a client secret; <see langword="null"/> when not known.</param>
+/// <param name="Status">Whether the platform has it enabled.</param>
+public sealed record PartnerAppOverview(
+    int People,
+    int Organisations,
+    int Roles,
+    int Administrators,
+    int SignIns24h,
+    bool ProvisioningOn,
+    bool ProvisioningFailing,
+    DateTimeOffset? ProvisioningLastSuccess,
+    int Webhooks,
+    int WebhooksFailing,
+    int DeliveriesWaiting,
+    bool LogoutConfigured,
+    DateTimeOffset? SecretSetAt,
+    bool? HasSecret,
+    AppStatus Status)
+{
+    /// <summary>A client secret older than this is flagged (founder decision, 12 Oct 2026).</summary>
+    public static readonly TimeSpan SecretWarnAge = TimeSpan.FromDays(365);
+
+    /// <summary>Whether the secret is older than <see cref="SecretWarnAge"/>.</summary>
+    /// <param name="now">The time now.</param>
+    /// <returns><see langword="true"/> when it is due a change.</returns>
+    public bool SecretIsOld(DateTimeOffset now) => SecretSetAt is DateTimeOffset at && now - at > SecretWarnAge;
+
+    /// <summary>Whether anything here needs the partner's action (failing integrations, an old secret, or a disabled app).</summary>
+    /// <param name="now">The time now.</param>
+    /// <returns><see langword="true"/> when something does.</returns>
+    public bool NeedsAction(DateTimeOffset now) => ProvisioningFailing || WebhooksFailing > 0 || SecretIsOld(now) || Status != AppStatus.Active;
+}

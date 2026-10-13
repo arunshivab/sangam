@@ -1,0 +1,176 @@
+@page "/roles"
+@inject IPortalRolesService RoleService
+@inject AuthenticationStateProvider AuthProvider
+
+@* rc.10 (P4; founder decisions, 12 Oct 2026): the roles applications have given you, by organisation. Each role is shown
+   as the application named it — Sangam does not interpret it. Leaving needs a recent sign-in and an inline confirmation,
+   ends the roles held at that organisation only, and never leaves an application without an organisation admin there. *@
+<PageTitle>@L["Organisations & roles · sangam"]</PageTitle>
+
+<PageHeader Title="@L["Organisations & roles"].Value" Subtitle="@L["The roles applications have given you, grouped by the organisation that gave them."].Value" />
+
+@if (_reauth)
+{
+  <ReauthNotice ReturnTo="/roles" />
+}
+
+@if (_orgs is null)
+{
+  <p class="sg-note">@L["Loading…"]</p>
+}
+else if (_orgs.Count == 0)
+{
+  <div class="sg-empty">
+    <SangamMark Size="52" Mode="SangamMarkMode.LeafMist" Decorative="true" />
+    <h2 class="sg-empty-title">@L["No roles yet"]</h2>
+    <p class="sg-empty-body">@L["When a hospital or clinic gives you a role in one of its applications, it appears here, with who gave it and until when."]</p>
+  </div>
+}
+else
+{
+  @foreach (PortalOrganisation org in _orgs)
+  {
+    <section class="sg-panel sg-org" data-panel="organisation" data-org="@org.OrgId">
+      <div class="sg-org-head">
+        <div>
+          <h2 class="sg-panel-title">@org.Name</h2>
+          @if (org.Within is not null)
+          {
+            <p class="sg-note">@L["Part of {0}", org.Within]</p>
+          }
+        </div>
+        @if (org.CanLeave && _leaving?.OrgId != org.OrgId)
+        {
+          <button type="button" class="sg-btn sg-btn--danger sg-btn--row" @onclick="() => AskLeave(org)" disabled="@_working">@L["Leave organisation"]</button>
+        }
+      </div>
+
+      <div class="sg-table sg-table--roles" role="table" aria-label="@L["Roles at {0}", org.Name]">
+        <div class="sg-tr sg-tr--head" role="row">
+          <span role="columnheader">@L["APPLICATION"]</span>
+          <span role="columnheader">@L["ROLE"]</span>
+          <span role="columnheader">@L["GIVEN"]</span>
+          <span role="columnheader">@L["UNTIL"]</span>
+        </div>
+        @foreach (PortalRole role in org.Roles)
+        {
+          <div class="sg-tr" role="row">
+            <span role="cell" class="sg-app-name">@role.AppName</span>
+            <span role="cell">
+              <span class="sg-chip sg-chip--role">@role.RoleName</span>
+              <span class="sg-app-orgs">@L["as named by {0}", role.AppName]@if (role.AppliesBeneath) { <text> · </text>@L["also every organisation beneath it"] }</span>
+            </span>
+            <span role="cell">
+              @IndiaTime.Date(role.GivenAt)
+              @if (role.GivenBy is not null)
+              {
+                <span class="sg-app-orgs">@L["by {0}", role.GivenBy]</span>
+              }
+            </span>
+            <span role="cell" class="@(role.Until is DateTimeOffset soon && soon - _now < TimeSpan.FromDays(30) ? "sg-until--soon" : null)">
+              @(role.Until is DateTimeOffset until ? IndiaTime.Date(until) : L["no end date"])
+            </span>
+          </div>
+        }
+      </div>
+
+      @if (_leaving?.OrgId == org.OrgId)
+      {
+        <div class="sg-confirm" role="alertdialog" aria-labelledby="leave-@org.OrgId" data-panel="leave-confirm">
+          <h3 class="sg-confirm-title" id="leave-@org.OrgId">@L["Leave {0}?", org.Name]</h3>
+          <p class="sg-confirm-body">@L["These roles end now, and each application is told:"]</p>
+          <ul class="sg-leave-list">
+            @foreach (PortalRole role in org.Roles.Where(r => !r.OnlyOrganisationAdmin))
+            {
+              <li>@role.AppName: <strong>@role.RoleName</strong></li>
+            }
+          </ul>
+          @foreach (PortalRole kept in org.Roles.Where(r => r.OnlyOrganisationAdmin))
+          {
+            <p class="sg-confirm-body sg-warn-note">@L["You are the only organisation admin for {0} here, so that role stays. Ask {0}'s administrators to name another first.", kept.AppName]</p>
+          }
+          <p class="sg-confirm-body">@L["Only {0} can give these roles back. Its organisation admins will be told by e-mail.", org.Name]</p>
+          <div class="sg-confirm-actions">
+            <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _leaving = null">@L["Stay"]</button>
+            <button type="button" class="sg-btn sg-btn--danger" @onclick="LeaveAsync" disabled="@_working">@L["Leave {0}", org.Name]</button>
+          </div>
+        </div>
+      }
+      else if (!org.CanLeave)
+      {
+        <p class="sg-note">@L["You are the only organisation admin here for every application you use it in, so you cannot leave it yet."]</p>
+      }
+    </section>
+  }
+}
+
+@if (_message is not null)
+{
+  <p class="sg-banner sg-banner--success" role="status">@_message</p>
+}
+
+@code {
+    private IReadOnlyList<PortalOrganisation>? _orgs;
+    private PortalOrganisation? _leaving;
+    private bool _working;
+    private string? _message;
+    private Guid _userId;
+    private DateTimeOffset _now = DateTimeOffset.UtcNow;
+
+    // rc.9 (ASVS V3.7.1): leaving needs a sign-in from the last 15 minutes (founder decision, 12 Oct 2026).
+    private System.Security.Claims.ClaimsPrincipal _principal = new();
+    private bool _reauth;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthProvider.GetAuthenticationStateAsync();
+        _principal = state.User;
+        _userId = PortalUser.Id(state.User) ?? Guid.Empty;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _now = DateTimeOffset.UtcNow;
+        _orgs = _userId == Guid.Empty ? [] : await RoleService.GetAsync(_userId);
+    }
+
+    private void AskLeave(PortalOrganisation org)
+    {
+        _message = null;
+        if (!Sangam.Web.Shared.Security.RecentSignIn.IsRecent(_principal, DateTimeOffset.UtcNow))
+        {
+            _reauth = true;
+            return;
+        }
+
+        _leaving = org;
+    }
+
+    private async Task LeaveAsync()
+    {
+        if (_leaving is null)
+        {
+            return;
+        }
+
+        if (!Sangam.Web.Shared.Security.RecentSignIn.IsRecent(_principal, DateTimeOffset.UtcNow))
+        {
+            _reauth = true;
+            _leaving = null;
+            return;
+        }
+
+        _working = true;
+        string name = _leaving.Name;
+        LeaveResult result = await RoleService.LeaveAsync(_userId, _leaving.OrgId, null);
+        _working = false;
+        _leaving = null;
+        _message = result.Succeeded
+            ? (result.Kept.Count == 0
+                ? L["You left {0}. Your roles there have ended.", name]
+                : L["You left {0} in {1}. Your role in {2} stays: you are its only organisation admin there.", name, string.Join(", ", result.Ended), string.Join(", ", result.Kept)])
+            : L["Nothing changed."];
+        await LoadAsync();
+    }
+}

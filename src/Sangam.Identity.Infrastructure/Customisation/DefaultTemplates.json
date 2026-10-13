@@ -418,5 +418,33 @@
       "subject": "നിങ്ങളുടെ പാസ്‌വേഡ് ഉപയോഗിച്ച് Sangam-ൽ സൈൻ ഇൻ ചെയ്യുക",
       "body": "നമസ്കാരം {{name}},\n\nനിങ്ങളുടെ Sangam അക്കൗണ്ടിനായി ആരോ ഇപ്പോൾ ഒരു സൈൻ-ഇൻ കോഡ് ആവശ്യപ്പെട്ടു. ഈ സൈൻ-ഇൻ ഇമെയിൽ ചെയ്യുന്ന കോഡ് ഉപയോഗിച്ചല്ല,\nനിങ്ങളുടെ പാസ്‌വേഡ് ഉപയോഗിച്ചാണ്, അതിനാൽ കോഡ് അയച്ചിട്ടില്ല, നിങ്ങളുടെ അക്കൗണ്ടിൽ ഒന്നും മാറിയിട്ടുമില്ല.\n\nഅത് നിങ്ങളാണെങ്കിൽ: id.sangamid.in എന്ന സൈറ്റിൽ പാസ്‌വേഡ് ഉപയോഗിച്ച് സൈൻ ഇൻ ചെയ്യുക, പാസ്‌വേഡ് ഓർമ്മയില്ലെങ്കിൽ അവിടെയുള്ള \"പാസ്‌വേഡ് മറന്നോ?\" ഉപയോഗിക്കുക.\nഅത് നിങ്ങളല്ലെങ്കിൽ: ഒന്നും ചെയ്യേണ്ടതില്ല. നിങ്ങളുടെ അക്കൗണ്ട് സുരക്ഷിതമാണ്.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
     }
+  },
+  "organisation_left": {
+    "en-IN": {
+      "subject": "You left {{organisation}} on Sangam",
+      "body": "Hello {{name}},\n\nYou left {{organisation}} from your Sangam account. These roles have ended:\n\n{{roles}}\n\nEach application has been told. Only {{organisation}} can give these roles back; ask its administrators if\nyou left by mistake.\n\nIf you did not do this, change your password at id.sangamid.in and write to help@sangamid.in.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "आपने Sangam पर {{organisation}} छोड़ दिया",
+      "body": "नमस्ते {{name}},\n\nआपने अपने Sangam खाते से {{organisation}} छोड़ दिया। ये भूमिकाएँ समाप्त हो गई हैं:\n\n{{roles}}\n\nहर एप्लिकेशन को बता दिया गया है। ये भूमिकाएँ केवल {{organisation}} ही वापस दे सकता है; अगर आपने गलती से\nछोड़ा है, तो उसके व्यवस्थापकों से पूछें।\n\nअगर यह आपने नहीं किया, तो id.sangamid.in पर अपना पासवर्ड बदलें और help@sangamid.in पर लिखें।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "നിങ്ങൾ Sangam-ൽ {{organisation}} വിട്ടു",
+      "body": "നമസ്കാരം {{name}},\n\nനിങ്ങളുടെ Sangam അക്കൗണ്ടിൽ നിന്ന് നിങ്ങൾ {{organisation}} വിട്ടു. ഈ റോളുകൾ അവസാനിച്ചു:\n\n{{roles}}\n\nഓരോ ആപ്ലിക്കേഷനെയും അറിയിച്ചിട്ടുണ്ട്. ഈ റോളുകൾ തിരികെ നൽകാൻ {{organisation}}-ന് മാത്രമേ കഴിയൂ; അബദ്ധത്തിൽ\nവിട്ടതാണെങ്കിൽ അതിന്റെ അഡ്മിനിസ്ട്രേറ്റർമാരോട് ചോദിക്കുക.\n\nഇത് നിങ്ങൾ ചെയ്തതല്ലെങ്കിൽ, id.sangamid.in-ൽ പാസ്‌വേഡ് മാറ്റി help@sangamid.in-ലേക്ക് എഴുതുക.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
+  "organisation_member_left": {
+    "en-IN": {
+      "subject": "{{member}} left {{organisation}} in {{application}}",
+      "body": "Hello {{name}},\n\n{{member}} left {{organisation}} from their Sangam account. Their roles in {{application}} there have ended:\n\n{{roles}}\n\n{{application}} has been told. If they should still have access, give them the role again from\n{{application}} or the partner console.\n\nYou receive this because you are an organisation admin of {{organisation}} in {{application}}.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "{{member}} ने {{application}} में {{organisation}} छोड़ दिया",
+      "body": "नमस्ते {{name}},\n\n{{member}} ने अपने Sangam खाते से {{organisation}} छोड़ दिया। वहाँ {{application}} में उनकी भूमिकाएँ समाप्त हो गई हैं:\n\n{{roles}}\n\n{{application}} को बता दिया गया है। अगर उन्हें अब भी पहुँच मिलनी चाहिए, तो {{application}} या पार्टनर कंसोल से\nउन्हें भूमिका फिर से दें।\n\nयह आपको इसलिए मिला है क्योंकि आप {{application}} में {{organisation}} के संगठन व्यवस्थापक हैं।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "{{member}} {{application}}-ൽ {{organisation}} വിട്ടു",
+      "body": "നമസ്കാരം {{name}},\n\n{{member}} തങ്ങളുടെ Sangam അക്കൗണ്ടിൽ നിന്ന് {{organisation}} വിട്ടു. അവിടെ {{application}}-ലെ അവരുടെ റോളുകൾ അവസാനിച്ചു:\n\n{{roles}}\n\n{{application}}-നെ അറിയിച്ചിട്ടുണ്ട്. അവർക്ക് ഇപ്പോഴും ആക്സസ് വേണമെങ്കിൽ, {{application}}-ൽ നിന്നോ പാർട്ണർ\nകൺസോളിൽ നിന്നോ റോൾ വീണ്ടും നൽകുക.\n\n{{application}}-ൽ {{organisation}}-ന്റെ ഓർഗനൈസേഷൻ അഡ്മിൻ ആയതിനാലാണ് നിങ്ങൾക്ക് ഇത് ലഭിക്കുന്നത്.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
   }
 }

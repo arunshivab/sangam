@@ -14,7 +14,7 @@
     {
       <label class="sg-check">
         <input type="radio" name="@($"{Key}-signin")" checked="@(_signIn == SignInPolicy.PasswordAndOtp)" @onchange="() => _signIn = SignInPolicy.PasswordAndOtp" />
-        @L["Always two-step"] <span class="sg-muted">@L["— password, then a code"]</span>
+        @L["Two-step sign-in every time"] <span class="sg-muted">@L["— password, then a code"]</span>
       </label>
     }
     <label class="sg-check">
