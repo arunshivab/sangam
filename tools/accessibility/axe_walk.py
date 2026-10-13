@@ -138,12 +138,32 @@ def verify(pg, email):
     submit(pg, 'form:not(.sg-resend) button[type=submit]')
 
 
+def who(pg, identifier, remember=False):
+    """rc.11: the first sign-in screen (email, mobile or login ID), then "Password" on the next."""
+    pg.fill('#Identifier', identifier)
+    if remember:
+        pg.check('#Remember')
+    pg.wait_for_timeout(2200)
+    submit(pg, 'form:has(#Identifier) button[type=submit]')
+
+
+def password_step(pg, password=PW):
+    with pg.expect_navigation():
+        pg.click('[data-method=password] a')
+    pg.fill('#Password', password)
+    submit(pg)
+
+
+def password_sign_in(pg, identifier, password=PW, remember=False):
+    who(pg, identifier, remember)
+    password_step(pg, password)
+
+
 def login(pg, email, url=None, mfa=False):
     pg.goto(url or B + '/login'); pg.wait_for_load_state()
     if '/login' not in pg.url:
         return
-    pg.fill('#Email', email); pg.fill('#Password', PW); pg.wait_for_timeout(2200)
-    submit(pg)
+    password_sign_in(pg, email)
     if mfa and '/login/authenticator' in pg.url:
         pg.fill('#Code', totp()); submit(pg)
 
@@ -244,7 +264,11 @@ with sync_playwright() as p:
                            ('/privacy', 'privacy'), ('/privacy/grievance', 'grievance'), ('/help', 'help'), ('/invite/not-a-real-token', 'invite-not-found'),
                            ('/Error', 'error')]:
             pg.goto(B + path); shot(name)
-        pg.goto(B + '/login'); pg.fill('#Email', 'nobody@example.in'); pg.fill('#Password', 'Wrong-Password-1!'); pg.wait_for_timeout(2200); submit(pg)
+        pg.goto(B + '/login'); who(pg, 'nobody@example.in'); shot('login-method')
+        with pg.expect_navigation():
+            pg.click('[data-method=password] a')
+        shot('login-password')
+        pg.fill('#Password', 'Wrong-Password-1!'); submit(pg)
         shot('login-wrong-password')
         pg.goto(B + '/register'); pg.fill('#Password', 'abc'); pg.wait_for_timeout(300); shot('register-password-meter')
 
@@ -281,10 +305,15 @@ with sync_playwright() as p:
 
         # Sign-in with an e-mailed code.
         sql(f"update users set sign_in_preference='password_and_otp' where id='{person_id}'")
-        pg.goto(B + '/login'); pg.fill('#Email', person); pg.fill('#Password', PW); pg.wait_for_timeout(2200); submit(pg)
+        pg.goto(B + '/login'); password_sign_in(pg, person, remember=True)
         shot('login-code-step')
         c = code_for(pg, person); pg.goto(B + '/login/verify'); pg.fill('#Code', c); submit(pg)
         sql(f"update users set sign_in_preference='password' where id='{person_id}'")
+        # rc.11: the person asked to be kept on this device's list.
+        pg.goto(B + '/logout'); shot('logout-device-list')
+        with pg.expect_navigation():
+            pg.click('form button[type=submit]')
+        pg.goto(B + '/login'); shot('login-device-list')
         desk.clear_cookies(); set_lang()
 
         # An application that requires a second factor, then one that needs longer passwords.
@@ -293,7 +322,7 @@ with sync_playwright() as p:
         sql(f"update apps set mfa_requirement='optional' where {APP}")
         desk.clear_cookies(); set_lang()
         sql(f"update apps set min_password_length=24 where {APP}")
-        pg.goto(authorize()); pg.fill('#Email', person); pg.fill('#Password', PW); pg.wait_for_timeout(2200); submit(pg)
+        pg.goto(authorize()); password_sign_in(pg, person)
         shot('login-new-password')
         sql(f"update apps set min_password_length=null where {APP}")
         sql(f"update apps set sign_in_policy='passkey_only' where {APP}")
@@ -302,7 +331,7 @@ with sync_playwright() as p:
 
         # The owner: authenticator step, then a signature ceremony.
         desk.clear_cookies(); set_lang()
-        pg.goto(B + '/login'); pg.fill('#Email', owner); pg.fill('#Password', PW); pg.wait_for_timeout(2200); submit(pg)
+        pg.goto(B + '/login'); password_sign_in(pg, owner)
         shot('login-authenticator')
         pg.fill('#Code', totp()); submit(pg)
         token = json.loads(subprocess.run(['curl', '-s', '-X', 'POST', B + '/connect/token', '-d', 'grant_type=client_credentials', '-d', 'client_id=sangam-dev-sample',
@@ -323,7 +352,7 @@ with sync_playwright() as p:
             shot(name, blazor=True)
         # Operator console.
         # rc.10: the owner's platform overview, the paged users list and the work queue.
-        for path, name in [('/', 'admin-overview'), ('/users', 'admin-users'), ('/queue', 'admin-work-queue'), ('/recoveries', 'admin-recovery-requests'), (f'/users/{person_id}', 'admin-user-detail'), ('/apps', 'admin-applications'), ('/operators', 'admin-operators'), ('/customisation', 'admin-branding-and-messages'), ('/monitoring', 'admin-monitoring'), ('/grievances', 'admin-grievances'), (f'/grievances/{gid}', 'admin-grievance-record'), ('/apps/saml', 'admin-saml-providers')]:
+        for path, name in [('/', 'admin-overview'), ('/users', 'admin-users'), ('/queue', 'admin-work-queue'), ('/recoveries', 'admin-recovery-requests'), (f'/users/{person_id}', 'admin-user-detail'), ('/apps', 'admin-applications'), ('/operators', 'admin-operators'), ('/customisation', 'admin-branding-and-messages'), ('/monitoring', 'admin-monitoring'), ('/grievances', 'admin-grievances'), (f'/grievances/{gid}', 'admin-grievance-record'), ('/apps/saml', 'admin-saml-providers'), ('/audit', 'admin-audit-trail')]:
             pg.goto(ADMIN + path)
             if '/login' in pg.url:
                 login(pg, owner, pg.url, mfa=True); pg.goto(ADMIN + path)
@@ -331,7 +360,8 @@ with sync_playwright() as p:
         # Partner console.
         # rc.10: an application opens on its overview; organisations and people have their own address.
         for path, name in [('/', 'partner-home'), (f'/apps/{app_id}', 'partner-overview'), (f'/apps/{app_id}/people', 'partner-organisations'), (f'/apps/{app_id}/roles', 'partner-roles'),
-                           (f'/apps/{app_id}/admins', 'partner-administrators'), (f'/apps/{app_id}/settings', 'partner-settings'), (f'/apps/{app_id}/messages', 'partner-messages')]:
+                           (f'/apps/{app_id}/admins', 'partner-administrators'), (f'/apps/{app_id}/sign-in', 'partner-sign-in-rules'), (f'/apps/{app_id}/branding', 'partner-branding'),
+                           (f'/apps/{app_id}/credentials', 'partner-credentials'), (f'/apps/{app_id}/messages', 'partner-messages')]:
             pg.goto(PARTNER + path)
             if '/login' in pg.url:
                 login(pg, owner, pg.url, mfa=True); pg.goto(PARTNER + path)

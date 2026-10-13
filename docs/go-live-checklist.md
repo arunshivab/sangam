@@ -10,6 +10,11 @@ exist, so there is no production database to act on yet.
       development keys. The server refuses to start without them — keep it that way.
 - [ ] Real client secrets for `sangam-portal`, `sangam-admin` and `sangam-partner`, generated fresh and stored as
       secrets. The development values (`…-change-me`) must never reach production.
+- [ ] rc.11: after the certificates are in place, open the operator console's **Signing keys** page and check that the
+      key listed as "Signing new tokens" has the fingerprint of the production certificate. After any later rotation,
+      check it again: the new certificate first, the previous one "still published".
+- [ ] rc.11: tell each partner application's owner that they can rotate their own client secret on the partner console
+      (Credentials & redirects → Client secrets), and that a secret they make ends after 12 months.
 - [ ] `Sangam:Seed:DevelopmentSample` is **false**. The seeder creates the sample partner app and
       development redirect URIs; none of that belongs in production.
 - [ ] `Sangam:Email:UseOutbox` is **false**, and Anjal's API (D-B) is configured with production

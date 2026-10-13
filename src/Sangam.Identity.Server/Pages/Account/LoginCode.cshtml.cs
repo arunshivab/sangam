@@ -2,12 +2,16 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Sangam.Identity.Application.Accounts;
 using Sangam.Identity.Application.Apps;
+using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Enums;
 using Sangam.Identity.Server.Authentication;
 
 namespace Sangam.Identity.Server.Pages.Account;
 
-/// <summary>Passwordless entry: ask for the address, send a code when the account uses <c>otp_only</c>.</summary>
+/// <summary>
+/// Passwordless entry: send a code when the account uses <c>otp_only</c>. rc.11: reached from "Code by email" on the
+/// "how do you want to sign in" screen with what was typed there, or directly with an email, a mobile number or a login ID.
+/// </summary>
 [Antibot]
 public sealed class LoginCodeModel : AuthPageModel
 {
@@ -23,11 +27,11 @@ public sealed class LoginCodeModel : AuthPageModel
         _apps = apps ?? throw new ArgumentNullException(nameof(apps));
     }
 
-    /// <summary>Email address.</summary>
+    /// <summary>An email address, a mobile number or a login ID.</summary>
     [BindProperty]
-    [Required(ErrorMessage = "Enter your email address.")]
-    [EmailAddress(ErrorMessage = "Enter a valid email address.")]
-    public string Email { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Enter your email, mobile number or login ID.")]
+    [StringLength(SignInIdentifiers.MaxLength, ErrorMessage = "Enter your email, mobile number or login ID.")]
+    public string Identifier { get; set; } = string.Empty;
 
     /// <summary>Where to go after sign-in.</summary>
     [BindProperty(SupportsGet = true)]
@@ -55,7 +59,32 @@ public sealed class LoginCodeModel : AuthPageModel
             return Page();
         }
 
-        SignInCheck check = await _accounts.BeginOtpSignInAsync(Email, Partner?.SignInPolicy, cancellationToken);
+        if (SignInIdentifiers.Classify(Identifier) == SignInIdentifierKind.Invalid)
+        {
+            ModelState.AddModelError(nameof(Identifier), L["Enter your email, mobile number or login ID."]);
+            return Page();
+        }
+
+        SignInStart start = new(Identifier.Trim(), false, null);
+        return await BeginAsync(await FlowEmailAsync(start, cancellationToken), cancellationToken);
+    }
+
+    /// <summary>rc.11: "Code by email" on the "how do you want to sign in" screen, for what was typed on the first screen.</summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task<IActionResult> OnPostFlowAsync(CancellationToken cancellationToken)
+    {
+        if (SignInFlow.Read(HttpContext) is not SignInStart start)
+        {
+            return Redirect(WithReturn("/login", ReturnUrl));
+        }
+
+        await ResolvePartnerAsync(_apps, ReturnUrl, cancellationToken);
+        return await BeginAsync(await FlowEmailAsync(start, cancellationToken), cancellationToken);
+    }
+
+    private async Task<IActionResult> BeginAsync(string email, CancellationToken cancellationToken)
+    {
+        SignInCheck check = await _accounts.BeginOtpSignInAsync(email, Partner?.SignInPolicy, cancellationToken);
         if (check.Status == SignInStatus.RequiresOtp && check.User is not null)
         {
             await SangamAuthentication.StorePendingAsync(HttpContext, SangamAuthentication.Pending.SignInOtp, check.User.Id, check.Mode);

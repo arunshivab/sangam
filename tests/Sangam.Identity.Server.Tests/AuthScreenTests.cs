@@ -313,7 +313,7 @@ public sealed partial class AuthScreenTests
         // Set passwordless, sign out, use /login/code
         await TestAccounts.SetPreferenceAsync(_factory.Services, email, SignInMode.OtpOnly);
         await s.PostFormAsync("/logout", []);
-        (_, string? codeLoc, _) = await s.PostFormAsync("/login/code", new Dictionary<string, string> { ["Email"] = email });
+        (_, string? codeLoc, _) = await s.PostFormAsync("/login/code", new Dictionary<string, string> { ["Identifier"] = email });
         Assert.Equal("/login/verify", codeLoc);
         string signInCode = Code(outbox.LatestFor(email)!.Message.TextBody);
         (_, string? pwlessLoc, _) = await s.PostFormAsync("/login/verify", new Dictionary<string, string> { ["Code"] = signInCode });
@@ -321,7 +321,7 @@ public sealed partial class AuthScreenTests
 
         // Unknown address on /login/code gets the identical next screen and a generic failure
         using BrowserSession stranger = new(_factory);
-        (_, string? strangerLoc, _) = await stranger.PostFormAsync("/login/code", new Dictionary<string, string> { ["Email"] = "nobody-" + Guid.NewGuid().ToString("N") + "@example.in" });
+        (_, string? strangerLoc, _) = await stranger.PostFormAsync("/login/code", new Dictionary<string, string> { ["Identifier"] = "nobody-" + Guid.NewGuid().ToString("N") + "@example.in" });
         Assert.Equal("/login/verify", strangerLoc);
         (_, string strangerScreen) = await stranger.GetAsync("/login/verify");
         Assert.Contains(ReminderLine, strangerScreen, StringComparison.Ordinal);
@@ -367,6 +367,29 @@ public sealed partial class AuthScreenTests
 
         Assert.Contains(HttpStatusCode.TooManyRequests, statuses);
         Assert.Equal(HttpStatusCode.TooManyRequests, statuses[^1]);
+    }
+
+    [Fact]
+    public async Task TheFirstSignInScreen_DoesNotUseUpTheAllowance_ThePasswordScreenDoes()
+    {
+        // rc.11: staff of a hospital share one address; the first screen only remembers what was typed.
+        using var limited = _factory.WithWebHostBuilder(b => b.UseSetting("Sangam:RateLimit:PostsPerMinute", "3"));
+        using HttpClient client = limited.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        List<HttpStatusCode> first = [];
+        List<HttpStatusCode> password = [];
+        for (int i = 0; i < 5; i++)
+        {
+            using FormUrlEncodedContent who = new(new Dictionary<string, string> { ["Identifier"] = "x" });
+            using HttpResponseMessage a = await client.PostAsync(new Uri("/login", UriKind.Relative), who);
+            first.Add(a.StatusCode);
+            using FormUrlEncodedContent secret = new(new Dictionary<string, string> { ["Password"] = "x" });
+            using HttpResponseMessage b = await client.PostAsync(new Uri("/login/password", UriKind.Relative), secret);
+            password.Add(b.StatusCode);
+        }
+
+        Assert.DoesNotContain(HttpStatusCode.TooManyRequests, first);
+        Assert.Equal(HttpStatusCode.TooManyRequests, password[^1]);
     }
 
     [PostgresFact]

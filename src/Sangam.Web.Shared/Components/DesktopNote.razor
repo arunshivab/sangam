@@ -1,0 +1,6 @@
+@using Microsoft.Extensions.Localization
+@using Sangam.Web.Shared.Localization
+@inject IStringLocalizer<SangamText> L
+@* rc.11 (M-consoles): on a phone the consoles are for deciding — opening a case, ending a role, resending — and their
+   configuration pages say they are easier on a computer. Shown only below phone width (sangam-console.css). *@
+<p class="sg-desktop-note sg-notice" role="note">@L["This page is easier on a computer. You can look here; make changes from the desktop console when you can."]</p>

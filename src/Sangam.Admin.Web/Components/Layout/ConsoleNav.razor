@@ -29,6 +29,11 @@
 
   <p class="sg-side-group">@L["Operations"]</p>
   <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="/monitoring">@L["Monitoring"]</NavLink>
+  <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="/keys">@L["Signing keys"]</NavLink>
+  @if (Context?.CanAct == true)
+  {
+    <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="/audit">@L["Audit trail"]</NavLink>
+  }
   @if (Context?.IsOwner == true)
   {
     <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="/operators">@L["Operators"]</NavLink>

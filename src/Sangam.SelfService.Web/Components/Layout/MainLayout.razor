@@ -27,4 +27,19 @@
 <main class="sg-portal">
   @Body
 </main>
+@* rc.11 (M6–M9): on a phone the tabs become a bottom bar — the four most used, then "More". No JavaScript needed. *@
+<nav class="sg-bottom-bar" aria-label="@L["Account sections"]">
+  <NavLink class="sg-bottom-tab" ActiveClass="sg-bottom-tab--active" href="/" Match="NavLinkMatch.All">@L["Home"]</NavLink>
+  <NavLink class="sg-bottom-tab" ActiveClass="sg-bottom-tab--active" href="/apps">@L["Apps"]</NavLink>
+  <NavLink class="sg-bottom-tab" ActiveClass="sg-bottom-tab--active" href="/security">@L["Security"]</NavLink>
+  <NavLink class="sg-bottom-tab" ActiveClass="sg-bottom-tab--active" href="/roles">@L["Roles"]</NavLink>
+  <details class="sg-bottom-more">
+    <summary class="sg-bottom-tab">@L["More"]</summary>
+    <div class="sg-bottom-more-menu">
+      <NavLink class="sg-bottom-more-link" href="/activity">@L["Activity"]</NavLink>
+      <NavLink class="sg-bottom-more-link" href="/profile">@L["Profile & data"]</NavLink>
+      <a class="sg-bottom-more-link" href="/signout">@L["Sign out"]</a>
+    </div>
+  </details>
+</nav>
 <footer class="sg-lang-footer"><LanguagePicker /></footer>

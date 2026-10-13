@@ -305,12 +305,35 @@ public sealed class ConsoleGateTests : IClassFixture<ConsoleFactory>
         Assert.Contains("href=\"/customisation\"", seen, StringComparison.Ordinal);
         Assert.DoesNotContain("href=\"/operators\"", seen, StringComparison.Ordinal);
         Assert.DoesNotContain("href=\"/recoveries\"", seen, StringComparison.Ordinal);
+        Assert.DoesNotContain("href=\"/audit\"", seen, StringComparison.Ordinal);
+        Assert.Contains("open to support and owners", System.Net.WebUtility.HtmlDecode(await GetAsync(viewer, "/audit")), StringComparison.Ordinal);
 
         Guid owner = await _factory.SeedAsync(PlatformRole.Owner, mfa: true, "Side");
         string all = await GetAsync(owner, "/users");
         Assert.Contains("href=\"/operators\"", all, StringComparison.Ordinal);
         Assert.Contains("href=\"/recoveries\"", all, StringComparison.Ordinal);
         Assert.Contains("Branding &amp; messages", all, StringComparison.Ordinal);
+        Assert.Contains("href=\"/audit\"", all, StringComparison.Ordinal);
+        string trail = await GetAsync(owner, "/audit");
+        Assert.Contains("data-panel=\"filters\"", trail, StringComparison.Ordinal);
+        Assert.Contains("data-panel=\"trail\"", trail, StringComparison.Ordinal);
+    }
+
+    [PostgresFact]
+    public async Task TheSigningKeysPage_IsReadOnly_AndOpenToEveryRank()
+    {
+        // rc.11: what the identity server publishes; the key listed first signs new tokens.
+        Guid viewer = await _factory.SeedAsync(PlatformRole.Viewer, mfa: true, "Keys");
+        string html = System.Net.WebUtility.HtmlDecode(await GetAsync(viewer, "/keys"));
+        Assert.Contains("href=\"/keys\"", html, StringComparison.Ordinal);
+        Assert.Contains("data-panel=\"rotation\"", html, StringComparison.Ordinal);
+        Assert.Contains("CN=Sangam signing 2026", html, StringComparison.Ordinal);
+        Assert.Contains("CN=Sangam signing 2025", html, StringComparison.Ordinal);
+        Assert.Equal(1, html.Split("Signing new tokens").Length - 1);
+        Assert.Contains("Previous: still published", html, StringComparison.Ordinal);
+        Assert.Matches("([0-9A-F]{2}:){31}[0-9A-F]{2}", html);
+        Assert.DoesNotContain("<form", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("<button type=\"submit\"", html, StringComparison.Ordinal);
     }
 
     [PostgresFact]

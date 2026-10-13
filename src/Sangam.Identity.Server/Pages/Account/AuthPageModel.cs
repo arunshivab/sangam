@@ -57,6 +57,31 @@ public abstract class AuthPageModel : PageModel
         }
     }
 
+    /// <summary>
+    /// rc.11: the email address of the account the first sign-in screen named — typed as an email, a mobile number or a
+    /// login ID, or picked from this device's list — or, when it names none, what was typed. The services treat an address
+    /// with no account exactly like a real one (same time, same lockout, same screens), so nothing tells them apart.
+    /// </summary>
+    /// <param name="start">What the first screen remembered.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    protected async Task<string> FlowEmailAsync(SignInStart start, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(start);
+        if (start.PickedUserId is Guid picked)
+        {
+            UserSummary? person = await HttpContext.RequestServices.GetRequiredService<IAccountService>().FindByIdAsync(picked, cancellationToken);
+            return person?.Email ?? start.Identifier;
+        }
+
+        ILoginIdService ids = HttpContext.RequestServices.GetRequiredService<ILoginIdService>();
+        return await ids.ResolveEmailAsync(start.Identifier, cancellationToken) ?? start.Identifier;
+    }
+
+    /// <summary>rc.11: makes the return URL available to the "Not you?" link of <c>_SigningInAs</c>.</summary>
+    /// <param name="returnUrl">Return URL.</param>
+    protected void ExposeReturnQuery(string? returnUrl)
+        => ViewData["ReturnQuery"] = string.IsNullOrEmpty(returnUrl) ? string.Empty : "&returnUrl=" + Uri.EscapeDataString(returnUrl);
+
     /// <summary>Appends the return URL to a local link when there is one.</summary>
     /// <param name="path">Local path.</param>
     /// <param name="returnUrl">Return URL.</param>

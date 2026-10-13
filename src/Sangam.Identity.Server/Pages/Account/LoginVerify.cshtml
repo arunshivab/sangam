@@ -34,7 +34,7 @@
     <input type="hidden" asp-for="ReturnUrl" />
     <div class="sg-field-group">
       <label class="sg-label" asp-for="Code">@L["Sign-in code"]</label>
-      <input class="sg-field sg-field--code" asp-for="Code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]*" maxlength="7" autofocus required />
+      <div class="sg-code-boxes"><input class="sg-field sg-field--code" asp-for="Code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]*" maxlength="7" autofocus required /></div>
       <span class="sg-field-error" asp-validation-for="Code"></span>
     </div>
     <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Continue"]</button>
@@ -61,6 +61,6 @@
   }
 
   <div class="sg-cord-rule" role="presentation"></div>
-  <p class="sg-alt"><a href="/login">@L["Use a different account"]</a> @L["· Stuck?"] <a href="mailto:help@sangamid.in">help@sangamid.in</a></p>
+  <p class="sg-alt"><a href="/login?change=true">@L["Use a different account"]</a> @L["· Stuck?"] <a href="mailto:help@sangamid.in">help@sangamid.in</a></p>
 </section>
 <script src="/js/resend.js" defer></script>

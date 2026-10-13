@@ -1,10 +1,22 @@
 @inject IWebHostEnvironment Environment
 @inject IConfiguration Configuration
+@inject NavigationManager Navigation
+@implements IDisposable
 
 @* rc.10: the partner console's shell — the application switcher and its sections, the strip, and the page. Same parts
    as the operator console, on the partner's own slate ground. *@
-<div class="sg-shell">
-  <aside class="sg-side">
+<div class="sg-shell @(_menuOpen ? "sg-shell--menu" : null)">
+  @* rc.11 (T3, M-consoles): below desktop width the sidebar becomes a menu behind this bar; the strip stays visible. *@
+  <header class="sg-topbar">
+    <a class="sg-topbar-home" href="/">
+      <SangamLockup MarkSize="20" Mode="SangamMarkMode.Reversed" />
+      <span class="sg-badge">@L["Partners"]</span>
+    </a>
+    <button type="button" class="sg-menu-button" aria-expanded="@(_menuOpen ? "true" : "false")" aria-controls="console-menu" @onclick="() => _menuOpen = !_menuOpen">
+      <span aria-hidden="true">☰</span> @L["Menu"]
+    </button>
+  </header>
+  <aside class="sg-side" id="console-menu">
     <a class="sg-side-head" href="/">
       <SangamLockup MarkSize="22" Mode="SangamMarkMode.Reversed" />
       <span class="sg-badge">@L["Partners"]</span>
@@ -26,4 +38,20 @@
     /// <summary>The signed-in administrator, cascaded by the gate.</summary>
     [CascadingParameter]
     public PartnerContext? Context { get; set; }
+
+    private bool _menuOpen;
+
+    protected override void OnInitialized() => Navigation.LocationChanged += Closed;
+
+    // Choosing a section closes the menu.
+    private void Closed(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        if (_menuOpen)
+        {
+            _menuOpen = false;
+            _ = InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public void Dispose() => Navigation.LocationChanged -= Closed;
 }

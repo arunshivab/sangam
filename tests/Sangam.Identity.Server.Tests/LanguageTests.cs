@@ -25,16 +25,17 @@ public sealed partial class LanguageTests
     }
 
     [Theory]
-    [InlineData("hi-IN", "साइन इन करें", "पासवर्ड भूल गए?")]
-    [InlineData("ml-IN", "സൈൻ ഇൻ ചെയ്യുക", "പാസ്‌വേഡ് മറന്നോ?")]
-    public async Task TheSignInScreen_RendersInTheChosenLanguage(string culture, string signIn, string forgot)
+    [InlineData("hi-IN", "साइन इन करें")]
+    [InlineData("ml-IN", "സൈൻ ഇൻ ചെയ്യുക")]
+    public async Task TheSignInScreen_RendersInTheChosenLanguage(string culture, string signIn)
     {
         using HttpClient client = NewClient();
         string html = WebUtility.HtmlDecode(await client.GetStringAsync(new Uri("/login?culture=" + culture, UriKind.Relative)));
         Assert.Contains($"<html lang=\"{culture}\">", html, StringComparison.Ordinal);
         Assert.Contains(signIn, html, StringComparison.Ordinal);
-        Assert.Contains(forgot, html, StringComparison.Ordinal);
-        Assert.DoesNotContain(">Forgot password?<", html, StringComparison.Ordinal);
+        // rc.11: the one field takes an email, a mobile number or a login ID.
+        Assert.Contains(TextCatalogue.Find(culture, "Email, mobile number or login ID")!, html, StringComparison.Ordinal);
+        Assert.DoesNotContain(">Email, mobile number or login ID<", html, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -114,8 +115,8 @@ public sealed partial class LanguageTests
             ["Password"] = "Wrong-Password-1!",
         });
         string html = WebUtility.HtmlDecode(raw);
-        Assert.DoesNotContain("That email and password do not match.", html, StringComparison.Ordinal);
-        Assert.Contains(TextCatalogue.Find("hi-IN", "That email and password do not match.")!, html, StringComparison.Ordinal);
+        Assert.DoesNotContain("That password does not match. Check what you typed, or use “Forgot your password?”.", html, StringComparison.Ordinal);
+        Assert.Contains(TextCatalogue.Find("hi-IN", "That password does not match. Check what you typed, or use “Forgot your password?”.")!, html, StringComparison.Ordinal);
     }
 
     private HttpClient NewClient()

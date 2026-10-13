@@ -97,7 +97,9 @@ public sealed class ConsoleHomeTests : IAsyncLifetime
             SangamUser suspended = TestUsers.New("suspended@console.test", null);
             suspended.Status = UserStatus.Suspended;
             SangamUser nurse = TestUsers.New("nurse@console.test", null);
+            nurse.TwoFactorEnabled = true;
             db.Users.AddRange(suspended, nurse);
+            db.AppGrants.Add(new AppGrant { Id = Guid.NewGuid(), UserId = nurse.Id, AppId = _appId, GrantedAt = DateTimeOffset.UtcNow });
             Organisation org = Organisation(Guid.NewGuid(), "Apulki Medical Center", null, _appId);
             db.Organisations.Add(org);
             Role role = new() { Id = Guid.NewGuid(), AppId = _appId, Code = "ns", DisplayName = "Nurse", CreatedAt = DateTimeOffset.UtcNow };
@@ -122,6 +124,87 @@ public sealed class ConsoleHomeTests : IAsyncLifetime
         Assert.Equal(member, Assert.Single(atApulki.Rows).Id);
         AdminUserPage suspendedOnly = await admin.ListUsersAsync(_viewer, new AdminUserQuery("console.test", UserStatus.Suspended, null, 1, 25));
         Assert.Equal("suspended@console.test", Assert.Single(suspendedOnly.Rows).Email);
+
+        // rc.11: by application used, and by whether an authenticator app is set up.
+        Assert.Equal(member, Assert.Single((await admin.ListUsersAsync(_viewer, new AdminUserQuery(null, null, null, 1, 25, _appId))).Rows).Id);
+        Assert.Equal(member, Assert.Single((await admin.ListUsersAsync(_viewer, new AdminUserQuery("console.test", null, null, 1, 25, null, true))).Rows).Id);
+        Assert.Equal(34, (await admin.ListUsersAsync(_viewer, new AdminUserQuery("console.test", null, null, 1, 25, null, false))).Total);
+    }
+
+    [PostgresFact]
+    public async Task TheAuditTrail_FiltersAndPages_IsForSupportAndOwners_AndRecordsEachSearch()
+    {
+        // rc.11: the operator's audit trail.
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            for (int i = 11; i >= 0; i--)
+            {
+                db.AuditEvents.Add(new AuditEvent { Action = i % 3 == 0 ? "user.login.fail" : "user.login.success", ActorType = AuditActorType.User, ActorUserId = _viewer, TargetType = "user", TargetId = _viewer, OccurredAt = now.AddMinutes(-i), IpAddress = "10.0.0." + i });
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        IAdminService admin = Service();
+        Assert.Empty((await admin.AuditTrailAsync(_viewer, new AuditTrailQuery(null, null, null, null, null, false, 1, 50))).Rows);
+
+        AuditTrailPage logins = await admin.AuditTrailAsync(_support, new AuditTrailQuery("user.login", null, "viewer@console.test", null, null, false, 1, 10));
+        Assert.Equal(10, logins.Rows.Count);
+        Assert.True(logins.HasMore);
+        Assert.All(logins.Rows, r => Assert.StartsWith("user.login", r.Action, StringComparison.Ordinal));
+        Assert.Equal("Test User", logins.Rows[0].About);
+        Assert.True(logins.Rows[0].At >= logins.Rows[^1].At);
+
+        AuditTrailPage failed = await admin.AuditTrailAsync(_owner, new AuditTrailQuery("user.login", AuditActorType.User, null, null, null, true, 1, 50));
+        Assert.Equal(4, failed.Rows.Count);
+        Assert.All(failed.Rows, r => Assert.True(r.Failed));
+
+        await using SangamDbContext check = _pg.CreateContext();
+        Assert.Equal(2, await check.AuditEvents.CountAsync(e => e.Action == AuditActions.AdminAuditTrailView));
+        AuditEvent viewed = await check.AuditEvents.FirstAsync(e => e.Action == AuditActions.AdminAuditTrailView && e.ActorUserId == _support);
+        Assert.DoesNotContain("viewer@console.test", viewed.Metadata, StringComparison.Ordinal);
+    }
+
+    [PostgresFact]
+    public async Task BulkSignOut_IsForSupportAndOwners_NeedsAReason_AndAuditsEachPerson()
+    {
+        // rc.11 (O2): the Users page's one bulk action.
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        List<Guid> people = [];
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            for (int i = 0; i < 2; i++)
+            {
+                SangamUser p = TestUsers.New($"bulk{i}@console.test", null);
+                db.Users.Add(p);
+                people.Add(p.Id);
+                db.UserSessions.Add(new UserSession { Id = Guid.NewGuid(), UserId = p.Id, CreatedAt = now, LastSeenAt = now });
+            }
+
+            db.UserSessions.Add(new UserSession { Id = Guid.NewGuid(), UserId = _support, CreatedAt = now, LastSeenAt = now });
+            await db.SaveChangesAsync();
+        }
+
+        IAdminService admin = Service();
+        Assert.False((await admin.ForceSignOutManyAsync(_viewer, people, "Shared laptop lost", null)).Succeeded);
+        Assert.False((await admin.ForceSignOutManyAsync(_support, people, " ", null)).Succeeded);
+        Assert.False((await admin.ForceSignOutManyAsync(_support, [_support], "Shared laptop lost", null)).Succeeded);
+        Assert.False((await admin.ForceSignOutManyAsync(_support, [.. Enumerable.Range(0, 101).Select(_ => Guid.NewGuid())], "Too many", null)).Succeeded);
+
+        AdminResult done = await admin.ForceSignOutManyAsync(_support, [.. people, _support], "Shared laptop lost", null);
+        Assert.True(done.Succeeded, done.Message);
+
+        await using SangamDbContext check = _pg.CreateContext();
+        Assert.Equal(0, await check.UserSessions.CountAsync(s => people.Contains(s.UserId) && s.RevokedAt == null));
+        Assert.Equal(1, await check.UserSessions.CountAsync(s => s.UserId == _support && s.RevokedAt == null));
+        List<AuditEvent> audited = await check.AuditEvents.AsNoTracking().Where(e => e.Action == AuditActions.AdminUserForceLogout).ToListAsync();
+        Assert.Equal(people.Order(), audited.Select(e => e.TargetId!.Value).Order());
+        Assert.All(audited, e =>
+        {
+            Assert.Equal(_support, e.ActorUserId);
+            Assert.Contains("Shared laptop lost", e.Metadata, StringComparison.Ordinal);
+        });
     }
 
     [PostgresFact]

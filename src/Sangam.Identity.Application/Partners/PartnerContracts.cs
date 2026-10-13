@@ -146,3 +146,11 @@ public sealed record PartnerAppOverview(
     /// <returns><see langword="true"/> when something does.</returns>
     public bool NeedsAction(DateTimeOffset now) => ProvisioningFailing || WebhooksFailing > 0 || SecretIsOld(now) || Status != AppStatus.Active;
 }
+
+/// <summary>rc.11 (R5): what an application's developers need to connect to Sangam.</summary>
+/// <param name="ClientId">The OAuth client id.</param>
+/// <param name="Confidential">Whether it signs in with a client secret (a server-side application).</param>
+/// <param name="SecretSetAt">When its secret was last set, when known.</param>
+/// <param name="RedirectUris">Where Sangam may send people back after sign-in.</param>
+/// <param name="PostLogoutRedirectUris">Where Sangam may send people back after sign-out.</param>
+public sealed record PartnerCredentials(string ClientId, bool Confidential, DateTimeOffset? SecretSetAt, IReadOnlyList<string> RedirectUris, IReadOnlyList<string> PostLogoutRedirectUris);

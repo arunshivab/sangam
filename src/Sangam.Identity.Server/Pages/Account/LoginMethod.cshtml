@@ -1,0 +1,71 @@
+@page "/login/method"
+@model LoginMethodModel
+@{
+    ViewData["Title"] = L["How do you want to sign in?"].Value;
+}
+
+@* rc.11 (A2): the same choices for everyone, strongest first. Nothing on this screen says whether an account exists. *@
+<section class="sg-card">
+  <h1 class="sg-card-title">@L["How do you want to sign in?"]</h1>
+  <partial name="_SigningInAs" model="@Model.Start.Identifier" />
+
+  @if (!Model.ShowCode)
+  {
+    @* The passkey button posts with this token (the code form carries its own). *@
+    @Html.AntiForgeryToken()
+  }
+  <ul class="sg-methods" data-panel="methods">
+    @if (Model.ShowPasskey)
+    {
+      <li data-method="passkey">
+        <button type="button" class="sg-method sg-passkey-signin" disabled data-passkey-signin
+                data-options-url="/login/passkey?handler=Options" data-verify-url="/login/passkey?handler=Verify@(string.IsNullOrEmpty(Model.ReturnUrl) ? "" : "&returnUrl=" + Uri.EscapeDataString(Model.ReturnUrl))"
+                data-message="passkey-message" data-text-failed="@L["That passkey could not sign you in."]" data-text-cancelled="@L["The passkey request was cancelled or is not available on this device."]">
+          <span class="sg-method-text">
+            <span class="sg-method-name">@L["Passkey"]</span>
+            <span class="sg-method-hint">@L["Your fingerprint, face or device PIN. The strongest way, and nothing to type."]</span>
+          </span>
+          <span class="sg-method-go" aria-hidden="true">→</span>
+        </button>
+        <p class="sg-field-error" id="passkey-message" hidden></p>
+      </li>
+    }
+    @if (Model.ShowPassword)
+    {
+      <li data-method="password">
+        <a class="sg-method" href="@Model.PasswordUrl">
+          <span class="sg-method-text">
+            <span class="sg-method-name">@L["Password"]</span>
+            <span class="sg-method-hint">@L["If your account or this application asks for two-step sign-in, a code or your authenticator comes next."]</span>
+          </span>
+          <span class="sg-method-go" aria-hidden="true">→</span>
+        </a>
+      </li>
+    }
+    @if (Model.ShowCode)
+    {
+      <li data-method="code">
+        <form method="post" action="@("/login/code?handler=Flow" + (string.IsNullOrEmpty(Model.ReturnUrl) ? "" : "&returnUrl=" + Uri.EscapeDataString(Model.ReturnUrl)))">
+          @Html.AntiForgeryToken()
+          <partial name="_AntibotToken" model="@Model.FormToken" />
+          <button type="submit" class="sg-method">
+            <span class="sg-method-text">
+              <span class="sg-method-name">@L["Code by email"]</span>
+              <span class="sg-method-hint">@L["For accounts set to sign in with a code instead of a password."]</span>
+            </span>
+            <span class="sg-method-go" aria-hidden="true">→</span>
+          </button>
+        </form>
+      </li>
+    }
+  </ul>
+
+  @if (Model.ShowPasskey)
+  {
+    <noscript><p class="sg-note">@L["Passkeys need JavaScript in this browser."]</p></noscript>
+    <script src="/js/passkeys.js" defer></script>
+  }
+
+  <div class="sg-cord-rule" role="presentation"></div>
+  <p class="sg-alt"><a href="@(string.IsNullOrEmpty(Model.ReturnUrl) ? "/forgot" : "/forgot?returnUrl=" + Uri.EscapeDataString(Model.ReturnUrl))">@L["Forgot your password?"]</a> @L["· Stuck?"] <a href="mailto:help@sangamid.in">help@sangamid.in</a></p>
+</section>

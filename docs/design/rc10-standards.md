@@ -68,10 +68,33 @@ partner console slate, so nobody mistakes one for the other.
 - **T1 — ward tablet**: a shared device signed in by several people in turn.
 - **M12 — break-glass**: emergency access when every owner is unavailable.
 - **G1–G2 — an organisation console** for organisation administrators.
-- **Zero-downtime secret rotation**: two live secrets per application, or `private_key_jwt`.
+- ~~Zero-downtime secret rotation~~: done in rc.11 (two live secrets). `private_key_jwt` remains a later option.
 - Decided and closed: Leave organisation (in rc.10).
 
 ## Before go-live
 
 - A native Hindi and Malayalam review of the new strings (228 new; machine-assisted).
 - Malayalam in LiPi Sans, then switch the `ml` font from the system fallback.
+
+## rc.11 decisions (13 October 2026)
+
+- **Sign in with an email, a mobile number or a login ID.** Login IDs are chosen by the person (the portal suggests
+  `first.last`); a mobile number signs in once verified.
+- **Identifier first, without telling anyone whether an account exists.** The "how do you want to sign in" screen depends
+  only on the application's rule; the greeting is "Signing in as {what you typed}", never a name.
+- **This device's list** for shared ward computers: opt-in, at most six people, 30 days, masked, removable. It departs from
+  the handoff's single "remembered account" row, which showed the last person to everyone. A per-device or per-hospital
+  switch to turn it off comes with the ward tablet (T1).
+- **No "Resend verification" for operators (O3).** Sangam sends a fresh code each time an unverified person signs in, and
+  a code sent separately could not be used without that sign-in.
+- **The code screen stays a code-by-email screen for accounts that chose it.** A password account asking for a code gets a
+  reminder by e-mail instead, as since rc.2: a code alone is not offered to accounts that use a password.
+- **Two live client secrets, rotated by the owner.** Each owner-made secret lasts 12 months (warning at 30 days); at most two
+  are live; the last cannot be revoked; only owners make or revoke. The secret Sangam issued from configuration counts as
+  one of the two until the owner revokes it.
+- **Sign-in rules keep the rc.10 policy model**, in the new layout (ladder, three groups, one save bar).
+- **Access reviews**: Keep records the review only; Extend by 3, 6 or 12 months; End today with a reason shown in the
+  person's Activity. "Unused" means the person has not signed in to that application for 90 days (`app_grants.last_used_at`).
+- **The Users page's only bulk action is "Sign out everywhere"**, with a reason, audited per person.
+- **The signing keys page is read-only**: current and previous token-signing keys from the published key set, with
+  fingerprints, ages and when the key in use was issued. Rotation stays a server task (go-live checklist).

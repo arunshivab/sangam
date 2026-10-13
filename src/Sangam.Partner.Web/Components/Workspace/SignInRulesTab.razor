@@ -1,0 +1,325 @@
+@inject IPartnerService Partners
+
+@* rc.11 (R4): what people must do to get into the application, on one page. The ladder shows where each rule comes
+   from (Sangam, this application, its organisations); three numbered groups replace the three separate forms; one save
+   bar says what will change and for how many people. Every level can only be stricter than the one above. *@
+
+@if (_settings is null || _security is null)
+{
+  <p class="sg-muted">@L["Loading…"]</p>
+}
+else
+{
+  <p class="sg-lede">@L["What people must do to get into {0}. Each level can only be stricter than the one above.", Info.AppName]</p>
+
+  <ol class="sg-ladder" data-panel="ladder">
+    <li class="sg-ladder-row">
+      <span class="sg-ladder-who"><span class="sg-name">@L["Sangam minimum"]</span><span class="sg-sub">@L["Set by Sangam"]</span></span>
+      <span class="sg-ladder-what">@Summary(_security.Inherited.SignIn, _security.Inherited.Mfa, _security.Inherited.MinPasswordLength)</span>
+      <span class="sg-label-mono">@L["Locked"]</span>
+    </li>
+    <li class="sg-ladder-row sg-ladder-row--on">
+      <span class="sg-ladder-who"><span class="sg-name">@Info.AppName</span><span class="sg-sub">@L["You are editing this"]</span></span>
+      <span class="sg-ladder-what">@Summary(_policy, _mfa ?? _security.Inherited.Mfa, _minLength ?? _security.Inherited.MinPasswordLength)</span>
+      <span class="sg-label-mono">@L["Editing"]</span>
+    </li>
+    <li class="sg-ladder-row">
+      <span class="sg-ladder-who"><span class="sg-name">@L["Organisations"]</span><span class="sg-sub">@L["Can only tighten"]</span></span>
+      <span class="sg-ladder-what">
+        @if (_overrides.Count == 0)
+        {
+          @L["None tighten these rules yet."]
+        }
+        else
+        {
+          @string.Join(", ", _overrides.Take(3))@(_overrides.Count > 3 ? " …" : string.Empty)
+        }
+      </span>
+      <span class="sg-label-mono">@(_overrides.Count == 1 ? L["1 override"] : L["{0} overrides", _overrides.Count])</span>
+    </li>
+  </ol>
+
+  <div class="sg-rule-groups">
+    <section class="sg-panel sg-rule-group" data-panel="second-step" aria-labelledby="group-1">
+      <h2 class="sg-label-mono" id="group-1">@L["1 · Second step"]</h2>
+      <fieldset class="sg-choices">
+        <legend class="sg-label">@L["How people sign in"]</legend>
+        @if (_settings.SignInPolicy is SignInPolicy.Password or SignInPolicy.OtpOnly)
+        {
+          <label class="sg-check">
+            <input type="radio" name="policy" checked="@(_policy == _settings.SignInPolicy)" @onchange="() => _policy = _settings.SignInPolicy" />
+            <span>@PolicyName(_settings.SignInPolicy) <span class="sg-muted">@L["(set by Sangam — you can only make it stricter)"]</span></span>
+          </label>
+        }
+        else
+        {
+          <label class="sg-check">
+            <input type="radio" name="policy" checked="@(_policy == SignInPolicy.Default)" @onchange="() => _policy = SignInPolicy.Default" />
+            <span>@L["Each person's own choice"]</span>
+          </label>
+        }
+        <label class="sg-check">
+          <input type="radio" name="policy" checked="@(_policy == SignInPolicy.PasswordAndOtp)" @onchange="() => _policy = SignInPolicy.PasswordAndOtp" />
+          <span>@L["Two-step sign-in every time"]</span>
+        </label>
+        <label class="sg-check">
+          <input type="radio" name="policy" checked="@(_policy == SignInPolicy.PasskeyOnly)" @onchange="() => _policy = SignInPolicy.PasskeyOnly" />
+          <span>@L["Passkey only"]</span>
+        </label>
+      </fieldset>
+      <fieldset class="sg-choices">
+        <legend class="sg-label">@L["An authenticator app or a passkey"]</legend>
+        @foreach (MfaRequirement option in Enum.GetValues<MfaRequirement>())
+        {
+          @if (option >= _security.Inherited.Mfa)
+          {
+            MfaRequirement? value = option == _security.Inherited.Mfa ? null : option;
+            <label class="sg-check">
+              <input type="radio" name="mfa" checked="@(_mfa == value)" @onchange="() => _mfa = value" />
+              <span>@MfaName(option)</span>
+            </label>
+          }
+        }
+      </fieldset>
+    </section>
+
+    <section class="sg-panel sg-rule-group" data-panel="passwords" aria-labelledby="group-2">
+      <h2 class="sg-label-mono" id="group-2">@L["2 · Passwords"]</h2>
+      <label class="sg-label" for="minlen">@L["Minimum length"]</label>
+      <input id="minlen" class="sg-input sg-input--short" type="number" min="@_security.Inherited.MinPasswordLength" max="64" placeholder="@_security.Inherited.MinPasswordLength"
+             value="@_minLength" @onchange="e => _minLength = int.TryParse(e.Value?.ToString(), out int n) ? n : null" />
+      <p class="sg-muted">@L["Leave empty to follow Sangam ({0}). Anyone whose password is shorter chooses a new one at their next sign-in.", _security.Inherited.MinPasswordLength]</p>
+      <label class="sg-check">
+        <input type="checkbox" checked="@(_breach == true || _security.Inherited.BreachedPasswordCheck)" disabled="@(_security.Inherited.BreachedPasswordCheck || !_security.BreachCheckAvailable)"
+               @onchange="e => _breach = e.Value is true ? true : null" />
+        <span>@L["Refuse passwords found in known data breaches"]
+          @if (_security.Inherited.BreachedPasswordCheck)
+          {
+            <span class="sg-muted">— @L["already required by {0}", "Sangam"]</span>
+          }
+          else if (!_security.BreachCheckAvailable)
+          {
+            <span class="sg-muted">@L["— not yet switched on for Sangam (the Sangam team's decision)"]</span>
+          }
+        </span>
+      </label>
+      <label class="sg-check">
+        <input type="checkbox" checked="@(_types == true || _security.Inherited.RequireCharacterTypes)" disabled="@_security.Inherited.RequireCharacterTypes"
+               @onchange="e => _types = e.Value is true ? true : null" />
+        <span>@L["Require an upper-case letter, a lower-case letter, a number and a symbol"]
+          @if (_security.Inherited.RequireCharacterTypes)
+          {
+            <span class="sg-muted">— @L["already required by {0}", "Sangam"]</span>
+          }
+        </span>
+      </label>
+      @if (_types == true && !_security.Inherited.RequireCharacterTypes)
+      {
+        <p class="sg-notice sg-notice--warn" role="status" data-notice="character-types">
+          @L["Not recommended. Security standards (OWASP ASVS and NIST) advise against character-type rules: people answer them with predictable passwords such as Pune@2026. Length and the breached-password check protect better. Turn this on only to keep a policy your organisation already follows. Everyone it covers must meet it when they next set a password, in every application they use with Sangam."]
+        </p>
+      }
+    </section>
+
+    <section class="sg-panel sg-rule-group" data-panel="keep-using" aria-labelledby="group-3">
+      <h2 class="sg-label-mono" id="group-3">@L["3 · Who may keep using it"]</h2>
+      <label class="sg-label" for="inactivity">@L["End access after no sign-in for"]</label>
+      <select id="inactivity" class="sg-input" @bind="_inactivity">
+        <option value="">@L["Never"]</option>
+        @for (int years = 1; years <= 10; years++)
+        {
+          <option value="@years">@(years == 1 ? L["1 year"] : L["{0} years", years])</option>
+        }
+      </select>
+      <p class="sg-muted">@L["The person is told 30 days before, and {0} is told when it ends so it can erase its own copy.", Info.AppName]</p>
+      <label class="sg-check">
+        <input type="checkbox" @bind="_requireVerification" disabled="@(!_settings.IdentityVerificationAvailable && !_settings.RequireIdentityVerification)" />
+        <span>@L["Require DigiLocker-verified identity"]
+          @if (!_settings.IdentityVerificationAvailable)
+          {
+            <span class="sg-muted">@L["— DigiLocker is not switched on for Sangam yet."]</span>
+          }
+        </span>
+      </label>
+    </section>
+  </div>
+
+  @if (Changes > 0)
+  {
+    <div class="sg-save-bar" data-panel="save-bar" role="status">
+      <p class="sg-save-bar-text">@(Changes == 1 ? L["1 unsaved change"] : L["{0} unsaved changes", Changes]) · @Impact</p>
+      <div class="sg-actions">
+        <button type="button" class="sg-btn sg-btn--secondary" @onclick="Reset" disabled="@_busy">@L["Discard"]</button>
+        <button type="button" class="sg-btn sg-btn--primary" @onclick="SaveAsync" disabled="@_busy">@L["Save sign-in rules"]</button>
+      </div>
+    </div>
+  }
+}
+
+<StatusLine Ok="_ok" Message="@_message" />
+
+@code {
+    /// <summary>The application being worked on.</summary>
+    [Parameter]
+    [EditorRequired]
+    public WorkspaceInfo Info { get; set; } = null!;
+
+    private PartnerAppSettings? _settings;
+    private PolicyView? _security;
+    private IReadOnlyList<string> _overrides = [];
+    private int _people;
+    private SignInPolicy _policy;
+    private MfaRequirement? _mfa;
+    private int? _minLength;
+    private bool? _breach;
+    private bool? _types;
+    private string _inactivity = string.Empty;
+    private bool _requireVerification;
+    private bool _busy;
+    private bool _ok;
+    private string? _message;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _settings = await Partners.GetSettingsAsync(Info.UserId, Info.AppId);
+        _security = await Partners.GetAppPolicyAsync(Info.UserId, Info.AppId);
+        _overrides = await Partners.OrganisationsWithOwnRulesAsync(Info.UserId, Info.AppId);
+        _people = (await Partners.GetOverviewAsync(Info.UserId, Info.AppId))?.People ?? 0;
+        Reset();
+    }
+
+    private void Reset()
+    {
+        if (_settings is null || _security is null)
+        {
+            return;
+        }
+
+        _policy = _settings.SignInPolicy;
+        _mfa = _security.Mfa is MfaRequirement m && m > _security.Inherited.Mfa ? m : null;
+        _minLength = _security.MinPasswordLength;
+        _breach = _security.BreachedPasswordCheck == true ? true : null;
+        _types = _security.RequireCharacterTypes == true ? true : null;
+        _inactivity = _settings.InactivityLimitYears?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty;
+        _requireVerification = _settings.RequireIdentityVerification;
+    }
+
+    private int? InactivityYears => int.TryParse(_inactivity, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int y) ? y : null;
+
+    private bool SignInChanged => _policy != _settings!.SignInPolicy;
+
+    private bool PolicyChanged => _mfa != (_security!.Mfa is MfaRequirement m && m > _security.Inherited.Mfa ? m : null)
+        || _minLength != _security.MinPasswordLength
+        || _breach != (_security.BreachedPasswordCheck == true ? true : null)
+        || _types != (_security.RequireCharacterTypes == true ? true : null);
+
+    private bool AccessChanged => InactivityYears != _settings!.InactivityLimitYears || _requireVerification != _settings.RequireIdentityVerification;
+
+    private int Changes
+    {
+        get
+        {
+            if (_settings is null || _security is null)
+            {
+                return 0;
+            }
+
+            int n = SignInChanged ? 1 : 0;
+            n += _mfa != (_security.Mfa is MfaRequirement m && m > _security.Inherited.Mfa ? m : null) ? 1 : 0;
+            n += _minLength != _security.MinPasswordLength ? 1 : 0;
+            n += _breach != (_security.BreachedPasswordCheck == true ? true : null) ? 1 : 0;
+            n += _types != (_security.RequireCharacterTypes == true ? true : null) ? 1 : 0;
+            n += InactivityYears != _settings.InactivityLimitYears ? 1 : 0;
+            n += _requireVerification != _settings.RequireIdentityVerification ? 1 : 0;
+            return n;
+        }
+    }
+
+    // What the change will do, in one sentence, and for how many people.
+    private string Impact
+    {
+        get
+        {
+            string people = _people == 1 ? L["1 person uses {0}", Info.AppName] : L["{0} people use {1}", _people, Info.AppName];
+            if (_policy == SignInPolicy.PasskeyOnly && SignInChanged)
+            {
+                return L["{0}; each will need a passkey at their next sign-in.", people];
+            }
+
+            if ((_mfa ?? MfaRequirement.Optional) == MfaRequirement.Required && _mfa != (_security!.Mfa is MfaRequirement m && m > _security.Inherited.Mfa ? m : null))
+            {
+                return L["{0}; each will be asked for an authenticator app or a passkey at their next sign-in.", people];
+            }
+
+            if (_policy == SignInPolicy.PasswordAndOtp && SignInChanged)
+            {
+                return L["{0}; each will be asked for a code after their password from their next sign-in.", people];
+            }
+
+            return L["{0}; the new rules apply from their next sign-in.", people];
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _busy = true;
+        List<PartnerResult> results = [];
+        if (SignInChanged)
+        {
+            results.Add(await Partners.UpdateSettingsAsync(Info.UserId, Info.AppId, _settings!.Description, _settings.BrandColour, _settings.Glyph, _policy));
+        }
+
+        if (PolicyChanged)
+        {
+            results.Add(await Partners.UpdateAppPolicyAsync(Info.UserId, Info.AppId, new PolicyInput(null, _minLength, _mfa, _breach, _types)));
+        }
+
+        if (AccessChanged)
+        {
+            results.Add(await Partners.UpdateAccessRulesAsync(Info.UserId, Info.AppId, InactivityYears, _requireVerification));
+        }
+
+        _busy = false;
+        PartnerResult? refused = results.FirstOrDefault(r => !r.Succeeded);
+        _ok = refused is null;
+        _message = refused is null ? L["Sign-in rules saved."] : L[refused.Message ?? string.Empty];
+        await LoadAsync();
+    }
+
+    private static string Join(params string[] parts) => string.Join(" · ", parts.Where(p => p.Length > 0));
+
+    private string Summary(SignInPolicy? signIn, MfaRequirement mfa, int minLength) => Join(
+        signIn switch
+        {
+            SignInPolicy.PasswordAndOtp => L["two-step every time"],
+            SignInPolicy.PasskeyOnly => L["passkey only"],
+            SignInPolicy.Password => L["password only"],
+            SignInPolicy.OtpOnly => L["code instead of a password"],
+            _ => L["each person's own choice"],
+        },
+        mfa switch
+        {
+            MfaRequirement.Required => L["authenticator or passkey for everyone"],
+            MfaRequirement.RequiredForAdministrators => L["authenticator or passkey for administrators"],
+            _ => string.Empty,
+        },
+        L["passwords of {0}+ characters", minLength]);
+
+    private string PolicyName(SignInPolicy policy) => policy switch
+    {
+        SignInPolicy.Password => L["Password only"],
+        SignInPolicy.OtpOnly => L["Email code only, no password"],
+        SignInPolicy.PasswordAndOtp => L["Two-step sign-in every time"],
+        SignInPolicy.PasskeyOnly => L["Passkey only"],
+        _ => L["Each person's own choice"],
+    };
+
+    private string MfaName(MfaRequirement mfa) => mfa switch
+    {
+        MfaRequirement.Required => L["Required for everyone"],
+        MfaRequirement.RequiredForAdministrators => L["Required for this application's administrators"],
+        _ => L["Each person decides"],
+    };
+}

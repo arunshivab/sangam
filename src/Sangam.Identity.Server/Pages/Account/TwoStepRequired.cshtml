@@ -4,18 +4,28 @@
     ViewData["Title"] = L["Two-step sign-in required"].Value;
 }
 
+@* rc.11 (A8): only what this application's rule accepts — a passkey or an authenticator app, strongest first — and why it
+   asks: everyone, or the people who administer it. An emailed code does not satisfy this rule, so it is not offered. *@
 <section class="sg-card">
   <div class="sg-circle sg-circle--pending" aria-hidden="true"><span class="sg-cord-dot sg-cord-dot--solo"></span></div>
   <h1 class="sg-card-title sg-card-title--centre">@L["Two-step sign-in required"]</h1>
-  <p class="sg-card-body sg-card-body--centre">@L["{0} asks everyone who uses it to use two-step sign-in, so that a password alone is never enough. Set up one of these, then sign in again.", Model.Partner?.DisplayName ?? L["This application"]]</p>
+  @if (Model.ForAdministrators)
+  {
+    <p class="sg-card-body sg-card-body--centre">@L["{0} asks the people who administer it to use two-step sign-in, so that a password alone is never enough. Set up one of these, then sign in again.", Model.Partner?.DisplayName ?? L["This application"]]</p>
+  }
+  else
+  {
+    <p class="sg-card-body sg-card-body--centre">@L["{0} asks everyone who uses it to use two-step sign-in, so that a password alone is never enough. Set up one of these, then sign in again.", Model.Partner?.DisplayName ?? L["This application"]]</p>
+  }
 
-  <ul class="sg-card-body sg-steps">
-    <li><a href="@Model.AuthenticatorUrl">@L["Set up an authenticator app"]</a> @L["in your account — Google Authenticator, Aegis, 1Password or similar."]</li>
+  <ul class="sg-card-body sg-steps" data-panel="accepted-methods">
     @if (Model.OfferPasskeys)
     {
-      <li><a href="/account/passkeys">@L["Add a passkey"]</a> @L["— your fingerprint, face or device PIN. A passkey counts as both steps on its own."]</li>
+      <li data-method="passkey"><a href="/account/passkeys">@L["Add a passkey"]</a> @L["— your fingerprint, face or device PIN. A passkey counts as both steps on its own."]</li>
     }
+    <li data-method="authenticator"><a href="@Model.AuthenticatorUrl">@L["Set up an authenticator app"]</a> @L["in your account — Google Authenticator, Aegis, 1Password or similar."]</li>
   </ul>
+  <p class="sg-note">@L["A code by email or text does not count here: this application asks for something only you hold."]</p>
 
   <form method="post">
     <input type="hidden" asp-for="ReturnUrl" />

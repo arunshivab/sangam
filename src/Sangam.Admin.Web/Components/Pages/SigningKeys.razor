@@ -1,0 +1,88 @@
+@page "/keys"
+@inject ISigningKeySource Source
+
+@* rc.11 (founder decision, 13 Oct 2026): read-only. The keys the identity server signs tokens with, exactly as it publishes
+   them to every application, so this page holds nothing secret and every operator may see it. Keys are changed on the
+   identity server (go-live checklist, signing certificates), never from here. *@
+<PageTitle>@L["Signing keys · Operator console"]</PageTitle>
+
+<h1 class="sg-h1">@L["Signing keys"]</h1>
+<p class="sg-lede">@L["The keys the identity server signs tokens with, as it publishes them to every application. Read-only: keys are changed on the identity server itself."]</p>
+
+@if (_result is null)
+{
+  <p class="sg-muted">@L["Loading…"]</p>
+}
+else if (_result.Problem is not null)
+{
+  <p class="sg-warn" role="status">@L[_result.Problem]</p>
+}
+else if (_result.Keys.Count == 0)
+{
+  <p class="sg-warn" role="status">@L["The identity server publishes no signing certificate."]</p>
+}
+else
+{
+  @if (_result.Keys[0] is SigningKeyRow current)
+  {
+    <section class="sg-panel" data-panel="rotation">
+      <h2 class="sg-label-mono">@L["Last rotation"]</h2>
+      <p>@L["The key in use was issued on {0}, {1} days ago.", IndiaTime.Date(current.ValidFrom), Days(DateTimeOffset.UtcNow - current.ValidFrom)]
+        @if (current.ValidUntil - DateTimeOffset.UtcNow < TimeSpan.FromDays(60))
+        {
+          <span class="sg-warn-text">@L["It expires on {0}: put the next certificate in place first.", IndiaTime.Date(current.ValidUntil)]</span>
+        }
+      </p>
+    </section>
+  }
+
+  <div class="sg-table-wrap" tabindex="0" role="region" aria-label="@L["Signing keys"]">
+    <table class="sg-table sg-table--cards" data-panel="keys">
+      <thead><tr><th>@L["Key"]</th><th>@L["Status"]</th><th>@L["Valid from"]</th><th>@L["Valid until"]</th><th>@L["Age"]</th><th>@L["Fingerprint (SHA-256)"]</th></tr></thead>
+      <tbody>
+        @foreach (SigningKeyRow key in _result.Keys)
+        {
+          <tr data-kid="@key.KeyId">
+            <td><span class="sg-name sg-mono">@key.KeyId</span><span class="sg-sub">@key.Subject@(key.Algorithm is null ? string.Empty : " · " + key.Algorithm)</span></td>
+            <td data-label="@L["Status"]">
+              @if (key.InUse)
+              {
+                <span class="sg-pill sg-pill--active">@L["Signing new tokens"]</span>
+              }
+              else
+              {
+                <span class="sg-pill">@L["Previous: still published"]</span>
+              }
+            </td>
+            <td class="sg-mono" data-label="@L["Valid from"]">@IndiaTime.Date(key.ValidFrom)</td>
+            <td class="sg-mono" data-label="@L["Valid until"]">
+              @IndiaTime.Date(key.ValidUntil)
+              @if (key.ValidUntil < DateTimeOffset.UtcNow)
+              {
+                <span class="sg-warn-text">@L["expired"]</span>
+              }
+            </td>
+            <td class="sg-nowrap" data-label="@L["Age"]">@L["{0} days", Days(DateTimeOffset.UtcNow - key.ValidFrom)]</td>
+            <td class="sg-mono sg-fingerprint" data-label="@L["Fingerprint (SHA-256)"]" title="@key.Fingerprint">
+              @* Lines break only between pairs, never inside one. *@
+              @foreach (string pair in key.Fingerprint.Split(':').SkipLast(1))
+              {
+                @(pair + ":")<wbr />
+              }
+              @key.Fingerprint.Split(':')[^1]
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <p class="sg-muted">@L["A previous key stays published until the tokens it signed have expired, so applications can still check them."]</p>
+}
+
+@code {
+    private SigningKeysResult? _result;
+
+    protected override async Task OnInitializedAsync() => _result = await Source.ReadAsync();
+
+    private static int Days(TimeSpan span) => Math.Max(0, (int)span.TotalDays);
+}

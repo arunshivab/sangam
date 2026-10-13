@@ -57,6 +57,13 @@
     {
       <input type="hidden" name="@field.Key" value="@field.Value" />
     }
+    @if (Model.OnDeviceList)
+    {
+      <label class="sg-check sg-btn-row-full">
+        <input type="checkbox" asp-for="ForgetHere" />
+        <span class="sg-check-label">@L["Also remove me from this device's list"]</span>
+      </label>
+    }
     <a class="sg-btn sg-btn--secondary sg-btn--block" href="@(Model.StayUrl)">@L["Stay signed in"]</a>
     <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Sign out"]</button>
   </form>

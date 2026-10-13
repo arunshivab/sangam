@@ -211,11 +211,15 @@ public sealed partial class ClientRegistration
                 ? [Requirements.Features.ProofKeyForCodeExchange, Requirements.Features.PushedAuthorizationRequests]
                 : [Requirements.Features.ProofKeyForCodeExchange];
         string clientType = confidential ? ClientTypes.Confidential : ClientTypes.Public;
-        bool secretChanged = confidential && (existing is null || !await _applications.ValidateClientSecretAsync(existing, spec.Secret, cancellationToken).ConfigureAwait(false));
+        // rc.11: compared with the secret Sangam issued only (OpenIddict's own column) — never with secrets the application's
+        // owner made on the partner console, so a restart neither undoes nor is confused by their rotation.
+        bool secretChanged = confidential && (existing is null || !await IsIssuedSecretAsync(existing, spec.Secret, cancellationToken).ConfigureAwait(false));
         // rc.10: the consoles show how old a client secret is (flagged after a year); a public client has none.
         if (secretChanged || (!confidential && app.SecretSetAt is not null))
         {
             app.SecretSetAt = secretChanged ? now : null;
+            // A new secret from the configuration is live again, even if the owner had retired the previous one.
+            app.IssuedSecretRetiredAt = null;
             await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
 
@@ -350,6 +354,12 @@ public sealed partial class ClientRegistration
 
     [LoggerMessage(EventId = 1101, Level = LogLevel.Information, Message = "Registered client '{ClientId}' at {BaseUrl} from settings.")]
     private partial void LogRegistered(string clientId, string baseUrl);
+
+    private ValueTask<bool> IsIssuedSecretAsync(object application, string secret, CancellationToken cancellationToken)
+        => _applications is Apps.SangamApplicationManager<OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreApplication> sangam
+            && application is OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreApplication typed
+            ? sangam.IsIssuedSecretAsync(typed, secret, cancellationToken)
+            : _applications.ValidateClientSecretAsync(application, secret, cancellationToken);
 }
 
 /// <summary>One configured client.</summary>

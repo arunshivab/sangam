@@ -415,6 +415,74 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                     b.ToTable("openiddict_tokens", (string)null);
                 });
 
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.AccessReviewDecision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AppId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("app_id");
+
+                    b.Property<DateTimeOffset>("DecidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_at");
+
+                    b.Property<Guid>("DecidedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decided_by_user_id");
+
+                    b.Property<Guid>("MemberUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("member_user_id");
+
+                    b.Property<Guid>("MembershipId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("membership_id");
+
+                    b.Property<DateTimeOffset?>("NewExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("new_expires_at");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("note");
+
+                    b.Property<Guid>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("outcome");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("reason");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("role_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_access_review_decisions");
+
+                    b.HasIndex("MembershipId")
+                        .HasDatabaseName("idx_access_review_decisions_membership");
+
+                    b.HasIndex("AppId", "DecidedAt")
+                        .HasDatabaseName("idx_access_review_decisions_app");
+
+                    b.ToTable("access_review_decisions", (string)null);
+                });
+
             modelBuilder.Entity("Sangam.Identity.Domain.Entities.AccountMergeRequest", b =>
                 {
                     b.Property<Guid>("Id")
@@ -564,6 +632,10 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false)
                         .HasColumnName("is_platform");
+
+                    b.Property<DateTimeOffset?>("IssuedSecretRetiredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("issued_secret_retired_at");
 
                     b.Property<string>("MfaRequirement")
                         .IsRequired()
@@ -999,6 +1071,62 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("idx_branding_assets_scope");
 
                     b.ToTable("branding_assets", (string)null);
+                });
+
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.ClientSecret", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AppId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("app_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("hash");
+
+                    b.Property<string>("Hint")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("hint");
+
+                    b.Property<DateTimeOffset?>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_used_at");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<Guid?>("RevokedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("revoked_by_user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_client_secrets");
+
+                    b.HasIndex("AppId", "RevokedAt", "ExpiresAt")
+                        .HasDatabaseName("idx_client_secrets_app_live");
+
+                    b.ToTable("client_secrets", (string)null);
                 });
 
             modelBuilder.Entity("Sangam.Identity.Domain.Entities.Consent", b =>
@@ -1514,6 +1642,36 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("idx_invitations_app_org");
 
                     b.ToTable("invitations", (string)null);
+                });
+
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.LoginIdRelease", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("LoginId")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("login_id");
+
+                    b.Property<DateTimeOffset>("ReleasedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("released_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_login_id_releases");
+
+                    b.HasIndex("LoginId", "ReleasedAt")
+                        .HasDatabaseName("idx_login_id_releases_login_id");
+
+                    b.ToTable("login_id_releases", (string)null);
                 });
 
             modelBuilder.Entity("Sangam.Identity.Domain.Entities.LogoutNotification", b =>
@@ -2615,6 +2773,11 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("lockout_end");
 
+                    b.Property<string>("LoginId")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("login_id");
+
                     b.Property<string>("NormalizedEmail")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -2684,6 +2847,11 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("LastSignInAt")
                         .HasDatabaseName("idx_users_last_sign_in");
+
+                    b.HasIndex("LoginId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_users_login_id")
+                        .HasFilter("login_id IS NOT NULL");
 
                     b.HasIndex("NormalizedEmail")
                         .IsUnique()
@@ -3653,6 +3821,16 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                     b.Navigation("Authorization");
                 });
 
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.AccessReviewDecision", b =>
+                {
+                    b.HasOne("Sangam.Identity.Domain.Entities.App", null)
+                        .WithMany()
+                        .HasForeignKey("AppId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_access_review_decisions_apps_app_id");
+                });
+
             modelBuilder.Entity("Sangam.Identity.Domain.Entities.AccountMergeRequest", b =>
                 {
                     b.HasOne("Sangam.Identity.Domain.Entities.SangamUser", null)
@@ -3730,6 +3908,16 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                     b.Navigation("App");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.ClientSecret", b =>
+                {
+                    b.HasOne("Sangam.Identity.Domain.Entities.App", null)
+                        .WithMany()
+                        .HasForeignKey("AppId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_client_secrets_apps_app_id");
                 });
 
             modelBuilder.Entity("Sangam.Identity.Domain.Entities.Consent", b =>

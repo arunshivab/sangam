@@ -108,13 +108,13 @@ public sealed partial class SmsScreenTests
         await VerifyMobileAsync(owner, mobile);
         await TestAccounts.SetPreferenceAsync(_factory.Services, email, SignInMode.OtpOnly);
         await owner.PostFormAsync("/logout", []);
-        await owner.PostFormAsync("/login/code", new Dictionary<string, string> { ["Email"] = email });
+        await owner.PostFormAsync("/login/code", new Dictionary<string, string> { ["Identifier"] = email });
         await owner.PostFormAsync("/login/verify", [], handler: "Sms");
         string ownerPage = WebUtility.HtmlDecode((await owner.GetAsync("/login/verify")).Html);
 
         // …and an address with no account at all, get the same screen.
         using BrowserSession stranger = new(_factory);
-        await stranger.PostFormAsync("/login/code", new Dictionary<string, string> { ["Email"] = "nobody-" + Guid.NewGuid().ToString("N") + "@example.in" });
+        await stranger.PostFormAsync("/login/code", new Dictionary<string, string> { ["Identifier"] = "nobody-" + Guid.NewGuid().ToString("N") + "@example.in" });
         await stranger.PostFormAsync("/login/verify", [], handler: "Sms");
         string strangerPage = WebUtility.HtmlDecode((await stranger.GetAsync("/login/verify")).Html);
 

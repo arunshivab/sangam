@@ -105,7 +105,9 @@ public sealed record AdminAppRow(Guid Id, string ClientId, string DisplayName, s
 /// <param name="Organisation">Only people holding a live role in an organisation whose name contains this.</param>
 /// <param name="Page">The page, from 1.</param>
 /// <param name="PageSize">Rows a page.</param>
-public sealed record AdminUserQuery(string? Text, UserStatus? Status, string? Organisation, int Page, int PageSize);
+/// <param name="AppId">rc.11: only people who use this application (a live link to it).</param>
+/// <param name="TwoStep">rc.11: only people with (<see langword="true"/>) or without an authenticator app.</param>
+public sealed record AdminUserQuery(string? Text, UserStatus? Status, string? Organisation, int Page, int PageSize, Guid? AppId = null, bool? TwoStep = null);
 
 /// <summary>rc.10 (O2): one page of the users list.</summary>
 /// <param name="Rows">The people on this page, newest account first.</param>
@@ -195,3 +197,32 @@ public sealed record AdminResult(bool Succeeded, string? Message)
     /// <param name="message">Why.</param>
     public static AdminResult Refused(string message) => new(false, message);
 }
+
+/// <summary>rc.11: what the operator's audit trail is filtered by.</summary>
+/// <param name="Action">Actions starting with this, for example <c>admin.</c> or <c>user.login</c>; empty for all.</param>
+/// <param name="Actor">Only events by this kind of actor; <see langword="null"/> for any.</param>
+/// <param name="Person">Only events by or about the person with this e-mail address.</param>
+/// <param name="From">From this day (India time).</param>
+/// <param name="To">To this day, inclusive (India time).</param>
+/// <param name="OnlyFailed">Only refusals and failures.</param>
+/// <param name="Page">The page, from 1.</param>
+/// <param name="PageSize">Rows a page.</param>
+public sealed record AuditTrailQuery(string? Action, AuditActorType? Actor, string? Person, DateOnly? From, DateOnly? To, bool OnlyFailed, int Page, int PageSize);
+
+/// <summary>rc.11: one event in the operator's audit trail.</summary>
+/// <param name="Id">The event's number in the hash chain.</param>
+/// <param name="At">When.</param>
+/// <param name="ActorType">What kind of actor.</param>
+/// <param name="Actor">Who: a person's name, an application's name, or empty for Sangam or someone not signed in.</param>
+/// <param name="Action">The action code.</param>
+/// <param name="About">The person it was about, when it was about a person.</param>
+/// <param name="AboutId">That person's id, to open their record.</param>
+/// <param name="Address">The network address it came from.</param>
+/// <param name="Failed">Whether it records a refusal or a failure.</param>
+public sealed record AuditTrailRow(long Id, DateTimeOffset At, AuditActorType ActorType, string Actor, string Action, string? About, Guid? AboutId, string? Address, bool Failed);
+
+/// <summary>rc.11: one page of the operator's audit trail, newest first.</summary>
+/// <param name="Rows">The events.</param>
+/// <param name="HasMore">Whether there is an older page.</param>
+/// <param name="Page">The page shown.</param>
+public sealed record AuditTrailPage(IReadOnlyList<AuditTrailRow> Rows, bool HasMore, int Page);

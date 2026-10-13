@@ -1,4 +1,5 @@
 @inject NavigationManager Nav
+@inject IServiceScopeFactory Scopes
 @implements IDisposable
 
 @* rc.10 (R-shell): the application switcher, then the chosen application's sections grouped by job. Only the
@@ -41,15 +42,24 @@
       <p class="sg-side-group">@L["Access"]</p>
       <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@Link(current, "people")">@L["Organisations & people"]</NavLink>
       <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@Link(current, "roles")">@L["Roles"]</NavLink>
+      <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@Link(current, "reviews")">
+        @L["Access reviews"]
+        @if (_reviewCount > 0)
+        {
+          <span class="sg-side-count" aria-label="@L["{0} waiting", _reviewCount]">@_reviewCount</span>
+        }
+      </NavLink>
       @if (current.Role == AppAdminRole.Owner)
       {
         <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@Link(current, "admins")">@L["Administrators"]</NavLink>
       }
       <p class="sg-side-group">@L["Sign-in"]</p>
-      <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@Link(current, "settings")">@L["Sign-in rules & branding"]</NavLink>
+      <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@Link(current, "sign-in")">@L["Sign-in rules"]</NavLink>
+      <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@Link(current, "branding")">@L["Branding"]</NavLink>
       <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@Link(current, "messages")">@L["Messages"]</NavLink>
       <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@Link(current, "attributes")">@L["Attributes & claims"]</NavLink>
       <p class="sg-side-group">@L["Integration"]</p>
+      <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@Link(current, "credentials")">@L["Credentials & redirects"]</NavLink>
       <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@Link(current, "provisioning")">@L["Provisioning"]</NavLink>
       <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@Link(current, "webhooks")">@L["Webhooks"]</NavLink>
       <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@Link(current, "evidence")">@L["Compliance evidence"]</NavLink>
@@ -75,13 +85,36 @@
         }
     }
 
+    private int _reviewCount;
+
     /// <inheritdoc />
     protected override void OnInitialized() => Nav.LocationChanged += OnLocationChanged;
 
     /// <inheritdoc />
+    protected override Task OnParametersSetAsync() => CountReviewsAsync();
+
+    // rc.11 (R6): how many roles wait for a decision in the open application's access review.
+    // Its own scope (and so its own database context): the page renders at the same time and uses the circuit's.
+    private async Task CountReviewsAsync()
+    {
+        if (Context is null || Current is not PartnerAppRow app)
+        {
+            _reviewCount = 0;
+            return;
+        }
+
+        await using AsyncServiceScope scope = Scopes.CreateAsyncScope();
+        _reviewCount = await scope.ServiceProvider.GetRequiredService<IAccessReviewService>().CountAsync(Context.UserId, app.AppId);
+    }
+
+    /// <inheritdoc />
     public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
 
-    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) => InvokeAsync(StateHasChanged);
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) => InvokeAsync(async () =>
+    {
+        await CountReviewsAsync();
+        StateHasChanged();
+    });
 
     private static string Link(PartnerAppRow app, string? section) => section is null ? $"/apps/{app.AppId:D}" : $"/apps/{app.AppId:D}/{section}";
 

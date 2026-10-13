@@ -71,6 +71,13 @@ public sealed class LogoutModel : AuthPageModel
     /// <summary>Where the "signed out" page continues to once the frames have loaded (plain sign-out).</summary>
     public string ContinueUrl { get; private set; } = "/login?signedout=true";
 
+    /// <summary>rc.11: whether the person is on this device's list, so the page offers to remove them.</summary>
+    public bool OnDeviceList { get; private set; }
+
+    /// <summary>rc.11: "Also remove me from this device's list".</summary>
+    [BindProperty]
+    public bool ForgetHere { get; set; }
+
     /// <summary>Where "Stay signed in" goes.</summary>
     public string StayUrl => PartnerReturnUrl ?? "/account";
 
@@ -83,6 +90,7 @@ public sealed class LogoutModel : AuthPageModel
             return RedirectToPage("/Account/Login");
         }
 
+        OnDeviceList = SangamAuthentication.UserId(base.User) is Guid me && DeviceAccounts.List(HttpContext).Any(a => a.UserId == me);
         return Page();
     }
 
@@ -102,6 +110,11 @@ public sealed class LogoutModel : AuthPageModel
 
         await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
         await SangamAuthentication.ClearPendingAsync(HttpContext);
+        if (ForgetHere && id is Guid leaving)
+        {
+            DeviceAccounts.ForgetUser(HttpContext, leaving);
+        }
+
         Response.Headers["Clear-Site-Data"] = Sangam.Web.Shared.Hosting.SecurityHeaders.ClearSiteData;
 
         if (id is not null)

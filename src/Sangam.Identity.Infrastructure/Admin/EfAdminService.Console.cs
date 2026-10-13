@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using OpenIddict.EntityFrameworkCore.Models;
+using Sangam.Identity.Application.Abstractions;
 using Sangam.Identity.Application.Admin;
+using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Entities;
 using Sangam.Identity.Domain.Enums;
 
@@ -45,6 +47,16 @@ public sealed partial class EfAdminService
             DateTimeOffset now = _clock.UtcNow;
             users = users.Where(u => _db.OrgMemberships.Any(m =>
                 m.UserId == u.Id && m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > now) && EF.Functions.ILike(m.Org!.Name, $"%{org}%")));
+        }
+
+        if (query.AppId is Guid appId)
+        {
+            users = users.Where(u => _db.AppGrants.Any(g => g.UserId == u.Id && g.AppId == appId && g.RevokedAt == null));
+        }
+
+        if (query.TwoStep is bool twoStep)
+        {
+            users = users.Where(u => u.TwoFactorEnabled == twoStep);
         }
 
         int total = await users.CountAsync(cancellationToken).ConfigureAwait(false);
@@ -197,6 +209,108 @@ public sealed partial class EfAdminService
                 Failed(t.Action)))]);
     }
 
+    /// <inheritdoc />
+    public async Task<AuditTrailPage> AuditTrailAsync(Guid operatorUserId, AuditTrailQuery query, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        int size = Math.Clamp(query.PageSize, 10, 200);
+        int page = Math.Max(1, query.Page);
+        if (await RequireAsync(operatorUserId, PlatformRole.Support, cancellationToken).ConfigureAwait(false) is not null)
+        {
+            return new AuditTrailPage([], false, page);
+        }
+
+        IQueryable<AuditEvent> events = _db.AuditEvents.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(query.Action))
+        {
+            string prefix = query.Action.Trim().ToLowerInvariant();
+            events = events.Where(e => e.Action.StartsWith(prefix));
+        }
+
+        if (query.Actor is AuditActorType actor)
+        {
+            events = events.Where(e => e.ActorType == actor);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Person))
+        {
+            string normalised = query.Person.Trim().ToUpperInvariant();
+            Guid? person = await _db.Users.AsNoTracking().Where(u => u.NormalizedEmail == normalised).Select(u => (Guid?)u.Id).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+            Guid id = person ?? Guid.Empty;
+            events = events.Where(e => e.ActorUserId == id || (e.TargetType == "user" && e.TargetId == id));
+        }
+
+        if (query.From is DateOnly from)
+        {
+            DateTimeOffset start = new DateTimeOffset(from.ToDateTime(TimeOnly.MinValue), Sangam.Shared.IndiaTime.Offset).ToUniversalTime();
+            events = events.Where(e => e.OccurredAt >= start);
+        }
+
+        if (query.To is DateOnly to)
+        {
+            DateTimeOffset end = new DateTimeOffset(to.AddDays(1).ToDateTime(TimeOnly.MinValue), Sangam.Shared.IndiaTime.Offset).ToUniversalTime();
+            events = events.Where(e => e.OccurredAt < end);
+        }
+
+        if (query.OnlyFailed)
+        {
+            events = events.Where(e => e.Action.EndsWith(".fail") || e.Action.EndsWith(".failing") || e.Action.EndsWith(".refused") || e.Action.EndsWith(".denied") || e.Action.EndsWith(".refuse"));
+        }
+
+        var rows = await events
+            .OrderByDescending(e => e.Id)
+            .Skip((page - 1) * size)
+            .Take(size + 1)
+            .Select(e => new { e.Id, e.OccurredAt, e.ActorType, e.ActorUserId, e.ActorAppId, e.Action, e.TargetType, e.TargetId, e.IpAddress })
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        bool more = rows.Count > size;
+        if (more)
+        {
+            rows.RemoveAt(rows.Count - 1);
+        }
+
+        List<Guid> people = [.. rows.Where(r => r.ActorUserId != null).Select(r => r.ActorUserId!.Value)
+            .Concat(rows.Where(r => r.TargetType == "user" && r.TargetId != null).Select(r => r.TargetId!.Value)).Distinct()];
+        Dictionary<Guid, string> names = await _db.Users.AsNoTracking().Where(u => people.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => (u.FirstName + " " + u.LastName).Trim(), cancellationToken).ConfigureAwait(false);
+        List<Guid> apps = [.. rows.Where(r => r.ActorAppId != null).Select(r => r.ActorAppId!.Value).Distinct()];
+        Dictionary<Guid, string> appNames = await _db.Apps.AsNoTracking().Where(a => apps.Contains(a.Id))
+            .ToDictionaryAsync(a => a.Id, a => a.DisplayName, cancellationToken).ConfigureAwait(false);
+
+        await _audit.WriteAsync(
+            new AuditEntry(
+                AuditActions.AdminAuditTrailView,
+                AuditActorType.Admin,
+                operatorUserId,
+                Metadata: System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    action = !string.IsNullOrWhiteSpace(query.Action),
+                    actor = query.Actor?.ToString(),
+                    person = !string.IsNullOrWhiteSpace(query.Person),
+                    dates = query.From is not null || query.To is not null,
+                    failed = query.OnlyFailed,
+                    page,
+                })),
+            cancellationToken).ConfigureAwait(false);
+
+        return new AuditTrailPage(
+            [
+                .. rows.Select(r => new AuditTrailRow(
+                    r.Id,
+                    r.OccurredAt,
+                    r.ActorType,
+                    r.ActorUserId is Guid who && names.TryGetValue(who, out string? name) ? name
+                        : r.ActorAppId is Guid by && appNames.TryGetValue(by, out string? appName) ? appName : string.Empty,
+                    r.Action,
+                    r.TargetType == "user" && r.TargetId is Guid about && names.TryGetValue(about, out string? aboutName) ? aboutName : null,
+                    r.TargetType == "user" ? r.TargetId : null,
+                    r.IpAddress,
+                    Failed(r.Action))),
+            ],
+            more,
+            page);
+    }
+
     /// <summary>Whether an audit action records a refusal or a failure.</summary>
     private static bool Failed(string action)
         => action.EndsWith(".fail", StringComparison.Ordinal)
@@ -213,5 +327,44 @@ public sealed partial class EfAdminService
             .Select(a => new { a.ClientId, a.ClientType })
             .ToListAsync(cancellationToken).ConfigureAwait(false);
         return clients.ToDictionary(c => c.ClientId!, c => string.Equals(c.ClientType, OpenIddict.Abstractions.OpenIddictConstants.ClientTypes.Confidential, StringComparison.Ordinal), StringComparer.Ordinal);
+    }
+
+    /// <inheritdoc />
+    public async Task<AdminResult> ForceSignOutManyAsync(Guid operatorUserId, IReadOnlyCollection<Guid> userIds, string reason, string? ipAddress, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(userIds);
+        AdminResult? refusal = await RequireAsync(operatorUserId, PlatformRole.Support, cancellationToken).ConfigureAwait(false);
+        if (refusal is not null)
+        {
+            return refusal;
+        }
+
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            return AdminResult.Refused("Give a reason. It is kept in each person's audit record.");
+        }
+
+        List<Guid> wanted = [.. userIds.Where(id => id != operatorUserId).Distinct()];
+        if (wanted.Count == 0)
+        {
+            return AdminResult.Refused("Choose at least one person other than yourself.");
+        }
+
+        if (wanted.Count > IAdminService.BulkSignOutLimit)
+        {
+            return AdminResult.Refused("Choose at most 100 people at a time.");
+        }
+
+        List<Guid> found = await _db.Users.AsNoTracking().Where(u => wanted.Contains(u.Id)).Select(u => u.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
+        string metadata = System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, object> { ["reason"] = reason.Trim(), ["bulk"] = found.Count });
+        foreach (Guid userId in found)
+        {
+            await _portal.RevokeAllSessionsAsync(userId, ipAddress, cancellationToken).ConfigureAwait(false);
+            await _audit.WriteAsync(
+                new AuditEntry(AuditActions.AdminUserForceLogout, AuditActorType.Admin, operatorUserId, TargetType: "user", TargetId: userId, Metadata: metadata, IpAddress: ipAddress),
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        return AdminResult.Ok("Every session of the chosen people has ended.");
     }
 }

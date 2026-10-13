@@ -58,6 +58,21 @@ public interface IPartnerService
     /// <summary>Removes a person's role in an organisation.</summary>
     Task<PartnerResult> RevokeMembershipAsync(Guid userId, Guid appId, Guid orgId, Guid memberUserId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// rc.11 (R3): ends a person's role in an organisation, now or at the end of a chosen day, with a reason they see in
+    /// their Activity. A date ends the role by itself; "now" removes it at once.
+    /// </summary>
+    Task<PartnerResult> EndMembershipAsync(Guid userId, Guid appId, Guid orgId, Guid memberUserId, DateOnly? endsOn, string? reason, CancellationToken cancellationToken = default);
+
+    /// <summary>rc.11 (R5): what the application's developers need to connect: client id, addresses, secret age.</summary>
+    Task<PartnerCredentials?> GetCredentialsAsync(Guid userId, Guid appId, CancellationToken cancellationToken = default);
+
+    /// <summary>rc.11 (R4): the names of the application's organisations that tighten its sign-in rules.</summary>
+    Task<IReadOnlyList<string>> OrganisationsWithOwnRulesAsync(Guid userId, Guid appId, CancellationToken cancellationToken = default);
+
+    /// <summary>rc.11 (R3): how many people hold a live role in each organisation of the application.</summary>
+    Task<IReadOnlyDictionary<Guid, int>> CountPeopleAsync(Guid userId, Guid appId, CancellationToken cancellationToken = default);
+
     /// <summary>The application's administrators. Owners only.</summary>
     Task<IReadOnlyList<AppAdminRow>> ListAdminsAsync(Guid userId, Guid appId, CancellationToken cancellationToken = default);
 

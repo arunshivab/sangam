@@ -113,7 +113,12 @@ public static class DependencyInjection
         services.AddSingleton<IBreachListStatus>(sp => sp.GetRequiredService<PwnedPasswordsChecker>());
 
         services.AddOpenIddict()
-            .AddCore(o => o.UseEntityFrameworkCore().UseDbContext<SangamDbContext>());
+            .AddCore(o =>
+            {
+                o.UseEntityFrameworkCore().UseDbContext<SangamDbContext>();
+                // rc.11 (R5): two live client secrets, so an owner can rotate with no break in sign-in.
+                o.ReplaceApplicationManager(typeof(Apps.SangamApplicationManager<>));
+            });
 
         OtpOptions otp = new();
         configuration.GetSection(OtpOptions.SectionName).Bind(otp);
@@ -132,6 +137,9 @@ public static class DependencyInjection
         services.AddScoped<IPortalService, EfPortalService>();
         // rc.10 (P4): the roles a person holds, and leaving an organisation.
         services.AddScoped<IPortalRolesService, EfPortalRolesService>();
+        services.AddScoped<ILoginIdService, EfLoginIdService>();
+        services.AddScoped<IClientSecretService, EfClientSecretService>();
+        services.AddScoped<IAccessReviewService, EfAccessReviewService>();
         services.AddScoped<IEmailChangeService, EfEmailChangeService>();
         // D-G: passkeys on ASP.NET Core Identity's built-in WebAuthn support (Fido2NetLib removed).
         services.Configure<IdentityPasskeyOptions>(o => PasskeySettings.Apply(o, configuration));

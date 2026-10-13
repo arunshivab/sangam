@@ -1,0 +1,147 @@
+@page "/audit"
+@inject IAdminService Admin
+
+@* rc.11: the audit trail, for support and owners. Newest first, filtered; each search is recorded with which filters were
+   used, never the words. The chain itself is verified by the monitoring checks, not here. *@
+<PageTitle>@L["Audit trail · Operator console"]</PageTitle>
+
+<h1 class="sg-h1">@L["Audit trail"]</h1>
+<p class="sg-lede">@L["Everything Sangam records, newest first. Your searches here are recorded too."]</p>
+
+@if (Context?.CanAct != true)
+{
+  <p class="sg-muted">@L["The audit trail is open to support and owners."]</p>
+}
+else
+{
+  <div class="sg-toolbar" data-panel="filters" @onkeyup="OnKeyAsync">
+    <label class="sg-field-label">
+      @L["Action starts with"]
+      <input class="sg-input sg-input--toolbar sg-mono" placeholder="@ActionExample" @bind="_action" @bind:event="oninput" />
+    </label>
+    <label class="sg-field-label">
+      @L["By"]
+      <select class="sg-input sg-input--toolbar" @bind="_actor">
+        <option value="">@L["Anyone"]</option>
+        <option value="user">@L["A person"]</option>
+        <option value="admin">@L["An administrator or operator"]</option>
+        <option value="api">@L["An application"]</option>
+        <option value="system">@L["Sangam itself"]</option>
+        <option value="anonymous">@L["Someone not signed in"]</option>
+      </select>
+    </label>
+    <label class="sg-field-label">
+      @L["Person's email"]
+      <input class="sg-input sg-input--toolbar" type="email" @bind="_person" @bind:event="oninput" />
+    </label>
+    <label class="sg-field-label">
+      @L["From"]
+      <input class="sg-input sg-input--toolbar" type="date" @bind="_from" />
+    </label>
+    <label class="sg-field-label">
+      @L["To"]
+      <input class="sg-input sg-input--toolbar" type="date" @bind="_to" />
+    </label>
+    <label class="sg-check sg-check--toolbar"><input type="checkbox" @bind="_failed" /> @L["Only refusals and failures"]</label>
+    <button type="button" class="sg-btn sg-btn--primary" @onclick="() => GoAsync(1)" disabled="@_busy">@L["Search"]</button>
+  </div>
+
+  @if (_page is null)
+  {
+    <p class="sg-muted">@L["Loading…"]</p>
+  }
+  else if (_page.Rows.Count == 0)
+  {
+    <p class="sg-muted">@L["Nothing matches."]</p>
+  }
+  else
+  {
+    <div class="sg-table-wrap" tabindex="0" role="region" aria-label="@L["Audit trail"]">
+      <table class="sg-table sg-table--compact sg-table--cards sg-trail" data-panel="trail">
+        <thead><tr><th>@L["When"]</th><th>@L["Who"]</th><th>@L["Action"]</th><th>@L["About"]</th><th>@L["Address"]</th></tr></thead>
+        <tbody>
+          @foreach (AuditTrailRow row in _page.Rows)
+          {
+            <tr class="@(row.Failed ? "sg-row--failed" : null)">
+              <td class="sg-mono">@IndiaTime.Compact(row.At)</td>
+              <td data-label="@L["Who"]">@Who(row)</td>
+              <td class="sg-mono" data-label="@L["Action"]">@row.Action</td>
+              <td data-label="@L["About"]">
+                @if (row.AboutId is Guid about)
+                {
+                  <a href="@($"/users/{about:D}")">@(row.About ?? L["a person"])</a>
+                }
+              </td>
+              <td class="sg-mono" data-label="@L["Address"]">@row.Address</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <div class="sg-pager" data-panel="pager">
+      <span class="sg-muted">@L["Page {0}", _page.Page]</span>
+      <span class="sg-pager-buttons">
+        <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => GoAsync(_page.Page - 1)" disabled="@(_busy || _page.Page <= 1)">@L["Newer"]</button>
+        <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => GoAsync(_page.Page + 1)" disabled="@(_busy || !_page.HasMore)">@L["Older"]</button>
+      </span>
+    </div>
+  }
+}
+
+@code {
+    private const int PageSize = 50;
+
+    // Action codes are the same in every language.
+    private const string ActionExample = "admin. · user.login"; // i18n-ignore
+
+    [CascadingParameter]
+    public ConsoleContext? Context { get; set; }
+
+    private AuditTrailPage? _page;
+    private string _action = string.Empty;
+    private string _actor = string.Empty;
+    private string _person = string.Empty;
+    private DateOnly? _from;
+    private DateOnly? _to;
+    private bool _failed;
+    private bool _busy;
+
+    protected override Task OnInitializedAsync() => Context?.CanAct == true ? GoAsync(1) : Task.CompletedTask;
+
+    private async Task OnKeyAsync(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await GoAsync(1);
+        }
+    }
+
+    private async Task GoAsync(int page)
+    {
+        if (Context is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        AuditActorType? actor = _actor switch
+        {
+            "user" => AuditActorType.User,
+            "admin" => AuditActorType.Admin,
+            "api" => AuditActorType.Api,
+            "system" => AuditActorType.System,
+            "anonymous" => AuditActorType.Anonymous,
+            _ => null,
+        };
+        _page = await Admin.AuditTrailAsync(Context.UserId, new AuditTrailQuery(_action, actor, _person, _from, _to, _failed, page, PageSize));
+        _busy = false;
+    }
+
+    private string Who(AuditTrailRow row) => row.Actor.Length > 0 ? row.Actor : row.ActorType switch
+    {
+        AuditActorType.System => L["Sangam"],
+        AuditActorType.Anonymous => L["Someone not signed in"],
+        AuditActorType.Api => L["An application"],
+        _ => L["Someone"],
+    };
+}

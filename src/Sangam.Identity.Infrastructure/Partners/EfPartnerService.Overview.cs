@@ -39,6 +39,12 @@ public sealed partial class EfPartnerService
             .Select(o => o.ClientType)
             .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
 
+        // rc.11: once the owner retired the secret Sangam issued, the age is that of the oldest secret still live.
+        DateTimeOffset now = _clock.UtcNow;
+        DateTimeOffset? secretSetAt = app.IssuedSecretRetiredAt is null
+            ? app.SecretSetAt
+            : await _db.ClientSecrets.AsNoTracking().Where(x => x.AppId == appId && x.RevokedAt == null && x.ExpiresAt > now).MinAsync(x => (DateTimeOffset?)x.CreatedAt, cancellationToken).ConfigureAwait(false);
+
         return new PartnerAppOverview(
             people,
             organisations,
@@ -52,7 +58,7 @@ public sealed partial class EfPartnerService
             hooks.Count(h => h != "ok"),
             waiting,
             !string.IsNullOrEmpty(app.BackChannelLogoutUri) || !string.IsNullOrEmpty(app.FrontChannelLogoutUri),
-            app.SecretSetAt,
+            secretSetAt,
             clientType is null ? null : string.Equals(clientType, OpenIddict.Abstractions.OpenIddictConstants.ClientTypes.Confidential, StringComparison.Ordinal),
             app.Status);
     }
