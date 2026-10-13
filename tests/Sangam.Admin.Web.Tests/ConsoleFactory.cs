@@ -66,6 +66,9 @@ public sealed class ConsoleFactory : WebApplicationFactory<Program>
                 o.DefaultAuthenticateScheme = SchemeName;
                 o.DefaultChallengeScheme = SchemeName;
             });
+
+            // rc.11: no identity server here; the signing keys page reads a key set made for the test.
+            services.AddSingleton<Components.Common.ISigningKeySource, TestSigningKeys>();
         });
     }
 

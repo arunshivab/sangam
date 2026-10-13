@@ -292,7 +292,8 @@ public sealed partial class EfManagementService : IManagementService
 
         membership.RoleId = role.Id;
         membership.AppliesToDescendants = input.AppliesToDescendants;
-        membership.ExpiresAt = input.ExpiresAt;
+        // rc.11: stored in UTC whatever offset the caller used (the partner console sends the end of an India day).
+        membership.ExpiresAt = input.ExpiresAt?.ToUniversalTime();
 
         bool hasGrant = await _db.AppGrants.AnyAsync(g => g.UserId == userId && g.AppId == appId && g.RevokedAt == null, cancellationToken).ConfigureAwait(false);
         if (!hasGrant)
@@ -315,7 +316,9 @@ public sealed partial class EfManagementService : IManagementService
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await _audit.WriteAsync(
             new AuditEntry(AuditActions.OrgMembershipGrant, actor.Type, actor.UserId, ActorAppId: appId, TargetType: "user", TargetId: userId,
-                Metadata: JsonSerializer.Serialize(new { org = orgId, role = role.Code, inherits = input.AppliesToDescendants, expires_at = input.ExpiresAt })),
+                Metadata: actor.Reason is { Length: > 0 } why
+                    ? JsonSerializer.Serialize(new { org = orgId, role = role.Code, inherits = input.AppliesToDescendants, expires_at = input.ExpiresAt, reason = why })
+                    : JsonSerializer.Serialize(new { org = orgId, role = role.Code, inherits = input.AppliesToDescendants, expires_at = input.ExpiresAt })),
             cancellationToken).ConfigureAwait(false);
         return ManagementResult.Ok<MembershipDto>(new MembershipDto(userId, orgId, role.Code, membership.AppliesToDescendants, membership.GrantedAt, membership.ExpiresAt));
     }
@@ -342,7 +345,10 @@ public sealed partial class EfManagementService : IManagementService
 
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await _audit.WriteAsync(
-            new AuditEntry(AuditActions.OrgMembershipRevoke, actor.Type, actor.UserId, ActorAppId: appId, TargetType: "user", TargetId: userId, Metadata: $"{{\"org\":\"{orgId:D}\"}}"),
+            new AuditEntry(AuditActions.OrgMembershipRevoke, actor.Type, actor.UserId, ActorAppId: appId, TargetType: "user", TargetId: userId,
+                Metadata: actor.Reason is { Length: > 0 } why
+                    ? JsonSerializer.Serialize(new { org = orgId.ToString("D"), role = membership.Role!.Code, reason = why })
+                    : $"{{\"org\":\"{orgId:D}\"}}"),
             cancellationToken).ConfigureAwait(false);
         return ManagementResult.Ok<MembershipDto>(new MembershipDto(userId, orgId, membership.Role!.Code, membership.AppliesToDescendants, membership.GrantedAt));
     }

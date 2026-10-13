@@ -200,6 +200,118 @@ public sealed class PartnerServiceTests : IAsyncLifetime
     }
 
     [PostgresFact]
+    public async Task EndingARole_OnADateOrNow_KeepsTheReason_AndThePersonReadsIt()
+    {
+        // rc.11 (R3): "Change" ends a role on a chosen day or at once, always with a reason.
+        IPartnerService partner = Service();
+        await partner.UpsertRoleAsync(_admin, _his, "nurse", new RoleUpsert("Nurse", null, [], null));
+        await partner.GrantMembershipAsync(_admin, _his, _hospital, _nurse, new MembershipUpsert("nurse", true));
+        Assert.Equal(1, (await partner.CountPeopleAsync(_admin, _his))[_hospital]);
+
+        DateOnly day = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10));
+        Assert.True((await partner.EndMembershipAsync(_admin, _his, _hospital, _nurse, day, "Locum contract ends")).Succeeded);
+        PartnerMemberRow shortened = Assert.Single(await partner.ListMembersAsync(_admin, _his, _hospital));
+        Assert.Equal(day, DateOnly.FromDateTime(shortened.ExpiresAt!.Value.ToOffset(TimeSpan.FromHours(5.5)).DateTime));
+        Assert.True(shortened.AppliesToDescendants);
+
+        Assert.True((await partner.EndMembershipAsync(_admin, _his, _hospital, _nurse, null, "Left the hospital")).Succeeded);
+        Assert.Empty(await partner.ListMembersAsync(_admin, _his, _hospital));
+        Assert.False((await partner.CountPeopleAsync(_admin, _his)).ContainsKey(_hospital));
+
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            AuditEvent revoke = await db.AuditEvents.SingleAsync(e => e.Action == AuditActions.OrgMembershipRevoke);
+            Assert.Contains("Left the hospital", revoke.Metadata, StringComparison.Ordinal);
+            Assert.Equal(_admin, revoke.ActorUserId);
+        }
+
+        using IServiceScope scope = _provider.CreateScope();
+        AuditPage page = await scope.ServiceProvider.GetRequiredService<IPortalService>().GetAuditAsync(_nurse, null, 0, 50);
+        Assert.Contains(page.Lines, l => l.Summary.EndsWith("Their reason: Left the hospital", StringComparison.Ordinal));
+        Assert.Contains(page.Lines, l => l.Summary.EndsWith("Their reason: Locum contract ends", StringComparison.Ordinal));
+
+        // Someone who does not administer the application cannot end anyone's role.
+        Assert.False((await partner.EndMembershipAsync(_stranger, _his, _hospital, _nurse, null, "x")).Succeeded);
+    }
+
+    [PostgresFact]
+    public async Task AccessReview_ListsEndingAndUnusedRoles_AndRecordsEachDecision()
+    {
+        // rc.11 (R6): roles ending within 30 days, and roles of people who have not signed in to the application for 90 days.
+        IPartnerService partner = Service();
+        await partner.UpsertRoleAsync(_admin, _his, "nurse", new RoleUpsert("Nurse", null, [], null));
+        DateTimeOffset tenDays = DateTimeOffset.UtcNow.AddDays(10);
+        Assert.True((await partner.GrantMembershipAsync(_admin, _his, _hospital, _nurse, new MembershipUpsert("nurse", false))).Succeeded);
+        Assert.True((await partner.GrantMembershipAsync(_admin, _his, _hospital, _admin, new MembershipUpsert("nurse", false, tenDays))).Succeeded);
+        Assert.True((await partner.GrantMembershipAsync(_admin, _his, _hospital, _owner, new MembershipUpsert("nurse", false))).Succeeded);
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            foreach (OrgMembership m in await db.OrgMemberships.Where(m => m.AppId == _his).ToListAsync())
+            {
+                m.GrantedAt = DateTimeOffset.UtcNow.AddDays(-120);
+            }
+
+            (await db.AppGrants.SingleAsync(g => g.AppId == _his && g.UserId == _owner)).LastUsedAt = DateTimeOffset.UtcNow.AddDays(-2);
+            await db.SaveChangesAsync();
+        }
+
+        IAccessReviewService reviews = Reviews();
+        AccessReview review = (await reviews.GetAsync(_admin, _his))!;
+        AccessReviewItem ending = Assert.Single(review.Ending);
+        Assert.Equal("admin@lipi.test", ending.Email);
+        Assert.Equal("Nurse", ending.Role);
+        AccessReviewItem unused = Assert.Single(review.Unused);
+        Assert.Equal("nurse@lipi.test", unused.Email);
+        Assert.Null(unused.LastSignInAt);
+        Assert.Equal(2, await reviews.CountAsync(_admin, _his));
+
+        // Extend by three months: from the current end date, and it leaves the list.
+        Assert.False((await reviews.DecideAsync(_admin, _his, new AccessReviewInput(ending.MembershipId, AccessReviewOutcome.Extend, 4, null))).Succeeded);
+        Assert.True((await reviews.DecideAsync(_admin, _his, new AccessReviewInput(ending.MembershipId, AccessReviewOutcome.Extend, 3, null))).Succeeded);
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            OrgMembership extended = await db.OrgMemberships.SingleAsync(m => m.Id == ending.MembershipId);
+            Assert.InRange(extended.ExpiresAt!.Value, tenDays.AddMonths(3).AddMinutes(-1), tenDays.AddMonths(3).AddMinutes(1));
+        }
+
+        // End needs a reason, which the person then reads in their activity.
+        Assert.False((await reviews.DecideAsync(_admin, _his, new AccessReviewInput(unused.MembershipId, AccessReviewOutcome.End, null, " "))).Succeeded);
+        Assert.True((await reviews.DecideAsync(_admin, _his, new AccessReviewInput(unused.MembershipId, AccessReviewOutcome.End, null, "Has not worked here since June"))).Succeeded);
+        Assert.DoesNotContain(await partner.ListMembersAsync(_admin, _his, _hospital), m => m.UserId == _nurse);
+        using (IServiceScope scope = _provider.CreateScope())
+        {
+            AuditPage page = await scope.ServiceProvider.GetRequiredService<IPortalService>().GetAuditAsync(_nurse, null, 0, 50);
+            Assert.Contains(page.Lines, l => l.Summary.EndsWith("Their reason: Has not worked here since June", StringComparison.Ordinal));
+        }
+
+        // Keep records the review only; the role is untouched and leaves the list for 90 days.
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            (await db.AppGrants.SingleAsync(g => g.AppId == _his && g.UserId == _owner)).LastUsedAt = DateTimeOffset.UtcNow.AddDays(-100);
+            await db.SaveChangesAsync();
+        }
+
+        AccessReviewItem idle = Assert.Single((await reviews.GetAsync(_owner, _his))!.Unused);
+        Assert.True((await reviews.DecideAsync(_owner, _his, new AccessReviewInput(idle.MembershipId, AccessReviewOutcome.Keep, null, null))).Succeeded);
+        Assert.False((await reviews.DecideAsync(_owner, _his, new AccessReviewInput(idle.MembershipId, AccessReviewOutcome.Keep, null, null))).Succeeded);
+        review = (await reviews.GetAsync(_owner, _his))!;
+        Assert.Empty(review.Ending);
+        Assert.Empty(review.Unused);
+        Assert.Equal([AccessReviewOutcome.Keep, AccessReviewOutcome.End, AccessReviewOutcome.Extend], review.Decided.Select(d => d.Outcome));
+        Assert.Equal("Has not worked here since June", review.Decided[1].Note);
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            Assert.Null((await db.OrgMemberships.SingleAsync(m => m.Id == idle.MembershipId)).RevokedAt);
+            Assert.Equal(3, await db.AuditEvents.CountAsync(e => e.Action == AuditActions.AppAccessReview));
+        }
+
+        // Nobody outside the application sees or decides anything.
+        Assert.Null(await reviews.GetAsync(_stranger, _his));
+        Assert.Equal(0, await reviews.CountAsync(_stranger, _his));
+        Assert.False((await reviews.DecideAsync(_stranger, _his, new AccessReviewInput(idle.MembershipId, AccessReviewOutcome.End, null, "x"))).Succeeded);
+    }
+
+    [PostgresFact]
     public async Task TheMachineApi_IsStillRecordedAsTheApplication()
     {
         using IServiceScope scope = _provider.CreateScope();
@@ -514,6 +626,13 @@ public sealed class PartnerServiceTests : IAsyncLifetime
         IServiceScope scope = _provider.CreateScope();
         _scopes.Add(scope);
         return scope.ServiceProvider.GetRequiredService<IPartnerService>();
+    }
+
+    private IAccessReviewService Reviews()
+    {
+        IServiceScope scope = _provider.CreateScope();
+        _scopes.Add(scope);
+        return scope.ServiceProvider.GetRequiredService<IAccessReviewService>();
     }
 
     private async Task<Guid> NewUserAsync(string email, string mobile)

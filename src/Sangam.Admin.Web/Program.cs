@@ -52,6 +52,8 @@ if (antivirusProblem is not null)
 }
 
 builder.Services.AddHttpContextAccessor();
+// rc.11: the read-only signing keys page reads the identity server's published key set.
+builder.Services.AddSingleton<Sangam.Admin.Web.Components.Common.ISigningKeySource, Sangam.Admin.Web.Components.Common.OidcSigningKeySource>();
 builder.Services.AddCascadingAuthenticationState();
 
 // Bootstrapping: "dotnet run -- create-operator someone@example.in" works only while the

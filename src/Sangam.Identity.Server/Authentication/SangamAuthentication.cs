@@ -179,6 +179,11 @@ public static class SangamAuthentication
 
         // rc.9 (ASVS V2.2.3): a browser new to this account is told to the person by e-mail.
         await KnownDevices.SignedInAsync(httpContext, user).ConfigureAwait(false);
+
+        // rc.11: the device's list of regular people, for those who asked to be on it; what was typed is forgotten.
+        SignInStart? start = SignInFlow.Read(httpContext);
+        DeviceAccounts.SignedIn(httpContext, user, start?.Remember == true);
+        SignInFlow.Clear(httpContext);
     }
 
     /// <summary>

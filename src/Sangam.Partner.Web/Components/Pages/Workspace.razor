@@ -11,6 +11,10 @@ else
 {
   <PageTitle>@_info.AppName · Sangam partners</PageTitle>
   <h1 class="sg-h1">@_info.AppName · @SectionName</h1>
+  @if (CurrentTab is "sign-in" or "settings" or "branding" or "messages" or "attributes" or "provisioning" or "webhooks" or "credentials" or "roles")
+  {
+    <DesktopNote />
+  }
 
   @switch (CurrentTab)
   {
@@ -24,8 +28,18 @@ else
     case "admins":
       <OrganisationsTab Info="_info" />
       break;
+    case "sign-in":
     case "settings":
-      <SettingsTab Info="_info" />
+      <SignInRulesTab Info="_info" />
+      break;
+    case "branding":
+      <BrandingTab Info="_info" />
+      break;
+    case "credentials":
+      <CredentialsTab Info="_info" />
+      break;
+    case "reviews":
+      <ReviewsTab Info="_info" />
       break;
     case "webhooks":
       <WebhooksTab Info="_info" />
@@ -73,7 +87,10 @@ else
         "admins" when _info?.IsOwner == true => L["Administrators"],
         "admins" => L["Organisations & people"],
         "roles" => L["Roles"],
-        "settings" => L["Sign-in rules & branding"],
+        "reviews" => L["Access reviews"],
+        "sign-in" or "settings" => L["Sign-in rules"],
+        "branding" => L["Branding"],
+        "credentials" => L["Credentials & redirects"],
         "messages" => L["Messages"],
         "attributes" => L["Attributes & claims"],
         "provisioning" => L["Provisioning"],

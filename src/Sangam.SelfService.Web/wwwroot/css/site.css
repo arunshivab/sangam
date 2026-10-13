@@ -322,3 +322,54 @@ h1[tabindex="-1"]:focus { outline: none; }
   .sg-table--roles .sg-tr, .sg-table--apps .sg-tr { grid-template-columns: minmax(0, 1fr); }
   .sg-way { flex-wrap: wrap; }
 }
+
+/* rc.11: what you sign in with — email, mobile, login ID. */
+.sg-inline-actions { display: inline-flex; gap: 12px; margin-left: 12px; }
+.sg-login-id-start { margin-left: 12px; }
+.sg-login-id-form { display: grid; gap: 6px; max-width: 620px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--sg-border); }
+.sg-login-id-form .sg-label, .sg-login-id-form .sg-note, .sg-login-id-form .sg-field-error { margin: 0; }
+.sg-login-id-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
+.sg-login-id-row .sg-field { flex: 1 1 220px; margin: 0; font-family: var(--sg-font-mono); }
+.sg-link-button { background: none; border: 0; padding: 4px 0; min-height: 36px; font: 400 14px/1.5 var(--sg-font-body); color: var(--sg-palm-shade); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.sg-link-button:hover { color: var(--sg-ochre); }
+.sg-link-button:disabled { color: var(--sg-slate); cursor: default; }
+.sg-link-button:focus-visible { outline: 2px solid var(--sg-ochre); outline-offset: 2px; }
+
+/* rc.11 (T2): tablet — the tabs move to a second row of their own, 48 px, and scroll sideways. */
+.sg-bottom-bar { display: none; }
+@media (min-width: 720px) and (max-width: 1023px) {
+  .sg-topbar { flex-wrap: wrap; height: auto; padding-top: 10px; padding-bottom: 0; row-gap: 0; }
+  .sg-topbar-user { order: 2; }
+  .sg-tabs { order: 3; flex: 1 0 100%; height: 48px; overflow-x: auto; scrollbar-width: none; }
+  .sg-tab { min-height: 48px; white-space: nowrap; }
+}
+/* rc.11 (M6–M9): phone — a bottom bar of four tabs and "More"; 72 px with room for the home indicator. */
+@media (max-width: 719px) {
+  .sg-tabs, .sg-topbar-name, .sg-topbar-signout { display: none; }
+  .sg-portal { padding-bottom: 96px; }
+  .sg-lang-footer { padding-bottom: 96px; }
+  .sg-bottom-bar {
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    min-height: 72px; padding-bottom: env(safe-area-inset-bottom);
+    background: var(--sg-surface); border-top: 1px solid var(--sg-border);
+  }
+  .sg-bottom-tab {
+    display: flex; align-items: center; justify-content: center; min-height: 64px; padding: 0 4px;
+    border-top: 3px solid transparent; color: var(--sg-slate); text-decoration: none; text-align: center;
+    font: 400 14px/1.2 var(--sg-font-body); list-style: none; cursor: pointer;
+  }
+  .sg-bottom-tab::-webkit-details-marker { display: none; }
+  .sg-bottom-tab--active { border-top-color: var(--sg-ochre); color: var(--sg-ink); font-weight: 600; }
+  .sg-bottom-more { position: relative; }
+  .sg-bottom-more[open] > .sg-bottom-tab { color: var(--sg-ink); font-weight: 600; }
+  .sg-bottom-more-menu {
+    position: absolute; right: 8px; bottom: 72px; min-width: 200px; display: grid;
+    background: var(--sg-surface); border: 1px solid var(--sg-border); border-radius: 4px;
+  }
+  .sg-bottom-more-link { display: flex; align-items: center; min-height: 48px; padding: 0 16px; color: var(--sg-ink); text-decoration: none; border-top: 1px solid var(--sg-border); }
+  .sg-bottom-more-link:first-child { border-top: 0; }
+  .sg-btn { min-height: 48px; }
+  .sg-btn--primary { min-height: 52px; }
+  .sg-field { min-height: 48px; font-size: 17px; }
+}

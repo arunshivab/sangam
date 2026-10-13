@@ -6,6 +6,84 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0-rc.11] - eleventh release candidate
+
+Sangam 1.0.0-rc.11 fills the gaps rc.10 left against the design review. The decisions are in
+`docs/design/rc10-standards.md`, rc.11 section.
+
+### Sign-in (A1–A4, A8)
+- **One field for an email, a mobile number or a login ID** (founder decision, 13 Oct 2026), then "How do you want to sign
+  in?" (passkey, password, code by email, strongest first), then the password or the code. The choices depend only on the
+  application's rule, never on the account, so the screens are the same whether an account exists or not (tested). A
+  mobile number signs in only once it is verified on exactly one account.
+- **Login IDs**: chosen in the portal (Sign-in & security → What you sign in with), suggested as `first.last`; 4–30 small
+  letters, digits, dots and underscores, starting with a letter; Sangam's own words refused; a given-up login ID is held
+  for its owner for 90 days. Migration `Rc11LoginId` (`users.login_id`, `login_id_releases`). Audited as
+  `user.login_id.set` / `user.login_id.remove` and shown in the person's Activity.
+- **This device's list** of regular people (a ward's doctors and nurses): only those who tick "Keep me on this device's
+  list", at most six, gone after 30 days unused, first name and a masked email only, "Remove" next to each and "Also remove
+  me from this device's list" when signing out. The list lives only in the browser; picking a name still asks for the
+  password, passkey or code.
+- **Six code boxes** for a sign-in, verification or reset code: one input underneath, so autofill and sign-in without
+  JavaScript keep working.
+- **Two-step required** (A8) lists what the rule accepts (passkey first, then an authenticator app), says whether it applies
+  to everyone or to administrators, says an emailed or texted code does not count, and links to Sign-in & security.
+- The first sign-in screen only remembers what was typed, so it no longer uses up the per-address allowance of 20 posts a
+  minute: a hospital's staff often share one address. The password and code screens are limited as before.
+
+### Partner console (R3–R5)
+- **Organisations & people**: the tree has a search (above six organisations) and people counts; the selected organisation
+  has a 3 px rule only; "Remove" became "Change", which ends a role on a chosen day or now, with a reason the person reads in
+  their Activity (audit metadata `reason`).
+- **Sign-in rules** (R4) on their own page: the Sangam → application → organisations ladder, three numbered groups (second
+  step, passwords, who may keep using it) and one save bar that says how many people the change reaches. **Branding** has
+  its own page.
+- **Credentials & redirects** (R5): client id, issuer and discovery address to copy, the registered redirect addresses
+  and "Ask Sangam to add an address".
+- **Client secrets: two live at once, rotated by the owner** (founder decision, 13 Oct 2026). An application's owner makes a
+  new secret (`sgs_…`, shown once with Copy, then only its hint), moves their servers to it, then revokes the old one, with
+  no break in sign-in. Each secret the owner makes works for 12 months and is flagged 30 days before it ends; at most two
+  are live; the last live secret cannot be revoked; administrators see the list but cannot change it. The secret Sangam
+  issued from its configuration stays live until the owner revokes it, and a restart with the same settings does not bring
+  it back (a new configured secret does). OpenIddict's own application manager is extended
+  (`SangamApplicationManager`) so the token endpoint accepts either; secrets are hashed the way OpenIddict hashes its own.
+  Audited as `app.secret.create` / `app.secret.revoke`, never with the secret. Migration `Rc11ClientSecrets`
+  (`client_secrets`, `apps.issued_secret_retired_at`). The consoles' "secret age" now counts from the oldest live secret.
+- **Access reviews** (R6; founder decision): a sidebar section with a count, listing roles **ending in the next 30 days**
+  and roles of people who **have not signed in to the application for 90 days**. Each is **kept** (the review is recorded,
+  the role is untouched), **extended** by 3, 6 or 12 months, or **ended** today with a reason the person reads in their
+  Activity. A decided role leaves its list for that window; **Decided** shows the last 100 decisions. Any administrator of
+  the application may review. Audited as `app.access_review.decide`. Migration `Rc11AccessReviews`
+  (`access_review_decisions`).
+
+### Operator console
+- **Users**: filters by application used and by two-step sign-in, as well as status and organisation.
+- **Audit trail** (`/audit`, support and owners): filter by action, kind of actor, person, dates and refusals; newest first;
+  each search is itself recorded (`admin.audit_trail.view`, which filters were used, never the words).
+- **Bulk "Sign out everywhere"** on Users (O2; the only bulk action): support and owners tick people (at most 100, never
+  themselves) and give a reason; each person's sessions end and each is audited on their own (`admin.user.force_logout`
+  with the reason). The bar sits in the flow above the table.
+- **Signing keys** (`/keys`, every rank, read-only): the token-signing keys the identity server publishes (key id,
+  certificate, valid from and until, age, SHA-256 fingerprint), which one signs new tokens, and when it was issued. It
+  reads the public key set, so nothing secret reaches the console; keys are still changed on the identity server.
+
+### Tablet and phone
+- Consoles below 1024 px: a top bar with "Menu" opening the sidebar as a drawer; the environment strip stays visible. On
+  phones the users, audit trail and people tables become cards, toolbars stack, and configuration pages say they are easier
+  on a computer.
+- Portal: on tablets the tabs move to their own scrolling row; on phones a bottom bar (Home · Apps · Security · Roles · More).
+- Sign-in pages on phones: 48 px fields with 17 px text and a 52 px primary button.
+
+### Fixed
+- A partner's "Until" date for a new role was sent to the database with the India offset and refused; every role end date is
+  now stored in UTC.
+- A disabled application could still get client-credentials tokens (sign-in and the management API were already closed to
+  it). Its secrets are now refused at the token endpoint, which also makes disabling an application the operator's emergency
+  stop for a leaked secret when its owner cannot be reached.
+- On phones, a table cell with two lines (a name and an e-mail, say) spilled over the next one in card layout; cells now grow.
+- On phones, a long translated label (Malayalam) pushed its button off the screen; buttons in panels now wrap.
+
+
 ## [1.0.0-rc.10] - tenth release candidate
 
 Sangam 1.0.0-rc.10 rebuilds the operator console, the partner console and the self-service portal from the founder's

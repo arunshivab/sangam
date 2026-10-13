@@ -44,6 +44,8 @@ internal static class AuditNarrator
         AuditActions.UserMfaReplay,
         AuditActions.UserLoginNewDevice,
         AuditActions.UserOrganisationLeave,
+        AuditActions.UserLoginIdSet,
+        AuditActions.UserLoginIdRemove,
     };
 
     public static AuditLine Describe(AuditEvent e, IReadOnlyDictionary<Guid, string> appNames)
@@ -76,6 +78,10 @@ internal static class AuditNarrator
             AuditActions.UserStepUpRequired => $"{app} asked you to sign in again, with a stronger or more recent sign-in.",
             AuditActions.UserStepUpSuccess => $"Your sign-in met {app}'s request for a stronger or more recent sign-in.",
             AuditActions.UserMobileVerify => "You verified your mobile number.",
+            AuditActions.UserLoginIdSet => Read(e.Metadata, "login_id") is string chosen
+                ? $"You chose {chosen} as your login ID."
+                : "You chose a login ID.", // i18n-key
+            AuditActions.UserLoginIdRemove => "You removed your login ID.", // i18n-key
             AuditActions.AppInvitationAccept => "You accepted an invitation and joined an organisation in an application.",
             AuditActions.UserLoginSuccess => SignInSentence(e.Metadata),
             AuditActions.UserLoginFail => FailedSignInSentence(e.Metadata),
@@ -106,10 +112,14 @@ internal static class AuditNarrator
             AuditActions.ConsentRevoke => $"Your consent for {app} was withdrawn.",
             AuditActions.AppAccessRevoke => $"You revoked {app}'s access to your account.",
             AuditActions.TokenIssue => $"{app} received access to your account.",
+            AuditActions.OrgMembershipGrant when Read(e.Metadata, "reason") is string because && Read(e.Metadata, "role") is string ending
+                => $"{ByWhom(e, actor, app)} set your role {ending} in an organisation to end. Their reason: {because}", // i18n-key
             AuditActions.OrgMembershipGrant => Read(e.Metadata, "role") is string role
                 ? $"{ByWhom(e, actor, app)} gave you a role in an organisation ({role})."
                 : $"{ByWhom(e, actor, app)} gave you a role in an organisation.",
             AuditActions.OrgMembershipRevoke when e.ActorType == AuditActorType.User => "You ended one of your organisation roles.", // i18n-key
+            AuditActions.OrgMembershipRevoke when Read(e.Metadata, "reason") is string why
+                => $"{ByWhom(e, actor, app)} removed one of your organisation roles. Their reason: {why}", // i18n-key
             AuditActions.OrgMembershipRevoke => $"{ByWhom(e, actor, app)} removed one of your organisation roles.",
             AuditActions.UserOrganisationLeave => Read(e.Metadata, "organisation") is string left
                 ? $"You left {left}."

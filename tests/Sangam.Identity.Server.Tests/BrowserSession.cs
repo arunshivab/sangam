@@ -59,6 +59,32 @@ internal sealed partial class BrowserSession : IDisposable
 
     public async Task<(HttpStatusCode Status, string? Location, string Html)> PostFormAsync(string path, Dictionary<string, string> fields, string? handler = null)
     {
+        // rc.11: sign-in is two screens — who (email, mobile or login ID), then the password. A test that posts an email and a
+        // password to /login walks both, as a person would.
+        if (handler is null && IsLoginPath(path) && fields.TryGetValue("Email", out string? email))
+        {
+            Dictionary<string, string> first = new(StringComparer.Ordinal) { ["Identifier"] = email };
+            if (fields.TryGetValue("Remember", out string? remember))
+            {
+                first["Remember"] = remember;
+            }
+
+            (HttpStatusCode status, string? location, string html) = await PostOnceAsync(path, first, null);
+            if (status != HttpStatusCode.Found || location is null || !location.StartsWith("/login/method", StringComparison.Ordinal) || !fields.TryGetValue("Password", out string? password))
+            {
+                return (status, location, html);
+            }
+
+            return await PostOnceAsync("/login/password" + location["/login/method".Length..], new Dictionary<string, string>(StringComparer.Ordinal) { ["Password"] = password }, null);
+        }
+
+        return await PostOnceAsync(path, fields, handler);
+    }
+
+    private static bool IsLoginPath(string path) => path == "/login" || path.StartsWith("/login?", StringComparison.Ordinal);
+
+    private async Task<(HttpStatusCode Status, string? Location, string Html)> PostOnceAsync(string path, Dictionary<string, string> fields, string? handler)
+    {
         (HttpStatusCode getStatus, string page) = await GetAsync(path);
         Assert.Equal(HttpStatusCode.OK, getStatus);
         Match token = TokenRegex().Match(page);

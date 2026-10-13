@@ -45,6 +45,8 @@ rc.9 corrected five rows that had not followed documents already in place: V1.1.
 
 After rc.9 (for rc.10): V13.1.1 is Met (OI-058): the production Caddy image forwards every spelling of a path unchanged (checked in CI), and the identity server on real Kestrel answers every spelling of a management-API path with 400, 401 or 404. V1.14.1 is Met (OI-059): the operator console is off the internet and reached only through an SSH tunnel.
 
+rc.11 strengthens V1.6.3 (already Met) and V2.10.x for applications' own secrets: an application's owner replaces its client secret on the partner console with no break in sign-in (two live secrets, each owner-made one ending after 12 months), hashed by OpenIddict and audited without the secret (`src/Sangam.Identity.Infrastructure/Apps/SangamApplicationManager.cs`, `tests/Sangam.Identity.Infrastructure.Tests/Partners/ClientSecretServiceTests.cs`, `tests/Sangam.Identity.Server.Tests/Oidc/ManagementApiTests.cs`). Access reviews (V1.4.x, least privilege over time) list roles ending soon or unused for 90 days for a recorded decision. No status changes.
+
 ## V1 Architecture, Design and Threat Modeling
 
 | ID | Requirement | Status | Evidence | Note | Updated |

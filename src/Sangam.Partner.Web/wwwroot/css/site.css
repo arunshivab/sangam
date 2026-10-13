@@ -30,9 +30,8 @@
 .sg-tree-item:hover { background: var(--c-raise); }
 /* rc.2: the chosen organisation is marked by more than a tint — a sandalwood bar, a bolder name and a tick — so it
    stands apart from a row the pointer is merely resting on. */
-.sg-tree-item--on { background: var(--c-raise); border-color: var(--c-sand); box-shadow: inset 3px 0 0 var(--c-sand); padding-left: 0.9rem; }
-.sg-tree-item--on .sg-name { font-weight: 600; }
-.sg-tree-item--on .sg-name::after { content: "\2713"; margin-left: 0.4rem; color: var(--c-sand); }
+/* rc.11 (R3): the selected organisation has a 3 px rule, nothing else. */
+.sg-tree-item--on { background: var(--c-raise); box-shadow: inset 3px 0 0 var(--c-sand); padding-left: 0.9rem; }
 
 .sg-colour { display: flex; gap: 0.5rem; align-items: center; }
 .sg-colour input[type="color"] { width: 44px; height: 44px; padding: 0; border: 1px solid var(--c-field-line); border-radius: 2px; background: none; }
@@ -48,3 +47,36 @@
 .sg-template-preview { margin-top: 14px; }
 /* PR-23/24 provisioning and webhooks. */
 .sg-panel[data-panel=scim-log], .sg-panel[data-panel=webhook-log], .sg-panel[data-panel=webhook-endpoints] { margin-top: 18px; }
+
+/* rc.11 (R3): organisation tree search; ending a role on a date or now. */
+.sg-tree-search { width: 100%; margin: 0 0 10px; }
+.sg-row--selected td { background: rgba(217, 201, 168, 0.08); }
+.sg-end-role { margin-top: 12px; padding: 16px; border: 1px solid var(--c-sand); border-radius: 4px; background: var(--c-raise); display: grid; gap: 10px; }
+.sg-end-role .sg-h3 { margin: 0; }
+.sg-end-role .sg-actions { justify-content: flex-end; }
+.sg-end-role-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.sg-option-inline { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 14px; border: 1px solid var(--c-field-line); border-radius: 2px; cursor: pointer; }
+.sg-option-inline--on { border-color: var(--c-sand); }
+.sg-option-inline input[type=radio] { width: 18px; height: 18px; accent-color: var(--c-sand); margin: 0; }
+.sg-option-inline .sg-input { min-height: 36px; height: 36px; }
+
+/* rc.11 (R5): connection details. */
+.sg-copy-list { margin: 0; display: grid; }
+.sg-copy-row { display: grid; grid-template-columns: 180px minmax(0, 1fr) auto; align-items: center; gap: 16px; min-height: 60px; border-top: 1px solid var(--c-line); }
+.sg-copy-row dt { color: var(--c-muted); }
+.sg-copy-row dd { margin: 0; overflow-wrap: anywhere; }
+.sg-uri-list { list-style: none; margin: 0 0 14px; padding: 0; }
+.sg-uri-list li { padding: 12px 0; border-top: 1px solid var(--c-line); overflow-wrap: anywhere; }
+@media (max-width: 719px) { .sg-copy-row { grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 10px 0; } }
+/* rc.11 (R5): a secret just made, shown once. */
+.sg-fresh-secret { border: 1px solid var(--c-ok); background: var(--c-raise); border-radius: 4px; padding: 16px; margin: 0 0 16px; }
+.sg-fresh-secret p { margin: 0 0 8px; }
+.sg-fresh-secret .sg-copy-row { grid-template-columns: minmax(0, 1fr) auto; border-top: 0; min-height: 0; }
+.sg-fresh-secret code { overflow-wrap: anywhere; font-size: 15px; }
+[data-panel="secrets"] .sg-table-wrap { margin: 16px 0; }
+
+/* rc.11 (R6): access review row actions. */
+.sg-review-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.sg-input--row { width: auto; min-width: 120px; height: 36px; min-height: 36px; font-size: 14px; padding: 0 8px; }
+/* rc.11: a long translated label wraps inside its button on a phone instead of pushing the page sideways. */
+@media (max-width: 719px) { .sg-panel .sg-btn { white-space: normal; height: auto; min-height: 44px; max-width: 100%; text-align: center; padding-top: 8px; padding-bottom: 8px; } }

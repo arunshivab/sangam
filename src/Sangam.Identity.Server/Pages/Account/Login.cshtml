@@ -4,6 +4,8 @@
     ViewData["Title"] = L["Sign in"].Value;
 }
 
+@* rc.11 (A1): one field for an email, a mobile number or a login ID; then how to sign in. The page is the same whether an
+   account exists or not. People who asked to be kept on this device's list can tap their name instead of typing. *@
 <section class="sg-card">
   <h1 class="sg-card-title">@L["Sign in"]</h1>
   <partial name="_Banner" model="@(("danger", Model.Error ?? string.Empty))" />
@@ -16,38 +18,65 @@
   }
   else
   {
-  <form method="post" novalidate>
-    <partial name="_Antibot" />
-    <input type="hidden" asp-for="ReturnUrl" />
-    <div class="sg-field-group">
-      <label class="sg-label" asp-for="Email">@L["Email"]</label>
-      <input class="sg-field" asp-for="Email" type="email" autocomplete="username" inputmode="email" autofocus required />
-      <span class="sg-field-error" asp-validation-for="Email"></span>
-    </div>
-    <div class="sg-field-group">
-      <div class="sg-label-row">
-        <label class="sg-label" asp-for="Password">@L["Password"]</label>
-        <a class="sg-label-link" href="/forgot">@L["Forgot password?"]</a>
+    @if (Model.DevicePeople.Count > 0)
+    {
+      <div class="sg-device-people" data-panel="device-people">
+        <p class="sg-label-mono">@L["On this device"]</p>
+        <ul class="sg-device-list">
+          @foreach (Sangam.Identity.Server.Authentication.DeviceAccount person in Model.DevicePeople)
+          {
+            <li class="sg-device-person">
+              <a class="sg-device-pick" href="@Model.PickUrl(person.Key)">
+                <span class="sg-avatar" aria-hidden="true">@person.FirstName[..1].ToUpperInvariant()</span>
+                <span class="sg-device-text">
+                  <span class="sg-device-name">@person.FirstName</span>
+                  <span class="sg-device-email">@person.MaskedEmail</span>
+                </span>
+              </a>
+              <form method="post" action="/login/forget" class="sg-device-forget">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="key" value="@person.Key" />
+                <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+                <button type="submit" class="sg-link-button" aria-label="@L["Remove {0} from this device's list", person.FirstName]">@L["Remove"]</button>
+              </form>
+            </li>
+          }
+        </ul>
+        <div class="sg-cord-rule" role="presentation"></div>
+        <p class="sg-label-mono">@L["Someone else"]</p>
       </div>
-      <input class="sg-field" asp-for="Password" type="password" autocomplete="current-password" required />
-      <span class="sg-field-error" asp-validation-for="Password"></span>
-    </div>
-    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Sign in"]</button>
-  </form>
+    }
+
+    <form method="post" novalidate>
+      <partial name="_Antibot" />
+      <input type="hidden" asp-for="ReturnUrl" />
+      <div class="sg-field-group">
+        <label class="sg-label" asp-for="Identifier">@L["Email, mobile number or login ID"]</label>
+        <input class="sg-field" asp-for="Identifier" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" autofocus="@(Model.DevicePeople.Count == 0)" required />
+        <span class="sg-field-error" asp-validation-for="Identifier"></span>
+      </div>
+      <label class="sg-check">
+        <input type="checkbox" asp-for="Remember" />
+        <span>
+          <span class="sg-check-label">@L["Keep me on this device's list"]</span>
+          <span class="sg-check-hint">@L["For a computer you share with colleagues. Only your first name and part of your email are shown, and you can remove yourself."]</span>
+        </span>
+      </label>
+      <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Continue"]</button>
+    </form>
   }
 
   @if (Model.PasskeysEnabled)
   {
+    @if (!Model.PasskeyOnly)
+    {
+      <p class="sg-or" role="presentation"><span>@L["or"]</span></p>
+    }
     <button type="button" class="sg-btn @(Model.PasskeyOnly ? "sg-btn--primary" : "sg-btn--secondary") sg-btn--block sg-passkey-signin" hidden data-passkey-signin
             data-options-url="/login/passkey?handler=Options" data-verify-url="/login/passkey?handler=Verify@(string.IsNullOrEmpty(Model.ReturnUrl) ? "" : "&returnUrl=" + Uri.EscapeDataString(Model.ReturnUrl))"
             data-message="passkey-message" data-text-failed="@L["That passkey could not sign you in."]" data-text-cancelled="@L["The passkey request was cancelled or is not available on this device."]">@L["Sign in with a passkey"]</button>
     <p class="sg-field-error" id="passkey-message" hidden></p>
     <script src="/js/passkeys.js" defer></script>
-  }
-
-  @if (Model.Partner?.SignInPolicy is not (Sangam.Identity.Domain.Enums.SignInPolicy.Password or Sangam.Identity.Domain.Enums.SignInPolicy.PasskeyOnly))
-  {
-    <a class="sg-tertiary" href="/login/code@(string.IsNullOrEmpty(Model.ReturnUrl) ? "" : "?returnUrl=" + Uri.EscapeDataString(Model.ReturnUrl))">@L["Email me a sign-in code instead"]</a>
   }
 
   <div class="sg-cord-rule" role="presentation"></div>

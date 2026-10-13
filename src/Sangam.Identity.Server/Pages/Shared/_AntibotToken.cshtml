@@ -1,0 +1,13 @@
+@model string
+@using Sangam.Identity.Server.Authentication
+@* rc.11: the bot check with a given timestamp token — the first sign-in screen's — so the screens after it are not refused
+   for a quick click. The honeypot is the same as in _Antibot. *@
+@if (ViewData[Antibot.RefusalKey] is string refusal)
+{
+  <partial name="_Banner" model="@(("danger", refusal))" />
+}
+<div aria-hidden="true" style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden">
+  <label for="@Antibot.HoneypotField">@L["Leave this field empty"]</label>
+  <input id="@Antibot.HoneypotField" name="@Antibot.HoneypotField" type="text" tabindex="-1" autocomplete="off" value="" />
+</div>
+<input type="hidden" name="@Antibot.TimestampField" value="@Model" />

@@ -40,6 +40,9 @@ internal sealed class SangamUserConfiguration :
             .HasFilter("mobile IS NOT NULL AND status <> 'deleted_hard'")
             .HasDatabaseName("ux_users_mobile");
         b.Property(u => u.HoldReason).HasMaxLength(500);
+        // rc.11: a login ID is unique across Sangam, stored lower case (LoginIds.Normalise).
+        b.Property(u => u.LoginId).HasMaxLength(30);
+        b.HasIndex(u => u.LoginId).IsUnique().HasFilter("login_id IS NOT NULL").HasDatabaseName("ux_users_login_id");
         b.HasIndex(u => u.Status).HasDatabaseName("idx_users_status");
         b.HasIndex(u => u.PurgeAfter).HasFilter("purge_after IS NOT NULL").HasDatabaseName("idx_users_purge_after");
         b.HasIndex(u => u.LastSignInAt).HasDatabaseName("idx_users_last_sign_in");

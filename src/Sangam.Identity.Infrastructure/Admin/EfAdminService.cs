@@ -362,7 +362,10 @@ public sealed partial class EfAdminService : IAdminService
                 a.IsPlatform,
                 a.BackChannelLogoutUri,
                 a.FrontChannelLogoutUri,
-                a.SecretSetAt,
+                // rc.11: once the owner retired the secret Sangam issued, the age is that of the oldest secret still live.
+                SecretSetAt = a.IssuedSecretRetiredAt == null
+                    ? a.SecretSetAt
+                    : _db.ClientSecrets.Where(x => x.AppId == a.Id && x.RevokedAt == null && x.ExpiresAt > DateTimeOffset.UtcNow).Min(x => (DateTimeOffset?)x.CreatedAt),
             })
             .ToListAsync(cancellationToken).ConfigureAwait(false);
         Dictionary<string, bool> confidential = await ConfidentialByClientIdAsync(cancellationToken).ConfigureAwait(false);

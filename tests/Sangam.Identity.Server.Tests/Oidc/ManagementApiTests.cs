@@ -70,6 +70,60 @@ public sealed class ManagementApiTests
     }
 
     [PostgresFact]
+    public async Task ASecretTheOwnerMade_GetsTokens_UntilItIsRevoked()
+    {
+        // rc.11 (R5): the token endpoint accepts a live owner-made secret alongside the issued one, and stops on revocation.
+        const string Made = "sgs_server-test-secret-0123456789abcdefghij";
+        Guid id = Guid.NewGuid();
+        using (IServiceScope scope = _factory.Services.CreateScope())
+        {
+            Infrastructure.Persistence.SangamDbContext db = scope.ServiceProvider.GetRequiredService<Infrastructure.Persistence.SangamDbContext>();
+            OpenIddict.Core.OpenIddictApplicationManager<OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreApplication> manager =
+                scope.ServiceProvider.GetRequiredService<OpenIddict.Core.OpenIddictApplicationManager<OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreApplication>>();
+            Guid appId = await db.Apps.Where(a => a.ClientId == DevelopmentSeeder.SampleClientId).Select(a => a.Id).FirstAsync();
+            string hash = await ((Infrastructure.Apps.SangamApplicationManager<OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreApplication>)manager).HashSecretAsync(Made);
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            db.ClientSecrets.Add(new Domain.Entities.ClientSecret { Id = id, AppId = appId, Hash = hash, Hint = "sgs_serv…hij", CreatedAt = now, CreatedByUserId = Guid.NewGuid(), ExpiresAt = now.AddDays(365) });
+            await db.SaveChangesAsync();
+        }
+
+        try
+        {
+            using HttpClient client = _factory.CreateClient();
+            Assert.Equal(HttpStatusCode.OK, (await TokenWithAsync(client, Made)).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await TokenWithAsync(client, DevelopmentSeeder.SampleClientSecret)).StatusCode);
+
+            using (IServiceScope scope = _factory.Services.CreateScope())
+            {
+                Infrastructure.Persistence.SangamDbContext db = scope.ServiceProvider.GetRequiredService<Infrastructure.Persistence.SangamDbContext>();
+                (await db.ClientSecrets.SingleAsync(s => s.Id == id)).RevokedAt = DateTimeOffset.UtcNow;
+                await db.SaveChangesAsync();
+            }
+
+            Assert.Equal(HttpStatusCode.Unauthorized, (await TokenWithAsync(client, Made)).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await TokenWithAsync(client, DevelopmentSeeder.SampleClientSecret)).StatusCode);
+        }
+        finally
+        {
+            using IServiceScope scope = _factory.Services.CreateScope();
+            Infrastructure.Persistence.SangamDbContext db = scope.ServiceProvider.GetRequiredService<Infrastructure.Persistence.SangamDbContext>();
+            await db.ClientSecrets.Where(s => s.Id == id).ExecuteDeleteAsync();
+        }
+    }
+
+    private static async Task<HttpResponseMessage> TokenWithAsync(HttpClient client, string secret)
+    {
+        using FormUrlEncodedContent form = new(new Dictionary<string, string>
+        {
+            ["grant_type"] = "client_credentials",
+            ["client_id"] = DevelopmentSeeder.SampleClientId,
+            ["client_secret"] = secret,
+            ["scope"] = "sangam.manage",
+        });
+        return await client.PostAsync(new Uri("/connect/token", UriKind.Relative), form);
+    }
+
+    [PostgresFact]
     public async Task Roles_Organisations_And_Memberships_RoundTrip()
     {
         using HttpClient client = _factory.CreateClient();

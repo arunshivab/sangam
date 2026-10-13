@@ -161,6 +161,15 @@ public sealed class SangamDbContext : IdentityUserContext<SangamUser, Guid>, IDa
     /// <summary>Browser sessions.</summary>
     public DbSet<UserSession> UserSessions => Set<UserSession>();
 
+    /// <summary>Login IDs given up recently, kept out of reach of others for a while (rc.11).</summary>
+    public DbSet<LoginIdRelease> LoginIdReleases => Set<LoginIdRelease>();
+
+    /// <summary>Client secrets made by applications' owners on the partner console (rc.11).</summary>
+    public DbSet<ClientSecret> ClientSecrets => Set<ClientSecret>();
+
+    /// <summary>rc.11 (R6): decisions taken in applications' access reviews.</summary>
+    public DbSet<AccessReviewDecision> AccessReviewDecisions => Set<AccessReviewDecision>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder builder)
     {

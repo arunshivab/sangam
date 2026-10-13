@@ -129,8 +129,11 @@ public sealed partial class PolicyScreenTests
         (_, string location, string html) = await s.FollowAsync(Authorize());
         Assert.Equal("/login/two-step-required", Path(location));
         Assert.Contains("Two-step sign-in required", html, StringComparison.Ordinal);
-        Assert.Contains("/profile", html, StringComparison.Ordinal);
+        Assert.Contains("/security", html, StringComparison.Ordinal);
         Assert.Contains("href=\"/account/passkeys\"", html, StringComparison.Ordinal);
+        // rc.11 (A8): what this rule accepts, and only that — an emailed code does not count.
+        Assert.Contains("data-method=\"authenticator\"", html, StringComparison.Ordinal);
+        Assert.Contains("A code by email or text does not count here", System.Net.WebUtility.HtmlDecode(html), StringComparison.Ordinal);
 
         // prompt=none is answered with an error, never a page.
         (_, string silent, _) = await s.FollowAsync(Authorize() + "&prompt=none");

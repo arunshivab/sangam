@@ -104,4 +104,10 @@ public sealed class App
     /// secret changes); <see langword="null"/> for a public client, and for a secret set before rc.10.
     /// </summary>
     public DateTimeOffset? SecretSetAt { get; set; }
+
+    /// <summary>
+    /// rc.11 (R5): when the application's owner retired the secret Sangam issued from its configuration, once a secret of
+    /// their own was live. A secret Sangam issues later (a different value in the configuration) is live again.
+    /// </summary>
+    public DateTimeOffset? IssuedSecretRetiredAt { get; set; }
 }

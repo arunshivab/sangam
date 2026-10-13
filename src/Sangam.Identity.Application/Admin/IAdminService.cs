@@ -65,6 +65,15 @@ public interface IAdminService
     /// <summary>Ends every session the user holds.</summary>
     Task<AdminResult> ForceSignOutAsync(Guid operatorUserId, Guid userId, string? ipAddress, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// rc.11 (O2): ends every session of several people at once (at most <see cref="BulkSignOutLimit"/>), with a reason.
+    /// Support or above; each person is audited on their own; the operator's own account is left out.
+    /// </summary>
+    Task<AdminResult> ForceSignOutManyAsync(Guid operatorUserId, IReadOnlyCollection<Guid> userIds, string reason, string? ipAddress, CancellationToken cancellationToken = default);
+
+    /// <summary>The most people one bulk sign-out may cover.</summary>
+    const int BulkSignOutLimit = 100;
+
     /// <summary>Places a hold that blocks the scheduled purge of a deleted account.</summary>
     Task<AdminResult> PlaceHoldAsync(Guid operatorUserId, Guid userId, string reason, string? ipAddress, CancellationToken cancellationToken = default);
 
@@ -76,6 +85,12 @@ public interface IAdminService
 
     /// <summary>Lists the applications in the registry.</summary>
     Task<IReadOnlyList<AdminAppRow>> ListAppsAsync(Guid operatorUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// rc.11: the audit trail, newest first, filtered. Support and above; every search is itself recorded (which filters,
+    /// never the words). Refused, with an empty page, for lower ranks.
+    /// </summary>
+    Task<AuditTrailPage> AuditTrailAsync(Guid operatorUserId, AuditTrailQuery query, CancellationToken cancellationToken = default);
 
     /// <summary>Enables or disables an application, which stops or resumes every sign-in to it.</summary>
     Task<AdminResult> SetAppStatusAsync(Guid operatorUserId, Guid appId, AppStatus status, string? ipAddress, CancellationToken cancellationToken = default);

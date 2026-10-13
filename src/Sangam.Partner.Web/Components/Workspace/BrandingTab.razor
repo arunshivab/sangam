@@ -1,0 +1,93 @@
+@inject IPartnerService Partners
+@inject IConfiguration Configuration
+@inject Sangam.Identity.Application.Apps.IAppDirectory Apps
+
+@* rc.11 (R4): how the application looks on Sangam — its tile, its description on the consent screen and its own sign-in
+   page — apart from the sign-in rules, so a colour change never sits next to a security setting. *@
+@if (_settings is null)
+{
+  <p class="sg-muted">@L["Loading…"]</p>
+}
+else
+{
+  <p class="sg-lede">@L["How {0} appears to people on Sangam. Its name, web addresses and secrets are set by the Sangam team; ask them to change those.", Info.AppName]</p>
+
+  <div class="sg-panel" data-panel="appearance">
+    <h2 class="sg-h3">@L["Appearance"]</h2>
+    <dl class="sg-facts">
+      <div><dt>@L["Name"]</dt><dd>@_settings.DisplayName <span class="sg-muted">@L["(set by Sangam)"]</span></dd></div>
+    </dl>
+    <div class="sg-form-row">
+      <label class="sg-label" for="app-desc">@L["Description people see when they allow access"]</label>
+      <input id="app-desc" class="sg-input" @bind="_description" @bind:event="oninput" maxlength="280" />
+    </div>
+    <div class="sg-form-row">
+      <label class="sg-label" for="app-colour">@L["Brand colour"]</label>
+      <span class="sg-colour">
+        <input type="color" aria-label="@L["Pick a colour"]" value="@_colour" @onchange="e => _colour = (e.Value?.ToString() ?? _colour).ToUpperInvariant()" />
+        <input id="app-colour" class="sg-input sg-mono" @bind="_colour" @bind:event="oninput" maxlength="7" />
+      </span>
+    </div>
+    <div class="sg-form-row">
+      <label class="sg-label" for="app-glyph">@L["Tile letter (one or two characters)"]</label>
+      <input id="app-glyph" class="sg-input" @bind="_glyph" @bind:event="oninput" maxlength="4" />
+    </div>
+    <p class="sg-muted">@L["Preview:"] <span class="sg-tile-glyph" style="background:@_colour">@_glyph</span></p>
+    <div class="sg-actions">
+      <button type="button" class="sg-btn sg-btn--primary" @onclick="SaveAsync" disabled="@_busy">@L["Save appearance"]</button>
+    </div>
+  </div>
+
+  <BrandingEditor UserId="Info.UserId" Scope="CustomisationScope.App" ScopeId="Info.AppId" Heading="@L["Sign-in page"].Value" IdentityBaseUrl="@Authority" PreviewUrl="@PreviewUrl" Key="app-branding" />
+}
+
+<StatusLine Ok="_ok" Message="@_message" />
+
+@code {
+    /// <summary>The application being worked on.</summary>
+    [Parameter]
+    [EditorRequired]
+    public WorkspaceInfo Info { get; set; } = null!;
+
+    private PartnerAppSettings? _settings;
+    private string? _clientId;
+    private string? _description;
+    private string _colour = "#000000";
+    private string _glyph = string.Empty;
+    private bool _busy;
+    private bool _ok;
+    private string? _message;
+
+    private string Authority => Configuration["Sangam:Authority"] ?? "https://id.sangamid.in";
+
+    // PR-19: the application's own sign-in page, as people will see it.
+    private string? PreviewUrl => _clientId is null ? null : Authority + "/login?returnUrl=" + Uri.EscapeDataString("/connect/authorize?client_id=" + _clientId);
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _settings = await Partners.GetSettingsAsync(Info.UserId, Info.AppId);
+        _clientId = (await Apps.FindByIdAsync(Info.AppId))?.ClientId;
+        if (_settings is not null)
+        {
+            _description = _settings.Description;
+            _colour = _settings.BrandColour;
+            _glyph = _settings.Glyph;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _busy = true;
+        // The sign-in rule is saved unchanged: it belongs to the Sign-in rules page.
+        PartnerResult result = await Partners.UpdateSettingsAsync(Info.UserId, Info.AppId, _description, _colour, _glyph, _settings!.SignInPolicy);
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = L[result.Message ?? string.Empty];
+        if (result.Succeeded)
+        {
+            await LoadAsync();
+        }
+    }
+}

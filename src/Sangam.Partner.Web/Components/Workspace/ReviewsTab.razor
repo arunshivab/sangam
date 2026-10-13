@@ -1,0 +1,198 @@
+@using Sangam.Identity.Domain.Entities
+@inject IAccessReviewService Reviews
+
+@* rc.11 (R6; founder decision, 13 Oct 2026): the access review. Roles ending in the next 30 days, and roles of people who
+   have not signed in to the application for 90 days. Keep records the review only; Extend gives 3, 6 or 12 more months;
+   End ends the role today, with a reason the person reads in their Activity. *@
+<p class="sg-lede">@L["Roles in {0} that need a decision: ones ending soon, and ones held by people who have not signed in to {0} for 90 days. Every decision is recorded.", Info.AppName]</p>
+
+@if (_review is null)
+{
+  <p class="sg-muted">@L["Loading…"]</p>
+}
+else
+{
+  <div class="sg-chips" role="group" aria-label="@L["Show"]">
+    @foreach ((string key, string label, int count) in Lists)
+    {
+      <button type="button" class="sg-chip@(key == _list ? " sg-chip--on" : string.Empty)" aria-pressed="@(key == _list ? "true" : "false")" @onclick="() => Show(key)">
+        @label <span class="sg-mono">@count</span>
+      </button>
+    }
+  </div>
+
+  @if (_list == "decided")
+  {
+    @if (_review.Decided.Count == 0)
+    {
+      <p class="sg-muted">@L["No decisions yet."]</p>
+    }
+    else
+    {
+      <div class="sg-table-wrap" tabindex="0" role="region" aria-label="@L["Decided"]">
+        <table class="sg-table sg-table--cards" data-panel="decided">
+          <thead><tr><th>@L["When"]</th><th>@L["Person"]</th><th>@L["Organisation"]</th><th>@L["Role"]</th><th>@L["Decision"]</th><th>@L["By"]</th></tr></thead>
+          <tbody>
+            @foreach (AccessReviewDecided row in _review.Decided)
+            {
+              <tr>
+                <td data-label="@L["When"]">@IndiaTime.Date(row.DecidedAt)</td>
+                <td data-label="@L["Person"]"><span class="sg-name">@row.Person</span></td>
+                <td data-label="@L["Organisation"]">@row.Organisation</td>
+                <td data-label="@L["Role"]">@row.Role</td>
+                <td data-label="@L["Decision"]">
+                  @switch (row.Outcome)
+                  {
+                    case AccessReviewOutcome.Keep:
+                      <span>@L["Kept"]</span>
+                      break;
+                    case AccessReviewOutcome.Extend:
+                      <span>@L["Extended to {0}", row.NewExpiresAt is DateTimeOffset until ? IndiaTime.Date(until) : string.Empty]</span>
+                      break;
+                    default:
+                      <span class="sg-warn-text">@L["Ended"]</span>
+                      @if (!string.IsNullOrEmpty(row.Note))
+                      {
+                        <span class="sg-sub">@L["Reason: {0}", row.Note]</span>
+                      }
+                      break;
+                  }
+                </td>
+                <td data-label="@L["By"]">@row.DecidedBy</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+  else if (Items.Count == 0)
+  {
+    <p class="sg-muted">@(_list == "ending" ? L["No roles end in the next 30 days."] : L["Everyone with a role has signed in within 90 days."])</p>
+  }
+  else
+  {
+    <div class="sg-table-wrap" tabindex="0" role="region" aria-label="@(_list == "ending" ? L["Ending in 30 days"] : L["Unused for 90 days"])">
+      <table class="sg-table sg-table--cards" data-panel="review-@_list">
+        <thead><tr><th>@L["Person"]</th><th>@L["Organisation"]</th><th>@L["Role"]</th><th>@(_list == "ending" ? L["Ends"] : L["Last signed in"])</th><th></th></tr></thead>
+        <tbody>
+          @foreach (AccessReviewItem item in Items)
+          {
+            <tr data-membership="@item.MembershipId">
+              <td data-label="@L["Person"]"><span class="sg-name">@item.Person</span><span class="sg-sub">@item.Email</span></td>
+              <td data-label="@L["Organisation"]">@item.Organisation</td>
+              <td data-label="@L["Role"]">@item.Role</td>
+              <td data-label="@(_list == "ending" ? L["Ends"] : L["Last signed in"])">
+                @if (_list == "ending")
+                {
+                  @(item.ExpiresAt is DateTimeOffset ends ? IndiaTime.Date(ends) : string.Empty)
+                }
+                else
+                {
+                  @(item.LastSignInAt is DateTimeOffset last ? IndiaTime.Date(last) : L["Never"])
+                }
+              </td>
+              <td class="sg-row-actions-cell">
+                <div class="sg-review-actions">
+                  <button type="button" class="sg-btn sg-btn--secondary sg-btn--row" @onclick="() => DecideAsync(item, AccessReviewOutcome.Keep, null, null)" disabled="@_busy">@L["Keep"]</button>
+                  <select class="sg-input sg-input--row" aria-label="@L["Extend {0}'s role by", item.Person]" @onchange="e => ExtendAsync(item, e.Value?.ToString())" disabled="@_busy">
+                    <option value="">@L["Extend…"]</option>
+                    <option value="3">@L["3 months"]</option>
+                    <option value="6">@L["6 months"]</option>
+                    <option value="12">@L["12 months"]</option>
+                  </select>
+                  <button type="button" class="sg-btn sg-btn--warn sg-btn--row" @onclick="() => StartEnd(item)" disabled="@_busy">@L["End"]</button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (_ending is not null)
+    {
+      <section class="sg-end-role" data-panel="end-review" aria-labelledby="end-review-title">
+        <h3 class="sg-h3" id="end-review-title">@L["End {0}'s {1} role today?", _ending.Person, _ending.Role]</h3>
+        <label class="sg-label" for="end-review-reason">@L["Reason (the person sees it in their Activity)"]</label>
+        <input id="end-review-reason" class="sg-input" maxlength="300" @bind="_note" @bind:event="oninput" />
+        <div class="sg-actions">
+          <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _ending = null">@L["Cancel"]</button>
+          <button type="button" class="sg-btn sg-btn--danger" @onclick="() => DecideAsync(_ending, AccessReviewOutcome.End, null, _note)" disabled="@(_busy || string.IsNullOrWhiteSpace(_note))">@L["End role now"]</button>
+        </div>
+      </section>
+    }
+  }
+
+  <StatusLine Ok="_ok" Message="@_message" />
+}
+
+@code {
+    /// <summary>The application being worked on.</summary>
+    [Parameter]
+    [EditorRequired]
+    public WorkspaceInfo Info { get; set; } = null!;
+
+    private AccessReview? _review;
+    private string _list = "ending";
+    private AccessReviewItem? _ending;
+    private string? _note;
+    private bool _busy;
+    private bool _ok;
+    private string? _message;
+
+    private IEnumerable<(string Key, string Label, int Count)> Lists =>
+    [
+        ("ending", L["Ending in 30 days"], _review!.Ending.Count),
+        ("unused", L["Unused for 90 days"], _review.Unused.Count),
+        ("decided", L["Decided"], _review.Decided.Count),
+    ];
+
+    private IReadOnlyList<AccessReviewItem> Items => _list == "ending" ? _review!.Ending : _review!.Unused;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _review = await Reviews.GetAsync(Info.UserId, Info.AppId);
+        if (_review is { Ending.Count: 0, Unused.Count: > 0 })
+        {
+            _list = "unused";
+        }
+    }
+
+    private void Show(string list)
+    {
+        _list = list;
+        _ending = null;
+        _message = null;
+    }
+
+    private void StartEnd(AccessReviewItem item)
+    {
+        _ending = item;
+        _note = null;
+    }
+
+    private async Task ExtendAsync(AccessReviewItem item, string? months)
+    {
+        if (int.TryParse(months, System.Globalization.CultureInfo.InvariantCulture, out int value))
+        {
+            await DecideAsync(item, AccessReviewOutcome.Extend, value, null);
+        }
+    }
+
+    private async Task DecideAsync(AccessReviewItem item, AccessReviewOutcome outcome, int? months, string? note)
+    {
+        _busy = true;
+        PartnerResult result = await Reviews.DecideAsync(Info.UserId, Info.AppId, new AccessReviewInput(item.MembershipId, outcome, months, note));
+        _ok = result.Succeeded;
+        _message = L[result.Message ?? string.Empty];
+        if (result.Succeeded)
+        {
+            _ending = null;
+            _note = null;
+        }
+
+        _review = await Reviews.GetAsync(Info.UserId, Info.AppId);
+        _busy = false;
+    }
+}

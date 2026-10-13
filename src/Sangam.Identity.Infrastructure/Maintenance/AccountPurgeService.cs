@@ -200,6 +200,7 @@ public sealed partial class AccountPurgeService : BackgroundService
         user.EmailConfirmed = false;
         user.PhoneNumber = null;
         user.PhoneNumberConfirmed = false;
+        user.LoginId = null;
         user.PasswordHash = null;
         user.SecurityStamp = Guid.NewGuid().ToString("N");
         user.DateOfBirth = default;

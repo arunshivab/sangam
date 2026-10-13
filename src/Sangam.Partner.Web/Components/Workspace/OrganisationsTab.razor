@@ -18,13 +18,17 @@ else
       {
         <p class="sg-muted">@L["None yet. Add the first one below."]</p>
       }
-      <ul class="sg-tree">
-        @foreach (OrganisationDto org in _orgs)
+      @if (_orgs.Count > 6)
+      {
+        <input class="sg-input sg-input--toolbar sg-tree-search" aria-label="@L["Find an organisation"]" placeholder="@L["Find an organisation"]" @bind="_treeQuery" @bind:event="oninput" />
+      }
+      <ul class="sg-tree" data-panel="org-tree">
+        @foreach (OrganisationDto org in TreeRows)
         {
           <li style="padding-left:@(org.Depth * 1.25)rem">
             <button type="button" class="sg-tree-item @(org.Id == _selected?.Id ? "sg-tree-item--on" : string.Empty)" aria-pressed="@(org.Id == _selected?.Id ? "true" : "false")" @onclick="() => SelectAsync(org)">
               <span class="sg-name">@org.Name</span>
-              <span class="sg-sub">@TypeName(org.Type)</span>
+              <span class="sg-sub">@TypeName(org.Type) · @PeopleText(org.Id)</span>
             </button>
           </li>
         }
@@ -79,26 +83,59 @@ else
         else
         {
           <div class="sg-table-wrap" tabindex="0" role="region" aria-label="@L["People in {0}", _selected.Name]">
-            <table class="sg-table">
-              <thead><tr><th>@L["Person"]</th><th>@L["Role"]</th><th>@L["Reaches"]</th><th></th></tr></thead>
+            <table class="sg-table sg-table--cards">
+              <thead><tr><th>@L["Person"]</th><th>@L["Role"]</th><th>@L["Reaches"]</th><th>@L["Until"]</th><th></th></tr></thead>
               <tbody>
                 @foreach (PartnerMemberRow member in _members)
                 {
-                  <tr>
+                  <tr class="@(member.UserId == _changing?.UserId ? "sg-row--selected" : null)">
                     <td><span class="sg-name">@member.DisplayName</span><span class="sg-sub">@member.Email</span></td>
-                    <td class="sg-mono">@member.Role
+                    <td class="sg-mono" data-label="@L["Role"]">@member.Role</td>
+                    <td data-label="@L["Reaches"]">@(member.AppliesToDescendants ? L["This and below"] : L["Only this"])</td>
+                    <td data-label="@L["Until"]">
                       @if (member.ExpiresAt is DateTimeOffset until)
                       {
-                        <span class="sg-sub">@L["until {0}", IndiaTime.Date(until)]</span>
+                        <span class="@(until - DateTimeOffset.UtcNow < TimeSpan.FromDays(30) ? "sg-warn-text" : null)">@L["Ends {0}", IndiaTime.Date(until)]</span>
+                      }
+                      else
+                      {
+                        @L["Ongoing"]
                       }
                     </td>
-                    <td>@(member.AppliesToDescendants ? L["this and everything under it"] : L["only this"])</td>
-                    <td><button type="button" class="sg-btn sg-btn--ghost" @onclick="() => RevokeAsync(member)" disabled="@_busy">@L["Remove"]</button></td>
+                    <td class="sg-row-actions-cell"><button type="button" class="sg-btn sg-btn--secondary sg-btn--row" @onclick="() => StartChange(member)" disabled="@_busy">@L["Change"]</button></td>
                   </tr>
                 }
               </tbody>
             </table>
           </div>
+        }
+
+        @if (_changing is not null)
+        {
+          @* rc.11 (R3): ending a role is never one click: on a date or now, with a reason the person reads in their Activity. *@
+          <section class="sg-end-role" data-panel="end-role" aria-labelledby="end-role-title">
+            <h3 class="sg-h3" id="end-role-title">@L["End {0}'s {1} role?", _changing.DisplayName, _changing.Role]</h3>
+            <div class="sg-end-role-row" role="radiogroup" aria-labelledby="end-role-title">
+              <label class="sg-option-inline @(_endNow ? null : "sg-option-inline--on")">
+                <input type="radio" name="end-when" checked="@(!_endNow)" @onchange="() => _endNow = false" />
+                <span>@L["On a date"]</span>
+                <input class="sg-input sg-input--toolbar" type="date" aria-label="@L["The last day of the role"]" @bind="_endsOn" disabled="@_endNow"
+                       min="@IndiaTime.ToIndia(DateTimeOffset.UtcNow).AddDays(1).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)" />
+              </label>
+              <label class="sg-option-inline @(_endNow ? "sg-option-inline--on" : null)">
+                <input type="radio" name="end-when" checked="@_endNow" @onchange="() => _endNow = true" />
+                <span>@L["Now"]</span>
+              </label>
+            </div>
+            <label class="sg-label" for="end-reason">@L["Reason (the person sees it in their Activity)"]</label>
+            <input id="end-reason" class="sg-input" maxlength="300" @bind="_endReason" @bind:event="oninput" />
+            <div class="sg-actions">
+              <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _changing = null">@L["Keep role"]</button>
+              <button type="button" class="sg-btn sg-btn--danger" @onclick="EndAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_endReason) || (!_endNow && _endsOn is null))">
+                @(_endNow ? L["End role now"] : _endsOn is DateOnly d ? L["End role on {0}", d.ToString("d MMM yyyy", System.Globalization.CultureInfo.CurrentCulture)] : L["End role on a date"])
+              </button>
+            </div>
+          </section>
         }
 
         <h3 class="sg-h3">@L["Give someone a role here"]</h3>
@@ -212,6 +249,12 @@ else
     private PolicyView? _policy;
     private bool _ok;
     private string? _message;
+    private PartnerMemberRow? _changing;
+    private bool _endNow;
+    private DateOnly? _endsOn;
+    private string _endReason = string.Empty;
+    private string _treeQuery = string.Empty;
+    private IReadOnlyDictionary<Guid, int> _counts = new Dictionary<Guid, int>();
 
     private string? _clientId;
 
@@ -227,6 +270,7 @@ else
         _types = await Partners.ListOrgTypesAsync();
         _roles = (await Partners.ListRolesAsync(Info.UserId, Info.AppId)).Where(r => r.RetiredAt is null).ToList();
         _orgs = await Partners.ListOrganisationsAsync(Info.UserId, Info.AppId);
+        _counts = await Partners.CountPeopleAsync(Info.UserId, Info.AppId);
     }
 
     // Mirrors the rule the management service enforces, so the page never offers a form that can only be refused.
@@ -253,6 +297,7 @@ else
         _found = null;
         _query = string.Empty;
         _message = null;
+        _changing = null;
         _members = await Partners.ListMembersAsync(Info.UserId, Info.AppId, org.Id);
         _policy = await Partners.GetOrganisationPolicyAsync(Info.UserId, Info.AppId, org.Id);
     }
@@ -319,17 +364,42 @@ else
             _until = null;
             _descendants = false;
             _members = await Partners.ListMembersAsync(Info.UserId, Info.AppId, _selected.Id);
+            _counts = await Partners.CountPeopleAsync(Info.UserId, Info.AppId);
         }
     }
 
-    private async Task RevokeAsync(PartnerMemberRow member)
+    private void StartChange(PartnerMemberRow member)
+    {
+        _changing = member;
+        _endNow = false;
+        _endsOn = null;
+        _endReason = string.Empty;
+        _message = null;
+    }
+
+    private async Task EndAsync()
     {
         _busy = true;
-        PartnerResult result = await Partners.RevokeMembershipAsync(Info.UserId, Info.AppId, _selected!.Id, member.UserId);
+        PartnerResult result = await Partners.EndMembershipAsync(Info.UserId, Info.AppId, _selected!.Id, _changing!.UserId, _endNow ? null : _endsOn, _endReason);
         _busy = false;
         _ok = result.Succeeded;
         _message = L[result.Message ?? string.Empty];
-        _members = await Partners.ListMembersAsync(Info.UserId, Info.AppId, _selected.Id);
+        if (result.Succeeded)
+        {
+            _changing = null;
+            _members = await Partners.ListMembersAsync(Info.UserId, Info.AppId, _selected.Id);
+            _counts = await Partners.CountPeopleAsync(Info.UserId, Info.AppId);
+        }
+    }
+
+    private IEnumerable<OrganisationDto> TreeRows => string.IsNullOrWhiteSpace(_treeQuery)
+        ? _orgs ?? []
+        : (_orgs ?? []).Where(o => o.Name.Contains(_treeQuery.Trim(), StringComparison.CurrentCultureIgnoreCase));
+
+    private string PeopleText(Guid orgId)
+    {
+        int people = _counts.GetValueOrDefault(orgId);
+        return people == 1 ? L["1 person"] : L["{0} people", people];
     }
 
     private async Task InviteAsync()

@@ -85,8 +85,19 @@ public sealed partial class SecurityHeaderTests
         Assert.DoesNotContain("javascript:", html, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task ThePasswordScreen_OffersToShowThePassword()
+    {
+        // rc.11: the password has its own screen, after the email, mobile number or login ID.
+        using BrowserSession s = new(_factory);
+        (_, string? next, _) = await s.PostFormAsync("/login", new Dictionary<string, string> { ["Email"] = "someone@example.in" });
+        Assert.Equal("/login/method", next);
+        (_, string html) = await s.GetAsync("/login/password");
+        Assert.Contains("<script src=\"/js/password-reveal.js\" defer></script>", html, StringComparison.Ordinal);
+        Assert.Contains("type=\"password\"", html, StringComparison.Ordinal);
+    }
+
     [Theory]
-    [InlineData("/login")]
     [InlineData("/register")]
     public async Task PasswordFields_OfferToShowThePassword(string path)
     {

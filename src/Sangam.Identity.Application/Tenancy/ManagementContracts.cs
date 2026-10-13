@@ -122,4 +122,10 @@ public sealed record ManagementActor(AuditActorType Type, Guid? UserId)
     /// <summary>The person themselves, accepting an invitation the application sent through the API (rc.5).</summary>
     /// <param name="userId">Their Sangam user id.</param>
     public static ManagementActor Person(Guid userId) => new(AuditActorType.User, userId);
+
+    /// <summary>
+    /// rc.11 (R3): why a partner's administrator ended or shortened someone's role. Recorded in the audit trail and shown
+    /// to the person in their Activity; never sent to the application.
+    /// </summary>
+    public string? Reason { get; init; }
 }

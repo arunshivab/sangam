@@ -87,4 +87,10 @@ public sealed class SangamUser : IdentityUser<Guid>
 
     /// <summary>Why the hold was placed, for the audit trail and the operator console.</summary>
     public string? HoldReason { get; set; }
+
+    /// <summary>
+    /// rc.11: a short name the person chose to sign in with instead of typing their email (see <see cref="LoginIds"/>),
+    /// stored lower case; <see langword="null"/> until they choose one.
+    /// </summary>
+    public string? LoginId { get; set; }
 }

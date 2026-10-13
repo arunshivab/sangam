@@ -21,6 +21,24 @@
     </select>
   </label>
   <label class="sg-field-label">
+    @L["Application"]
+    <select class="sg-input sg-input--toolbar" @bind="_app">
+      <option value="">@L["Any"]</option>
+      @foreach (AdminAppRow app in _apps)
+      {
+        <option value="@app.Id.ToString("D")">@app.DisplayName</option>
+      }
+    </select>
+  </label>
+  <label class="sg-field-label">
+    @L["Two-step sign-in"]
+    <select class="sg-input sg-input--toolbar" @bind="_twoStep">
+      <option value="">@L["Any"]</option>
+      <option value="yes">@L["authenticator app"]</option>
+      <option value="no">@L["none"]</option>
+    </select>
+  </label>
+  <label class="sg-field-label">
     @L["Organisation"]
     <input class="sg-input sg-input--toolbar" placeholder="@L["Organisation name"]" @bind="_organisation" @bind:event="oninput" />
   </label>
@@ -37,20 +55,59 @@ else if (_page.Total == 0)
 }
 else
 {
+  @if (CanBulk && _chosen.Count > 0)
+  {
+    @* rc.11 (O2): the only bulk action. It sits in the flow above the table, never floating over it. *@
+    <section class="sg-bulk-bar" data-panel="bulk" aria-labelledby="bulk-title">
+      <p id="bulk-title"><strong>@(_chosen.Count == 1 ? L["1 person chosen"] : L["{0} people chosen", _chosen.Count])</strong></p>
+      @if (_confirming)
+      {
+        <label class="sg-label" for="bulk-reason">@L["Reason (kept in each person's audit record)"]</label>
+        <input id="bulk-reason" class="sg-input" maxlength="300" @bind="_reason" @bind:event="oninput" />
+        <p class="sg-muted">@L["They are signed out of Sangam and every application on every device, and must sign in again."]</p>
+        <div class="sg-actions">
+          <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => _confirming = false" disabled="@_busy">@L["Cancel"]</button>
+          <button type="button" class="sg-btn sg-btn--danger" @onclick="SignOutChosenAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_reason))">@L["Sign them out everywhere"]</button>
+        </div>
+      }
+      else
+      {
+        <div class="sg-actions">
+          <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => _chosen.Clear()">@L["Clear"]</button>
+          <button type="button" class="sg-btn sg-btn--warn" @onclick="() => _confirming = true">@L["Sign out everywhere"]</button>
+        </div>
+      }
+    </section>
+  }
+
+  @if (_message is not null)
+  {
+    <p class="@(_ok ? "sg-ok" : "sg-warn")" role="status">@_message</p>
+  }
+
   <div class="sg-table-wrap" tabindex="0" role="region" aria-label="@L["Users"]">
-    <table class="sg-table">
-      <thead><tr><th>@L["Person"]</th><th>@L["Since"]</th><th>@L["Two-step sign-in"]</th><th>@L["Status"]</th><th></th></tr></thead>
+    <table class="sg-table sg-table--cards">
+      <thead><tr>@if (CanBulk) { <th class="sg-check-cell"><input type="checkbox" aria-label="@L["Choose everyone on this page"]" checked="@AllChosen" @onchange="ChooseAll" /></th> }<th>@L["Person"]</th><th>@L["Since"]</th><th>@L["Two-step sign-in"]</th><th>@L["Status"]</th><th></th></tr></thead>
       <tbody>
         @foreach (AdminUserRow row in _page.Rows)
         {
           <tr>
+            @if (CanBulk)
+            {
+              <td class="sg-check-cell">
+                @if (row.Id != Context!.UserId)
+                {
+                  <input type="checkbox" aria-label="@L["Choose {0}", row.DisplayName]" checked="@_chosen.Contains(row.Id)" @onchange="e => Choose(row.Id, e.Value is true)" />
+                }
+              </td>
+            }
             <td>
               <span class="sg-name">@row.DisplayName</span>
               <span class="sg-sub sg-mono">@row.Email@(row.Mobile is null ? "" : " · " + row.Mobile)</span>
             </td>
-            <td class="sg-mono">@IndiaTime.Date(row.CreatedAt)</td>
-            <td>@(row.MfaEnrolled ? L["authenticator app"] : L["none"])</td>
-            <td>
+            <td class="sg-mono" data-label="@L["Since"]">@IndiaTime.Date(row.CreatedAt)</td>
+            <td data-label="@L["Two-step sign-in"]">@(row.MfaEnrolled ? L["authenticator app"] : L["none"])</td>
+            <td data-label="@L["Status"]">
               <span class="sg-pill sg-pill--@row.Status.ToString().ToLowerInvariant()">@Status(row)</span>
               @if (row.IsOperator)
               {
@@ -82,13 +139,77 @@ else
     private string _query = string.Empty;
     private string _status = string.Empty;
     private string _organisation = string.Empty;
+    private string _app = string.Empty;
+    private string _twoStep = string.Empty;
+    private IReadOnlyList<AdminAppRow> _apps = [];
     private bool _busy;
+    private readonly HashSet<Guid> _chosen = [];
+    private bool _confirming;
+    private string? _reason;
+    private bool _ok;
+    private string? _message;
+
+    private bool CanBulk => Context?.CanAct == true;
+
+    private IEnumerable<Guid> Choosable => _page?.Rows.Select(r => r.Id).Where(id => id != Context?.UserId) ?? [];
+
+    private bool AllChosen => Choosable.Any() && Choosable.All(_chosen.Contains);
 
     private int First => _page is null ? 0 : ((_page.Page - 1) * _page.PageSize) + 1;
 
-    protected override Task OnInitializedAsync() => GoAsync(1);
+    protected override async Task OnInitializedAsync()
+    {
+        if (Context is not null)
+        {
+            _apps = await Admin.ListAppsAsync(Context.UserId);
+        }
+
+        await GoAsync(1);
+    }
 
     private Task SearchAsync() => GoAsync(1);
+
+    private void Choose(Guid id, bool chosen)
+    {
+        if (chosen && _chosen.Count < IAdminService.BulkSignOutLimit)
+        {
+            _chosen.Add(id);
+        }
+        else if (!chosen)
+        {
+            _chosen.Remove(id);
+        }
+    }
+
+    private void ChooseAll(ChangeEventArgs args)
+    {
+        bool chosen = args.Value is true;
+        foreach (Guid id in Choosable.ToList())
+        {
+            Choose(id, chosen);
+        }
+    }
+
+    private async Task SignOutChosenAsync()
+    {
+        if (Context is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        AdminResult result = await Admin.ForceSignOutManyAsync(Context.UserId, [.. _chosen], _reason ?? string.Empty, null);
+        _ok = result.Succeeded;
+        _message = L[result.Message ?? string.Empty];
+        if (result.Succeeded)
+        {
+            _chosen.Clear();
+            _confirming = false;
+            _reason = null;
+        }
+
+        _busy = false;
+    }
 
     private async Task OnKeyAsync(KeyboardEventArgs args)
     {
@@ -113,7 +234,9 @@ else
             "deletedsoft" => UserStatus.DeletedSoft,
             _ => null,
         };
-        _page = await Admin.ListUsersAsync(Context.UserId, new AdminUserQuery(_query, status, _organisation, page, PageSize));
+        Guid? app = Guid.TryParse(_app, out Guid a) ? a : null;
+        bool? twoStep = _twoStep switch { "yes" => true, "no" => false, _ => null };
+        _page = await Admin.ListUsersAsync(Context.UserId, new AdminUserQuery(_query, status, _organisation, page, PageSize, app, twoStep));
         _busy = false;
     }
 

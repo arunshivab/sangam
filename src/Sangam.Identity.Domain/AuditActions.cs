@@ -117,6 +117,15 @@ public static class AuditActions
     /// <summary>A partner owner removed one of their application's administrators.</summary>
     public const string AppAdminRevoke = "app.admin.revoke";
 
+    /// <summary>rc.11 (R5): an application's owner made a client secret. Metadata: its hint and when it ends.</summary>
+    public const string AppSecretCreate = "app.secret.create";
+
+    /// <summary>rc.11 (R5): an application's owner revoked a client secret (theirs, or the one Sangam issued). Metadata: which.</summary>
+    public const string AppSecretRevoke = "app.secret.revoke";
+
+    /// <summary>rc.11 (R6): an application administrator decided about a role in an access review. Metadata: the outcome, the person, the list it was on.</summary>
+    public const string AppAccessReview = "app.access_review.decide";
+
     /// <summary>An application administrator invited someone by e-mail to an organisation and role (PR-13).</summary>
     public const string AppInvitationCreate = "app.invitation.create";
 
@@ -391,6 +400,9 @@ public static class AuditActions
     /// <summary>An operator opened the queue of recoveries waiting for review (rc.7, SGM-914 section 7).</summary>
     public const string AdminUserMfaRecoveryQueueView = "admin.user.mfa.recovery.queue.view";
 
+    /// <summary>rc.11: an operator searched the audit trail. Metadata: which filters were used, never the words searched.</summary>
+    public const string AdminAuditTrailView = "admin.audit_trail.view";
+
     /// <summary>A security incident was opened in the register (SGM-802), for example by an emergency override (rc.7, SGM-914 section 10).</summary>
     public const string SecurityIncidentOpen = "security.incident.open";
 
@@ -450,4 +462,10 @@ public static class AuditActions
     /// its own <see cref="OrgMembershipRevoke"/> row, with the person as the actor.
     /// </summary>
     public const string UserOrganisationLeave = "user.organisation.leave";
+
+    /// <summary>rc.11: the person chose or changed the login ID they sign in with. Metadata: the new and any previous login ID.</summary>
+    public const string UserLoginIdSet = "user.login_id.set";
+
+    /// <summary>rc.11: the person removed their login ID; they sign in with their email or mobile number.</summary>
+    public const string UserLoginIdRemove = "user.login_id.remove";
 }

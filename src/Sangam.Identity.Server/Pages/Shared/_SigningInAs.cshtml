@@ -1,0 +1,7 @@
+@model string
+@* rc.11: who the next screens are signing in, as it was typed (or the name picked from this device's list), with a way back. *@
+<p class="sg-signing-in-as" data-panel="signing-in-as">
+  <span class="sg-signing-in-as-label">@L["Signing in as"]</span>
+  <span class="sg-signing-in-as-value">@Model</span>
+  <a class="sg-signing-in-as-change" href="/login?change=true@(ViewData["ReturnQuery"])">@L["Not you?"]</a>
+</p>

@@ -96,7 +96,7 @@ public sealed class PartnerGateTests : IClassFixture<PartnerFactory>
         Assert.DoesNotContain("Theirs Lab", home, StringComparison.Ordinal);
 
         // Straight to the other application's address: nothing of it is rendered.
-        foreach (string tab in new[] { string.Empty, "/roles", "/admins", "/settings" })
+        foreach (string tab in new[] { string.Empty, "/roles", "/admins", "/settings", "/sign-in", "/branding" })
         {
             string html = await GetAsync(admin, $"/apps/{theirs:D}{tab}");
             Assert.Contains("You do not administer that application", html, StringComparison.Ordinal);
@@ -131,8 +131,10 @@ public sealed class PartnerGateTests : IClassFixture<PartnerFactory>
         Guid admin = await _factory.SeedUserAsync(mfa: true, "Admin");
         await _factory.MakeAdminAsync(app, admin, AppAdminRole.Admin);
 
-        string settings = System.Net.WebUtility.HtmlDecode(await GetAsync(admin, $"/apps/{app:D}/settings"));
+        // rc.11 (R4): branding has its own page, apart from the sign-in rules.
+        string settings = System.Net.WebUtility.HtmlDecode(await GetAsync(admin, $"/apps/{app:D}/branding"));
         Assert.Contains("data-panel=\"branding\"", settings, StringComparison.Ordinal);
+        Assert.Contains("data-panel=\"appearance\"", settings, StringComparison.Ordinal);
         Assert.Contains("Accent colour (buttons and links)", settings, StringComparison.Ordinal);
 
         string messages = System.Net.WebUtility.HtmlDecode(await GetAsync(admin, $"/apps/{app:D}/messages"));
@@ -150,7 +152,7 @@ public sealed class PartnerGateTests : IClassFixture<PartnerFactory>
         await _factory.MakeAdminAsync(app, admin, AppAdminRole.Admin);
 
         // Text now comes from the catalogue and is HTML-encoded ("person&#x27;s"); compare what a reader sees.
-        string html = System.Net.WebUtility.HtmlDecode(await GetAsync(admin, $"/apps/{app:D}/settings"));
+        string html = System.Net.WebUtility.HtmlDecode(await GetAsync(admin, $"/apps/{app:D}/sign-in"));
         Assert.Contains("Each person's own choice", html, StringComparison.Ordinal);
         Assert.Contains("Two-step sign-in every time", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Password only", html, StringComparison.Ordinal);
@@ -158,8 +160,14 @@ public sealed class PartnerGateTests : IClassFixture<PartnerFactory>
 
         // PR-16: passkey only, and the password and second-factor policy, with what is not yet available said plainly.
         Assert.Contains("Passkey only", html, StringComparison.Ordinal);
-        Assert.Contains("Passwords and two-step sign-in", html, StringComparison.Ordinal);
-        Assert.Contains("Shortest password allowed", html, StringComparison.Ordinal);
+        // rc.11 (R4): the ladder, then three numbered groups, saved together.
+        Assert.Contains("data-panel=\"ladder\"", html, StringComparison.Ordinal);
+        Assert.Contains("Sangam minimum", html, StringComparison.Ordinal);
+        Assert.Contains("1 · Second step", html, StringComparison.Ordinal);
+        Assert.Contains("2 · Passwords", html, StringComparison.Ordinal);
+        Assert.Contains("3 · Who may keep using it", html, StringComparison.Ordinal);
+        Assert.Contains("Minimum length", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-panel=\"save-bar\"", html, StringComparison.Ordinal);
         Assert.Contains("Required for this application", html, StringComparison.Ordinal);
         // rc.5: the breached-password check is on for everyone by default, so it shows as required by the platform;
         // the character-type rule is offered, off, and explained only when ticked.
@@ -170,13 +178,47 @@ public sealed class PartnerGateTests : IClassFixture<PartnerFactory>
     }
 
     [PostgresFact]
+    public async Task Credentials_ShowWhatDevelopersNeed_AndNeverASecret()
+    {
+        // rc.11 (R5): client id, issuer and discovery to copy; the secret's age, never the secret.
+        Guid app = await _factory.SeedAppAsync("Connect HIS");
+        Guid admin = await _factory.SeedUserAsync(mfa: true, "Admin");
+        await _factory.MakeAdminAsync(app, admin, AppAdminRole.Admin);
+
+        string html = System.Net.WebUtility.HtmlDecode(await GetAsync(admin, $"/apps/{app:D}/credentials"));
+        Assert.Contains("data-panel=\"client\"", html, StringComparison.Ordinal);
+        Assert.Contains("/.well-known/openid-configuration", html, StringComparison.Ordinal);
+        Assert.Contains("data-panel=\"redirects\"", html, StringComparison.Ordinal);
+        Assert.Contains("Ask Sangam to add an address", html, StringComparison.Ordinal);
+        Assert.Contains("data-panel=\"secrets\"", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("client_secret", html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Make a new secret", html, StringComparison.Ordinal);
+    }
+
+    [PostgresFact]
+    public async Task TheAccessReview_OpensForAnyAdministrator_WithItsThreeLists()
+    {
+        // rc.11 (R6).
+        Guid app = await _factory.SeedAppAsync("Review HIS");
+        Guid admin = await _factory.SeedUserAsync(mfa: true, "Admin");
+        await _factory.MakeAdminAsync(app, admin, AppAdminRole.Admin);
+
+        string html = System.Net.WebUtility.HtmlDecode(await GetAsync(admin, $"/apps/{app:D}/reviews"));
+        Assert.Contains("Access reviews", html, StringComparison.Ordinal);
+        Assert.Contains("Ending in 30 days", html, StringComparison.Ordinal);
+        Assert.Contains("Unused for 90 days", html, StringComparison.Ordinal);
+        Assert.Contains("Decided", html, StringComparison.Ordinal);
+        Assert.Contains("No roles end in the next 30 days.", html, StringComparison.Ordinal);
+    }
+
+    [PostgresFact]
     public async Task Settings_ShowARuleThePlatformSet_AndOfferOnlyToTightenIt()
     {
         Guid app = await _factory.SeedAppAsync("Otp HIS", SignInPolicy.OtpOnly);
         Guid admin = await _factory.SeedUserAsync(mfa: true, "Admin");
         await _factory.MakeAdminAsync(app, admin, AppAdminRole.Admin);
 
-        string html = await GetAsync(admin, $"/apps/{app:D}/settings");
+        string html = await GetAsync(admin, $"/apps/{app:D}/sign-in");
         Assert.Contains("Email code only, no password", html, StringComparison.Ordinal);
         Assert.Contains("set by Sangam", html, StringComparison.Ordinal);
         Assert.Contains("Two-step sign-in every time", html, StringComparison.Ordinal);
@@ -219,7 +261,7 @@ public sealed class PartnerGateTests : IClassFixture<PartnerFactory>
     }
 
     private static string[] Paths(Guid app)
-        => ["/", $"/apps/{app:D}", $"/apps/{app:D}/roles", $"/apps/{app:D}/admins", $"/apps/{app:D}/settings", $"/apps/{app:D}/messages"];
+        => ["/", $"/apps/{app:D}", $"/apps/{app:D}/roles", $"/apps/{app:D}/admins", $"/apps/{app:D}/sign-in", $"/apps/{app:D}/branding", $"/apps/{app:D}/credentials", $"/apps/{app:D}/reviews", $"/apps/{app:D}/messages"];
 
     [PostgresFact]
     public async Task AnApplication_OpensOnItsOverview_WithTheChecklistAndHealth_AndTheSidebarSections()
@@ -239,7 +281,7 @@ public sealed class PartnerGateTests : IClassFixture<PartnerFactory>
         Assert.Contains("Roles are defined", overview, StringComparison.Ordinal);
         Assert.Contains("Sangam knows where to end sessions", overview, StringComparison.Ordinal);
         Assert.Contains("data-panel=\"app-switcher\"", overview, StringComparison.Ordinal);
-        foreach (string section in new[] { "people", "roles", "admins", "settings", "messages", "attributes", "provisioning", "webhooks", "evidence" })
+        foreach (string section in new[] { "people", "roles", "reviews", "admins", "sign-in", "branding", "credentials", "messages", "attributes", "provisioning", "webhooks", "evidence" })
         {
             Assert.Contains($"href=\"/apps/{app:D}/{section}\"", overview, StringComparison.Ordinal);
         }

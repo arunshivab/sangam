@@ -309,14 +309,14 @@
       "sangam.identity.application": {
         "type": "Project",
         "dependencies": {
-          "Sangam.Identity.Domain": "[1.0.0-rc.10, )",
-          "Sangam.Shared": "[1.0.0-rc.10, )"
+          "Sangam.Identity.Domain": "[1.0.0-rc.11, )",
+          "Sangam.Shared": "[1.0.0-rc.11, )"
         }
       },
       "sangam.identity.domain": {
         "type": "Project",
         "dependencies": {
-          "Sangam.Shared": "[1.0.0-rc.10, )"
+          "Sangam.Shared": "[1.0.0-rc.11, )"
         }
       },
       "sangam.shared": {

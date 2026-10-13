@@ -24,6 +24,13 @@ public static class AuthRateLimiting
     /// <summary>The protocol endpoints OpenIddict answers before routing (PR-20, PR-21).</summary>
     private static readonly HashSet<string> ProtocolPaths = new(StringComparer.OrdinalIgnoreCase) { "/connect/device", "/connect/par", "/connect/introspect", "/connect/revoke" };
 
+    /// <summary>
+    /// rc.11: posts that check nothing and send nothing — the first sign-in screen only remembers what was typed, and
+    /// "Remove" only edits this browser's list — so they do not use up the allowance of a hospital whose staff all reach
+    /// Sangam from one address. The password and code screens after them are limited as before.
+    /// </summary>
+    private static readonly HashSet<string> Unchecked = new(StringComparer.OrdinalIgnoreCase) { "/login", "/login/forget" };
+
     /// <summary>Policy for the management API, <c>/api/v1</c> (OI-035).</summary>
     public const string ApiPolicy = "api";
 
@@ -54,7 +61,7 @@ public static class AuthRateLimiting
             };
             o.AddPolicy(PolicyName, ctx =>
             {
-                if (!enabled || !HttpMethods.IsPost(ctx.Request.Method))
+                if (!enabled || !HttpMethods.IsPost(ctx.Request.Method) || Unchecked.Contains(ctx.Request.Path.Value ?? string.Empty))
                 {
                     return RateLimitPartition.GetNoLimiter("none");
                 }

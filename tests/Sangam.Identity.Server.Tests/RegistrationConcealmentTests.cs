@@ -134,7 +134,7 @@ public sealed partial class RegistrationConcealmentTests
             Assert.Equal(Message(realPages[i]), Message(unknownPages[i]));
         }
 
-        Assert.Equal("That email and password do not match.", Message(unknownPages[0]));
+        Assert.Equal("That password does not match. Check what you typed, or use “Forgot your password?”.", Message(unknownPages[0]));
         Assert.StartsWith("Too many failed attempts", Message(unknownPages[4]), StringComparison.Ordinal);
         Assert.StartsWith("Too many failed attempts", Message(unknownPages[5]), StringComparison.Ordinal);
     }
@@ -156,7 +156,7 @@ public sealed partial class RegistrationConcealmentTests
         async Task<(string? Location, string Page)> CodeAsync(string email)
         {
             using BrowserSession s = new(_factory);
-            (_, string? loc, _) = await s.PostFormAsync("/login/code", new Dictionary<string, string> { ["Email"] = email });
+            (_, string? loc, _) = await s.PostFormAsync("/login/code", new Dictionary<string, string> { ["Identifier"] = email });
             (_, string page) = await s.GetAsync(loc!);
             return (loc, Normalise(Countdown().Replace(page, "N"), email));
         }

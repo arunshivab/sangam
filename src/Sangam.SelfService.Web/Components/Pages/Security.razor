@@ -9,6 +9,7 @@
 @inject Sangam.Identity.Application.Passkeys.IPasskeyService Passkeys
 @inject Sangam.Identity.Application.Sms.ISmsCodeService Sms
 @inject IConfiguration Configuration
+@inject ILoginIdService LoginIds
 
 @* rc.10 (P3): every way to sign in, strongest first; whether two-step sign-in is asked every time; what gets you back in;
    and where you are signed in. "/devices" stays, because new-device e-mails link to it. *@
@@ -32,6 +33,73 @@
 }
 else
 {
+  @* rc.11: what a person types to sign in — their email, their mobile number once verified, or a login ID they choose. *@
+  <section class="sg-panel" data-panel="sign-in-names">
+    <h2 class="sg-panel-title">@L["What you sign in with"]</h2>
+    <p class="sg-panel-body">@L["On the sign-in page, type whichever of these is easiest."]</p>
+    <dl class="sg-facts">
+      <div><dt>@L["Email"]</dt><dd class="sg-mono">@_user.Email</dd></div>
+      <div>
+        <dt>@L["Mobile number"]</dt>
+        <dd>
+          @if (_user.Mobile is null)
+          {
+            @L["None yet"]
+          }
+          else if (_loginId?.CanSignInWithMobile == true)
+          {
+            <span class="sg-mono">@_user.Mobile</span>@(" ")@L["· verified, so you can sign in with it"]
+          }
+          else
+          {
+            <span class="sg-mono">@_user.Mobile</span>@(" ")@L["· verify it to sign in with it"]@(" ")<a href="@MobileUrl">@L["Verify mobile"]</a>
+          }
+        </dd>
+      </div>
+      <div>
+        <dt>@L["Login ID"]</dt>
+        <dd data-panel="login-id">
+          @if (_loginId?.Current is string current)
+          {
+            <span class="sg-mono">@current</span>
+            @if (!_editingLoginId)
+            {
+              <span class="sg-inline-actions">
+                <button type="button" class="sg-link-button" @onclick="StartLoginIdEdit">@L["Change"]</button>
+                <button type="button" class="sg-link-button" @onclick="RemoveLoginIdAsync" disabled="@_working">@L["Remove"]</button>
+              </span>
+            }
+          }
+          else if (!_editingLoginId)
+          {
+            <span>@L["None yet. A short name is quicker to type than your email."]</span>
+            <button type="button" class="sg-btn sg-btn--secondary sg-btn--row sg-login-id-start" @onclick="StartLoginIdEdit">@L["Choose a login ID"]</button>
+          }
+        </dd>
+      </div>
+    </dl>
+    @if (_editingLoginId)
+    {
+      <section class="sg-login-id-form" data-panel="login-id-form" aria-label="@L["Choose a login ID"]">
+        <label class="sg-label" for="login-id">@L["Login ID"]</label>
+        <p class="sg-note" id="login-id-rules">@L["4 to 30 characters: small letters, digits, dots and underscores, starting with a letter. You can change it later; an old one stays reserved for you for 90 days."]</p>
+        <p class="sg-login-id-row">
+          <input id="login-id" class="sg-field" @bind="_loginIdText" @bind:event="oninput" autocapitalize="none" spellcheck="false" maxlength="30" aria-describedby="login-id-rules" />
+          <button type="button" class="sg-btn sg-btn--primary" @onclick="SaveLoginIdAsync" disabled="@(_working || string.IsNullOrWhiteSpace(_loginIdText))">@L["Save"]</button>
+          <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _editingLoginId = false">@L["Cancel"]</button>
+        </p>
+        @if (_loginIdError is not null)
+        {
+          <p class="sg-field-error" role="alert">@_loginIdError</p>
+        }
+        @if (_loginIdAlternative is not null)
+        {
+          <p class="sg-note">@L["{0} is free.", _loginIdAlternative] <button type="button" class="sg-link-button" @onclick="() => { _loginIdText = _loginIdAlternative!; _loginIdAlternative = null; _loginIdError = null; }">@L["Use it"]</button></p>
+        }
+      </section>
+    }
+  </section>
+
   <section class="sg-panel" data-panel="ways">
     <h2 class="sg-panel-title">@L["Ways to sign in"]</h2>
     <p class="sg-panel-body">@L["Strongest first. An application can ask for a stronger way than the one you use."]</p>
@@ -280,6 +348,11 @@ else
     private bool _confirmingAll;
     private string _twoStep = "app";
     private DateTimeOffset _now = DateTimeOffset.UtcNow;
+    private LoginIdState? _loginId;
+    private bool _editingLoginId;
+    private string _loginIdText = string.Empty;
+    private string? _loginIdError;
+    private string? _loginIdAlternative;
 
     // rc.9 (ASVS V3.7.1, V3.3.4): sensitive changes need a sign-in from the last 15 minutes.
     private System.Security.Claims.ClaimsPrincipal _principal = new();
@@ -328,6 +401,7 @@ else
         _passkeys = Passkeys.Enabled ? await Passkeys.ListAsync(_userId) : [];
         _sessions = await Portal.GetSessionsAsync(_userId, _currentSessionId);
         _twoStep = _user?.SignInPreference == SignInMode.PasswordAndOtp ? "every" : "app";
+        _loginId = await LoginIds.GetAsync(_userId);
     }
 
     private async Task SetModeAsync(SignInMode mode)
@@ -429,4 +503,71 @@ else
         _message = L["All sessions have ended. You will be signed out of this one shortly."];
         await LoadAsync();
     }
+
+    // rc.11: the person's login ID. Choosing or removing one needs a recent sign-in, like every change to how you sign in.
+    private void StartLoginIdEdit()
+    {
+        _loginIdText = _loginId?.Current ?? _loginId?.Suggestion ?? string.Empty;
+        _loginIdError = null;
+        _loginIdAlternative = null;
+        _editingLoginId = true;
+    }
+
+    private async Task SaveLoginIdAsync()
+    {
+        if (!Recent())
+        {
+            return;
+        }
+
+        _working = true;
+        try
+        {
+            LoginIdCheck check = await LoginIds.SetAsync(_userId, _loginIdText, null);
+            if (check.Ok)
+            {
+                _editingLoginId = false;
+                _loginId = await LoginIds.GetAsync(_userId);
+                _message = L["Your login ID is now {0}. Use it, your email or your verified mobile number to sign in.", check.Value];
+                return;
+            }
+
+            _loginIdError = LoginIdProblem(check.Problem);
+            _loginIdAlternative = check.Alternative;
+        }
+        finally
+        {
+            _working = false;
+        }
+    }
+
+    private async Task RemoveLoginIdAsync()
+    {
+        if (!Recent())
+        {
+            return;
+        }
+
+        _working = true;
+        try
+        {
+            await LoginIds.RemoveAsync(_userId, null);
+            _loginId = await LoginIds.GetAsync(_userId);
+            _message = L["Your login ID is removed. Sign in with your email or your verified mobile number."];
+        }
+        finally
+        {
+            _working = false;
+        }
+    }
+
+    private string LoginIdProblem(string? problem) => problem switch
+    {
+        Sangam.Identity.Domain.LoginIds.ProblemLength => L["Use 4 to 30 characters."],
+        Sangam.Identity.Domain.LoginIds.ProblemCharacters => L["Use only small letters, digits, dots and underscores."],
+        Sangam.Identity.Domain.LoginIds.ProblemStart => L["Start with a letter."],
+        Sangam.Identity.Domain.LoginIds.ProblemPunctuation => L["A dot or an underscore cannot come last, or next to another one."],
+        Sangam.Identity.Domain.LoginIds.ProblemReserved => L["That word is kept for Sangam. Choose another."],
+        _ => L["That login ID is taken."],
+    };
 }

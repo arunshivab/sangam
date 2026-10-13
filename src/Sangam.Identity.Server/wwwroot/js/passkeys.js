@@ -59,7 +59,9 @@
   }
 
   document.querySelectorAll('[data-passkey-signin]').forEach(function (button) {
+    // rc.11: on the "how do you want to sign in" screen the button is always shown (no layout shift) and starts disabled.
     button.hidden = false;
+    button.disabled = false;
     button.addEventListener('click', function () {
       show(button, '');
       button.disabled = true;

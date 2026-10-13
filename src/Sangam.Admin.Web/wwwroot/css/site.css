@@ -47,3 +47,8 @@
 /* O1: the recent audit trail. */
 .sg-trail td:first-child { white-space: nowrap; }
 .sg-trail .sg-mono { color: var(--c-sand); }
+
+/* rc.11: signing key fingerprints wrap at their pairs. */
+.sg-fingerprint { font-size: 13px; overflow-wrap: normal; word-break: keep-all; max-width: 26ch; }
+[data-panel="keys"] .sg-pill, [data-panel="keys"] td.sg-mono:not(.sg-fingerprint), [data-panel="keys"] td.sg-nowrap { white-space: nowrap; }
+@media (max-width: 719px) { .sg-table--cards td.sg-fingerprint { max-width: none; height: auto; white-space: normal; } }

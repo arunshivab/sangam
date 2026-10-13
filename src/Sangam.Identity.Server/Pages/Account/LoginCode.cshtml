@@ -6,16 +6,16 @@
 
 <section class="sg-card">
   <h1 class="sg-card-title">@L["Sign in with a code"]</h1>
-  <p class="sg-card-body">@L["If your account is set to sign in with an emailed code, we will send one to this address."]</p>
+  <p class="sg-card-body">@L["If your account is set to sign in with an emailed code, we will send one to its email address."]</p>
   <p class="sg-card-body sg-hint">@L["If it signs in with a password, we will email you a reminder instead."]</p>
 
   <form method="post" novalidate>
     <partial name="_Antibot" />
     <input type="hidden" asp-for="ReturnUrl" />
     <div class="sg-field-group">
-      <label class="sg-label" asp-for="Email">@L["Email"]</label>
-      <input class="sg-field" asp-for="Email" type="email" autocomplete="username" inputmode="email" autofocus required />
-      <span class="sg-field-error" asp-validation-for="Email"></span>
+      <label class="sg-label" asp-for="Identifier">@L["Email, mobile number or login ID"]</label>
+      <input class="sg-field" asp-for="Identifier" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" autofocus required />
+      <span class="sg-field-error" asp-validation-for="Identifier"></span>
     </div>
     <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Email me a code"]</button>
   </form>
