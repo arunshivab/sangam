@@ -6,6 +6,12 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+### Partner console
+- "Your organisations" (`/org`) now lists, for an application's administrators, every customer of the applications they
+  administer, grouped by application ("Customers of …"), with a find box when there are more than six. Before, it showed
+  only organisations where the person held a customer or branch admin right themselves, so an application administrator
+  saw an empty page. The sidebar offers the page to them too. Nothing of an application they do not administer is shown.
+
 ## [1.0.0-rc.12] - twelfth release candidate
 
 Sangam 1.0.0-rc.12 makes hospitals customers of the applications they use, with their own admins, and adds the ward
