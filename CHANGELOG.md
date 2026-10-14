@@ -73,6 +73,10 @@ features the v2 handoff asked for. The decisions (14 Oct 2026) are in `docs/desi
 - .NET packages 10.0.12 → 10.0.13 (October servicing), including `System.Security.Cryptography.Pkcs` and
   `System.Security.Cryptography.Xml`, which NuGet audit now reports as vulnerable at 10.0.12 (GHSA-846f-f764-76mx,
   GHSA-2fmv-rv2c-59x7, GHSA-7hqp-7c5m-4vq6, GHSA-c399-9853-6jmj, GHSA-r955-8q5j-3h83). `dotnet-ef` 10.0.13.
+- The runtime image moves to `mcr.microsoft.com/dotnet/aspnet:10.0` with .NET and ASP.NET Core 10.0.13 (new digest), for
+  the October runtime fixes Trivy reports in 10.0.12 (CVE-2026-70188 and CVE-2026-88092, critical; CVE-2026-70175,
+  CVE-2026-70181, CVE-2026-70183, CVE-2026-70186 and CVE-2026-96236, high; and five in Microsoft.NETCore.App). The build
+  image stays on SDK 10.0.401, which `global.json` pins.
 
 ### Known gaps
 - The management API's `PUT /orgs/{id}/members/{user}` (an application's own back end, no acting admin) does not ask for
