@@ -14,26 +14,73 @@ else if (OrgId is null)
   <PageTitle>@L["Your organisations · Sangam"]</PageTitle>
   <h1 class="sg-h1">@L["Your organisations"]</h1>
   <p class="sg-lede">@L["The hospitals and branches you administer, in each application they use. Everything you do here is recorded in your name."]</p>
-  @if (!Context.OwnScopes.Any())
+  @if (!Context.Scopes.Any())
   {
-    <p class="sg-muted">@L["You are not an admin of any organisation yourself. Application administrators open a customer from Organisations & people."]</p>
+    <p class="sg-muted">@L["You do not administer any organisation, and none of your applications has a customer yet."]</p>
   }
-  <ul class="sg-tiles" data-panel="org-scopes">
-    @foreach (OrgScope scope in Context.OwnScopes)
+  @if (Context.OwnScopes.Any())
+  {
+    @if (ViaApplication.Any())
     {
-      <li>
-        <a class="sg-tile" href="@($"/org/{scope.OrgId:D}")">
-          <span class="sg-tile-head">
-            <span class="sg-tile-glyph" style="background:@scope.BrandColour" aria-hidden="true">@scope.Glyph</span>
-            <span class="sg-tile-text">
-              <span class="sg-name">@scope.OrgName</span>
-              <span class="sg-sub">@scope.AppName · @ScopeRole(scope)</span>
-            </span>
-          </span>
-        </a>
-      </li>
+      <h2 class="sg-h2 sg-h2--section">@L["Organisations you administer"]</h2>
     }
-  </ul>
+    <ul class="sg-tiles" data-panel="org-scopes">
+      @foreach (OrgScope scope in Context.OwnScopes)
+      {
+        <li>
+          <a class="sg-tile" href="@($"/org/{scope.OrgId:D}")">
+            <span class="sg-tile-head">
+              <span class="sg-tile-glyph" style="background:@scope.BrandColour" aria-hidden="true">@scope.Glyph</span>
+              <span class="sg-tile-text">
+                <span class="sg-name">@scope.OrgName</span>
+                <span class="sg-sub">@scope.AppName · @ScopeRole(scope)</span>
+              </span>
+            </span>
+          </a>
+        </li>
+      }
+    </ul>
+  }
+
+  @* rc.12 follow-up: an application's admins administer every customer of it, so those customers are listed too, by
+     application. Only applications this person administers ever appear. *@
+  @if (ViaApplication.Any())
+  {
+    @if (ViaApplication.Count() > 6)
+    {
+      <input class="sg-input sg-input--toolbar sg-tree-search" aria-label="@L["Find a customer"]" placeholder="@L["Find a customer"]" @bind="_query" @bind:event="oninput" />
+    }
+    @foreach (IGrouping<Guid, OrgScope> app in ViaApplication.GroupBy(s => s.AppId).OrderBy(g => g.First().AppName, StringComparer.CurrentCulture))
+    {
+      <section data-panel="app-customers" data-app="@app.Key.ToString("D")">
+        <h2 class="sg-h2 sg-h2--section">@L["Customers of {0}", app.First().AppName]</h2>
+        <p class="sg-muted">@L["Every customer of {0}, because you administer the application.", app.First().AppName]</p>
+        @if (!app.Any(Matches))
+        {
+          <p class="sg-muted">@L["No customer matches."]</p>
+        }
+        else
+        {
+          <ul class="sg-tiles">
+            @foreach (OrgScope scope in app.Where(Matches))
+            {
+              <li>
+                <a class="sg-tile" href="@($"/org/{scope.OrgId:D}")">
+                  <span class="sg-tile-head">
+                    <span class="sg-tile-glyph" style="background:@scope.BrandColour" aria-hidden="true">@scope.Glyph</span>
+                    <span class="sg-tile-text">
+                      <span class="sg-name">@scope.OrgName</span>
+                      <span class="sg-sub">@scope.AppName · @ScopeRole(scope)</span>
+                    </span>
+                  </span>
+                </a>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    }
+  }
 }
 else if (_scope is null)
 {
@@ -86,6 +133,12 @@ else
     public PartnerContext? Context { get; set; }
 
     private OrgScope? _scope;
+    private string _query = string.Empty;
+
+    // The customers this person sees because they administer the whole application.
+    private IEnumerable<OrgScope> ViaApplication => Context?.Scopes.Where(s => s.ViaApplication) ?? [];
+
+    private bool Matches(OrgScope scope) => string.IsNullOrWhiteSpace(_query) || scope.OrgName.Contains(_query.Trim(), StringComparison.CurrentCultureIgnoreCase);
 
     private string SectionName => Section switch
     {
@@ -108,5 +161,5 @@ else
         }
     }
 
-    private string ScopeRole(OrgScope scope) => !scope.Admin ? L["Emergency access reviewer"] : scope.IsCustomer ? L["Customer admin"] : L["Branch admin"];
+    private string ScopeRole(OrgScope scope) => scope.ViaApplication ? L["Application administrator"] : !scope.Admin ? L["Emergency access reviewer"] : scope.IsCustomer ? L["Customer admin"] : L["Branch admin"];
 }

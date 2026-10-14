@@ -11,7 +11,7 @@
     {
       <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="/" Match="NavLinkMatch.All">@L["All your applications"]</NavLink>
     }
-    @if (Context.OwnScopes.Any() || CurrentOrg is not null)
+    @if (Context.Scopes.Any() || CurrentOrg is not null)
     {
       <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="/org" Match="NavLinkMatch.All">@L["Your organisations"]</NavLink>
     }

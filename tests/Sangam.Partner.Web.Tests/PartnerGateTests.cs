@@ -332,6 +332,32 @@ public sealed class PartnerGateTests : IClassFixture<PartnerFactory>
         Assert.DoesNotContain("Credentials &amp; redirects", workspace, StringComparison.Ordinal);
     }
 
+    [PostgresFact]
+    public async Task AnApplicationAdmin_SeesTheirApplicationsCustomers_UnderYourOrganisations()
+    {
+        // rc.12 follow-up: an application's admin administers every customer of it, so the console lists them by application.
+        Guid app = await _factory.SeedAppAsync("Customers HIS");
+        Guid otherApp = await _factory.SeedAppAsync("Someone Else's Lab");
+        (Guid customer, _) = await _factory.SeedCustomerAsync(app, "Aster Medcity");
+        (Guid notMine, _) = await _factory.SeedCustomerAsync(otherApp, "Not Mine Clinic");
+        Guid admin = await _factory.SeedUserAsync(mfa: true, "Priya");
+        await _factory.MakeAdminAsync(app, admin, AppAdminRole.Admin);
+
+        string landing = await GetAsync(admin, "/org");
+        Assert.Contains("data-panel=\"app-customers\"", landing, StringComparison.Ordinal);
+        Assert.Contains("Customers of Customers HIS", landing, StringComparison.Ordinal);
+        Assert.Contains($"href=\"/org/{customer:D}\"", landing, StringComparison.Ordinal);
+        Assert.DoesNotContain("Not Mine Clinic", landing, StringComparison.Ordinal);
+        Assert.DoesNotContain($"/org/{notMine:D}", landing, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-panel=\"org-scopes\"", landing, StringComparison.Ordinal);
+
+        // The sidebar offers the page, and the customer opens.
+        string home = await GetAsync(admin, "/");
+        Assert.Contains("href=\"/org\"", home, StringComparison.Ordinal);
+        string overview = await GetAsync(admin, $"/org/{customer:D}");
+        Assert.Contains("data-panel=\"org-stats\"", overview, StringComparison.Ordinal);
+    }
+
     private async Task<string> GetAsync(Guid userId, string path)
     {
         using HttpClient client = _factory.ClientFor(userId);
