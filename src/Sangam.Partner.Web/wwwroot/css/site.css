@@ -80,3 +80,43 @@
 .sg-input--row { width: auto; min-width: 120px; height: 36px; min-height: 36px; font-size: 14px; padding: 0 8px; }
 /* rc.11: a long translated label wraps inside its button on a phone instead of pushing the page sideways. */
 @media (max-width: 719px) { .sg-panel .sg-btn { white-space: normal; height: auto; min-height: 44px; max-width: 100%; text-align: center; padding-top: 8px; padding-bottom: 8px; } }
+
+/* rc.12 (G1, G2, T5): the organisation console. */
+.sg-stats--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.sg-switch--static { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 8px 10px; border: 1px solid var(--c-line); border-radius: 4px; background: var(--c-panel); }
+.sg-grid--joiners { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+.sg-two-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+.sg-target { border-top: 1px solid var(--c-line); padding: 6px 0; }
+.sg-target--on { background: rgba(217, 201, 168, 0.05); }
+.sg-target .sg-check { margin: 4px 0; align-items: center; }
+.sg-target-roles { margin: 4px 0 8px; }
+.sg-warn-box { margin: 16px 0 0; padding: 12px 14px; border-left: 3px solid var(--c-warn); background: rgba(227, 183, 106, 0.08); font-size: 15px; }
+.sg-warn-box p { margin: 0 0 8px; }
+.sg-code-out { margin-top: 18px; padding: 16px 18px; border: 1px solid var(--c-sand); border-radius: 4px; background: rgba(217, 201, 168, 0.08); }
+.sg-code-value { margin: 6px 0 8px; font: 600 30px/1.1 var(--sg-font-mono); letter-spacing: 0.08em; color: var(--c-sand); }
+.sg-input--code { font-family: var(--sg-font-mono); letter-spacing: 0.08em; text-transform: uppercase; max-width: 14rem; }
+.sg-results { margin: 14px 0 0; padding-left: 18px; font-size: 14px; }
+.sg-results li { margin: 4px 0; }
+.sg-list--plain { list-style: none; padding: 0; }
+.sg-leaver-places { list-style: none; margin: 8px 0 14px; padding: 0; }
+.sg-leaver-places li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--c-line); font-size: 15px; }
+.sg-confirm-title { font-weight: 600; }
+@media (max-width: 1023px) {
+  .sg-grid--joiners { grid-template-columns: minmax(0, 1fr); }
+  .sg-stats--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 719px) {
+  .sg-stats--three, .sg-two-fields { grid-template-columns: minmax(0, 1fr); }
+  .sg-leaver-places li { flex-direction: column; gap: 2px; }
+}
+.sg-h2--section { margin-top: 32px; }
+
+/* rc.12 (M12): emergency access — where it is on, and how long each use has waited for review (words carry it as well as colour). */
+.sg-emergency-orgs { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
+.sg-emergency-org { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; padding-block: 4px; border-bottom: 1px solid var(--c-line); }
+.sg-age { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.sg-age--fresh { color: var(--c-ok); }
+.sg-age--due { color: var(--c-warn); }
+.sg-age--late { color: var(--c-danger); font-weight: 600; }
+.sg-age--done { color: var(--c-muted); }
+.sg-ok-text { color: var(--c-ok); }

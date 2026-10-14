@@ -41,7 +41,20 @@
 
 <section class="sg-card">
   <h1 class="sg-card-title">@L["Sign out of Sangam?"]</h1>
-  <p class="sg-card-body">@L["This ends your Sangam session on this device. Applications you signed in to may keep their own sessions until they expire."]</p>
+  @if (Model.SessionApps.Count > 0)
+  {
+    <p class="sg-card-body">@L["This ends your Sangam session on this device, and signs you out of these applications here:"]</p>
+    <ul class="sg-signout-apps" data-panel="signout-apps">
+      @foreach (string app in Model.SessionApps)
+      {
+        <li>@app</li>
+      }
+    </ul>
+  }
+  else
+  {
+    <p class="sg-card-body">@L["This ends your Sangam session on this device."]</p>
+  }
 
   @if (Model.User is not null)
   {

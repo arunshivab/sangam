@@ -1,0 +1,112 @@
+@page "/org"
+@page "/org/{OrgId:guid}"
+@page "/org/{OrgId:guid}/{Section}"
+@inject NavigationManager Nav
+
+@* rc.12 (G1, G2, T5; founder decisions, 14 Oct 2026): the organisation console, for a hospital's own customer and branch
+   admins (and an application's admins, for any of its customers). One tree, in one application, at a time; nothing
+   outside the trees the person administers is ever shown. *@
+@if (Context is null)
+{
+}
+else if (OrgId is null)
+{
+  <PageTitle>@L["Your organisations · Sangam"]</PageTitle>
+  <h1 class="sg-h1">@L["Your organisations"]</h1>
+  <p class="sg-lede">@L["The hospitals and branches you administer, in each application they use. Everything you do here is recorded in your name."]</p>
+  @if (!Context.OwnScopes.Any())
+  {
+    <p class="sg-muted">@L["You are not an admin of any organisation yourself. Application administrators open a customer from Organisations & people."]</p>
+  }
+  <ul class="sg-tiles" data-panel="org-scopes">
+    @foreach (OrgScope scope in Context.OwnScopes)
+    {
+      <li>
+        <a class="sg-tile" href="@($"/org/{scope.OrgId:D}")">
+          <span class="sg-tile-head">
+            <span class="sg-tile-glyph" style="background:@scope.BrandColour" aria-hidden="true">@scope.Glyph</span>
+            <span class="sg-tile-text">
+              <span class="sg-name">@scope.OrgName</span>
+              <span class="sg-sub">@scope.AppName · @ScopeRole(scope)</span>
+            </span>
+          </span>
+        </a>
+      </li>
+    }
+  </ul>
+}
+else if (_scope is null)
+{
+  <PageTitle>@L["Not available · Sangam"]</PageTitle>
+  <h1 class="sg-h1">@L["Not available"]</h1>
+  <p class="sg-lede">@L["You do not administer that organisation."] <a href="/org">@L["Back to your organisations"]</a>.</p>
+}
+else if (!_scope.Admin)
+{
+  <PageTitle>@_scope.OrgName · @L["Emergency access"] · Sangam</PageTitle>
+  <OrgEmergency Scope="_scope" UserId="Context.UserId" />
+}
+else
+{
+  <PageTitle>@_scope.OrgName · @SectionName · Sangam</PageTitle>
+  @switch (Section)
+  {
+    case "people":
+      <OrgPeople Scope="_scope" UserId="Context.UserId" />
+      break;
+    case "joiners":
+      <OrgJoiners Scope="_scope" UserId="Context.UserId" Scopes="Context.Scopes" />
+      break;
+    case "settings":
+      <OrgSettings Scope="_scope" UserId="Context.UserId" />
+      break;
+    case "devices":
+      <OrgDevices Scope="_scope" UserId="Context.UserId" />
+      break;
+    case "emergency":
+      <OrgEmergency Scope="_scope" UserId="Context.UserId" />
+      break;
+    default:
+      <OrgOverviewPage Scope="_scope" UserId="Context.UserId" />
+      break;
+  }
+}
+
+@code {
+    /// <summary>The tree's top organisation.</summary>
+    [Parameter]
+    public Guid? OrgId { get; set; }
+
+    /// <summary>The section; the overview when absent.</summary>
+    [Parameter]
+    public string? Section { get; set; }
+
+    /// <summary>The signed-in administrator.</summary>
+    [CascadingParameter]
+    public PartnerContext? Context { get; set; }
+
+    private OrgScope? _scope;
+
+    private string SectionName => Section switch
+    {
+        "people" => L["People"],
+        "joiners" => L["Joiners & leavers"],
+        "settings" => L["Settings"],
+        "devices" => L["Shared devices"],
+        "emergency" => L["Emergency access"],
+        _ => L["Overview"],
+    };
+
+    protected override void OnParametersSet()
+    {
+        _scope = OrgId is Guid id ? Context?.Scope(id) : null;
+
+        // Someone who administers one organisation and no application goes straight to it.
+        if (OrgId is null && Context is not null && Context.Apps.Count == 0 && Context.OwnScopes.Count() == 1)
+        {
+            Nav.NavigateTo($"/org/{Context.OwnScopes.First().OrgId:D}", replace: true);
+        }
+    }
+
+    private string ScopeRole(OrgScope scope) => !scope.Admin ? L["Emergency access reviewer"] : scope.IsCustomer ? L["Customer admin"] : L["Branch admin"];
+}

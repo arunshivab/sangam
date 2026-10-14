@@ -74,6 +74,10 @@ def test_sign_in_step_up_permission_and_audit(op, tmp_path):
     assert validate_audit_event(event) == [] and event["actor"]["acr"] == SangamAcr.SIGNATURE and event["client"]["user_agent"] == "pytest"
     assert len((tmp_path / "pending.jsonl").read_text().strip().splitlines()) == 1
 
+    # rc.12 (M12): emergency access asks Sangam with the application's own case reference; a name is not a reference.
+    assert "sangam_emergency=LIPI-48213" in c.get("/auth/login?returnTo=/&emergency=LIPI-48213").headers["location"]
+    assert "sangam_emergency" not in c.get("/auth/login?returnTo=/&emergency=Ramesh%20Kumar").headers["location"]
+
     # A returnTo that leaves the site, a replayed code and a forged state.
     code, state = op.approve(c.get("/auth/login?returnTo=https://evil.example/").headers["location"])
     assert c.get(f"/auth/callback?code={code}&state={state}").headers["location"] == "/"
@@ -81,6 +85,12 @@ def test_sign_in_step_up_permission_and_audit(op, tmp_path):
     code, state = op.approve(c.get("/auth/login?returnTo=/secure").headers["location"])
     with pytest.raises(PermissionError):
         c.get(f"/auth/callback?code={code}&state=forged")
+
+    # rc.12 (T1): the idle timer ran out: Sangam's session is locked with the person's own token, this one ends.
+    locked = c.get("/auth/lock?returnTo=/secure")
+    assert locked.headers["location"] == "/auth/login?returnTo=%2Fsecure"
+    assert op.locks == ["Bearer at"]
+    assert c.get("/auth/me").status_code == 401
 
     out = c.get("/auth/logout")
     assert out.headers["location"].startswith(op.base + "/connect/endsession?")

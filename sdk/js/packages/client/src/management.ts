@@ -51,9 +51,13 @@ export class ManagementClient {
     return json.access_token;
   }
 
-  /** Any call: `path` is relative to /api/v1/. */
-  async send<T = unknown>(method: string, path: string, body?: unknown): Promise<T> {
+  /**
+   * Any call: `path` is relative to /api/v1/. rc.12: `adminAccessToken` is one of your admins' own access token, sent as
+   * `Sangam-Acting-Admin` on staff calls.
+   */
+  async send<T = unknown>(method: string, path: string, body?: unknown, adminAccessToken?: string): Promise<T> {
     const headers: Record<string, string> = { authorization: `Bearer ${await this.token()}` };
+    if (adminAccessToken) headers["sangam-acting-admin"] = adminAccessToken;
     const init: RequestInit = { method, headers };
     if (body !== undefined) {
       headers["content-type"] = "application/json";
@@ -75,15 +79,32 @@ export class ManagementClient {
 
   /**
    * Gives a person a role at an organisation; `expiresAt` makes it time-limited. rc.5: only someone who already uses
-   * your application; anyone else answers 404 — invite them with `invite` instead.
+   * your application; anyone else answers 404 — add them with `addStaff` instead. rc.12: a role holds only where it is
+   * given, so `appliesToDescendants` must be false.
    */
   upsertMembership(orgId: string, userId: string, role: string, appliesToDescendants = false, expiresAt?: string) {
     return this.send("PUT", `orgs/${orgId}/members/${userId}`, expiresAt ? { role, appliesToDescendants, expiresAt } : { role, appliesToDescendants });
   }
 
-  /** Invites someone by e-mail to a role at an organisation (rc.5); they are added when they accept. At most 200 a day. */
-  invite(orgId: string, email: string, role: string, appliesToDescendants = false) {
-    return this.send("POST", `orgs/${orgId}/invitations`, { email, role, appliesToDescendants });
+  /** rc.12: every role a person holds at an organisation; an empty list keeps them there as staff. */
+  setRoles(orgId: string, userId: string, roles: string[], expiresAt?: string) {
+    return this.send("PUT", `orgs/${orgId}/members/${userId}`, expiresAt ? { roles, expiresAt } : { roles });
+  }
+
+  /**
+   * rc.12: the check before adding a person — which details match an existing Sangam account, never what Sangam holds.
+   * Done for one of your admins: `adminAccessToken` is the token Sangam gave your application when they signed in.
+   */
+  checkStaff(orgId: string, adminAccessToken: string, person: SangamStaffPerson) {
+    return this.send<SangamStaffCheck>("POST", `orgs/${orgId}/staff/check`, person, adminAccessToken);
+  }
+
+  /**
+   * rc.12: adds one person to one organisation for one of your admins (verified with DigiLocker). Send `person` (they get
+   * an activation code your admin hands over, returned once), `joinCode`, `staffRef` from an earlier call, or `userId`.
+   */
+  addStaff(orgId: string, adminAccessToken: string, addition: SangamStaffAddition) {
+    return this.send<SangamStaffResult>("POST", `orgs/${orgId}/staff`, addition, adminAccessToken);
   }
 
   /**
@@ -107,4 +128,45 @@ export class ManagementClient {
   setAttributes(userId: string, values: Record<string, string | null>) {
     return this.send("PUT", `users/${userId}/attributes`, values);
   }
+}
+
+/** rc.12: a person's details as your admin entered them. `dateOfBirth` is `yyyy-mm-dd`; `mobile` is E.164. */
+export interface SangamStaffPerson {
+  firstName: string;
+  lastName: string;
+  email: string;
+  mobile?: string | null;
+  dateOfBirth: string;
+}
+
+/** rc.12: one person to one organisation; set exactly one of `person`, `joinCode`, `staffRef` and `userId`. */
+export interface SangamStaffAddition {
+  person?: SangamStaffPerson;
+  joinCode?: string;
+  staffRef?: string;
+  userId?: string;
+  roles?: string[];
+  startsOn?: string;
+  expiresAt?: string;
+  confirmed?: boolean;
+}
+
+/** rc.12: the check's answer. */
+export interface SangamStaffCheck {
+  outcome: "none" | "match" | "differs" | "similar";
+  matching: string[];
+  differing: string[];
+  message: string;
+  checksLeftToday: number;
+}
+
+/** rc.12: what adding did. */
+export interface SangamStaffResult {
+  status: "added" | "waiting" | "needs_confirmation" | "refused" | "not_found" | "too_many";
+  message: string;
+  staffRef: string | null;
+  userId: string | null;
+  activationCode: string | null;
+  check: SangamStaffCheck | null;
+  addedBeforeDigiLocker: boolean;
 }

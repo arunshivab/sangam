@@ -42,6 +42,7 @@ else
               @if (!row.IsPlatform && Context?.CanManageApps == true)
               {
                 <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => StartAssign(row)" disabled="@_busy">@L["Assign owner"]</button>
+                <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => StartException(row)" disabled="@_busy" title="@L["Let admins not yet verified with DigiLocker add people, until a day"]">@L["DigiLocker exception"]@(ExceptionOn(row) ? " ✓" : "")</button>
                 @if (row.Status == AppStatus.Active)
                 {
                   <button type="button" class="sg-btn sg-btn--warn" @onclick="() => _confirming = row" disabled="@_busy">@L["Disable"]</button>
@@ -90,6 +91,30 @@ else
   </div>
 }
 
+@if (_exception is not null)
+{
+  @* rc.12 (decision 2 of 14 Oct 2026): until DigiLocker is live, a temporary exception per application. *@
+  <div class="sg-confirm" data-panel="digilocker-exception">
+    <p><strong>@L["Adding people before DigiLocker, for {0}", _exception.DisplayName]</strong> @L["Normally only admins verified with DigiLocker may add people or link accounts. Until the day you choose, admins of this application who are not yet verified may add people too; each addition is marked “added before DigiLocker”. When DigiLocker goes live, set the day 30 days ahead, then let it end."]</p>
+    @if (ExceptionOn(_exception))
+    {
+      <p class="sg-muted">@L["On until {0}.", IndiaTime.Date(_exception.AddWithoutDigiLockerUntil!.Value)]</p>
+    }
+    <div class="sg-form-row">
+      <label class="sg-label" for="dl-until">@L["Last day (at most 120 days ahead)"]</label>
+      <input id="dl-until" class="sg-input" type="date" @bind="_exceptionUntil" min="@IndiaTime.ToIndia(DateTimeOffset.UtcNow).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)" />
+    </div>
+    <div class="sg-actions">
+      <button type="button" class="sg-btn sg-btn--ghost" @onclick="() => _exception = null">@L["Cancel"]</button>
+      @if (ExceptionOn(_exception))
+      {
+        <button type="button" class="sg-btn sg-btn--warn" @onclick="() => SaveExceptionAsync(null)" disabled="@_busy">@L["Switch it off"]</button>
+      }
+      <button type="button" class="sg-btn sg-btn--primary" @onclick="() => SaveExceptionAsync(_exceptionUntil)" disabled="@(_busy || _exceptionUntil is null)">@L["Save"]</button>
+    </div>
+  </div>
+}
+
 @if (_logout is not null)
 {
   <div class="sg-confirm">
@@ -122,6 +147,8 @@ else
     private AdminAppRow? _confirming;
     private AdminAppRow? _assigning;
     private AdminAppRow? _logout;
+    private AdminAppRow? _exception;
+    private DateOnly? _exceptionUntil;
     private string? _backChannel;
     private string? _frontChannel;
     private string _ownerEmail = string.Empty;
@@ -159,6 +186,33 @@ else
         if (result.Succeeded)
         {
             _logout = null;
+        }
+
+        await LoadAsync();
+    }
+
+    private static bool ExceptionOn(AdminAppRow row) => row.AddWithoutDigiLockerUntil is DateTimeOffset until && until > DateTimeOffset.UtcNow;
+
+    private void StartException(AdminAppRow row)
+    {
+        _logout = null;
+        _confirming = null;
+        _assigning = null;
+        _exception = row;
+        _exceptionUntil = ExceptionOn(row) ? DateOnly.FromDateTime(IndiaTime.ToIndia(row.AddWithoutDigiLockerUntil!.Value).DateTime) : null;
+        _message = null;
+    }
+
+    private async Task SaveExceptionAsync(DateOnly? until)
+    {
+        _busy = true;
+        AdminResult result = await Admin.SetAddWithoutDigiLockerAsync(Context!.UserId, _exception!.Id, until, null);
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = L[result.Message ?? string.Empty];
+        if (result.Succeeded)
+        {
+            _exception = null;
         }
 
         await LoadAsync();

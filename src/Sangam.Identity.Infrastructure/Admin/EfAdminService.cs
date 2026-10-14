@@ -366,13 +366,14 @@ public sealed partial class EfAdminService : IAdminService
                 SecretSetAt = a.IssuedSecretRetiredAt == null
                     ? a.SecretSetAt
                     : _db.ClientSecrets.Where(x => x.AppId == a.Id && x.RevokedAt == null && x.ExpiresAt > DateTimeOffset.UtcNow).Min(x => (DateTimeOffset?)x.CreatedAt),
+                a.AddWithoutDigiLockerUntil,
             })
             .ToListAsync(cancellationToken).ConfigureAwait(false);
         Dictionary<string, bool> confidential = await ConfidentialByClientIdAsync(cancellationToken).ConfigureAwait(false);
 
         return [.. rows.Select(r => new AdminAppRow(
             r.Id, r.ClientId, r.DisplayName, r.OwnerCompanyName, r.Status, r.SignInPolicy, r.Users, r.Organisations, r.PartnerOwners, r.IsPlatform, r.BackChannelLogoutUri, r.FrontChannelLogoutUri,
-            r.SecretSetAt, confidential.TryGetValue(r.ClientId, out bool hasSecret) ? hasSecret : null))];
+            r.SecretSetAt, confidential.TryGetValue(r.ClientId, out bool hasSecret) ? hasSecret : null, r.AddWithoutDigiLockerUntil))];
     }
 
     /// <inheritdoc />
@@ -453,6 +454,39 @@ public sealed partial class EfAdminService : IAdminService
         return AdminResult.Ok(back is null && front is null
             ? $"{app.DisplayName} will no longer be told when a session ends."
             : $"{app.DisplayName} will be told when a session ends.");
+    }
+
+    /// <inheritdoc />
+    public async Task<AdminResult> SetAddWithoutDigiLockerAsync(Guid operatorUserId, Guid appId, DateOnly? until, string? ipAddress, CancellationToken cancellationToken = default)
+    {
+        AdminResult? refusal = await RequireAsync(operatorUserId, PlatformRole.AppManager, cancellationToken).ConfigureAwait(false);
+        if (refusal is not null)
+        {
+            return refusal;
+        }
+
+        App? app = await _db.Apps.FirstOrDefaultAsync(a => a.Id == appId && !a.IsPlatform, cancellationToken).ConfigureAwait(false);
+        if (app is null)
+        {
+            return AdminResult.Refused("That application does not exist.");
+        }
+
+        DateOnly today = DateOnly.FromDateTime(_clock.UtcNow.ToOffset(Sangam.Shared.IndiaTime.Offset).DateTime);
+        if (until is DateOnly day && (day < today || day > today.AddDays(120)))
+        {
+            return AdminResult.Refused("Choose a day from today to 120 days ahead. Set it again later if DigiLocker is still not live.");
+        }
+
+        app.AddWithoutDigiLockerUntil = until is DateOnly last ? new DateTimeOffset(last.ToDateTime(new TimeOnly(23, 59, 59)), Sangam.Shared.IndiaTime.Offset).ToUniversalTime() : null;
+        app.UpdatedAt = _clock.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await _audit.WriteAsync(
+            new AuditEntry(AuditActions.AdminAppUpdate, AuditActorType.Admin, operatorUserId, appId, "app", appId,
+                Metadata: System.Text.Json.JsonSerializer.Serialize(new { add_without_digilocker_until = app.AddWithoutDigiLockerUntil }), IpAddress: ipAddress),
+            cancellationToken).ConfigureAwait(false);
+        return AdminResult.Ok(until is null
+            ? $"Only admins verified with DigiLocker can add people to {app.DisplayName} now."
+            : $"Until the end of {until:d MMM yyyy}, admins of {app.DisplayName} not yet verified with DigiLocker may add people; each addition is marked.");
     }
 
     /// <summary>

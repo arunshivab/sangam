@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using OpenIddict.Abstractions;
@@ -11,6 +12,7 @@ using Sangam.Identity.Application.Abstractions;
 using Sangam.Identity.Application.Accounts;
 using Sangam.Identity.Application.Apps;
 using Sangam.Identity.Application.Consents;
+using Sangam.Identity.Application.Devices;
 using Sangam.Identity.Application.Portal;
 using Sangam.Identity.Application.Security;
 using Sangam.Identity.Application.Tenancy;
@@ -57,6 +59,11 @@ public static class ConnectEndpoints
         IOpenIddictScopeManager scopes,
         ISecurityPolicyService policies,
         ISessionService sessions,
+        IDataProtectionProvider protection,
+        IOrgChoiceStore orgChoices,
+        ISharedDeviceService devices,
+        IEmergencyAccessService emergencies,
+        Sangam.Identity.Application.Passkeys.IPasskeyService passkeys,
         CancellationToken cancellationToken)
     {
         OpenIddictRequest request = httpContext.GetOpenIddictServerRequest()
@@ -96,6 +103,37 @@ public static class ConnectEndpoints
 
             await httpContext.SignOutAsync(IdentityConstants.ApplicationScheme).ConfigureAwait(false);
             return Results.Redirect("/login?returnUrl=" + Uri.EscapeDataString(StripPrompt(returnUrl)));
+        }
+
+        // 1b. rc.12 (T1): a session an application locked waits for the person's PIN (on the shared ward device it was locked
+        //     on, within the customer's limits) or a full sign-in; on an enrolled device, a person without a PIN is offered
+        //     one once per sign-in.
+        Guid? sessionRow = SangamAuthentication.SessionId(session.Principal!);
+        if (sessionRow is not null)
+        {
+            SharedDeviceInfo? device = await SharedDeviceCookie.CurrentAsync(httpContext, cancellationToken).ConfigureAwait(false);
+            DeviceGate gate = await devices.GateAsync(sessionRow.Value, device?.Id, cancellationToken).ConfigureAwait(false);
+            if (gate is DeviceGate.Unlock or DeviceGate.SignInAgain && request.HasPromptValue(PromptValues.None))
+            {
+                return Forbid(Errors.LoginRequired, "The session is locked.");
+            }
+
+            if (gate == DeviceGate.Unlock)
+            {
+                return Results.Redirect("/unlock?returnUrl=" + Uri.EscapeDataString(StripPrompt(returnUrl)));
+            }
+
+            if (gate == DeviceGate.SignInAgain)
+            {
+                await sessions.EndAsync(sessionRow.Value, "locked", cancellationToken).ConfigureAwait(false);
+                await httpContext.SignOutAsync(IdentityConstants.ApplicationScheme).ConfigureAwait(false);
+                return Results.Redirect("/login?returnUrl=" + Uri.EscapeDataString(StripPrompt(returnUrl)));
+            }
+
+            if (gate == DeviceGate.OfferPin && !request.HasPromptValue(PromptValues.None))
+            {
+                return Results.Redirect("/shared-device/pin?returnUrl=" + Uri.EscapeDataString(returnUrl));
+            }
         }
 
         // 2. Does the session satisfy the sign-in policy — the application's, tightened by the person's organisations (PR-16)?
@@ -179,6 +217,68 @@ public static class ConnectEndpoints
             return Results.Redirect("/identity/required?returnUrl=" + Uri.EscapeDataString(returnUrl));
         }
 
+        // 2e. rc.12 (A6): "Working at which branch?" — asked of a person with two or more organisations in the application,
+        //     unless the application named one they work at, or they chose on this device. The token carries the one chosen.
+        System.Collections.Immutable.ImmutableArray<string> asked = request.GetScopes();
+        OrgClaim? current = null;
+        IReadOnlyList<OrgClaim> orgs = await tenancy.GetOrgClaimsAsync(user.Id, app.Id, cancellationToken).ConfigureAwait(false);
+        if (asked.Contains(SangamScopes.OrgsRead) || asked.Contains(SangamScopes.OrgCurrent))
+        {
+            Guid? hint = Guid.TryParse(request.GetParameter(PartnerContext.OrganisationParameter)?.ToString(), out Guid named) ? named : null;
+            current = OrgChoice.Resolve(orgs, hint, OrgChoice.Read(httpContext, protection, user.Id, app.Id), request.HasPromptValue(OrgChoice.SelectOrgPrompt));
+            if (current is null && orgs.Count > 1)
+            {
+                if (request.HasPromptValue(PromptValues.None))
+                {
+                    return Forbid(Errors.InteractionRequired, "The person must choose which organisation they are working at.");
+                }
+
+                return Results.Redirect("/select-org?returnUrl=" + Uri.EscapeDataString(returnUrl));
+            }
+
+            if (current is not null && orgs.Count > 1)
+            {
+                await orgChoices.RememberAsync(user.Id, app.Id, current.Id, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        // 2f. rc.12 (M12): emergency access ("break-glass"), when the application asks for it with its own case reference. The
+        //     person proves it is them again (a passkey or an authenticator app, within five minutes), gives a reason on
+        //     Sangam's screen, and the token carries the emergency marker until it ends.
+        EmergencyGrant? emergency = null;
+        string? caseRef = request.GetParameter(SangamClaims.Emergency)?.ToString();
+        if (!string.IsNullOrEmpty(caseRef))
+        {
+            if (request.HasPromptValue(PromptValues.None))
+            {
+                return Forbid(Errors.InteractionRequired, "Emergency access needs the person on Sangam's screen.");
+            }
+
+            emergency = await emergencies.ActiveAsync(user.Id, app.Id, sessionRow, caseRef, cancellationToken).ConfigureAwait(false);
+            if (emergency is null)
+            {
+                OrgClaim? workingAt = current
+                    ?? OrgChoice.Resolve(orgs, Guid.TryParse(request.GetParameter(PartnerContext.OrganisationParameter)?.ToString(), out Guid hinted) ? hinted : null, OrgChoice.Read(httpContext, protection, user.Id, app.Id), false)
+                    ?? (orgs.Count == 1 ? orgs[0] : null);
+                if (workingAt is null && orgs.Count > 1)
+                {
+                    return Results.Redirect("/select-org?returnUrl=" + Uri.EscapeDataString(returnUrl));
+                }
+
+                bool fresh = SangamAuthentication.HasSecondFactor(session.Principal!)
+                    && SangamAuthentication.AuthenticatedAt(session.Principal!) is DateTimeOffset signedIn
+                    && DateTimeOffset.UtcNow - signedIn <= EmergencyFreshness;
+                bool canProve = user.MfaEnrolled || (passkeys.Enabled && (await passkeys.ListAsync(user.Id, cancellationToken).ConfigureAwait(false)).Count > 0);
+                if (!fresh && canProve)
+                {
+                    await httpContext.SignOutAsync(IdentityConstants.ApplicationScheme).ConfigureAwait(false);
+                    return Results.Redirect("/login?returnUrl=" + Uri.EscapeDataString(WithTwoFactors(StripPrompt(returnUrl))));
+                }
+
+                return Results.Redirect("/emergency?returnUrl=" + Uri.EscapeDataString(returnUrl) + (workingAt is null ? string.Empty : "&org=" + workingAt.Id.ToString("D")));
+            }
+        }
+
         // 3. Consent — partner applications ask; Sangam's own (portal, consoles) are first-party and
         //    consent is implicit, but still recorded (V-06). A denial parked in the pending cookie ends the request.
         System.Collections.Immutable.ImmutableArray<string> requested = request.GetScopes();
@@ -213,10 +313,9 @@ public static class ConnectEndpoints
             ?? throw new InvalidOperationException("The OpenIddict client is missing.");
         string applicationId = (await applications.GetIdAsync(application, cancellationToken).ConfigureAwait(false))!;
 
-        IReadOnlyList<OrgClaim> orgs = await tenancy.GetOrgClaimsAsync(user.Id, app.Id, cancellationToken).ConfigureAwait(false);
         // Standard OIDC `sid`: lets a client (the portal, for one) tell which session is its own.
         string? browserSession = SangamAuthentication.SessionId(session.Principal!)?.ToString("D");
-        ClaimsIdentity identity = SangamClaimsBuilder.Build(user, requested, orgs, TokenValidationParameters.DefaultAuthenticationType, browserSession, proof, await CustomClaimsAsync(httpContext, requested, user.Id, app.Id, cancellationToken).ConfigureAwait(false));
+        ClaimsIdentity identity = SangamClaimsBuilder.Build(user, requested, orgs, TokenValidationParameters.DefaultAuthenticationType, browserSession, proof, await CustomClaimsAsync(httpContext, requested, user.Id, app.Id, cancellationToken).ConfigureAwait(false), current, emergency);
         if (SangamAuthentication.SessionId(session.Principal!) is Guid sid)
         {
             // PR-20: this application now takes part in the session and is told when it ends.
@@ -266,6 +365,7 @@ public static class ConnectEndpoints
         IOpenIddictAuthorizationManager authorizations,
         IOpenIddictScopeManager scopes,
         ISessionService sessions,
+        IEmergencyAccessService emergencies,
         CancellationToken cancellationToken)
     {
         OpenIddictRequest request = httpContext.GetOpenIddictServerRequest()
@@ -335,7 +435,16 @@ public static class ConnectEndpoints
             // Re-read the user so profile and membership changes reach the new tokens.
             IReadOnlyList<OrgClaim> orgs = await tenancy.GetOrgClaimsAsync(user.Id, app.Id, cancellationToken).ConfigureAwait(false);
             ClaimsPrincipal principal = stored!;
-            ClaimsIdentity identity = SangamClaimsBuilder.Build(user, [.. principal.GetScopes()], orgs, TokenValidationParameters.DefaultAuthenticationType, principal.GetClaim(SangamClaims.SessionId), AuthenticationProof.FromToken(principal), await CustomClaimsAsync(httpContext, principal.GetScopes(), user.Id, app.Id, cancellationToken).ConfigureAwait(false));
+
+            // rc.12 (A6): the organisation chosen at sign-in carries over to every token from it, while the person still works there.
+            Guid? chosenOrg = OrgIdOf(principal.GetClaim(SangamClaims.Org));
+            OrgClaim? current = orgs.FirstOrDefault(o => o.Id == chosenOrg) ?? (orgs.Count == 1 ? orgs[0] : null);
+
+            // rc.12 (M12): emergency access carries over only while it lasts; once ended (early or at 60 minutes) it is gone.
+            EmergencyGrant? emergency = SangamClaimsBuilder.EmergencyIdOf(principal.GetClaim(SangamClaims.Emergency)) is Guid useId
+                ? await emergencies.ActiveByIdAsync(useId, user.Id, cancellationToken).ConfigureAwait(false)
+                : null;
+            ClaimsIdentity identity = SangamClaimsBuilder.Build(user, [.. principal.GetScopes()], orgs, TokenValidationParameters.DefaultAuthenticationType, principal.GetClaim(SangamClaims.SessionId), AuthenticationProof.FromToken(principal), await CustomClaimsAsync(httpContext, principal.GetScopes(), user.Id, app.Id, cancellationToken).ConfigureAwait(false), current, emergency);
             identity.SetAuthorizationId(authorizationId);
 
             List<string> resources = [];
@@ -356,6 +465,34 @@ public static class ConnectEndpoints
         }
 
         return Forbid(Errors.UnsupportedGrantType, "The specified grant type is not supported.");
+    }
+
+    /// <summary>rc.12 (M12): how recently the person must have proved it is them (passkey or authenticator) for emergency access.</summary>
+    private static readonly TimeSpan EmergencyFreshness = TimeSpan.FromMinutes(5);
+
+    /// <summary>rc.12 (M12): the return address asking for two factors, so the sign-in page asks for the authenticator or a passkey.</summary>
+    private static string WithTwoFactors(string returnUrl)
+        => returnUrl.Contains("acr_values=", StringComparison.Ordinal) ? returnUrl : returnUrl + (returnUrl.Contains('?', StringComparison.Ordinal) ? "&" : "?") + "acr_values=" + Uri.EscapeDataString(AuthenticationAssurance.Acr2);
+
+    /// <summary>The organisation id inside a <c>sangam_org</c> claim, if it is one.</summary>
+    private static Guid? OrgIdOf(string? json)
+    {
+        if (string.IsNullOrEmpty(json))
+        {
+            return null;
+        }
+
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(json);
+            return document.RootElement.ValueKind == JsonValueKind.Object
+                && document.RootElement.TryGetProperty(SangamOrgClaim.Id, out JsonElement id)
+                && Guid.TryParse(id.GetString(), out Guid org) ? org : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     /// <summary>How long an exchanged token lives: long enough for one call chain, never refreshable.</summary>
@@ -521,16 +658,7 @@ public static class ConnectEndpoints
             string? clientId = principal.GetClaim(Claims.Audience) ?? principal.GetClaim(Claims.ClientId);
             AppSummary? app = clientId is null ? null : await apps.FindByClientIdAsync(clientId, cancellationToken).ConfigureAwait(false);
             IReadOnlyList<OrgClaim> orgs = app is null ? [] : await tenancy.GetOrgClaimsAsync(user.Id, app.Id, cancellationToken).ConfigureAwait(false);
-            claims[SangamClaims.Orgs] = orgs.Select(o => new Dictionary<string, object>
-            {
-                [SangamOrgClaim.Id] = o.Id.ToString("D"),
-                [SangamOrgClaim.Name] = o.Name,
-                [SangamOrgClaim.Type] = o.Type,
-                [SangamOrgClaim.Path] = o.Path,
-                [SangamOrgClaim.Role] = o.Role,
-                [SangamOrgClaim.Permissions] = o.Permissions,
-                [SangamOrgClaim.Inherits] = o.Inherits,
-            }).ToArray();
+            claims[SangamClaims.Orgs] = orgs.Select(SangamClaimsBuilder.ToJson).ToArray();
         }
 
         if (granted.Contains(SangamScopes.Attributes))

@@ -29,6 +29,7 @@ class SangamFlask:
         bp.add_url_rule("/login", "login", self._login)
         bp.add_url_rule("/callback", "callback", self._callback)
         bp.add_url_rule("/logout", "logout", self._logout)
+        bp.add_url_rule("/lock", "lock", self._lock)
         bp.add_url_rule("/me", "me", self._me)
         self.blueprint = bp
         if app is not None:
@@ -39,7 +40,7 @@ class SangamFlask:
         return response
 
     def _login(self) -> Response:
-        url, cookie = self.core.begin(request.cookies.get(self.core.cookie), request.args.get("returnTo"), request.args.get("acr"), request.args.get("max_age"))
+        url, cookie = self.core.begin(request.cookies.get(self.core.cookie), request.args.get("returnTo"), request.args.get("acr"), request.args.get("max_age"), request.args.get("switch"), request.args.get("emergency"))
         return self._cookie(redirect(url, 302), cookie)
 
     def _callback(self) -> Response:
@@ -49,11 +50,14 @@ class SangamFlask:
     def _logout(self) -> Response:
         return self._cookie(redirect(self.core.end(request.cookies.get(self.core.cookie)), 302), "", 0)
 
+    def _lock(self) -> Response:
+        return self._cookie(redirect(self.core.lock(request.cookies.get(self.core.cookie), request.args.get("returnTo")), 302), "", 0)
+
     def _me(self) -> Any:
         user = self.current_user()
         if user is None:
             return jsonify({"user": None, "loginUrl": self.core.login_url("/")}), 401
-        return jsonify({"user": user_to_dict(user), "loginUrl": self.core.login_url("/"), "logoutUrl": f"{self.core.base_path}/logout"})
+        return jsonify({"user": user_to_dict(user), "loginUrl": self.core.login_url("/"), "logoutUrl": f"{self.core.base_path}/logout", "lockUrl": f"{self.core.base_path}/lock"})
 
     def current_user(self) -> SangamUser | None:
         if "sangam_user" not in g:

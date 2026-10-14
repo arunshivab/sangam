@@ -1,0 +1,32 @@
+@page "/shared-device/enrol"
+@model SharedDeviceEnrolModel
+@{
+    ViewData["Title"] = L["Enrol this device"].Value;
+}
+
+@* rc.12 (T1): opened on the shared device itself, from the organisation console. *@
+<section class="sg-card">
+  @if (Model.Enrolled is not null)
+  {
+    <div class="sg-circle sg-circle--done" aria-hidden="true"><span class="sg-cord-dot sg-cord-dot--solo"></span></div>
+    <h1 class="sg-card-title sg-card-title--centre">@L["This device is enrolled"]</h1>
+    <p class="sg-card-body sg-card-body--centre" data-panel="enrolled">@L["It is now “{0}”. People who sign in here see their colleagues as tiles, and can come back with a PIN after an application locks the screen.", Model.Enrolled]</p>
+    <p class="sg-note">@L["Sign out now, so the next person starts from “Who’s using this device?”."]</p>
+    <a class="sg-btn sg-btn--primary sg-btn--block" href="/logout">@L["Sign out"]</a>
+  }
+  else if (Model.Failed)
+  {
+    <div class="sg-circle sg-circle--pending" aria-hidden="true"><span class="sg-cord-dot sg-cord-dot--solo"></span></div>
+    <h1 class="sg-card-title sg-card-title--centre">@L["That link does not work"]</h1>
+    <p class="sg-card-body sg-card-body--centre">@L["It works once, for 15 minutes, and only for the admin who made it. Make a new one in the organisation console on this device."]</p>
+  }
+  else
+  {
+    <h1 class="sg-card-title">@L["Enrol this device"]</h1>
+    <p class="sg-card-body">@L["This makes the browser you are using now a shared device of your hospital, for a nursing station or a ward. Only do this on the device itself."]</p>
+    <form method="post">
+      <input type="hidden" asp-for="Token" />
+      <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Enrol this device"]</button>
+    </form>
+  }
+</section>

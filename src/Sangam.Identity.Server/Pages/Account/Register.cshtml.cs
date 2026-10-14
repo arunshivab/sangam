@@ -1,14 +1,17 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Sangam.Identity.Application.Accounts;
 using Sangam.Identity.Application.Apps;
 using Sangam.Identity.Application.Partners;
 using Sangam.Identity.Application.Security;
+using Sangam.Identity.Application.Tenancy;
 using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Enums;
 using Sangam.Identity.Server.Authentication;
+using Sangam.Identity.Server.Staff;
 using Sangam.Shared.Constants;
 
 namespace Sangam.Identity.Server.Pages.Account;
@@ -22,6 +25,8 @@ public sealed class RegisterModel : AuthPageModel
     private readonly IConfiguration _configuration;
     private readonly RegistrationOptions _registration;
     private readonly IInvitationService _invitations;
+    private readonly IStaffService _staff;
+    private readonly IDataProtectionProvider _protection;
 
     /// <summary>Initialises the page.</summary>
     /// <param name="accounts">Account service.</param>
@@ -29,8 +34,12 @@ public sealed class RegisterModel : AuthPageModel
     /// <param name="configuration">Configuration (<c>Sangam:TermsVersion</c>).</param>
     /// <param name="registration">Registration settings (D-I: invitation-only).</param>
     /// <param name="invitations">Invitations, to let an invited person register (D-I).</param>
-    public RegisterModel(IAccountService accounts, IAppDirectory apps, IConfiguration configuration, RegistrationOptions registration, IInvitationService invitations)
+    /// <param name="staff">rc.12: an admin's addition, whose person registers after entering the admin's code.</param>
+    /// <param name="protection">Data protection, to read the activation ticket.</param>
+    public RegisterModel(IAccountService accounts, IAppDirectory apps, IConfiguration configuration, RegistrationOptions registration, IInvitationService invitations, IStaffService staff, IDataProtectionProvider protection)
     {
+        _staff = staff ?? throw new ArgumentNullException(nameof(staff));
+        _protection = protection ?? throw new ArgumentNullException(nameof(protection));
         _registration = registration ?? throw new ArgumentNullException(nameof(registration));
         _invitations = invitations ?? throw new ArgumentNullException(nameof(invitations));
         _accounts = accounts ?? throw new ArgumentNullException(nameof(accounts));
@@ -142,6 +151,14 @@ public sealed class RegisterModel : AuthPageModel
             Email = InvitedEmail;
         }
 
+        // rc.12: someone an admin added, after the right code: the details the admin entered, which the person may correct.
+        if (await StaffDetailsAsync(cancellationToken) is StaffDetails staff)
+        {
+            Email = string.IsNullOrEmpty(Email) ? staff.Email : Email;
+            FirstName = string.IsNullOrEmpty(FirstName) ? staff.FirstName : FirstName;
+            LastName = string.IsNullOrEmpty(LastName) ? staff.LastName : LastName;
+        }
+
         return Page();
     }
 
@@ -238,9 +255,19 @@ public sealed class RegisterModel : AuthPageModel
         {
             InvitedEmail = invitation.Email;
         }
+        else if (await StaffDetailsAsync(cancellationToken) is StaffDetails staff)
+        {
+            InvitedEmail = staff.Email;
+        }
 
         Closed = InvitedEmail is null && string.IsNullOrWhiteSpace(_registration.AllowedEmails);
     }
+
+    /// <summary>rc.12: the details an admin entered, when this visit carries a right activation code's ticket.</summary>
+    private async Task<StaffDetails?> StaffDetailsAsync(CancellationToken cancellationToken)
+        => StaffTicket.FromReturnUrl(ReturnUrl) is { } staff && StaffTicket.Read(_protection, staff.Ticket) is Guid inviteId
+            ? await _staff.InvitedDetailsAsync(inviteId, cancellationToken)
+            : null;
 
     /// <summary>The invitation token in a return address such as <c>/invite/abc</c>, if any.</summary>
     /// <param name="returnUrl">The return address.</param>

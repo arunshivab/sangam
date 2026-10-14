@@ -22,12 +22,17 @@ async function provider() {
   const { publicKey, privateKey } = await generateKeyPair("RS256");
   const jwk = { ...(await exportJWK(publicKey)), kid: "k1", alg: "RS256", use: "sig" };
   const codes = new Map<string, { challenge: string; nonce: string; acr: string; redirect: string }>();
+  const locks: string[] = [];
   let base = "";
   const server = createServer(async (req, res) => {
     const url = new URL(req.url!, base);
     res.setHeader("content-type", "application/json");
     if (url.pathname === "/.well-known/openid-configuration") {
       res.end(JSON.stringify({ issuer: base + "/", authorization_endpoint: base + "/connect/authorize", token_endpoint: base + "/connect/token", jwks_uri: base + "/jwks", end_session_endpoint: base + "/connect/endsession", response_types_supported: ["code"], subject_types_supported: ["public"], id_token_signing_alg_values_supported: ["RS256"], code_challenge_methods_supported: ["S256"] }));
+    } else if (url.pathname === "/api/v1/sessions/lock" && req.method === "POST") {
+      locks.push(req.headers.authorization ?? "");
+      res.statusCode = 204;
+      res.end();
     } else if (url.pathname === "/jwks") {
       res.end(JSON.stringify({ keys: [jwk] }));
     } else if (url.pathname === "/connect/token") {
@@ -54,6 +59,7 @@ async function provider() {
   return {
     base,
     server,
+    locks,
     /** What Sangam does after the person signs in: a code for this authorisation request. */
     approve(authorizeUrl: string, acr = "urn:sangam:acr:1"): { code: string; state: string } {
       const q = new URL(authorizeUrl).searchParams;
@@ -142,11 +148,24 @@ test("sign-in with PKCE, step-up, permission and audit, all server-side", async 
     assert.equal(lines.length, 1);
 
     // A wrong state, a replayed code, and a returnTo that leaves the site are all refused.
+    // rc.12 (M12): emergency access asks Sangam with the application's own case reference; a name is not a reference.
+    const emergency = new URL((await get(sangam.emergencyUrl("LIPI-48213", "/cases/48213"))).headers.get("location")!);
+    assert.equal(emergency.searchParams.get("sangam_emergency"), "LIPI-48213");
+    const named = new URL((await get(sangam.emergencyUrl("Ramesh Kumar", "/"))).headers.get("location")!);
+    assert.equal(named.searchParams.get("sangam_emergency"), null);
+
     const third = op.approve((await get("/auth/login?returnTo=https://evil.example/")).headers.get("location")!);
     assert.equal((await get(`/auth/callback?code=${third.code}&state=${third.state}`)).headers.get("location"), "/");
     assert.equal((await get(`/auth/callback?code=${third.code}&state=${third.state}`)).headers.get("location"), "/", "no pending sign-in: nothing happens");
     const fourth = op.approve((await get("/auth/login?returnTo=/secure")).headers.get("location")!);
     assert.equal((await get(`/auth/callback?code=${fourth.code}&state=wrong`)).status, 500);
+
+    // rc.12 (T1): the idle timer ran out. Sangam's session is locked with the person's own token; this session ends; the
+    // person goes back through Sangam (their PIN on a shared ward device) to the same page.
+    const locked = await get("/auth/lock?returnTo=/secure");
+    assert.equal(locked.headers.get("location"), "/auth/login?returnTo=%2Fsecure");
+    assert.deepEqual(op.locks, ["Bearer at"]);
+    assert.equal((await get("/auth/me")).status, 401);
 
     // Sign out: the session is gone and the browser goes to Sangam's end-session endpoint.
     const out = await get("/auth/logout");

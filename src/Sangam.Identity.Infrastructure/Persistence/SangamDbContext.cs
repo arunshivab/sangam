@@ -170,6 +170,33 @@ public sealed class SangamDbContext : IdentityUserContext<SangamUser, Guid>, IDa
     /// <summary>rc.11 (R6): decisions taken in applications' access reviews.</summary>
     public DbSet<AccessReviewDecision> AccessReviewDecisions => Set<AccessReviewDecision>();
 
+    /// <summary>rc.12: customer and branch admin rights, and emergency-review rights.</summary>
+    public DbSet<OrgAdmin> OrgAdmins => Set<OrgAdmin>();
+
+    /// <summary>rc.12: people being added as staff, with what the admin entered and an activation code.</summary>
+    public DbSet<StaffInvite> StaffInvites => Set<StaffInvite>();
+
+    /// <summary>rc.12: organisations a person is being added to, waiting for them to join or for the start date.</summary>
+    public DbSet<PendingMembership> PendingMemberships => Set<PendingMembership>();
+
+    /// <summary>rc.12: one-time codes people make to be added to an organisation.</summary>
+    public DbSet<JoinCode> JoinCodes => Set<JoinCode>();
+
+    /// <summary>rc.12: checks admins ran before adding someone.</summary>
+    public DbSet<StaffCheck> StaffChecks => Set<StaffCheck>();
+
+    /// <summary>rc.12 (T1): shared ward devices enrolled by customer and branch admins.</summary>
+    public DbSet<SharedDevice> SharedDevices => Set<SharedDevice>();
+
+    /// <summary>rc.12 (T1): the people who use each shared device, and their locks.</summary>
+    public DbSet<SharedDevicePerson> SharedDevicePeople => Set<SharedDevicePerson>();
+
+    /// <summary>rc.12 (T1): people's PINs for unlocking shared devices.</summary>
+    public DbSet<UserPin> UserPins => Set<UserPin>();
+
+    /// <summary>rc.12 (M12): uses of emergency access, and their reviews.</summary>
+    public DbSet<EmergencyAccess> EmergencyAccesses => Set<EmergencyAccess>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder builder)
     {

@@ -1,6 +1,7 @@
 """The framework-neutral part of signing in with Sangam: authorization code with PKCE, on the server."""
 from __future__ import annotations
 
+import re
 import secrets
 import time
 from dataclasses import asdict, dataclass, field
@@ -16,10 +17,12 @@ from authlib.oauth2.rfc7636 import create_s256_code_challenge
 
 from .audit import AuditBuffer, AuditConfig, AuditEntry, build_audit_event
 from .management import ManagementClient
-from .memberships import SangamMembership, SangamUser, user_from_claims
+from .memberships import SangamCurrentOrganisation, SangamEmergency, SangamMembership, SangamUser, user_from_claims
 from .session import MemorySessionStore, SessionStore, cookie_name, new_id, sign_id, unsign_id
 from .stepup import satisfies
 from .tokens import ALGORITHMS, TokenVerifier
+
+_CASE = re.compile(r"^[A-Za-z0-9._:/#-]{1,64}$")
 
 
 def safe_return(value: str | None) -> str:
@@ -56,6 +59,10 @@ def user_from_dict(d: dict[str, Any]) -> SangamUser:
     d = dict(d)
     d["memberships"] = tuple(SangamMembership(**{**m, "permissions": tuple(m["permissions"])}) for m in d.get("memberships", ()))
     d["amr"] = tuple(d.get("amr") or ())
+    current = d.get("current_organisation")
+    d["current_organisation"] = SangamCurrentOrganisation(**{**current, "roles": tuple(current["roles"]), "permissions": tuple(current["permissions"])}) if current else None
+    emergency = d.get("emergency")
+    d["emergency"] = SangamEmergency(**emergency) if emergency else None
     return SangamUser(**d)
 
 
@@ -109,6 +116,10 @@ class SangamCore:
         _, session = self.load(cookie)
         return user_from_dict(session["user"]) if session.get("user") else None
 
+    def switch_organisation_url(self, return_to: str = "/") -> str:
+        """rc.12 (A6): sends the person back to Sangam to choose which organisation they are working at."""
+        return f"{self.base_path}/login?{urlencode({'returnTo': return_to, 'switch': 'organisation'})}"
+
     def login_url(self, return_to: str = "/", acr: str | None = None, max_age: int | None = None) -> str:
         q: dict[str, str] = {"returnTo": return_to}
         if acr:
@@ -118,7 +129,15 @@ class SangamCore:
         return f"{self.base_path}/login?{urlencode(q)}"
 
     # ---------------------------------------------------------------- the flow
-    def begin(self, cookie: str | None, return_to: str | None, acr: str | None, max_age: str | None) -> tuple[str, str]:
+    def emergency_url(self, case_reference: str, return_to: str = "/") -> str:
+        """rc.12 (M12): asks Sangam for emergency access to one of your cases (your own reference, never the patient's name).
+
+        Sangam checks it is the person again (passkey or authenticator), asks for a reason, tells the hospital's reviewers,
+        and returns them with ``user.emergency`` set for up to 60 minutes.
+        """
+        return f"{self.base_path}/login?{urlencode({'returnTo': return_to, 'emergency': case_reference})}"
+
+    def begin(self, cookie: str | None, return_to: str | None, acr: str | None, max_age: str | None, switch: str | None = None, emergency: str | None = None) -> tuple[str, str]:
         """Starts a sign-in; returns (Sangam address to send the browser to, cookie value)."""
         verifier = generate_token(64)
         state, nonce = secrets.token_urlsafe(24), secrets.token_urlsafe(24)
@@ -127,6 +146,10 @@ class SangamCore:
             extra["acr_values"] = acr
         if max_age and max_age.isdigit():
             extra["max_age"] = max_age
+        if switch == "organisation":
+            extra["prompt"] = "select_org"
+        if emergency and _CASE.match(emergency):
+            extra["sangam_emergency"] = emergency
         query = {"response_type": "code", "client_id": self.settings.client_id, "redirect_uri": self.redirect_uri, "scope": " ".join(self.settings.scopes), "state": state, **extra}
         url = self.metadata()["authorization_endpoint"] + "?" + urlencode(query)
         sid, session = self.load(cookie)
@@ -152,7 +175,10 @@ class SangamCore:
         if sid:
             self.settings.store.delete(sid)
         # A new session id after sign-in, so an id planted before it is worth nothing.
-        return pending["return_to"], self.save(None, {"user": user_to_dict(user), "id_token": id_token})
+        kept: dict[str, Any] = {"user": user_to_dict(user), "id_token": id_token}
+        if token.get("access_token"):
+            kept["access_token"] = token["access_token"]
+        return pending["return_to"], self.save(None, kept)
 
     def _verify_id_token(self, id_token: str, nonce: str) -> dict[str, Any]:
         registry = jwt.JWTClaimsRegistry(leeway=30, iss={"essential": True, "value": self.metadata()["issuer"]}, aud={"essential": True, "value": self.settings.client_id},
@@ -173,6 +199,19 @@ class SangamCore:
         if session.get("id_token"):
             q["id_token_hint"] = session["id_token"]
         return self.metadata().get("end_session_endpoint", self.authority + "/connect/endsession") + "?" + urlencode(q)
+
+    def lock(self, cookie: str | None, return_to: str | None) -> str:
+        """rc.12 (T1): your idle timer ran out. Locks the person's Sangam session, ends this one, and returns where to send
+        the browser: back through Sangam (their PIN on an enrolled shared ward device, a full sign-in anywhere else)."""
+        sid, session = self.load(cookie)
+        if session.get("access_token"):
+            try:
+                self.management.lock_session(session["access_token"])
+            except Exception:  # noqa: BLE001 - Sangam unreachable: this session still ends, so the screen is not left open
+                pass
+        if sid:
+            self.settings.store.delete(sid)
+        return self.login_url(safe_return(return_to))
 
     # ---------------------------------------------------------------- guards and audit
     def stepped_up(self, user: SangamUser | None, acr: str, max_age: int | None) -> bool:

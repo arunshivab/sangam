@@ -15,6 +15,7 @@ personal data; the application then reads what it is entitled to through tokens 
 | `membership.granted` | A role given at an organisation (or its descendants) |
 | `membership.revoked` | A role taken away, or a time-limited one expired (PR-25) |
 | `session.revoked` | A session in which the person used the application was ended: end your own session |
+| `session.locked` | rc.12: another application locked the person's session (shared ward devices): lock your screens too until they come back through Sangam. Data: `sid` |
 | `consent.revoked` | The person withdrew their consent to the application |
 | `role.changed` | A role created, changed or retired |
 | `account.merged` | rc.7: the person merged this account into another of theirs; `data.merged_into` is the surviving `sub` |

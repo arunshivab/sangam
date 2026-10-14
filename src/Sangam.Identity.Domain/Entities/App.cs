@@ -110,4 +110,11 @@ public sealed class App
     /// their own was live. A secret Sangam issues later (a different value in the configuration) is live again.
     /// </summary>
     public DateTimeOffset? IssuedSecretRetiredAt { get; set; }
+
+    /// <summary>
+    /// rc.12 (decision of 14 Oct 2026): until DigiLocker is live, a Sangam operator may let this application's admins add
+    /// staff without a DigiLocker-verified account of their own, until this moment. Each such addition is marked. When
+    /// <see langword="null"/> or past, only DigiLocker-verified admins may add or link people.
+    /// </summary>
+    public DateTimeOffset? AddWithoutDigiLockerUntil { get; set; }
 }

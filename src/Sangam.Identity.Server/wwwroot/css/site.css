@@ -224,10 +224,13 @@ select.sg-field { appearance: auto; padding-right: 36px; }
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: var(--sg-control-height);
+  height: auto;
+  min-height: var(--sg-control-height);
   box-sizing: border-box;
   text-align: center;
   text-decoration: none;
+  white-space: normal;
+  line-height: 1.3;
 }
 .sg-btn-row { display: flex; gap: var(--sg-space-3); }
 .sg-btn-row > * { flex: 1; }
@@ -507,3 +510,47 @@ html[lang="hi-IN"] .sg-label-mono, html[lang="ml-IN"] .sg-label-mono { font: 500
   .sg-btn--primary { min-height: 52px; }
   .sg-check input[type="checkbox"] { width: 20px; height: 20px; }
 }
+
+/* rc.12 (A6): "Working at which branch?" — the whole card is the button; last used first. */
+.sg-org-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.sg-org-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: 100%; min-height: 64px;
+  padding: 14px 16px; text-align: left; cursor: pointer;
+  background: var(--sg-surface); color: var(--sg-ink); border: 1px solid var(--sg-border); border-radius: var(--sg-radius-card);
+  font: 600 16px/1.3 var(--sg-font-body);
+}
+.sg-org-card:hover { border-color: var(--sg-teal); }
+.sg-org-card:focus-visible { outline: none; box-shadow: var(--sg-focus-ring, 0 0 0 3px rgba(15, 59, 56, 0.35)); }
+.sg-org-card-sub { font: 400 14px/1.4 var(--sg-font-body); color: var(--sg-slate); }
+.sg-org-card-last { color: var(--sg-teal); }
+.sg-org-search-row { display: flex; gap: 8px; }
+.sg-org-search-row .sg-field { flex: 1 1 auto; }
+.sg-check--remember { margin-top: var(--sg-space-4); font: 400 14px/1.5 var(--sg-font-body); }
+
+/* rc.12 (T1): "Who's using this device?" on an enrolled shared ward device — large tiles, two across where there is room. */
+.sg-section-title { margin: 0 0 var(--sg-space-3); font: 600 18px/1.3 var(--sg-font-body); color: var(--sg-ink); }
+.sg-who-list { list-style: none; margin: 0 0 var(--sg-space-3); padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 10px; }
+.sg-who-list > li { min-width: 0; }
+.sg-who {
+  display: flex; align-items: center; gap: 12px; min-height: 72px; padding: 12px 14px;
+  background: var(--sg-cream); color: var(--sg-ink); border: 1px solid var(--sg-border); border-radius: var(--sg-radius-card);
+  text-decoration: none;
+}
+.sg-card .sg-who, .sg-card .sg-who * { text-decoration: none; }
+a.sg-who:hover { border-color: var(--sg-teal); }
+a.sg-who:focus-visible { outline: 2px solid var(--sg-ochre); outline-offset: 2px; }
+.sg-who--current { margin-bottom: var(--sg-space-4); background: var(--sg-surface); }
+.sg-avatar--large { width: 48px; height: 48px; font-size: 19px; }
+.sg-who-text { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; gap: 2px; }
+.sg-who-name { font: 600 16px/1.3 var(--sg-font-body); overflow-wrap: anywhere; }
+.sg-who-role { font: 400 14px/1.4 var(--sg-font-body); color: var(--sg-slate); overflow-wrap: anywhere; }
+.sg-who-locked { font: 500 12px/1.4 var(--sg-font-mono); color: var(--sg-palm-shade); }
+.sg-field--pin { font: 500 22px/1.2 var(--sg-font-mono); letter-spacing: 0.3em; }
+.sg-form-after { margin-top: var(--sg-space-3); }
+
+/* rc.12 (M12): emergency access — a red rule on the card, a solid red button. */
+.sg-card--emergency { border-top: 4px solid var(--sg-danger); }
+.sg-card--emergency .sg-btn--danger { color: #FFFFFF; background: var(--sg-danger); border-color: var(--sg-danger); min-height: 52px; }
+.sg-field--area { min-height: 96px; padding-top: 10px; resize: vertical; font: 400 16px/1.5 var(--sg-font-body); }
+.sg-name-hint { margin: -8px 0 var(--sg-space-3); }
+@media (max-width: 480px) { .sg-btn-row .sg-btn { white-space: normal; } }

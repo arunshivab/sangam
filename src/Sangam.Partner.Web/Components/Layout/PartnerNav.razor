@@ -7,7 +7,14 @@
 @if (Context is not null)
 {
   <nav class="sg-side-nav" aria-label="@L["Partner console"]">
-    <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="/" Match="NavLinkMatch.All">@L["All your applications"]</NavLink>
+    @if (Context.Apps.Count > 0)
+    {
+      <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="/" Match="NavLinkMatch.All">@L["All your applications"]</NavLink>
+    }
+    @if (Context.OwnScopes.Any() || CurrentOrg is not null)
+    {
+      <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="/org" Match="NavLinkMatch.All">@L["Your organisations"]</NavLink>
+    }
     @if (Context.Apps.Count > 0)
     {
       <details class="sg-switch" data-panel="app-switcher">
@@ -64,6 +71,28 @@
       <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@Link(current, "webhooks")">@L["Webhooks"]</NavLink>
       <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@Link(current, "evidence")">@L["Compliance evidence"]</NavLink>
     }
+    @* rc.12 (G1, T5): the organisation console — one tree, in one application. *@
+    @if (CurrentOrg is OrgScope org)
+    {
+      <div class="sg-switch sg-switch--static" data-panel="org-current">
+        <span class="sg-tile-glyph sg-tile-glyph--small" style="background:@org.BrandColour" aria-hidden="true">@org.Glyph</span>
+        <span class="sg-tile-text"><span class="sg-name">@org.OrgName</span><span class="sg-sub">@org.AppName · @ScopeRole(org)</span></span>
+      </div>
+      <p class="sg-side-group">@org.OrgName</p>
+      @if (org.Admin)
+      {
+        <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@OrgLink(org, null)" Match="NavLinkMatch.All">@L["Overview"]</NavLink>
+        <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@OrgLink(org, "people")">@L["People"]</NavLink>
+        <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@OrgLink(org, "joiners")">@L["Joiners & leavers"]</NavLink>
+        <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@OrgLink(org, "devices")">@L["Shared devices"]</NavLink>
+        <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@OrgLink(org, "emergency")">@L["Emergency access"]</NavLink>
+        <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@OrgLink(org, "settings")">@L["Settings"]</NavLink>
+      }
+      else
+      {
+        <NavLink class="sg-side-link" ActiveClass="sg-side-link--on" href="@OrgLink(org, null)" Match="NavLinkMatch.All">@L["Emergency access"]</NavLink>
+      }
+    }
   </nav>
 }
 
@@ -82,6 +111,17 @@
             return parts.Length >= 2 && parts[0] == "apps" && Guid.TryParse(parts[1], out Guid id)
                 ? Context?.Apps.FirstOrDefault(a => a.AppId == id)
                 : null;
+        }
+    }
+
+    /// <summary>rc.12: the organisation tree in the address, when this person administers or reviews it.</summary>
+    private OrgScope? CurrentOrg
+    {
+        get
+        {
+            string path = "/" + Nav.ToBaseRelativePath(Nav.Uri).Split('?', '#')[0];
+            string[] parts = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            return parts.Length >= 2 && parts[0] == "org" && Guid.TryParse(parts[1], out Guid id) ? Context?.Scope(id) : null;
         }
     }
 
@@ -119,4 +159,10 @@
     private static string Link(PartnerAppRow app, string? section) => section is null ? $"/apps/{app.AppId:D}" : $"/apps/{app.AppId:D}/{section}";
 
     private string RoleText(AppAdminRole role) => role == AppAdminRole.Owner ? L["Owner"] : L["Administrator"];
+
+    private static string OrgLink(OrgScope org, string? section) => section is null ? $"/org/{org.OrgId:D}" : $"/org/{org.OrgId:D}/{section}";
+
+    private string ScopeRole(OrgScope org) => org.ViaApplication
+        ? L["Application administrator"]
+        : !org.Admin ? L["Emergency access reviewer"] : org.IsCustomer ? L["Customer admin"] : L["Branch admin"];
 }

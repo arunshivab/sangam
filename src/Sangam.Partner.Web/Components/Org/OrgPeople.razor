@@ -1,0 +1,228 @@
+@inject IOrgConsoleService OrgConsole
+@inject NavigationManager Nav
+
+@* rc.12 (G1, R3 pattern): the tree with people counts, then who is where. Ending a place is never one click: a day or now,
+   with a reason the person reads. Admin rights are given here, to people who work in the tree. *@
+<p class="sg-label-mono">@Scope.OrgName</p>
+<h1 class="sg-h1">@L["People"]</h1>
+<p class="sg-lede">@L["Who works where in {0}, in {1}. A role holds only in the organisation it is given in.", Scope.OrgName, Scope.AppName]</p>
+
+@if (_tree is null)
+{
+  <p class="sg-note">@L["Loading…"]</p>
+}
+else
+{
+  <div class="sg-split">
+    <section class="sg-panel">
+      <h2 class="sg-h3">@L["Organisations"]</h2>
+      @if (_tree.Count > 6)
+      {
+        <input class="sg-input sg-input--toolbar sg-tree-search" aria-label="@L["Find an organisation"]" placeholder="@L["Find an organisation"]" @bind="_treeQuery" @bind:event="oninput" />
+      }
+      <ul class="sg-tree" data-panel="org-tree">
+        @foreach (OrgNode node in TreeRows)
+        {
+          <li style="padding-left:@(node.Depth * 1.25)rem">
+            <button type="button" class="sg-tree-item @(node.Id == _selected?.Id ? "sg-tree-item--on" : string.Empty)" aria-pressed="@(node.Id == _selected?.Id ? "true" : "false")" @onclick="() => SelectAsync(node)">
+              <span class="sg-name">@node.Name</span>
+              <span class="sg-sub">@(node.People == 1 ? L["1 person"] : L["{0} people", node.People])</span>
+            </button>
+          </li>
+        }
+      </ul>
+    </section>
+
+    <section class="sg-panel">
+      @if (_selected is null)
+      {
+        <p class="sg-muted">@L["Choose an organisation to see who works there."]</p>
+      }
+      else
+      {
+        <div class="sg-head">
+          <h2 class="sg-h2">@L["People in {0}", _selected.Name]</h2>
+          <a class="sg-btn sg-btn--secondary sg-btn--row" href="@($"/org/{Scope.OrgId:D}/joiners?at={_selected.Id:D}")">@L["Add someone here"]</a>
+        </div>
+        @if (_people is null || _people.Count == 0)
+        {
+          <p class="sg-muted">@L["Nobody works here yet."]</p>
+        }
+        else
+        {
+          <div class="sg-table-wrap" tabindex="0" role="region" aria-label="@L["People in {0}", _selected.Name]">
+            <table class="sg-table sg-table--cards">
+              <thead><tr><th>@L["Person"]</th><th>@L["Roles"]</th><th>@L["Until"]</th><th></th></tr></thead>
+              <tbody>
+                @foreach (OrgPerson person in _people)
+                {
+                  <tr class="@(person.UserId == _changing?.UserId ? "sg-row--selected" : null)">
+                    <td>
+                      <span class="sg-name">@person.Name</span><span class="sg-sub">@person.Email</span>
+                      @if (person.Admin)
+                      {
+                        <span class="sg-pill">@L["Admin"]</span>
+                      }
+                      @if (person.Reviewer)
+                      {
+                        <span class="sg-pill">@L["Emergency access reviewer"]</span>
+                      }
+                    </td>
+                    <td class="sg-mono" data-label="@L["Roles"]">@(person.Roles.Count == 0 ? L["Staff"] : string.Join(", ", person.Roles))</td>
+                    <td data-label="@L["Until"]">
+                      @if (person.Until is DateTimeOffset until)
+                      {
+                        <span class="@(until - DateTimeOffset.UtcNow < TimeSpan.FromDays(30) ? "sg-warn-text" : null)">@L["Ends {0}", IndiaTime.Date(until)]</span>
+                      }
+                      else
+                      {
+                        @L["Ongoing"]
+                      }
+                    </td>
+                    <td class="sg-row-actions-cell"><button type="button" class="sg-btn sg-btn--secondary sg-btn--row" @onclick="() => StartChange(person)" disabled="@_busy">@L["Change"]</button></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        @if (_changing is not null)
+        {
+          <section class="sg-end-role" data-panel="change-person" aria-labelledby="change-title">
+            <h3 class="sg-h3" id="change-title">@L["{0} at {1}", _changing.Name, _selected.Name]</h3>
+
+            <p class="sg-label-mono">@L["Admin rights here"]</p>
+            <label class="sg-check"><input type="checkbox" checked="@_admin" @onchange="e => _admin = e.Value is true" /> @L["Admin of {0} and everything under it", _selected.Name]</label>
+            <label class="sg-check"><input type="checkbox" checked="@_reviewer" @onchange="e => _reviewer = e.Value is true" /> @L["Reviews emergency access here (for example the Medical Superintendent or Quality)"]</label>
+            <div class="sg-actions">
+              <button type="button" class="sg-btn sg-btn--secondary" @onclick="SaveRightsAsync" disabled="@(_busy || (_admin == _changing.Admin && _reviewer == _changing.Reviewer))">@L["Save rights"]</button>
+            </div>
+
+            <p class="sg-label-mono">@L["End their place here"]</p>
+            <div class="sg-end-role-row" role="radiogroup" aria-label="@L["When it ends"]">
+              <label class="sg-option-inline @(_endNow ? null : "sg-option-inline--on")">
+                <input type="radio" name="end-when" checked="@(!_endNow)" @onchange="() => _endNow = false" />
+                <span>@L["On a date"]</span>
+                <input class="sg-input sg-input--toolbar" type="date" aria-label="@L["The last day"]" @bind="_endsOn" disabled="@_endNow" min="@Tomorrow" />
+              </label>
+              <label class="sg-option-inline @(_endNow ? "sg-option-inline--on" : null)">
+                <input type="radio" name="end-when" checked="@_endNow" @onchange="() => _endNow = true" />
+                <span>@L["Now"]</span>
+              </label>
+            </div>
+            <label class="sg-label" for="end-reason">@L["Reason (the person sees it in their Activity)"]</label>
+            <input id="end-reason" class="sg-input" maxlength="300" @bind="_endReason" @bind:event="oninput" />
+            <div class="sg-actions">
+              <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _changing = null">@L["Close"]</button>
+              <button type="button" class="sg-btn sg-btn--danger" @onclick="EndAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_endReason) || (!_endNow && _endsOn is null))">
+                @(_endNow ? L["End now"] : _endsOn is DateOnly d ? L["End on {0}", d.ToString("d MMM yyyy", System.Globalization.CultureInfo.CurrentCulture)] : L["End on a date"])
+              </button>
+            </div>
+          </section>
+        }
+      }
+    </section>
+  </div>
+}
+
+<StatusLine Ok="_ok" Message="@_message" />
+
+@code {
+    /// <summary>The tree.</summary>
+    [Parameter]
+    [EditorRequired]
+    public OrgScope Scope { get; set; } = null!;
+
+    /// <summary>The admin.</summary>
+    [Parameter]
+    public Guid UserId { get; set; }
+
+    private IReadOnlyList<OrgNode>? _tree;
+    private IReadOnlyList<OrgPerson>? _people;
+    private OrgNode? _selected;
+    private OrgPerson? _changing;
+    private string _treeQuery = string.Empty;
+    private bool _admin;
+    private bool _reviewer;
+    private bool _endNow;
+    private DateOnly? _endsOn;
+    private string _endReason = string.Empty;
+    private bool _busy;
+    private bool _ok;
+    private string? _message;
+
+    private static string Tomorrow => IndiaTime.ToIndia(DateTimeOffset.UtcNow).AddDays(1).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+
+    private IEnumerable<OrgNode> TreeRows => string.IsNullOrWhiteSpace(_treeQuery)
+        ? _tree ?? []
+        : (_tree ?? []).Where(n => n.Name.Contains(_treeQuery.Trim(), StringComparison.CurrentCultureIgnoreCase));
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _tree = await OrgConsole.TreeAsync(UserId, Scope.AppId, Scope.OrgId) ?? [];
+
+        // ?at= opens one organisation (from the overview's decisions).
+        string? at = System.Web.HttpUtility.ParseQueryString(new Uri(Nav.Uri).Query)["at"];
+        OrgNode? start = Guid.TryParse(at, out Guid id) ? _tree.FirstOrDefault(n => n.Id == id) : _tree.FirstOrDefault();
+        if (start is not null)
+        {
+            await SelectAsync(start);
+        }
+    }
+
+    private async Task SelectAsync(OrgNode node)
+    {
+        _selected = node;
+        _changing = null;
+        _message = null;
+        _people = await OrgConsole.PeopleAsync(UserId, Scope.AppId, node.Id);
+    }
+
+    private void StartChange(OrgPerson person)
+    {
+        _changing = person;
+        _admin = person.Admin;
+        _reviewer = person.Reviewer;
+        _endNow = false;
+        _endsOn = null;
+        _endReason = string.Empty;
+        _message = null;
+    }
+
+    private async Task SaveRightsAsync()
+    {
+        _busy = true;
+        List<PartnerResult> results = [];
+        if (_admin != _changing!.Admin)
+        {
+            results.Add(_admin ? await OrgConsole.GrantAsync(UserId, Scope.AppId, _selected!.Id, _changing.UserId, reviewer: false) : await OrgConsole.RevokeAsync(UserId, Scope.AppId, _selected!.Id, _changing.UserId, reviewer: false));
+        }
+
+        if (_reviewer != _changing.Reviewer)
+        {
+            results.Add(_reviewer ? await OrgConsole.GrantAsync(UserId, Scope.AppId, _selected!.Id, _changing.UserId, reviewer: true) : await OrgConsole.RevokeAsync(UserId, Scope.AppId, _selected!.Id, _changing.UserId, reviewer: true));
+        }
+
+        _busy = false;
+        _ok = results.All(r => r.Succeeded);
+        _message = string.Join(" ", results.Select(r => L[r.Message ?? string.Empty].Value));
+        _changing = null;
+        _people = await OrgConsole.PeopleAsync(UserId, Scope.AppId, _selected!.Id);
+    }
+
+    private async Task EndAsync()
+    {
+        _busy = true;
+        PartnerResult result = await OrgConsole.EndAsync(UserId, Scope.AppId, _selected!.Id, _changing!.UserId, _endNow ? null : _endsOn, _endReason);
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = L[result.Message ?? string.Empty];
+        if (result.Succeeded)
+        {
+            _changing = null;
+            _people = await OrgConsole.PeopleAsync(UserId, Scope.AppId, _selected.Id);
+            _tree = await OrgConsole.TreeAsync(UserId, Scope.AppId, Scope.OrgId) ?? [];
+        }
+    }
+}

@@ -20,7 +20,75 @@ public static class SangamClaimsPrincipalExtensions
 
         string? email = principal.FindFirst(SangamUser.EmailClaim)?.Value;
         string name = principal.FindFirst(SangamUser.NameClaim)?.Value ?? email ?? string.Empty;
-        return new SangamUser(id, name, email, ParseMemberships(principal.Claims));
+        return new SangamUser(id, name, email, ParseMemberships(principal.Claims))
+        {
+            CurrentOrganisation = ParseCurrentOrganisation(principal.FindFirst(SangamClaims.Org)?.Value),
+            Emergency = ParseEmergency(principal.FindFirst(SangamClaims.Emergency)?.Value),
+        };
+    }
+
+    /// <summary>rc.12 (M12): reads the <c>sangam_emergency</c> claim; anything malformed is no emergency access.</summary>
+    /// <param name="value">The claim's value.</param>
+    /// <returns>The emergency access, or <see langword="null"/>.</returns>
+    public static SangamEmergency? ParseEmergency(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(value);
+            JsonElement e = document.RootElement;
+            return e.ValueKind == JsonValueKind.Object
+                && Guid.TryParse(Text(e, "id"), out Guid id)
+                && Text(e, "case") is { Length: > 0 } caseRef
+                && Guid.TryParse(Text(e, "org"), out Guid org)
+                && e.TryGetProperty("until", out JsonElement until) && until.ValueKind == JsonValueKind.Number && until.TryGetInt64(out long seconds)
+                && seconds is > 0 and < 253402300800
+                ? new SangamEmergency(id, caseRef, org, DateTimeOffset.FromUnixTimeSeconds(seconds))
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>rc.12 (A6): reads the <c>sangam_org</c> claim; anything malformed is no organisation.</summary>
+    /// <param name="value">The claim's value.</param>
+    /// <returns>The organisation, or <see langword="null"/>.</returns>
+    public static SangamCurrentOrganisation? ParseCurrentOrganisation(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(value);
+            JsonElement element = document.RootElement;
+            if (element.ValueKind != JsonValueKind.Object
+                || !Guid.TryParse(Text(element, SangamOrgClaim.Id), out Guid id)
+                || Text(element, SangamOrgClaim.Path) is not { Length: > 0 } path)
+            {
+                return null;
+            }
+
+            List<string> roles = Strings(element, SangamOrgClaim.Roles);
+            if (roles.Count == 0 && Text(element, SangamOrgClaim.Role) is { Length: > 0 } single)
+            {
+                roles.Add(single);
+            }
+
+            return new SangamCurrentOrganisation(id, Text(element, SangamOrgClaim.Name) ?? string.Empty, Text(element, SangamOrgClaim.Type) ?? string.Empty, path, roles, Strings(element, SangamOrgClaim.Permissions));
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     /// <summary>
@@ -60,25 +128,45 @@ public static class SangamClaimsPrincipalExtensions
         return result;
     }
 
+    /// <summary>
+    /// rc.12: one organisation entry carries every role held there (<c>roles</c>; older tokens carry only <c>role</c>).
+    /// Each role becomes one membership; a place with no role in Sangam (the application keeps roles itself) becomes one
+    /// membership with an empty role, so the organisation is still known.
+    /// </summary>
     private static void Add(List<SangamMembership> result, JsonElement element)
     {
         if (element.ValueKind != JsonValueKind.Object
             || !Guid.TryParse(Text(element, SangamOrgClaim.Id), out Guid id)
-            || Text(element, SangamOrgClaim.Role) is not { Length: > 0 } role
             || Text(element, SangamOrgClaim.Path) is not { Length: > 0 } path)
         {
             return;
         }
 
-        List<string> permissions = [];
-        if (element.TryGetProperty(SangamOrgClaim.Permissions, out JsonElement list) && list.ValueKind == JsonValueKind.Array)
+        List<string> roles = Strings(element, SangamOrgClaim.Roles);
+        if (roles.Count == 0 && Text(element, SangamOrgClaim.Role) is { Length: > 0 } single)
         {
-            permissions.AddRange(list.EnumerateArray().Where(p => p.ValueKind == JsonValueKind.String).Select(p => p.GetString()!));
+            roles.Add(single);
         }
 
+        if (roles.Count == 0)
+        {
+            roles.Add(string.Empty);
+        }
+
+        List<string> permissions = Strings(element, SangamOrgClaim.Permissions);
         bool inherits = element.TryGetProperty(SangamOrgClaim.Inherits, out JsonElement flag) && flag.ValueKind == JsonValueKind.True;
-        result.Add(new SangamMembership(id, Text(element, SangamOrgClaim.Name) ?? string.Empty, Text(element, SangamOrgClaim.Type) ?? string.Empty, path, role, permissions, inherits));
+        string name = Text(element, SangamOrgClaim.Name) ?? string.Empty;
+        string type = Text(element, SangamOrgClaim.Type) ?? string.Empty;
+        foreach (string role in roles.Distinct(StringComparer.Ordinal))
+        {
+            result.Add(new SangamMembership(id, name, type, path, role, permissions, inherits));
+        }
     }
+
+    private static List<string> Strings(JsonElement element, string name)
+        => element.TryGetProperty(name, out JsonElement list) && list.ValueKind == JsonValueKind.Array
+            ? [.. list.EnumerateArray().Where(p => p.ValueKind == JsonValueKind.String && p.GetString()!.Length > 0).Select(p => p.GetString()!)]
+            : [];
 
     private static string? Text(JsonElement element, string name)
         => element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;

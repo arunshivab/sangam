@@ -32,19 +32,21 @@ public sealed partial class EfPartnerService
             return From(removed, "Role ended.");
         }
 
-        var current = await _db.OrgMemberships.AsNoTracking()
+        // rc.12: every role the person holds there ends that day (a person may hold several, or none in Sangam).
+        List<string?> current = await _db.OrgMemberships.AsNoTracking()
             .Where(m => m.AppId == appId && m.OrgId == orgId && m.UserId == memberUserId && m.RevokedAt == null)
-            .Select(m => new { Role = m.Role!.Code, m.AppliesToDescendants })
-            .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
-        if (current is null)
+            .Select(m => m.Role == null ? null : m.Role.Code)
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        if (current.Count == 0)
         {
             return PartnerResult.Refused("That person no longer holds a role here.");
         }
 
         // The role ends at the end of the chosen day, India time.
         DateTimeOffset until = new(day.ToDateTime(new TimeOnly(23, 59, 59)), IndiaTime.Offset);
+        List<string> codes = [.. current.Where(c => c is not null).Select(c => c!)];
         ManagementResult<MembershipDto> shortened = await _management
-            .UpsertMembershipAsync(appId, orgId, memberUserId, new MembershipUpsert(current.Role, current.AppliesToDescendants, until), actor, cancellationToken).ConfigureAwait(false);
+            .UpsertMembershipAsync(appId, orgId, memberUserId, new MembershipUpsert(null, false, until, codes), actor, cancellationToken).ConfigureAwait(false);
         return From(shortened, "The role will end on that day.");
     }
 

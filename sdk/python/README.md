@@ -35,6 +35,12 @@ def api(token=Depends(sangam.require_token(scope="lims.read", acr=SangamAcr.TWO_
 Flask: `SangamFlask(app, settings)` with `@sangam.login_required`, `@sangam.require_step_up(acr, max_age)`,
 `@sangam.require_permission(org_fn, permission)`, `@sangam.require_token(...)` and `sangam.record(entry)`.
 
+rc.12: `user.current_organisation` (from `sangam_org`); `core.switch_organisation_url(...)`; `/auth/lock` locks the
+person's Sangam session (`management.lock_session(token)` from your own code); `core.emergency_url(case, return_to)` asks
+for emergency access to one of your cases, then `user.emergency` (`case_reference`, `until`, `is_active()`) is set; end it
+with `management.end_emergency(token, reason)`. Staff: `check_staff`, `add_staff`, `set_roles` (the invitation call is
+gone).
+
 - **Tokens stay on the server**: the code is exchanged with PKCE on the server; the browser holds only a signed session
   id. Sessions are in memory by default; give `store=` (get, set, delete) to share them between processes.
 - **Without a framework**: `has_permission`, `satisfies`, `step_up_challenge`, `verify_webhook`, `TokenVerifier`,

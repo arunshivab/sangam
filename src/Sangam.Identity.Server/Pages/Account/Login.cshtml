@@ -18,7 +18,40 @@
   }
   else
   {
-    @if (Model.DevicePeople.Count > 0)
+    @if (Model.SharedDevice is not null)
+    {
+      <div class="sg-device-people" data-panel="device-tiles">
+        <p class="sg-label-mono">@Model.SharedDevice.Label · @Model.SharedDevice.OrgName</p>
+        @if (Model.Tiles.Count > 0)
+        {
+          <h2 class="sg-section-title">@L["Who’s using this device?"]</h2>
+          <ul class="sg-who-list">
+            @foreach (Sangam.Identity.Application.Devices.DeviceTile tile in Model.Tiles)
+            {
+              <li>
+                <a class="sg-who" href="@Model.TileUrl(tile)">
+                  <span class="sg-avatar sg-avatar--large" aria-hidden="true">@tile.Name[..1].ToUpperInvariant()</span>
+                  <span class="sg-who-text">
+                    <span class="sg-who-name">@tile.Name</span>
+                    @if (tile.Role is not null)
+                    {
+                      <span class="sg-who-role">@tile.Role</span>
+                    }
+                    @if (tile.Locked)
+                    {
+                      <span class="sg-who-locked">@L["Locked · PIN"]</span>
+                    }
+                  </span>
+                </a>
+              </li>
+            }
+          </ul>
+          <div class="sg-cord-rule" role="presentation"></div>
+          <p class="sg-label-mono">@L["Someone else, sign in"]</p>
+        }
+      </div>
+    }
+    else if (Model.DevicePeople.Count > 0)
     {
       <div class="sg-device-people" data-panel="device-people">
         <p class="sg-label-mono">@L["On this device"]</p>
@@ -52,9 +85,11 @@
       <input type="hidden" asp-for="ReturnUrl" />
       <div class="sg-field-group">
         <label class="sg-label" asp-for="Identifier">@L["Email, mobile number or login ID"]</label>
-        <input class="sg-field" asp-for="Identifier" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" autofocus="@(Model.DevicePeople.Count == 0)" required />
+        <input class="sg-field" asp-for="Identifier" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" autofocus="@(Model.DevicePeople.Count == 0 && Model.Tiles.Count == 0)" required />
         <span class="sg-field-error" asp-validation-for="Identifier"></span>
       </div>
+      @if (Model.SharedDevice is null)
+      {
       <label class="sg-check">
         <input type="checkbox" asp-for="Remember" />
         <span>
@@ -62,6 +97,7 @@
           <span class="sg-check-hint">@L["For a computer you share with colleagues. Only your first name and part of your email are shown, and you can remove yourself."]</span>
         </span>
       </label>
+      }
       <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Continue"]</button>
     </form>
   }

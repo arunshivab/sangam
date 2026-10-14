@@ -20,7 +20,20 @@ public sealed record SangamUser(Guid Id, string Name, string? Email, IReadOnlyLi
     /// <summary>The claim carrying the person's email address.</summary>
     public const string EmailClaim = "email";
 
-    /// <summary>The organisations they hold any role in, once each, in the order Sangam sent them.</summary>
+    /// <summary>
+    /// rc.12 (A6): the organisation the person chose to work at for this sign-in ("Working at which branch?"), from the
+    /// <c>sangam_org</c> claim; <see langword="null"/> when Sangam sent none. Send them to
+    /// <see cref="SangamEndpointRouteBuilderExtensions.MapSangamSwitchOrganisation"/> to choose again.
+    /// </summary>
+    public SangamCurrentOrganisation? CurrentOrganisation { get; init; }
+
+    /// <summary>
+    /// rc.12 (M12): emergency access in progress for this sign-in, from the <c>sangam_emergency</c> claim; start it with
+    /// <see cref="SangamEndpointRouteBuilderExtensions.MapSangamEmergency"/>.
+    /// </summary>
+    public SangamEmergency? Emergency { get; init; }
+
+    /// <summary>The organisations they belong to (with or without a role in Sangam), once each, in the order Sangam sent them.</summary>
     public IReadOnlyList<SangamMembership> Organisations
         => [.. Memberships.GroupBy(m => m.OrganisationId).Select(g => g.First())];
 
@@ -30,7 +43,7 @@ public sealed record SangamUser(Guid Id, string Name, string? Email, IReadOnlyLi
     public IReadOnlyList<string> RolesIn(string organisationPath)
     {
         ArgumentNullException.ThrowIfNull(organisationPath);
-        return [.. Memberships.Where(m => m.Covers(organisationPath)).Select(m => m.Role).Distinct(StringComparer.Ordinal)];
+        return [.. Memberships.Where(m => m.Role.Length > 0 && m.Covers(organisationPath)).Select(m => m.Role).Distinct(StringComparer.Ordinal)];
     }
 
     /// <summary>Whether they hold <paramref name="role"/> in the organisation at <paramref name="organisationPath"/>.</summary>
@@ -41,7 +54,7 @@ public sealed record SangamUser(Guid Id, string Name, string? Email, IReadOnlyLi
     {
         ArgumentNullException.ThrowIfNull(role);
         ArgumentNullException.ThrowIfNull(organisationPath);
-        return Memberships.Any(m => string.Equals(m.Role, role, StringComparison.Ordinal) && m.Covers(organisationPath));
+        return role.Length > 0 && Memberships.Any(m => string.Equals(m.Role, role, StringComparison.Ordinal) && m.Covers(organisationPath));
     }
 
     /// <summary>Whether any role they hold in the organisation at <paramref name="organisationPath"/> grants <paramref name="permission"/>.</summary>

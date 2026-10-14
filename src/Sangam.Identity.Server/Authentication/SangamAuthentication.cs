@@ -180,10 +180,56 @@ public static class SangamAuthentication
         // rc.9 (ASVS V2.2.3): a browser new to this account is told to the person by e-mail.
         await KnownDevices.SignedInAsync(httpContext, user).ConfigureAwait(false);
 
+        // rc.12 (T1): on an enrolled shared ward device, the person's tile and a fresh start for their PIN.
+        Sangam.Identity.Application.Devices.SharedDeviceInfo? device = await SharedDeviceCookie.CurrentAsync(httpContext, httpContext.RequestAborted).ConfigureAwait(false);
+        if (device is not null)
+        {
+            await httpContext.RequestServices.GetRequiredService<Sangam.Identity.Application.Devices.ISharedDeviceService>().SignedInAsync(
+                device.Id,
+                new Sangam.Identity.Application.Devices.DeviceSignIn(user.Id, sessionId, mode, AuthenticationAssurance.Methods(mode, secondFactor, codeBySms), secondFactor),
+                httpContext.RequestAborted).ConfigureAwait(false);
+        }
+
         // rc.11: the device's list of regular people, for those who asked to be on it; what was typed is forgotten.
         SignInStart? start = SignInFlow.Read(httpContext);
         DeviceAccounts.SignedIn(httpContext, user, start?.Remember == true);
         SignInFlow.Clear(httpContext);
+    }
+
+    /// <summary>
+    /// rc.12 (T1): gives a locked session back after a right PIN on a shared ward device. The cookie is issued again for the
+    /// same session, with the methods and the time of the person's last full sign-in, so the session still ends twelve hours
+    /// after that sign-in and step-up decisions see what really happened.
+    /// </summary>
+    /// <param name="httpContext">Current request.</param>
+    /// <param name="user">The person.</param>
+    /// <param name="resume">The session given back.</param>
+    public static async Task ResumeSessionAsync(HttpContext httpContext, UserSummary user, Sangam.Identity.Application.Devices.DeviceResume resume)
+    {
+        ArgumentNullException.ThrowIfNull(httpContext);
+        ArgumentNullException.ThrowIfNull(user);
+        ArgumentNullException.ThrowIfNull(resume);
+        ClaimsIdentity identity = new(IdentityConstants.ApplicationScheme, Claims.Name, Claims.Role);
+        identity.AddClaim(new Claim(Claims.Subject, user.Id.ToString("D")));
+        identity.AddClaim(new Claim(Claims.Name, user.DisplayName));
+        identity.AddClaim(new Claim(Claims.GivenName, user.FirstName));
+        identity.AddClaim(new Claim(Claims.FamilyName, user.LastName));
+        identity.AddClaim(new Claim(Claims.Email, user.Email));
+        identity.AddClaim(new Claim(Claims.EmailVerified, user.EmailVerified ? "true" : "false"));
+        identity.AddClaim(new Claim(Claims.Locale, user.Locale));
+        identity.AddClaim(new Claim(SessionModeClaim, SignInModes.ToCode(resume.Mode)));
+        identity.AddClaim(new Claim(SessionStampClaim, user.SecurityStamp));
+        identity.AddClaim(new Claim(SessionIdClaim, resume.SessionId.ToString("D")));
+        identity.AddClaim(new Claim(SessionValidatedClaim, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture)));
+        identity.AddClaim(new Claim(Claims.AuthenticationTime, resume.AuthenticatedAt.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture)));
+        if (resume.SecondFactor)
+        {
+            identity.AddClaim(new Claim(SessionSecondFactorClaim, "totp"));
+        }
+
+        identity.AddClaim(new Claim(SessionMethodsClaim, string.Join(' ', resume.Methods)));
+        await httpContext.SignOutAsync(PendingScheme).ConfigureAwait(false);
+        await httpContext.SignInAsync(IdentityConstants.ApplicationScheme, new ClaimsPrincipal(identity)).ConfigureAwait(false);
     }
 
     /// <summary>

@@ -27,4 +27,17 @@ const event = buildAuditEvent({ appId: "lims", appVersion: "1.2.0", environment:
 validateAuditEvent(event);   // [] — the shared schema 1.0 (SGM-208)
 ```
 
+rc.12:
+
+```ts
+user.currentOrganisation;                 // sangam_org: where they are working for this sign-in
+await sangam.checkStaff(orgId, adminAccessToken, person);           // which fields match an existing account
+await sangam.addStaff(orgId, adminAccessToken, { person, roles: ["nurse"] });
+await sangam.setRoles(orgId, sub, ["nurse", "charge-nurse"]);       // or [] for staff with no role
+await lockSession(authority, personAccessToken);                    // shared ward devices
+const stop = startIdleTimer({ minutes: 10, onIdle: () => location.assign("/auth/lock") });   // in the browser
+if (emergencyActive(user.emergency)) showBanner(user.emergency!.caseReference);
+await endEmergency(authority, personAccessToken, "Care handed over");
+```
+
 `npm test` runs the shared vectors and unit tests.

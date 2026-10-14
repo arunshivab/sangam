@@ -1,0 +1,121 @@
+@inject IOrgConsoleService OrgConsole
+@inject IStaffService Staff
+
+@* rc.12 (G1): the numbers that need action, then the decisions, soonest first. *@
+<div class="sg-head">
+  <div>
+    <p class="sg-label-mono">@L["Organisation console"]</p>
+    <h1 class="sg-h1">@Scope.OrgName</h1>
+    @if (_overview is not null)
+    {
+      <p class="sg-lede">@(_overview.Staff == 1 ? L["1 person · in {0}", Scope.AppName] : L["{0} people · in {1}", _overview.Staff, Scope.AppName])</p>
+    }
+  </div>
+  <a class="sg-btn sg-btn--primary" href="@($"/org/{Scope.OrgId:D}/joiners")">@L["Add a new joiner"]</a>
+</div>
+
+@if (_overview is null)
+{
+  <p class="sg-note">@L["Loading…"]</p>
+}
+else
+{
+  <div class="sg-stats sg-stats--three" data-panel="org-stats">
+    <div class="sg-stat"><span class="sg-label-mono">@L["Roles ending · 14 days"]</span><span class="sg-stat-value">@_overview.RolesEnding</span></div>
+    <div class="sg-stat"><span class="sg-label-mono">@L["Added, not joined"]</span><span class="sg-stat-value">@_overview.Waiting</span></div>
+    <div class="sg-stat"><span class="sg-label-mono">@L["Emergency access · 7 days"]</span><span class="sg-stat-value @(_overview.EmergencyUses > 0 ? "sg-danger-text" : null)">@_overview.EmergencyUses</span></div>
+  </div>
+
+  <section class="sg-panel" data-panel="org-decisions">
+    <h2 class="sg-label-mono">@L["Needs a decision · soonest first"]</h2>
+    @if (_overview.Decisions.Count == 0)
+    {
+      <p class="sg-muted">@L["Nothing needs a decision."]</p>
+    }
+    else
+    {
+      <div class="sg-table-wrap" tabindex="0" role="region" aria-label="@L["Needs a decision"]">
+        <table class="sg-table sg-table--cards sg-table--decisions">
+          <tbody>
+            @foreach (OrgDecision d in _overview.Decisions)
+            {
+              <tr>
+                <td><span class="sg-name">@d.Name</span><span class="sg-sub">@d.OrgName</span></td>
+                <td data-label="@L["About"]">@(d.Kind == OrgDecisionKind.NotJoined ? L["Added to {0}", d.Detail] : d.Detail)</td>
+                <td data-label="@L["When"]">
+                  @if (d.Kind == OrgDecisionKind.RoleEnding)
+                  {
+                    <span class="sg-dot sg-dot--warn" aria-hidden="true"></span><span class="sg-warn-text">@L["Ends {0}", IndiaTime.Date(d.When)]</span>
+                  }
+                  else if (d.Kind == OrgDecisionKind.EmergencyUse)
+                  {
+                    <EmergencyAge StartedAt="d.When" Reviewed="false" />
+                  }
+                  else
+                  {
+                    int days = Math.Max(0, (int)(DateTimeOffset.UtcNow - d.When).TotalDays);
+                    <span class="sg-dot" aria-hidden="true"></span>@(days == 1 ? L["Not joined · 1 day"] : L["Not joined · {0} days", days])
+                  }
+                </td>
+                <td class="sg-row-actions-cell">
+                  @if (d.Kind == OrgDecisionKind.RoleEnding)
+                  {
+                    <a class="sg-btn sg-btn--secondary sg-btn--row" href="@($"/org/{Scope.OrgId:D}/people?at={d.OrgId:D}")">@L["Change"]</a>
+                  }
+                  else if (d.Kind == OrgDecisionKind.EmergencyUse)
+                  {
+                    <a class="sg-btn sg-btn--secondary sg-btn--row" href="@($"/org/{Scope.OrgId:D}/emergency")">@L["Review"]</a>
+                  }
+                  else if (d.ItemId is Guid waiting)
+                  {
+                    @if (_cancelling == waiting)
+                    {
+                      <button type="button" class="sg-btn sg-btn--secondary sg-btn--row" @onclick="() => _cancelling = null">@L["Keep"]</button>
+                      <button type="button" class="sg-btn sg-btn--danger sg-btn--row" @onclick="() => CancelAsync(waiting)" disabled="@_busy">@L["Cancel the addition"]</button>
+                    }
+                    else
+                    {
+                      <button type="button" class="sg-btn sg-btn--secondary sg-btn--row" @onclick="() => _cancelling = waiting">@L["Cancel"]</button>
+                    }
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+}
+
+<StatusLine Ok="_ok" Message="@_message" />
+
+@code {
+    /// <summary>The tree.</summary>
+    [Parameter]
+    [EditorRequired]
+    public OrgScope Scope { get; set; } = null!;
+
+    /// <summary>The admin.</summary>
+    [Parameter]
+    public Guid UserId { get; set; }
+
+    private OrgOverview? _overview;
+    private Guid? _cancelling;
+    private bool _busy;
+    private bool _ok;
+    private string? _message;
+
+    protected override async Task OnParametersSetAsync() => _overview = await OrgConsole.OverviewAsync(UserId, Scope.AppId, Scope.OrgId);
+
+    private async Task CancelAsync(Guid waiting)
+    {
+        _busy = true;
+        bool done = await Staff.CancelAsync(new StaffActor(Scope.AppId, UserId), waiting);
+        _busy = false;
+        _cancelling = null;
+        _ok = done;
+        _message = done ? L["The addition is cancelled; its activation link no longer works."] : L["Nothing changed."];
+        _overview = await OrgConsole.OverviewAsync(UserId, Scope.AppId, Scope.OrgId);
+    }
+}

@@ -354,6 +354,7 @@ public sealed partial class DevelopmentSeeder
             Permissions.Prefixes.Scope + SangamScopes.Profile,
             Permissions.Prefixes.Scope + SangamScopes.Email,
             Permissions.Prefixes.Scope + SangamScopes.OrgsRead,
+            Permissions.Prefixes.Scope + SangamScopes.OrgCurrent,
 
             // V-15: the demo places testers at its made-up hospital through the management API.
             Permissions.GrantTypes.ClientCredentials,

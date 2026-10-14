@@ -19,14 +19,17 @@ public sealed class LoginModel : AuthPageModel
 {
     private readonly IAppDirectory _apps;
     private readonly IPasskeyService _passkeys;
+    private readonly Sangam.Identity.Application.Devices.ISharedDeviceService _devices;
 
     /// <summary>Initialises the page.</summary>
     /// <param name="apps">App directory (partner chip and sign-in policy).</param>
     /// <param name="passkeys">Passkeys (PR-14).</param>
-    public LoginModel(IAppDirectory apps, IPasskeyService passkeys)
+    /// <param name="devices">Shared ward devices (rc.12, T1).</param>
+    public LoginModel(IAppDirectory apps, IPasskeyService passkeys, Sangam.Identity.Application.Devices.ISharedDeviceService devices)
     {
         _apps = apps ?? throw new ArgumentNullException(nameof(apps));
         _passkeys = passkeys ?? throw new ArgumentNullException(nameof(passkeys));
+        _devices = devices ?? throw new ArgumentNullException(nameof(devices));
     }
 
     /// <summary>An email address, a mobile number or a login ID.</summary>
@@ -54,6 +57,20 @@ public sealed class LoginModel : AuthPageModel
 
     /// <summary>Whether the application in the flow accepts only passkeys (PR-16): nothing is typed.</summary>
     public bool PasskeyOnly => (Partner?.SignInPolicy == SignInPolicy.PasskeyOnly || RequiredLevel(ReturnUrl) >= 3) && _passkeys.Enabled;
+
+    /// <summary>rc.12 (T1): the enrolled shared device this browser is, if it is one.</summary>
+    public Sangam.Identity.Application.Devices.SharedDeviceInfo? SharedDevice { get; private set; }
+
+    /// <summary>rc.12 (T1): "Who's using this device?" — the last people on the enrolled device who work at its hospital.</summary>
+    public IReadOnlyList<Sangam.Identity.Application.Devices.DeviceTile> Tiles { get; private set; } = [];
+
+    /// <summary>The link behind a tile: the PIN for a locked session, otherwise how to sign in.</summary>
+    /// <param name="tile">The tile.</param>
+    public string TileUrl(Sangam.Identity.Application.Devices.DeviceTile tile)
+    {
+        ArgumentNullException.ThrowIfNull(tile);
+        return (tile.Locked ? "/unlock?tile=" : "/login/method?tile=") + tile.Id.ToString("D") + (string.IsNullOrEmpty(ReturnUrl) ? string.Empty : "&returnUrl=" + Uri.EscapeDataString(ReturnUrl));
+    }
 
     /// <summary>The people on this device's list (rc.11).</summary>
     public IReadOnlyList<DeviceAccount> DevicePeople { get; private set; } = [];
@@ -91,7 +108,7 @@ public sealed class LoginModel : AuthPageModel
         }
 
         await ResolvePartnerAsync(_apps, ReturnUrl, cancellationToken);
-        DevicePeople = DeviceAccounts.List(HttpContext);
+        await LoadPeopleAsync(cancellationToken);
 
         if (signedout)
         {
@@ -110,7 +127,7 @@ public sealed class LoginModel : AuthPageModel
     public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)
     {
         await ResolvePartnerAsync(_apps, ReturnUrl, cancellationToken);
-        DevicePeople = DeviceAccounts.List(HttpContext);
+        await LoadPeopleAsync(cancellationToken);
         if (!ModelState.IsValid)
         {
             return Page();
@@ -124,5 +141,19 @@ public sealed class LoginModel : AuthPageModel
 
         SignInFlow.Store(HttpContext, new SignInStart(Identifier.Trim(), Remember, Request.Form[Antibot.TimestampField].ToString()));
         return RedirectToPage("/Account/LoginMethod", new { returnUrl = ReturnUrl });
+    }
+
+    private async Task LoadPeopleAsync(CancellationToken cancellationToken)
+    {
+        // An enrolled shared device shows its tiles instead of this browser's own list.
+        SharedDevice = await SharedDeviceCookie.CurrentAsync(HttpContext, cancellationToken);
+        if (SharedDevice is not null)
+        {
+            Tiles = await _devices.TilesAsync(SharedDevice.Id, cancellationToken);
+            DevicePeople = [];
+            return;
+        }
+
+        DevicePeople = DeviceAccounts.List(HttpContext);
     }
 }

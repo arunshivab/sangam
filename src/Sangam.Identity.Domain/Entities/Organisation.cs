@@ -71,4 +71,30 @@ public sealed class Organisation
 
     /// <summary>When deletion was requested (UTC).</summary>
     public DateTimeOffset? DeletedAt { get; set; }
+
+    /// <summary>
+    /// rc.12: whether roles for this organisation are kept in Sangam. Set on a customer (the top of a tree) and read from
+    /// there for every organisation below it; <see langword="null"/> means yes. When no, people are placed in its
+    /// organisations without roles and the application keeps them.
+    /// </summary>
+    public bool? RolesKeptInSangam { get; set; }
+
+    /// <summary>rc.12 (M12): whether the hospital allows emergency ("break-glass") access in this organisation. Off by
+    /// default.</summary>
+    public bool EmergencyAccess { get; set; }
+
+    /// <summary>rc.12: when the customer was closed (it left the application), if it was.</summary>
+    public DateTimeOffset? ClosedAt { get; set; }
+
+    /// <summary>
+    /// rc.12 (T1): on a customer, how many minutes after a lock a PIN may unlock a shared ward device (at most 120, the
+    /// default); a customer may only make it shorter.
+    /// </summary>
+    public int? DevicePinMinutes { get; set; }
+
+    /// <summary>
+    /// rc.12 (T1): on a customer, how many hours may pass on a shared ward device before a full sign-in is asked again
+    /// (at most 12, the default); a customer may only make it shorter.
+    /// </summary>
+    public int? DeviceFullSignInHours { get; set; }
 }

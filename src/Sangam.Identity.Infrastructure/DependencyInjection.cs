@@ -244,6 +244,16 @@ public static class DependencyInjection
         services.AddHttpClient(Provisioning.OutboundHttp.ClientName, c => c.Timeout = Provisioning.OutboundHttp.Timeout)
             .ConfigurePrimaryHttpMessageHandler(sp => Provisioning.OutboundHttp.CreateHandler(sp.GetRequiredService<Provisioning.OutboundSettings>().AllowPrivate));
         services.AddScoped<Tenancy.MembershipExpiry>();
+
+        // rc.12: adding staff safely (activation and join codes, the check, waiting additions).
+        services.AddScoped<Tenancy.StaffRights>();
+        services.AddScoped<Tenancy.EfStaffService>();
+        services.AddScoped<IStaffService>(sp => sp.GetRequiredService<Tenancy.EfStaffService>());
+        services.AddScoped<IJoinCodeService, Tenancy.EfJoinCodeService>();
+        services.AddScoped<Sangam.Identity.Application.Devices.ISharedDeviceService, Tenancy.EfSharedDeviceService>();
+        services.AddScoped<IEmergencyAccessService, Tenancy.EfEmergencyAccessService>();
+        services.AddScoped<IOrgConsoleService, Tenancy.EfOrgConsoleService>();
+        services.AddScoped<IOrgChoiceStore, Tenancy.EfOrgChoiceStore>();
         services.AddScoped<Application.Attributes.IAttributeService, Attributes.EfAttributeService>();
         services.AddScoped<Application.Evidence.IEvidencePackService, Evidence.EfEvidencePackService>();
 

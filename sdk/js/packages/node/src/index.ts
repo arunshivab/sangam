@@ -4,6 +4,7 @@ import {
   can,
   createTokenVerifier,
   ManagementClient,
+  lockSession,
   satisfies,
   stepUpChallenge,
   userFromClaims,
@@ -23,6 +24,8 @@ export { MemorySessionStore, type SessionStore } from "./session.js";
 export interface SangamSession {
   user?: SangamUser;
   idToken?: string;
+  /** rc.12 (T1): the access token from the sign-in, for locking the person's Sangam session. */
+  accessToken?: string;
   pending?: { state: string; nonce: string; verifier: string; returnTo: string };
 }
 
@@ -138,6 +141,20 @@ export function createSangam(options: SangamNodeOptions) {
     return (await load(req)).session.user;
   }
 
+  /**
+   * rc.12 (M12): the address that asks Sangam for emergency access to one of your cases: Sangam checks it is the person
+   * again (passkey or authenticator), asks for a reason, tells the hospital's reviewers, and returns them to `returnTo`
+   * with `user.emergency` set for up to 60 minutes.
+   */
+  function emergencyUrl(caseReference: string, returnTo: string): string {
+    return `${basePath}/login?${new URLSearchParams({ returnTo, emergency: caseReference }).toString()}`;
+  }
+
+  /** rc.12 (A6): the address that sends the person back to Sangam to choose which organisation they are working at. */
+  function switchOrganisationUrl(returnTo: string): string {
+    return `${basePath}/login?${new URLSearchParams({ returnTo, switch: "organisation" }).toString()}`;
+  }
+
   /** The address that starts a sign-in (with a step-up requirement, when given). */
   function loginUrl(returnTo: string, requirement?: StepUpRequirement): string {
     const q = new URLSearchParams({ returnTo });
@@ -164,6 +181,11 @@ export function createSangam(options: SangamNodeOptions) {
     const acr = url.searchParams.get("acr");
     const maxAge = url.searchParams.get("max_age");
     if (acr) parameters.acr_values = acr;
+    // rc.12 (A6): "Switch organisation" asks "Working at which branch?" again.
+    if (url.searchParams.get("switch") === "organisation") parameters.prompt = "select_org";
+    // rc.12 (M12): emergency access for your own case reference (never the patient's name).
+    const emergencyCase = url.searchParams.get("emergency");
+    if (emergencyCase && /^[A-Za-z0-9._:/#-]{1,64}$/.test(emergencyCase)) parameters.sangam_emergency = emergencyCase;
     if (maxAge && /^\d+$/.test(maxAge)) parameters.max_age = maxAge;
     const { id, session } = await load(req);
     session.pending = { state, nonce, verifier, returnTo: safeReturn(url.searchParams.get("returnTo")) };
@@ -194,6 +216,7 @@ export function createSangam(options: SangamNodeOptions) {
     if (!claims) throw new Error("Sangam returned no ID token.");
     session.user = userFromClaims(claims);
     if (tokens.id_token) session.idToken = tokens.id_token;
+    if (tokens.access_token) session.accessToken = tokens.access_token;
     // A new session id after sign-in, so an id planted before it is worth nothing.
     if (id) await store.delete(id);
     await save(res, undefined, session);
@@ -208,6 +231,25 @@ export function createSangam(options: SangamNodeOptions) {
     const parameters: Record<string, string> = { post_logout_redirect_uri: baseUrl + "/" };
     if (session.idToken) parameters.id_token_hint = session.idToken;
     redirect(res, oidc.buildEndSessionUrl(c, parameters).href);
+  }
+
+  /**
+   * rc.12 (T1): your idle timer ran out (point `startIdleTimer`'s `onIdle` at `${basePath}/lock`). Locks the person's Sangam
+   * session, ends this application's session, and sends them back through Sangam: on an enrolled shared ward device their
+   * tile and PIN, anywhere else a full sign-in. They come back to `returnTo`.
+   */
+  async function lock(req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
+    const { id, session } = await load(req);
+    if (session.accessToken) {
+      try {
+        await lockSession(authority, session.accessToken);
+      } catch {
+        // Sangam unreachable: this application's session still ends, so the screen is not left open.
+      }
+    }
+    if (id) await store.delete(id);
+    setCookie(res, cookieName, "", { secure, maxAge: 0 });
+    redirect(res, loginUrl(safeReturn(url.searchParams.get("returnTo"))));
   }
 
   /** Handles the sign-in routes; passes everything else on. Mount it before your own routes. */
@@ -228,9 +270,12 @@ export function createSangam(options: SangamNodeOptions) {
         case "/logout":
           await logout(req, res);
           return;
+        case "/lock":
+          await lock(req, res, url);
+          return;
         case "/me": {
           const u = await user(req);
-          if (u) json(res, 200, { user: u, loginUrl: loginUrl("/"), logoutUrl: `${basePath}/logout` });
+          if (u) json(res, 200, { user: u, loginUrl: loginUrl("/"), logoutUrl: `${basePath}/logout`, lockUrl: `${basePath}/lock`, switchOrganisationUrl: switchOrganisationUrl("/") });
           else json(res, 401, { user: null, loginUrl: loginUrl("/") });
           return;
         }
@@ -329,7 +374,7 @@ export function createSangam(options: SangamNodeOptions) {
     bufferPath: recorder?.bufferPath,
   };
 
-  return { router, user, loginUrl, requireSignIn, requireStepUp, requirePermission, requireToken, audit, management, redirectUri };
+  return { router, user, loginUrl, switchOrganisationUrl, emergencyUrl, requireSignIn, requireStepUp, requirePermission, requireToken, audit, management, redirectUri };
 }
 
 export type Sangam = ReturnType<typeof createSangam>;

@@ -229,7 +229,7 @@ public sealed class AttributeTests : IAsyncLifetime
         Assert.False((await service.AddClaimAsync(_owner, _app, new ClaimMappingInput("his_roles", "org_names", null))).Succeeded);
 
         Assert.True((await service.SetValuesAsync(_owner, _app, _nurse, new Dictionary<string, string?> { ["employee_no"] = "E-1042", ["grade"] = "7", ["on_call"] = "false" })).Succeeded);
-        Assert.Equal(ManagementStatus.Ok, (await Scoped<IManagementService>().UpsertMembershipAsync(_app, _hospital, _nurse, new MembershipUpsert("nurse", true), ManagementActor.Api)).Status);
+        Assert.Equal(ManagementStatus.Ok, (await Scoped<IManagementService>().UpsertMembershipAsync(_app, _hospital, _nurse, new MembershipUpsert("nurse", false), ManagementActor.Api)).Status);
 
         IReadOnlyDictionary<string, object> claims = await service.ClaimsAsync(_nurse, _app);
         Assert.Equal("E-1042", claims["employee_no"]);
@@ -250,9 +250,9 @@ public sealed class AttributeTests : IAsyncLifetime
     {
         IManagementService management = Scoped<IManagementService>();
         DateTimeOffset now = DateTimeOffset.UtcNow;
-        Assert.NotEqual(ManagementStatus.Ok, (await management.UpsertMembershipAsync(_app, _hospital, _nurse, new MembershipUpsert("nurse", true, now.AddMinutes(-1)), ManagementActor.Api)).Status);
-        Assert.NotEqual(ManagementStatus.Ok, (await management.UpsertMembershipAsync(_app, _hospital, _nurse, new MembershipUpsert("nurse", true, now.AddYears(6)), ManagementActor.Api)).Status);
-        Assert.Equal(ManagementStatus.Ok, (await management.UpsertMembershipAsync(_app, _hospital, _nurse, new MembershipUpsert("nurse", true, now.AddDays(30)), ManagementActor.Api)).Status);
+        Assert.NotEqual(ManagementStatus.Ok, (await management.UpsertMembershipAsync(_app, _hospital, _nurse, new MembershipUpsert("nurse", false, now.AddMinutes(-1)), ManagementActor.Api)).Status);
+        Assert.NotEqual(ManagementStatus.Ok, (await management.UpsertMembershipAsync(_app, _hospital, _nurse, new MembershipUpsert("nurse", false, now.AddYears(6)), ManagementActor.Api)).Status);
+        Assert.Equal(ManagementStatus.Ok, (await management.UpsertMembershipAsync(_app, _hospital, _nurse, new MembershipUpsert("nurse", false, now.AddDays(30)), ManagementActor.Api)).Status);
 
         Assert.Single(await Scoped<ITenancyQuery>().GetOrgClaimsAsync(_nurse, _app));
         MembershipDto listed = Assert.Single(await management.ListMembersAsync(_app, _hospital));

@@ -310,6 +310,7 @@ public sealed partial class ClientRegistration
         else if (kind is "application" or "native" or "device")
         {
             list.Add(OpenIddictConstants.Permissions.Prefixes.Scope + SangamScopes.OrgsRead);
+            list.Add(OpenIddictConstants.Permissions.Prefixes.Scope + SangamScopes.OrgCurrent);
             list.Add(OpenIddictConstants.Permissions.Prefixes.Scope + SangamScopes.Attributes);
         }
 

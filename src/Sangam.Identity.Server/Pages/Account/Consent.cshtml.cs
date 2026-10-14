@@ -55,6 +55,9 @@ public sealed class ConsentModel : AuthPageModel
     /// <summary>Claim label + real value rows.</summary>
     public IReadOnlyList<(string Label, string Value)> Shared { get; private set; } = [];
 
+    /// <summary>rc.12 (A7): whether the application gets only the organisation chosen, not the person's others.</summary>
+    public bool OtherOrganisationsKept { get; private set; }
+
     /// <summary>Renders the consent screen.</summary>
     public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken)
     {
@@ -123,8 +126,10 @@ public sealed class ConsentModel : AuthPageModel
         IReadOnlyDictionary<string, object>? custom = requested.Contains(SangamScopes.Attributes)
             ? await HttpContext.RequestServices.GetRequiredService<Sangam.Identity.Application.Attributes.IAttributeService>().ClaimsAsync(user.Id, app.Id, cancellationToken)
             : null;
+        OtherOrganisationsKept = requested.Contains(SangamScopes.OrgCurrent) && !requested.Contains(SangamScopes.OrgsRead);
+        Guid? chosen = OrgChoice.Read(HttpContext, HttpContext.RequestServices.GetRequiredService<Microsoft.AspNetCore.DataProtection.IDataProtectionProvider>(), user.Id, app.Id);
         Shared = provider is null
-            ? await DescribeAsync(L, user, app, requested, _tenancy, cancellationToken, custom)
+            ? await DescribeAsync(L, user, app, requested, _tenancy, cancellationToken, custom, chosen)
             : SamlRelease.Describe(L, provider, user, await _tenancy.GetOrgClaimsAsync(user.Id, app.Id, cancellationToken));
         return true;
     }
@@ -137,7 +142,8 @@ public sealed class ConsentModel : AuthPageModel
     /// <param name="tenancy">Tenancy, for organisations and roles.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <param name="custom">PR-25: the application's custom claims, for the attributes scope.</param>
-    internal static async Task<IReadOnlyList<(string Label, string Value)>> DescribeAsync(Microsoft.Extensions.Localization.IStringLocalizer text, UserSummary user, AppSummary app, IReadOnlySet<string> requested, ITenancyQuery tenancy, CancellationToken cancellationToken, IReadOnlyDictionary<string, object>? custom = null)
+    /// <param name="currentOrgId">rc.12 (A7): the organisation the person chose to work at for this sign-in.</param>
+    internal static async Task<IReadOnlyList<(string Label, string Value)>> DescribeAsync(Microsoft.Extensions.Localization.IStringLocalizer text, UserSummary user, AppSummary app, IReadOnlySet<string> requested, ITenancyQuery tenancy, CancellationToken cancellationToken, IReadOnlyDictionary<string, object>? custom = null, Guid? currentOrgId = null)
     {
 #pragma warning disable IDE1006 // Named L, as on every page, so the i18n lint finds the keys below.
         Microsoft.Extensions.Localization.IStringLocalizer L = text;
@@ -159,10 +165,22 @@ public sealed class ConsentModel : AuthPageModel
             shared.Add((L["Mobile number"], user.Mobile ?? "—"));
         }
 
-        if (requested.Contains(SangamScopes.OrgsRead))
+        if (requested.Contains(SangamScopes.OrgsRead) || requested.Contains(SangamScopes.OrgCurrent))
         {
             IReadOnlyList<OrgClaim> orgs = await tenancy.GetOrgClaimsAsync(user.Id, app.Id, cancellationToken);
-            shared.Add((L["Organisations and roles"], orgs.Count == 0 ? L["None yet"] : string.Join(", ", orgs.Select(o => o.Name + " (" + o.Role + ")"))));
+            string Place(OrgClaim o) => o.Name + " (" + (o.Roles is { Count: > 0 } roles ? string.Join(", ", roles) : L["staff"]) + ")";
+
+            // rc.12 (A7): the organisation chosen for this sign-in, by name.
+            OrgClaim? current = orgs.Count == 1 ? orgs[0] : orgs.FirstOrDefault(o => o.Id == currentOrgId);
+            if (current is not null)
+            {
+                shared.Add((L["Working at"], Place(current)));
+            }
+
+            if (requested.Contains(SangamScopes.OrgsRead))
+            {
+                shared.Add((L["Organisations and roles"], orgs.Count == 0 ? L["None yet"] : string.Join(", ", orgs.Select(Place))));
+            }
         }
 
         if (requested.Contains(SangamScopes.Attributes))

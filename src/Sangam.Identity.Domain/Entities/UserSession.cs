@@ -52,4 +52,10 @@ public sealed class UserSession
 
     /// <summary>Why it ended: <c>user</c>, <c>user_all</c>, <c>password_reset</c>, <c>admin</c>, <c>expired</c>.</summary>
     public string? RevokedReason { get; set; }
+
+    /// <summary>rc.12 (T1): when an application locked this session on a shared device; cleared when the person unlocks.</summary>
+    public DateTimeOffset? LockedAt { get; set; }
+
+    /// <summary>rc.12 (T1): the enrolled shared device the session was signed in on, if any.</summary>
+    public Guid? SharedDeviceId { get; set; }
 }

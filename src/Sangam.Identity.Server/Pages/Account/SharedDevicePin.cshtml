@@ -1,0 +1,30 @@
+@page "/shared-device/pin"
+@model SharedDevicePinModel
+@{
+    ViewData["Title"] = L["Set a PIN for this device"].Value;
+}
+
+@* rc.12 (T1): offered once per full sign-in on an enrolled shared device. *@
+<section class="sg-card">
+  <h1 class="sg-card-title">@L["Set a PIN for this device"]</h1>
+  <p class="sg-card-body">@L["When an application locks your screen on {0}, you can come back within {1} minutes with these six digits instead of signing in again. Once every {2} hours you still sign in fully.", Model.Device.Label, Model.Device.Rules.PinMinutes, Model.Device.Rules.FullSignInHours]</p>
+  <form method="post" novalidate>
+    <input type="hidden" asp-for="ReturnUrl" />
+    <div class="sg-field-group">
+      <label class="sg-label" asp-for="Pin">@L["PIN (6 digits)"]</label>
+      <input class="sg-field sg-field--pin" asp-for="Pin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" autofocus />
+      <span class="sg-field-error" asp-validation-for="Pin"></span>
+    </div>
+    <div class="sg-field-group">
+      <label class="sg-label" asp-for="Confirm">@L["The same PIN again"]</label>
+      <input class="sg-field sg-field--pin" asp-for="Confirm" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" />
+      <span class="sg-field-error" asp-validation-for="Confirm"></span>
+    </div>
+    <p class="sg-note">@L["Five wrong PINs stop it working until you next sign in fully. It works only on the shared device where you last signed in."]</p>
+    <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Set PIN"]</button>
+  </form>
+  <form method="post" asp-page-handler="Later" class="sg-form-after">
+    <input type="hidden" asp-for="ReturnUrl" />
+    <button type="submit" class="sg-btn sg-btn--secondary sg-btn--block">@L["Not now"]</button>
+  </form>
+</section>

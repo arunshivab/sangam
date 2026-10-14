@@ -125,6 +125,24 @@ public static class MessageTemplateKinds
     /// <summary>To an organisation's organisation admins: someone left it, and which of their roles ended (rc.10, P4).</summary>
     public const string OrganisationMemberLeft = "organisation_member_left";
 
+    /// <summary>
+    /// To a person an admin added (rc.12): the activation link. It works only with the code the admin hands over in person,
+    /// so the e-mail never carries the code.
+    /// </summary>
+    public const string StaffActivation = "staff_activation";
+
+    /// <summary>To the admin who added someone (rc.12): joining stopped because the account's details differ from theirs.</summary>
+    public const string StaffJoinStopped = "staff_join_stopped";
+
+    /// <summary>To each person at a customer that left an application (rc.12): their places there have ended; the account stays theirs.</summary>
+    public const string OrganisationClosed = "organisation_closed";
+
+    /// <summary>
+    /// To an organisation's emergency access reviewers (rc.12, M12): someone used emergency access. The case is the
+    /// application's own reference; Sangam holds no patient details.
+    /// </summary>
+    public const string EmergencyAccessUsed = "emergency_access_used";
+
     /// <summary>Every kind, in the order the consoles list them.</summary>
     public static IReadOnlyList<MessageTemplateKind> All { get; } =
     [
@@ -132,6 +150,8 @@ public static class MessageTemplateKinds
         new(SignInCode, false, true, ["name", "code", "minutes", "application"], ["code"]),
         new(PasswordReset, false, true, ["name", "code", "minutes", "application"], ["code"]),
         new(Invitation, false, true, ["application", "organisation", "role", "link", "days"], ["link"]),
+        new(StaffActivation, false, true, ["name", "application", "organisations", "admin", "link", "days"], ["link"]),
+        new(StaffJoinStopped, false, false, ["name", "member", "organisations", "fields"], ["member", "fields"]),
         new(EmailChangeCode, false, false, ["name", "code", "minutes"], ["code"]),
         new(EmailChangedNotice, false, false, ["name", "new_email"], []),
         new(TwoStepResetNotice, false, false, ["name"], []),
@@ -153,6 +173,8 @@ public static class MessageTemplateKinds
         new(AccountMerged, false, false, ["name", "closed"], ["closed"]),
         new(AppAdminMerged, false, false, ["name", "application", "admin"], ["application", "admin"]),
         new(OrganisationLeft, false, false, ["name", "organisation", "roles"], ["organisation", "roles"]),
+        new(OrganisationClosed, false, false, ["name", "organisation", "application"], ["organisation", "application"]),
+        new(EmergencyAccessUsed, false, false, ["name", "member", "organisation", "application", "case", "reason", "start", "end", "link"], ["member", "case", "reason"]),
         new(OrganisationMemberLeft, false, false, ["name", "member", "organisation", "application", "roles"], ["member", "organisation", "roles"]),
         new(OperatorAlert, false, false, ["summary", "details"], ["summary"]),
         new(GrievanceAcknowledgement, false, false, ["name", "reference", "received", "resolve_by"], ["reference"]),

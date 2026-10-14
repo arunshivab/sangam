@@ -1,5 +1,6 @@
 @page "/"
 @inject IPartnerService Partners
+@inject NavigationManager Nav
 
 <PageTitle>@L["Your applications · Sangam partners"]</PageTitle>
 
@@ -48,6 +49,25 @@
       </li>
     }
   </ul>
+
+  @* rc.12: the organisations this person administers themselves, in the organisation console. *@
+  @if (Context.OwnScopes.Any())
+  {
+    <h2 class="sg-h2 sg-h2--section">@L["Your organisations"]</h2>
+    <ul class="sg-tiles" data-panel="org-scopes">
+      @foreach (OrgScope scope in Context.OwnScopes)
+      {
+        <li>
+          <a class="sg-tile" href="@($"/org/{scope.OrgId:D}")">
+            <span class="sg-tile-head">
+              <span class="sg-tile-glyph" style="background:@scope.BrandColour" aria-hidden="true">@scope.Glyph</span>
+              <span class="sg-tile-text"><span class="sg-name">@scope.OrgName</span><span class="sg-sub">@scope.AppName</span></span>
+            </span>
+          </a>
+        </li>
+      }
+    </ul>
+  }
 }
 
 @code {
@@ -66,6 +86,13 @@
     {
         if (Context is null)
         {
+            return;
+        }
+
+        // rc.12: a customer or branch admin who runs no application starts in the organisation console.
+        if (Context.Apps.Count == 0)
+        {
+            Nav.NavigateTo("/org", replace: true);
             return;
         }
 

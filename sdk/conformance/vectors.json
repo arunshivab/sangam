@@ -2,7 +2,7 @@
  "version": "1.0",
  "description": "Sangam SDK conformance vectors (SGM-306 §2). Every SDK runs these in its own test suite; a change here is a change to every SDK.",
  "permissions": {
-  "description": "One permission rule everywhere: granted at the organisation, or at an ancestor whose membership inherits (SangamMembership.Covers). Deny by default. Organisation paths end with '/'; comparison of paths is case-insensitive, of roles and permissions case-sensitive.",
+  "description": "One permission rule everywhere: granted at the organisation, or at an ancestor whose membership inherits (SangamMembership.Covers). Deny by default. Organisation paths end with '/'; comparison of paths is case-insensitive, of roles and permissions case-sensitive. Since rc.12 one entry carries every role held there in 'roles' (each is one membership; 'role' is the first, kept for older readers); an entry with no role is one membership with an empty role, which no role check matches.",
   "sangam_orgs": [
    {
     "id": "0192a6b0-0000-7000-8000-000000000001",
@@ -38,6 +38,30 @@
      "vitals:read"
     ],
     "inherits": true
+   },
+   {
+    "id": "0192a6b0-0000-7000-8000-000000000006",
+    "name": "Kothrud Clinic",
+    "type": "clinic",
+    "path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000006/",
+    "role": "doctor",
+    "roles": [
+     "doctor",
+     "administrator"
+    ],
+    "permissions": [
+     "orders:write",
+     "staff:manage"
+    ],
+    "inherits": false
+   },
+   {
+    "id": "0192a6b0-0000-7000-8000-000000000008",
+    "name": "Wakad Clinic",
+    "type": "clinic",
+    "path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000008/",
+    "permissions": [],
+    "inherits": false
    }
   ],
   "has_permission": [
@@ -100,6 +124,12 @@
     "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002x/",
     "expect": false,
     "why": "a path that only starts with the same characters is not a child"
+   },
+   {
+    "permission": "staff:manage",
+    "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000006/",
+    "expect": true,
+    "why": "several roles at one organisation: the permissions of all of them"
    }
   ],
   "has_role": [
@@ -121,6 +151,21 @@
    {
     "role": "doctor",
     "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000002/",
+    "expect": false
+   },
+   {
+    "role": "administrator",
+    "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000006/",
+    "expect": true
+   },
+   {
+    "role": "doctor",
+    "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000006/",
+    "expect": true
+   },
+   {
+    "role": "",
+    "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000008/",
     "expect": false
    }
   ],
@@ -144,6 +189,20 @@
      "auditor",
      "nurse"
     ]
+   },
+   {
+    "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000006/",
+    "expect": [
+     "administrator",
+     "auditor",
+     "doctor"
+    ]
+   },
+   {
+    "org_path": "/0192a6b0-0000-7000-8000-000000000001/0192a6b0-0000-7000-8000-000000000008/",
+    "expect": [
+     "auditor"
+    ]
    }
   ],
   "malformed_claims": [
@@ -161,6 +220,14 @@
    },
    {
     "claim": "{\"id\": \"0192a6b0-0000-7000-8000-000000000007\", \"name\": \"Single\", \"type\": \"clinic\", \"path\": \"/0192a6b0-0000-7000-8000-000000000007/\", \"role\": \"r\", \"permissions\": [\"p:q\"], \"inherits\": false}",
+    "memberships": 1
+   },
+   {
+    "claim": "{\"id\": \"0192a6b0-0000-7000-8000-00000000000a\", \"path\": \"/0192a6b0-0000-7000-8000-00000000000a/\", \"roles\": [\"a\", \"b\", \"a\"]}",
+    "memberships": 2
+   },
+   {
+    "claim": "{\"id\": \"0192a6b0-0000-7000-8000-00000000000b\", \"path\": \"/0192a6b0-0000-7000-8000-00000000000b/\"}",
     "memberships": 1
    }
   ]

@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -89,15 +91,10 @@ public sealed partial class InvitationServiceTests : IAsyncLifetime
     [PostgresFact]
     public async Task TheInvitedPerson_AcceptsOnce_AndGetsTheRole_WhileOthersCannot()
     {
+        // rc.12: no new invitations are made, but a link sent before keeps working until it expires — at that organisation only.
+        string token = await SeedAsync("Asha@Example.in", _adminId, appliesToDescendants: true, DateTimeOffset.UtcNow.AddDays(3));
         using IServiceScope scope = _provider.CreateScope();
         IInvitationService invitations = scope.ServiceProvider.GetRequiredService<IInvitationService>();
-        InMemoryEmailOutbox outbox = scope.ServiceProvider.GetRequiredService<InMemoryEmailOutbox>();
-
-        PartnerResult sent = await invitations.CreateAsync(_adminId, _appId, _orgId, "Asha@Example.in", "nurse", appliesToDescendants: false);
-        Assert.True(sent.Succeeded, sent.Message);
-        string body = outbox.LatestFor("Asha@Example.in")!.Message.TextBody;
-        Assert.Contains("https://id.example.test/invite/", body, StringComparison.Ordinal);
-        string token = TokenIn(body);
 
         InvitationView? view = await invitations.GetAsync(token);
         Assert.Equal(("LiPi HIS", "Apulki", "Nurse", InvitationState.Open), (view!.AppName, view.OrgName, view.RoleName, view.State));
@@ -117,25 +114,17 @@ public sealed partial class InvitationServiceTests : IAsyncLifetime
     }
 
     [PostgresFact]
-    public async Task AnInvitationTheApplicationSentThroughTheApi_LinksThePerson_OnlyWhenTheyAccept()
+    public async Task AnInvitationTheApplicationSent_LinksThePerson_OnlyWhenTheyAccept()
     {
         // rc.5 (ASVS V4.2.1, consent first).
-        using IServiceScope scope = _provider.CreateScope();
-        IInvitationService invitations = scope.ServiceProvider.GetRequiredService<IInvitationService>();
-        InMemoryEmailOutbox outbox = scope.ServiceProvider.GetRequiredService<InMemoryEmailOutbox>();
-
-        ManagementResult<InvitationSent> sent = await invitations.CreateForApplicationAsync(_appId, _orgId, "asha@example.in", "nurse", appliesToDescendants: false);
-        Assert.Equal(ManagementStatus.Ok, sent.Status);
-        Assert.Equal(("asha@example.in", "nurse"), (sent.Value!.Email, sent.Value.Role));
-        string token = TokenIn(outbox.LatestFor("asha@example.in")!.Message.TextBody);
-
+        string token = await SeedAsync("asha@example.in", null, appliesToDescendants: false, DateTimeOffset.UtcNow.AddDays(3));
         await using (SangamDbContext before = _pg.CreateContext())
         {
-            Invitation row = await before.Invitations.SingleAsync(i => i.Id == sent.Value.Id);
-            Assert.Null(row.InvitedByUserId);
             Assert.False(await before.AppGrants.AnyAsync(g => g.UserId == _inviteeId && g.AppId == _appId));
         }
 
+        using IServiceScope scope = _provider.CreateScope();
+        IInvitationService invitations = scope.ServiceProvider.GetRequiredService<IInvitationService>();
         Assert.Equal(InvitationState.Open, (await invitations.GetAsync(token))!.State);
         PartnerResult accepted = await invitations.AcceptAsync(token, _inviteeId);
         Assert.True(accepted.Succeeded, accepted.Message);
@@ -143,40 +132,41 @@ public sealed partial class InvitationServiceTests : IAsyncLifetime
         await using SangamDbContext db = _pg.CreateContext();
         Assert.True(await db.AppGrants.AnyAsync(g => g.UserId == _inviteeId && g.AppId == _appId && g.RevokedAt == null));
         Assert.True(await db.OrgMemberships.AnyAsync(m => m.UserId == _inviteeId && m.OrgId == _orgId && m.RevokedAt == null));
-        Assert.Equal(ManagementStatus.NotFound, (await invitations.CreateForApplicationAsync(_appId, Guid.NewGuid(), "asha@example.in", "nurse", false)).Status);
-        Assert.Equal(ManagementStatus.Invalid, (await invitations.CreateForApplicationAsync(_appId, _orgId, "not an address", "nurse", false)).Status);
     }
 
     [PostgresFact]
-    public async Task Invitations_AreRefused_FromNonAdministrators_ForRetiredRoles_AndOnceExpired()
+    public async Task AnUnknownOrExpiredLink_IsRefused()
     {
+        string token = await SeedAsync("asha@example.in", _adminId, appliesToDescendants: false, DateTimeOffset.UtcNow.AddMinutes(-1));
         using IServiceScope scope = _provider.CreateScope();
         IInvitationService invitations = scope.ServiceProvider.GetRequiredService<IInvitationService>();
-        InMemoryEmailOutbox outbox = scope.ServiceProvider.GetRequiredService<InMemoryEmailOutbox>();
-
-        Assert.False((await invitations.CreateAsync(_strangerId, _appId, _orgId, "asha@example.in", "nurse", false)).Succeeded);
-        Assert.False((await invitations.CreateAsync(_adminId, _appId, _orgId, "asha@example.in", "surgeon", false)).Succeeded);
-        Assert.False((await invitations.CreateAsync(_adminId, _appId, _orgId, "not an address", "nurse", false)).Succeeded);
         Assert.Null(await invitations.GetAsync("no-such-token"));
-
-        await invitations.CreateAsync(_adminId, _appId, _orgId, "asha@example.in", "nurse", false);
-        string token = TokenIn(outbox.LatestFor("asha@example.in")!.Message.TextBody);
-        await using (SangamDbContext db = _pg.CreateContext())
-        {
-            await db.Invitations.ExecuteUpdateAsync(s => s.SetProperty(i => i.ExpiresAt, DateTimeOffset.UtcNow.AddMinutes(-1)));
-        }
-
-        // A later request, in its own scope, sees the expiry (the first scope still tracks the old row).
-        using IServiceScope later = _provider.CreateScope();
-        IInvitationService fresh = later.ServiceProvider.GetRequiredService<IInvitationService>();
-        Assert.Equal(InvitationState.Expired, (await fresh.GetAsync(token))!.State);
-        Assert.False((await fresh.AcceptAsync(token, _inviteeId)).Succeeded);
+        Assert.Equal(InvitationState.Expired, (await invitations.GetAsync(token))!.State);
+        Assert.False((await invitations.AcceptAsync(token, _inviteeId)).Succeeded);
     }
 
-    private static string TokenIn(string body) => InviteLink().Match(body).Groups[1].Value;
-
-    [GeneratedRegex("/invite/([A-Za-z0-9_-]+)")]
-    private static partial Regex InviteLink();
+    /// <summary>An invitation as rc.11 left it in the database.</summary>
+    private async Task<string> SeedAsync(string email, Guid? invitedBy, bool appliesToDescendants, DateTimeOffset expiresAt)
+    {
+        string token = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(16));
+        await using SangamDbContext db = _pg.CreateContext();
+        db.Invitations.Add(new Invitation
+        {
+            Id = Guid.NewGuid(),
+            AppId = _appId,
+            OrgId = _orgId,
+            RoleCode = "nurse",
+            AppliesToDescendants = appliesToDescendants,
+            Email = email,
+            NormalizedEmail = email.ToUpperInvariant(),
+            TokenHash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(token))),
+            InvitedByUserId = invitedBy,
+            CreatedAt = DateTimeOffset.UtcNow.AddDays(-1),
+            ExpiresAt = expiresAt,
+        });
+        await db.SaveChangesAsync();
+        return token;
+    }
 
     [GeneratedRegex("[0-9]{6}")]
     private static partial Regex SixDigits();

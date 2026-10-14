@@ -37,6 +37,7 @@ class SangamFastAPI:
         self.router.add_api_route("/login", self._login, methods=["GET"], include_in_schema=False)
         self.router.add_api_route("/callback", self._callback, methods=["GET"], include_in_schema=False)
         self.router.add_api_route("/logout", self._logout, methods=["GET"], include_in_schema=False)
+        self.router.add_api_route("/lock", self._lock, methods=["GET"], include_in_schema=False)
         self.router.add_api_route("/me", self._me, methods=["GET"], include_in_schema=False)
 
     def install(self, app: FastAPI) -> None:
@@ -54,7 +55,7 @@ class SangamFastAPI:
 
     async def _login(self, request: Request) -> Response:
         q = request.query_params
-        url, cookie = await run_in_threadpool(self.core.begin, request.cookies.get(self.core.cookie), q.get("returnTo"), q.get("acr"), q.get("max_age"))
+        url, cookie = await run_in_threadpool(self.core.begin, request.cookies.get(self.core.cookie), q.get("returnTo"), q.get("acr"), q.get("max_age"), q.get("switch"), q.get("emergency"))
         response = RedirectResponse(url, status_code=302)
         self._cookie(response, cookie)
         return response
@@ -71,13 +72,19 @@ class SangamFastAPI:
         self._cookie(response, "", max_age=0)
         return response
 
+    async def _lock(self, request: Request) -> Response:
+        url = await run_in_threadpool(self.core.lock, request.cookies.get(self.core.cookie), request.query_params.get("returnTo"))
+        response = RedirectResponse(url, status_code=302)
+        self._cookie(response, "", max_age=0)
+        return response
+
     async def _me(self, request: Request) -> Response:
         user = self.core.user(request.cookies.get(self.core.cookie))
         if user is None:
             return JSONResponse({"user": None, "loginUrl": self.core.login_url("/")}, status_code=401)
         from .web import user_to_dict
 
-        return JSONResponse({"user": user_to_dict(user), "loginUrl": self.core.login_url("/"), "logoutUrl": f"{self.core.base_path}/logout"})
+        return JSONResponse({"user": user_to_dict(user), "loginUrl": self.core.login_url("/"), "logoutUrl": f"{self.core.base_path}/logout", "lockUrl": f"{self.core.base_path}/lock"})
 
     # ---------------------------------------------------------------- dependencies
     def current_user(self, request: Request) -> SangamUser | None:

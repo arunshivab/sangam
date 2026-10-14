@@ -14,7 +14,8 @@ namespace Sangam.Identity.Infrastructure.Portal;
 /// <summary><see cref="IPortalRolesService"/> over the identity database (rc.10, P4).</summary>
 public sealed class EfPortalRolesService : IPortalRolesService
 {
-    /// <summary>The system role every application has for the people who administer an organisation in it.</summary>
+    /// <summary>The rc.11 system role for the people who administer an organisation in an application. Since rc.12 admin
+    /// rights are kept apart (<see cref="OrgAdmin"/>); existing holders were converted.</summary>
     public const string OrganisationAdminRole = "org_admin";
 
     private readonly SangamDbContext _db;
@@ -73,11 +74,10 @@ public sealed class EfPortalRolesService : IPortalRolesService
                             .. g.OrderBy(h => h.AppName, StringComparer.CurrentCulture).Select(h => new PortalRole(
                                 h.AppId,
                                 h.AppName,
-                                string.IsNullOrWhiteSpace(h.RoleName) ? h.RoleCode : h.RoleName,
+                                RoleText(h),
                                 h.GrantedByUserId is Guid by ? granterNames.GetValueOrDefault(by) : null,
                                 h.GrantedAt,
                                 h.ExpiresAt,
-                                h.AppliesToDescendants,
                                 onlyAdmin.Contains((h.OrgId, h.AppId)))),
                         ]);
                 }),
@@ -97,21 +97,30 @@ public sealed class EfPortalRolesService : IPortalRolesService
         ManagementActor self = ManagementActor.Self(userId);
         List<Held> ended = [];
         List<string> kept = [];
-        foreach (Held h in held)
+        DateTimeOffset now = _clock.UtcNow;
+        foreach (IGrouping<Guid, Held> app in held.GroupBy(h => h.AppId))
         {
-            if (onlyAdmin.Contains((h.OrgId, h.AppId)))
+            if (onlyAdmin.Contains((orgId, app.Key)))
             {
-                kept.Add(h.AppName);
+                kept.Add(app.First().AppName);
                 continue;
             }
 
-            // The same path a partner uses: audited, and the application is told (membership revoked; the person
-            // deactivated there when it was their last role).
-            if ((await _management.RevokeMembershipAsync(h.AppId, h.OrgId, userId, self, cancellationToken).ConfigureAwait(false)).Status == ManagementStatus.Ok)
+            // The same path a partner uses: audited, and the application is told (every role there ends; the person is
+            // deactivated there when it was their last). rc.12: their admin rights there end too.
+            if ((await _management.RevokeMembershipAsync(app.Key, orgId, userId, self, cancellationToken).ConfigureAwait(false)).Status == ManagementStatus.Ok)
             {
-                ended.Add(h);
+                ended.AddRange(app);
+            }
+
+            foreach (OrgAdmin right in await _db.OrgAdmins.Where(a => a.AppId == app.Key && a.OrgId == orgId && a.UserId == userId && a.RevokedAt == null).ToListAsync(cancellationToken).ConfigureAwait(false))
+            {
+                right.RevokedAt = now;
+                right.RevokedByUserId = userId;
             }
         }
+
+        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         string orgName = held[0].OrgName;
         await _audit.WriteAsync(
@@ -156,12 +165,12 @@ public sealed class EfPortalRolesService : IPortalRolesService
             cancellationToken).ConfigureAwait(false);
 
         string member = (person.FirstName + " " + person.LastName).Trim();
-        DateTimeOffset now = _clock.UtcNow;
         foreach (IGrouping<Guid, Held> app in ended.GroupBy(h => h.AppId))
         {
-            var admins = await _db.OrgMemberships.AsNoTracking()
-                .Where(m => m.AppId == app.Key && m.OrgId == orgId && m.UserId != userId && m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > now) && m.Role!.Code == OrganisationAdminRole)
-                .Select(m => new { m.UserId, m.User!.Email, m.User.FirstName, m.User.Locale })
+            List<Guid> covering = await CoveringAsync(orgId, cancellationToken).ConfigureAwait(false);
+            var admins = await _db.OrgAdmins.AsNoTracking()
+                .Where(a => a.AppId == app.Key && covering.Contains(a.OrgId) && a.UserId != userId && a.RevokedAt == null && a.Right == OrgAdminRight.Admin)
+                .Select(a => new { a.UserId, a.User!.Email, a.User.FirstName, a.User.Locale })
                 .Distinct()
                 .ToListAsync(cancellationToken).ConfigureAwait(false);
             foreach (var admin in admins)
@@ -184,7 +193,8 @@ public sealed class EfPortalRolesService : IPortalRolesService
         }
     }
 
-    private static string RoleText(Held h) => string.IsNullOrWhiteSpace(h.RoleName) ? h.RoleCode : h.RoleName;
+    // rc.12: a place in an organisation without a role in Sangam (the application keeps it) shows as "Staff".
+    private static string RoleText(Held h) => !string.IsNullOrWhiteSpace(h.RoleName) ? h.RoleName : h.RoleCode ?? "Staff"; // i18n-key
 
     /// <summary>The person's live roles, at one organisation or all.</summary>
     private async Task<List<Held>> HeldAsync(Guid userId, Guid? orgId, CancellationToken cancellationToken)
@@ -198,31 +208,43 @@ public sealed class EfPortalRolesService : IPortalRolesService
         }
 
         return await query
-            .Select(m => new Held(m.OrgId, m.Org!.Name, m.Org.Path, m.AppId, m.App!.DisplayName, m.Role!.Code, m.Role.DisplayName, m.GrantedByUserId, m.GrantedAt, m.ExpiresAt, m.AppliesToDescendants))
+            .Select(m => new Held(m.OrgId, m.Org!.Name, m.Org.Path, m.AppId, m.App!.DisplayName, m.Role == null ? null : m.Role.Code, m.Role == null ? null : m.Role.DisplayName, m.GrantedByUserId, m.GrantedAt, m.ExpiresAt))
             .ToListAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// Where the person is the only organisation admin of an application at an organisation: leaving would leave nobody
-    /// there who can give or end roles for that application.
+    /// Where the person is the only admin of an application at an organisation (rc.12: an admin right at it or above it):
+    /// leaving would leave nobody there who can add or end staff for that application.
     /// </summary>
     private async Task<HashSet<(Guid OrgId, Guid AppId)>> OnlyAdminAsync(Guid userId, List<Held> held, CancellationToken cancellationToken)
     {
-        List<Held> admin = [.. held.Where(h => h.RoleCode == OrganisationAdminRole)];
         HashSet<(Guid, Guid)> only = [];
-        DateTimeOffset now = _clock.UtcNow;
-        foreach (Held h in admin)
+        foreach ((Guid orgId, Guid appId) in held.Select(h => (h.OrgId, h.AppId)).Distinct())
         {
-            bool another = await _db.OrgMemberships.AnyAsync(
-                m => m.AppId == h.AppId && m.OrgId == h.OrgId && m.UserId != userId && m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > now) && m.Role!.Code == OrganisationAdminRole,
+            bool isAdmin = await _db.OrgAdmins.AnyAsync(a => a.AppId == appId && a.OrgId == orgId && a.UserId == userId && a.RevokedAt == null && a.Right == OrgAdminRight.Admin, cancellationToken).ConfigureAwait(false);
+            if (!isAdmin)
+            {
+                continue;
+            }
+
+            List<Guid> covering = await CoveringAsync(orgId, cancellationToken).ConfigureAwait(false);
+            bool another = await _db.OrgAdmins.AnyAsync(
+                a => a.AppId == appId && covering.Contains(a.OrgId) && a.UserId != userId && a.RevokedAt == null && a.Right == OrgAdminRight.Admin,
                 cancellationToken).ConfigureAwait(false);
             if (!another)
             {
-                only.Add((h.OrgId, h.AppId));
+                only.Add((orgId, appId));
             }
         }
 
         return only;
+    }
+
+    /// <summary>The organisation and every organisation above it (an admin right at any of them covers it).</summary>
+    private async Task<List<Guid>> CoveringAsync(Guid orgId, CancellationToken cancellationToken)
+    {
+        string? path = await _db.Organisations.AsNoTracking().Where(o => o.Id == orgId).Select(o => o.Path).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        return path is null ? [orgId] : [.. OrganisationPath.Ids(path)];
     }
 
     /// <summary>The ids of the organisations above the one at <paramref name="path"/>, outermost first.</summary>
@@ -244,10 +266,9 @@ public sealed class EfPortalRolesService : IPortalRolesService
         string OrgPath,
         Guid AppId,
         string AppName,
-        string RoleCode,
-        string RoleName,
+        string? RoleCode,
+        string? RoleName,
         Guid? GrantedByUserId,
         DateTimeOffset GrantedAt,
-        DateTimeOffset? ExpiresAt,
-        bool AppliesToDescendants);
+        DateTimeOffset? ExpiresAt);
 }

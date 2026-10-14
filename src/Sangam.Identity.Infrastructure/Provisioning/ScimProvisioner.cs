@@ -280,7 +280,7 @@ public sealed partial class ScimProvisioner
         // The person as the application may see them: what its scopes and the person's consent allow.
         var memberships = await _db.OrgMemberships.AsNoTracking()
             .Where(m => m.AppId == target.AppId && m.UserId == userId && m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > now))
-            .Select(m => new { m.OrgId, OrgName = m.Org!.Name, m.Role!.Code, RoleName = m.Role.DisplayName })
+            .Select(m => new { m.OrgId, OrgName = m.Org!.Name, Code = m.Role == null ? null : m.Role.Code, RoleName = m.Role == null ? null : m.Role.DisplayName })
             .ToListAsync(cancellationToken).ConfigureAwait(false);
         string scope = await _db.Consents.AsNoTracking().Where(c => c.AppId == target.AppId && c.UserId == userId && c.RevokedAt == null).OrderByDescending(c => c.GrantedAt).Select(c => c.Scope).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false) ?? string.Empty;
         bool phone = scope.Split(' ').Contains(SangamScopes.Phone) && !string.IsNullOrEmpty(user!.PhoneNumber);
@@ -354,10 +354,13 @@ public sealed partial class ScimProvisioner
 
         // Groups: exactly the ones the person's roles call for.
         Dictionary<string, string> wanted = [];
-        foreach (var m in memberships)
+        // rc.12: a place without a role in Sangam (the application keeps roles itself) puts the person in no group.
+        foreach (var m in memberships.Where(m => m.Code is not null))
         {
-            string key = target.GroupMapping == "role_org" ? m.Code + "@" + m.OrgId.ToString("D") : m.Code;
-            wanted[key] = target.GroupMapping == "role_org" ? m.RoleName + " — " + m.OrgName : m.RoleName;
+            string code = m.Code!;
+            string roleName = string.IsNullOrEmpty(m.RoleName) ? code : m.RoleName;
+            string key = target.GroupMapping == "role_org" ? code + "@" + m.OrgId.ToString("D") : code;
+            wanted[key] = target.GroupMapping == "role_org" ? roleName + " — " + m.OrgName : roleName;
         }
 
         foreach ((string key, string name) in wanted)

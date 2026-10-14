@@ -93,6 +93,18 @@ public static class SangamServiceCollectionExtensions
                         context.ProtocolMessage.AcrValues = acr;
                     }
 
+                    // rc.12 (A6): "Switch organisation" asks Sangam to show the branch choice again.
+                    if (context.Properties.Items.TryGetValue(SangamDefaults.PromptItem, out string? prompt) && !string.IsNullOrEmpty(prompt))
+                    {
+                        context.ProtocolMessage.Prompt = prompt;
+                    }
+
+                    // rc.12 (M12): emergency access for a case; Sangam checks the person again and asks for a reason.
+                    if (context.Properties.Items.TryGetValue(SangamDefaults.EmergencyItem, out string? caseRef) && !string.IsNullOrEmpty(caseRef))
+                    {
+                        context.ProtocolMessage.SetParameter(Sangam.Shared.Constants.SangamClaims.Emergency, caseRef);
+                    }
+
                     return Task.CompletedTask;
                 };
             });

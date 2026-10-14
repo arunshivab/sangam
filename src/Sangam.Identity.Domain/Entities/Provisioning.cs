@@ -62,6 +62,12 @@ public static class AppEventTypes
     /// <summary>The person withdrew their consent to the application.</summary>
     public const string ConsentRevoked = "consent.revoked";
 
+    /// <summary>
+    /// rc.12 (T1): another application locked the person's session on a shared ward device; lock your screens too until they
+    /// come back through Sangam (a PIN within two hours, or a full sign-in). Data: <c>sid</c>.
+    /// </summary>
+    public const string SessionLocked = "session.locked";
+
     /// <summary>A role was created, changed or retired.</summary>
     public const string RoleChanged = "role.changed";
 
@@ -75,7 +81,7 @@ public static class AppEventTypes
     public const string Ping = "ping";
 
     /// <summary>Every type an endpoint may subscribe to, in the order the console shows them.</summary>
-    public static IReadOnlyList<string> All { get; } = [UserCreated, UserUpdated, UserDeactivated, UserReactivated, MembershipGranted, MembershipRevoked, SessionRevoked, ConsentRevoked, RoleChanged, AccountMerged];
+    public static IReadOnlyList<string> All { get; } = [UserCreated, UserUpdated, UserDeactivated, UserReactivated, MembershipGranted, MembershipRevoked, SessionRevoked, SessionLocked, ConsentRevoked, RoleChanged, AccountMerged];
 }
 
 /// <summary>An application's SCIM 2.0 server, to which Sangam provisions people (PR-23, SGM-216).</summary>

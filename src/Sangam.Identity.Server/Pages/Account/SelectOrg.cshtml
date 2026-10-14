@@ -1,0 +1,51 @@
+@page
+@model SelectOrgModel
+@{
+    ViewData["Title"] = L["Working at which branch?"].Value;
+}
+
+<section class="sg-card sg-card--orgs">
+  <h1 class="sg-card-title">@L["Working at which branch?"]</h1>
+  <p class="sg-card-body">@L["You work at more than one organisation in {0}. Choose where you are working now; {0} opens there.", Model.App.DisplayName]</p>
+
+  @if (Model.All.Count > SelectOrgModel.SearchAbove)
+  {
+    <form method="get" class="sg-org-search" role="search">
+      <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+      <label class="sg-label" for="org-q">@L["Find an organisation"]</label>
+      <div class="sg-org-search-row">
+        <input id="org-q" class="sg-field" name="q" value="@Model.Q" autocomplete="off" />
+        <button type="submit" class="sg-btn sg-btn--secondary">@L["Find"]</button>
+      </div>
+    </form>
+  }
+
+  <form method="post">
+    <input type="hidden" asp-for="ReturnUrl" />
+    <ul class="sg-org-cards" role="list">
+      @foreach (Sangam.Identity.Application.Tenancy.OrgClaim org in Model.Shown)
+      {
+        <li>
+          <button type="submit" name="OrgId" value="@org.Id" class="sg-org-card">
+            <span class="sg-org-card-name">@org.Name</span>
+            <span class="sg-org-card-sub">
+              @(org.Roles is { Count: > 0 } roles ? string.Join(", ", roles) : L["Staff"])
+              @if (org.Id == Model.LastUsed)
+              {
+                <span class="sg-org-card-last">· @L["last used"]</span>
+              }
+            </span>
+          </button>
+        </li>
+      }
+    </ul>
+    @if (Model.Shown.Count == 0)
+    {
+      <p class="sg-card-body">@L["No organisation matches."]</p>
+    }
+    <label class="sg-check sg-check--remember">
+      <input type="checkbox" asp-for="Remember" />
+      <span>@L["Remember on this device for 12 hours (only for you)"]</span>
+    </label>
+  </form>
+</section>

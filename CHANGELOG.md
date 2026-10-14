@@ -6,6 +6,81 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0-rc.12] - twelfth release candidate
+
+Sangam 1.0.0-rc.12 makes hospitals customers of the applications they use, with their own admins, and adds the ward
+features the v2 handoff asked for. The decisions (14 Oct 2026) are in `docs/design/rc12-tenancy.md`.
+
+### Hospitals, admins and roles
+- **Customers and their admins.** Every top organisation of an application is a customer. A **customer admin** looks
+  after the whole hospital group, a **branch admin** one branch and what is beneath it; these are admin rights
+  (`org_admins`), separate from roles, and an admin must work there. An **emergency access reviewer** right is given the
+  same way. A right ends with the person's last place in its tree. Migration `Rc12Tenancy`: today's `org_admin` role
+  holders become admins (their role stays), memberships that applied to everything beneath are expanded into explicit
+  places, and the switch is removed.
+- **Several roles at one organisation, or none.** `sangam_orgs` entries carry `roles` (every role held there); `role` still
+  carries the first for older code; `inherits` is always `false`. A customer chooses whether roles are kept in Sangam or in
+  the application (then people are added as staff).
+- **Adding staff safely.** Only admins verified with DigiLocker add people (an operator can set a dated exception per
+  application; each addition is then marked "added before DigiLocker"). Before adding, Sangam checks the details and says
+  only which fields match an existing account (5 checks a person per admin a day). The person joins with an **activation
+  code** the admin hands over in person (the e-mailed link never carries it), or the admin uses the **join code** the person
+  made in their portal (Organisations & roles → Join an organisation, with a QR code). An existing account whose name or
+  date of birth differs stops and tells the admin. Additions can start on a later date. `POST /orgs/{id}/invitations` now
+  answers 410; the staff calls need the admin's own access token in `Sangam-Acting-Admin`.
+- **Organisation console** (partner console, `/org`): overview with what needs a decision, people, joiners and leavers
+  (several organisations at once; a leaver's every place ends on one day), shared devices, emergency access and settings.
+  Application admins close a customer that leaves; everyone there is told and keeps their account.
+
+### Sign-in
+- **"Working at which branch?"** (A6): a person with two or more organisations chooses one (last used first, search above
+  six, "remember 12 hours" on this device); the token carries it in `sangam_org`. New scope `org.current` gives only that
+  organisation; the application can ask again (`prompt=select_org`) or name one (`sangam_org=<id>`). Consent shows
+  "Working at" (A7).
+- **Shared ward devices** (T1): an admin enrols a tablet from the device itself (a one-time link, 15 minutes). Its sign-in
+  page shows **"Who's using this device?"** — the last six people of that hospital who signed in fully there, with their
+  role. Applications lock a session (`POST /api/v1/sessions/lock` with the person's own access token; the SDKs' lock route
+  and idle timer); the person's other applications hear `session.locked`. Within 2 hours of the lock the person comes back
+  with a **6-digit PIN** set at their first full sign-in on an enrolled device; a full sign-in at least every 12 hours;
+  five wrong PINs cancel the PIN until the next full sign-in. A customer may shorten both times, never lengthen them. A lock
+  anywhere else simply needs a full sign-in. Removing a device ends its sessions at once.
+- **Emergency access** (M12): the application sends the person with `sangam_emergency=<its case number>`; Sangam checks it
+  is them again (a passkey or an authenticator app, within five minutes), asks for a reason, and the token carries
+  `sangam_emergency` (`id`, `case`, `org`, `until`) for up to 60 minutes. Only staff of that hospital, only where its admin
+  switched it on, at most three a person a day. The reviewers are e-mailed at once (`emergency_access_used`) and mark each
+  use justified or not justified in the organisation console; unreviewed uses are green under 24 hours, orange to 72, red
+  after, also on the application's access review. The application ends it early with a reason
+  (`POST /api/v1/sessions/emergency/end`). Sangam keeps no patient details.
+- **A5**: the authenticator step's heading is "One more step". **A9**: the sign-out screen lists the applications this
+  device will be signed out of. **A10**: "As on your government ID" under the name fields when registering.
+
+### Partner console
+- **R2**: the application overview says how many roles and emergency access uses wait for a decision, with a link to the
+  access review.
+- The DigiLocker exception (operator console → Applications).
+
+### SDKs (C#, JavaScript, Python, Java)
+- Each `roles` entry is one membership; empty roles are ignored by `hasRole`/`rolesIn`.
+- `checkStaff`, `addStaff`, `setRoles`; the invitation call is removed.
+- The current organisation (`CurrentOrganisation`, `currentOrganisation`, `current_organisation`) and switching it.
+- Lock: C# `MapSangamLock` and `LockSessionAsync`; JS `startIdleTimer`, `lockSession` and `/auth/lock`; Python `/auth/lock`
+  and `lock_session`; Java `lockSession`.
+- Emergency access: C# `MapSangamEmergency`, `SangamUser.Emergency`, `EndEmergencyAsync`; JS `emergencyUrl`,
+  `user.emergency`, `endEmergency`; Python `emergency_url`, `user.emergency`, `end_emergency`; Java `SangamUser.emergency`,
+  `endEmergency`. Python and Java packages move to 1.0.0-rc.12.
+
+### Dependencies
+- .NET packages 10.0.12 → 10.0.13 (October servicing), including `System.Security.Cryptography.Pkcs` and
+  `System.Security.Cryptography.Xml`, which NuGet audit now reports as vulnerable at 10.0.12 (GHSA-846f-f764-76mx,
+  GHSA-2fmv-rv2c-59x7, GHSA-7hqp-7c5m-4vq6, GHSA-c399-9853-6jmj, GHSA-r955-8q5j-3h83). `dotnet-ef` 10.0.13.
+
+### Known gaps
+- The management API's `PUT /orgs/{id}/members/{user}` (an application's own back end, no acting admin) does not ask for
+  DigiLocker; the console and the staff calls do.
+- `sangam_org` and `sangam_emergency` are not in device-flow tokens or `/connect/userinfo`.
+- Shared-device rules are per customer; an application cannot yet make them stricter for itself.
+- The portal home does not yet say "Working as …" (P1).
+
 ## [1.0.0-rc.11] - eleventh release candidate
 
 Sangam 1.0.0-rc.11 fills the gaps rc.10 left against the design review. The decisions are in

@@ -21,6 +21,10 @@ public static class RetentionSweep
     /// <summary>A closed grievance is kept this many years.</summary>
     public const int GrievanceYears = 3;
 
+    /// <summary>rc.12 (decision 1 of 14 Oct 2026): the hospitals' staff records and the checks admins ran are kept this many
+    /// years, with the audit archive.</summary>
+    public const int StaffRecordYears = 7;
+
     /// <summary>Runs the deletions.</summary>
     /// <param name="db">Database.</param>
     /// <param name="now">Current time.</param>
@@ -34,6 +38,18 @@ public static class RetentionSweep
         DateTimeOffset codes = now - CodeRetention;
         removed += await db.OneTimeCodes.Where(c => c.ExpiresAt < codes).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
         removed += await db.PasskeyChallenges.Where(c => c.ExpiresAt < codes).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+        removed += await db.JoinCodes.Where(c => c.ExpiresAt < codes).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+
+        // rc.12: what an admin entered about a person (their staff record), with its waiting additions, and the checks.
+        DateTimeOffset staff = now.AddYears(-StaffRecordYears);
+        removed += await db.StaffInvites.Where(i => i.ExpiresAt < staff && (i.AcceptedAt == null || i.AcceptedAt < staff)).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+        removed += await db.PendingMemberships.Where(p => p.InviteId == null && p.CreatedAt < staff && (p.AppliedAt != null || p.CancelledAt != null)).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+        removed += await db.StaffChecks.Where(c => c.CheckedAt < staff).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+
+        // rc.12 (M12, T1): emergency access uses are kept as long as staff records; removed shared devices for a year.
+        removed += await db.EmergencyAccesses.Where(e => e.StartedAt < staff).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+        DateTimeOffset devices = now.AddYears(-1);
+        removed += await db.SharedDevices.Where(d => (d.RevokedAt != null && d.RevokedAt < devices) || (d.EnrolledAt == null && d.EnrolExpiresAt < devices)).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
 
         DateTimeOffset requests = now - RequestRetention;
         removed += await db.Invitations

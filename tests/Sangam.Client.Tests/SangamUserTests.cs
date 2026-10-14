@@ -47,8 +47,24 @@ public sealed class SangamUserTests
             "{\"id\":\"" + Ward.ToString("D") + "\",\"path\":\"/x/\"}",
             Org(Hospital, HospitalPath, "doctor", [], inherits: false)).GetSangamUser()!;
 
-        SangamMembership only = Assert.Single(user.Memberships);
-        Assert.Equal(Hospital, only.OrganisationId);
+        // rc.12: an entry with no role is a place without a role in Sangam, not a malformed one.
+        Assert.Equal([Ward, Hospital], user.Memberships.Select(m => m.OrganisationId));
+        Assert.Equal(string.Empty, user.Memberships[0].Role);
+        Assert.Empty(user.RolesIn("/x/"));
+        Assert.False(user.HasRole(string.Empty, "/x/"));
+    }
+
+    [Fact]
+    public void SeveralRolesAtOneOrganisation_AreEachAMembership()
+    {
+        // rc.12: one entry carries every role held there; "role" (the first) is kept for older readers.
+        string entry = "{\"id\":\"" + Hospital.ToString("D") + "\",\"name\":\"Apulki\",\"type\":\"hospital\",\"path\":\"" + HospitalPath
+            + "\",\"role\":\"doctor\",\"roles\":[\"doctor\",\"administrator\",\"doctor\"],\"permissions\":[\"staff:manage\"],\"inherits\":false}";
+        SangamUser user = Principal(entry).GetSangamUser()!;
+        Assert.Equal(["doctor", "administrator"], user.Memberships.Select(m => m.Role));
+        Assert.True(user.HasRole("administrator", HospitalPath));
+        Assert.True(user.HasPermission("staff:manage", HospitalPath));
+        Assert.Single(user.Organisations);
     }
 
     [Fact]
@@ -148,4 +164,32 @@ public sealed class SangamUserTests
             [SangamOrgClaim.Permissions] = permissions,
             [SangamOrgClaim.Inherits] = inherits,
         });
+
+    [Fact]
+    public void TheOrganisationChosenForThisSignIn_IsRead_WithEveryRoleThere()
+    {
+        // rc.12 (A6): sangam_org carries the one organisation the person is working at.
+        SangamCurrentOrganisation? current = SangamClaimsPrincipalExtensions.ParseCurrentOrganisation(
+            "{\"id\":\"" + Hospital.ToString("D") + "\",\"name\":\"Apulki\",\"type\":\"hospital\",\"path\":\"" + HospitalPath + "\",\"roles\":[\"doctor\",\"administrator\"],\"permissions\":[\"staff:manage\"]}");
+        Assert.NotNull(current);
+        Assert.Equal(Hospital, current.OrganisationId);
+        Assert.Equal(["doctor", "administrator"], current.Roles);
+        Assert.Null(SangamClaimsPrincipalExtensions.ParseCurrentOrganisation("not json"));
+        Assert.Null(SangamClaimsPrincipalExtensions.ParseCurrentOrganisation(null));
+    }
+
+    [Fact]
+    public void EmergencyAccess_IsRead_UntilItsEnd()
+    {
+        // rc.12 (M12): sangam_emergency carries the use, the application's case reference, the organisation and the end.
+        SangamEmergency? e = SangamClaimsPrincipalExtensions.ParseEmergency(
+            "{\"id\":\"0192a6b0-0000-7000-8000-0000000000e1\",\"case\":\"LIPI-48213\",\"org\":\"" + Hospital.ToString("D") + "\",\"until\":1792000000}");
+        Assert.NotNull(e);
+        Assert.Equal("LIPI-48213", e.CaseReference);
+        Assert.Equal(Hospital, e.OrganisationId);
+        Assert.True(e.IsActive(DateTimeOffset.FromUnixTimeSeconds(1791999999)));
+        Assert.False(e.IsActive(DateTimeOffset.FromUnixTimeSeconds(1792000000)));
+        Assert.Null(SangamClaimsPrincipalExtensions.ParseEmergency("{\"case\":\"x\"}"));
+        Assert.Null(SangamClaimsPrincipalExtensions.ParseEmergency("not json"));
+    }
 }

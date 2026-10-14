@@ -102,7 +102,33 @@ GET /connect/authorize?client_id=...&ui_locales=hi&sangam_org=<organisation id>&
   An organisation that is not yours is ignored.
 
 Your sign-in page branding and the wording of the e-mails Sangam sends for you (verification, sign-in and reset
-codes, invitations) are set in the partner console: Settings → *Sign-in page*, and *Messages*.
+codes, staff activation links) are set in the partner console: Settings → *Sign-in page*, and *Messages*.
+
+## Which organisation, shared ward devices and emergency access (rc.12)
+
+```csharp
+// "Working at which branch?" — a person at two or more organisations chooses one; the token carries it in sangam_org.
+// Ask for org.current (only that organisation) or orgs.read (all, plus the chosen one).
+SangamUser? me = User.GetSangamUser();
+SangamCurrentOrganisation? here = me?.CurrentOrganisation;
+app.MapSangamSwitchOrganisation();          // GET /switch-organisation: choose again (prompt=select_org)
+
+// Shared ward devices: your application decides when to lock (only it sees the person working); Sangam decides how they
+// get back in — their PIN within 2 hours on an enrolled device, a full sign-in at least every 12 hours, anywhere else a
+// full sign-in. Point your idle timer, or a Lock button, at /lock. Your other applications in that session hear
+// session.locked (webhooks) and should lock too.
+app.MapSangamLock();                         // GET /lock (needs SaveTokens, on by default)
+await sangam.LockSessionAsync(personAccessToken);   // the same call from your back end
+
+// Emergency access ("break-glass"): link to /emergency-access?case=48213&returnUrl=/cases/48213 with your own opaque case
+// number — never the patient's name. Sangam checks it is the person again (passkey or authenticator), asks for a reason,
+// tells the hospital's reviewers, and returns them with me.Emergency set for up to 60 minutes.
+app.MapSangamEmergency();
+if (me?.Emergency is SangamEmergency e && e.IsActive(DateTimeOffset.UtcNow)) { /* show a banner; apply your own limits */ }
+await sangam.EndEmergencyAsync(personAccessToken, "Care handed over");
+```
+
+Only staff of the hospital get emergency access, only where its admin switched it on, at most three times a person a day.
 
 ## Be told when a person's Sangam session ends
 
@@ -136,8 +162,12 @@ bool genuine = SangamWebhook.Verify(Request.Headers["webhook-id"], Request.Heade
 // The management API from your back end (needs sangam.manage); tokens are fetched and cached for you.
 SangamManagementClient sangam = services.GetRequiredService<SangamManagementClient>();
 await sangam.UpsertMembershipAsync(wardId, personId, "nurse", appliesToDescendants: false, expiresAt: contractEnd);
-// rc.5: that adds only someone who already uses your application. Anyone else is invited, and joins when they accept.
-await sangam.InviteAsync(wardId, "asha@example.in", "nurse");
+// rc.12: adding someone who does not use your application yet is done for one of your admins (their own access token):
+// Sangam checks the details first (which fields match an existing account, nothing more), then the person joins with the
+// activation code the admin hands them, or with a join code from their own portal. InviteAsync is gone.
+JsonNode? check = await sangam.CheckStaffAsync(wardId, adminAccessToken, new SangamStaffPerson("Asha", "Nair", "asha@example.in", null, new DateOnly(1994, 3, 2)));
+await sangam.AddStaffAsync(wardId, adminAccessToken, new SangamStaffAddition(Person: new SangamStaffPerson("Asha", "Nair", "asha@example.in", null, new DateOnly(1994, 3, 2)), Roles: ["nurse"]));
+// Several roles at one organisation, or none (staff): SetRolesAsync(wardId, personId, ["nurse", "charge-nurse"]).
 // rc.7: on account.merged (or for an id that stopped signing in), find the account the person kept.
 Guid? survivor = await sangam.GetMergedIntoAsync(personId);
 

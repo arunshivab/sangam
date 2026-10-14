@@ -45,7 +45,7 @@ public sealed class MembershipExpiry
         foreach (OrgMembership membership in due)
         {
             membership.RevokedAt = membership.ExpiresAt;
-            await AppEventLog.AddAsync(_db, AppEventTypes.MembershipRevoked, membership.AppId, membership.UserId, membership.OrgId, new Dictionary<string, object?> { ["org_id"] = membership.OrgId, ["role"] = membership.Role!.Code, ["reason"] = "expired" }, now, cancellationToken).ConfigureAwait(false);
+            await AppEventLog.AddAsync(_db, AppEventTypes.MembershipRevoked, membership.AppId, membership.UserId, membership.OrgId, new Dictionary<string, object?> { ["org_id"] = membership.OrgId, ["role"] = membership.Role?.Code, ["reason"] = "expired" }, now, cancellationToken).ConfigureAwait(false);
         }
 
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -57,7 +57,13 @@ public sealed class MembershipExpiry
             }
 
             await _audit.WriteAsync(new AuditEntry(AuditActions.OrgMembershipExpire, AuditActorType.System, ActorAppId: membership.AppId, TargetType: "user", TargetId: membership.UserId,
-                Metadata: JsonSerializer.Serialize(new { org = membership.OrgId, role = membership.Role!.Code, expired_at = membership.ExpiresAt })), cancellationToken).ConfigureAwait(false);
+                Metadata: JsonSerializer.Serialize(new { org = membership.OrgId, role = membership.Role?.Code, expired_at = membership.ExpiresAt })), cancellationToken).ConfigureAwait(false);
+        }
+
+        // rc.12: an admin right ends with the person's last place in its tree.
+        foreach ((Guid appId, Guid userId) in due.Select(m => (m.AppId, m.UserId)).Distinct())
+        {
+            await OrgAdminCleanup.RunAsync(_db, _audit, appId, userId, now, cancellationToken).ConfigureAwait(false);
         }
 
         return due.Count;

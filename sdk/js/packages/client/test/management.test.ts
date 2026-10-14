@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ManagementClient, SangamApiError } from "../src/index.js";
+import { ManagementClient, SangamApiError, lockSession, startIdleTimer } from "../src/index.js";
 
 test("the management client caches its token and calls /api/v1", async () => {
   const calls: { url: string; method: string; auth?: string; body?: string }[] = [];
@@ -32,4 +32,27 @@ test("mergedInto gives the surviving id, and null for an id that was not merged 
   const client = new ManagementClient({ authority: "https://id.example.in/", clientId: "app", clientSecret: "s", fetch: fake });
   assert.equal(await client.mergedInto("u-old"), "u-new");
   assert.equal(await client.mergedInto("u-other"), null);
+});
+
+test("lockSession sends the person's own token, and says when the sign-in had already ended (rc.12)", async () => {
+  const seen: string[] = [];
+  const fake = (async (url: string | URL | Request, init?: RequestInit) => {
+    seen.push(`${init?.method} ${String(url)} ${(init?.headers as Record<string, string>).authorization}`);
+    return new Response(null, { status: seen.length === 1 ? 204 : 404 });
+  }) as typeof fetch;
+  assert.equal(await lockSession("https://id.example.in/", "person-token", fake), true);
+  assert.equal(await lockSession("https://id.example.in", "person-token", fake), false);
+  assert.deepEqual(seen[0], "POST https://id.example.in/api/v1/sessions/lock Bearer person-token");
+});
+
+test("startIdleTimer fires once after the quiet time, and activity restarts it (rc.12)", async () => {
+  const target = new EventTarget();
+  let fired = 0;
+  const stop = startIdleTimer({ minutes: 0.001, onIdle: () => fired++, target });
+  await new Promise((r) => setTimeout(r, 30));
+  target.dispatchEvent(new Event("keydown"));
+  await new Promise((r) => setTimeout(r, 120));
+  assert.equal(fired, 1);
+  stop();
+  assert.throws(() => startIdleTimer({ minutes: 0, onIdle: () => undefined, target }));
 });

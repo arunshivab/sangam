@@ -39,3 +39,32 @@ def test_merged_into_gives_the_surviving_id_and_none_for_an_id_that_was_not_merg
     client = ManagementClient("https://id.example.in/", "app", "s", client=httpx.Client(transport=httpx.MockTransport(handler)))
     assert client.merged_into("u-old") == "u-new"
     assert client.merged_into("u-other") is None
+
+
+def test_lock_session_sends_the_persons_own_token():
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append((request.method, str(request.url), request.headers["authorization"]))
+        return httpx.Response(204 if len(seen) == 1 else 404)
+
+    client = ManagementClient("https://id.example.in/", "app", "s", client=httpx.Client(transport=httpx.MockTransport(handler)))
+    assert client.lock_session("person-token") is True
+    assert client.lock_session("person-token") is False
+    assert seen[0] == ("POST", "https://id.example.in/api/v1/sessions/lock", "Bearer person-token")
+
+
+def test_end_emergency_sends_the_persons_own_token_and_the_reason():
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append((str(request.url), request.headers["authorization"], request.content))
+        return httpx.Response(204)
+
+    client = ManagementClient("https://id.example.in/", "app", "s", client=httpx.Client(transport=httpx.MockTransport(handler)))
+    assert client.end_emergency("person-token", "Care handed over") is True
+    assert seen[0][0] == "https://id.example.in/api/v1/sessions/emergency/end"
+    assert seen[0][1] == "Bearer person-token"
+    assert b"Care handed over" in seen[0][2]
+    with pytest.raises(ValueError):
+        client.end_emergency("t", " ")

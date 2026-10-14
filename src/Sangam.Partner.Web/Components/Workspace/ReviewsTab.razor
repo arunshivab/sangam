@@ -1,10 +1,42 @@
 @using Sangam.Identity.Domain.Entities
 @inject IAccessReviewService Reviews
+@inject IEmergencyAccessService Emergency
 
 @* rc.11 (R6; founder decision, 13 Oct 2026): the access review. Roles ending in the next 30 days, and roles of people who
    have not signed in to the application for 90 days. Keep records the review only; Extend gives 3, 6 or 12 more months;
    End ends the role today, with a reason the person reads in their Activity. *@
 <p class="sg-lede">@L["Roles in {0} that need a decision: ones ending soon, and ones held by people who have not signed in to {0} for 90 days. Every decision is recorded.", Info.AppName]</p>
+
+@* rc.12 (M12): emergency access waiting for its review, per customer: green under 24 hours, orange to 72, red after. The
+   customer's own reviewers judge each use in their organisation console. *@
+@if (_emergency.Count > 0)
+{
+  <section class="sg-panel" data-panel="emergency-waiting">
+    <h2 class="sg-h2">@L["Emergency access waiting for review"]</h2>
+    <ul class="sg-emergency-orgs">
+      @foreach (EmergencyWaiting w in _emergency)
+      {
+        <li class="sg-emergency-org">
+          <a href="@($"/org/{w.CustomerId:D}/emergency")">@w.CustomerName</a>
+          <span>
+            @if (w.Late > 0)
+            {
+              <span class="sg-age sg-age--late"><span class="sg-dot sg-dot--danger" aria-hidden="true"></span>@L["{0} over 72 hours", w.Late]</span>
+            }
+            @if (w.Due > 0)
+            {
+              <span class="sg-age sg-age--due"><span class="sg-dot sg-dot--warn" aria-hidden="true"></span>@L["{0} over 24 hours", w.Due]</span>
+            }
+            @if (w.Fresh > 0)
+            {
+              <span class="sg-age sg-age--fresh"><span class="sg-dot sg-dot--ok" aria-hidden="true"></span>@L["{0} under 24 hours", w.Fresh]</span>
+            }
+          </span>
+        </li>
+      }
+    </ul>
+  </section>
+}
 
 @if (_review is null)
 {
@@ -134,6 +166,7 @@ else
     public WorkspaceInfo Info { get; set; } = null!;
 
     private AccessReview? _review;
+    private IReadOnlyList<EmergencyWaiting> _emergency = [];
     private string _list = "ending";
     private AccessReviewItem? _ending;
     private string? _note;
@@ -153,6 +186,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         _review = await Reviews.GetAsync(Info.UserId, Info.AppId);
+        _emergency = await Emergency.WaitingAsync(Info.UserId, Info.AppId);
         if (_review is { Ending.Count: 0, Unused.Count: > 0 })
         {
             _list = "unused";

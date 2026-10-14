@@ -1,0 +1,83 @@
+@page "/staff/{token}"
+@model StaffModel
+@using Sangam.Identity.Application.Tenancy
+@{
+    ViewData["Title"] = L["Join your organisation"].Value;
+}
+
+<section class="sg-card">
+  @if (Model.View is null)
+  {
+    <h1 class="sg-card-title">@L["Link not found"]</h1>
+    <p class="sg-card-body">@L["This link is not valid. Ask your admin to add you again."]</p>
+  }
+  else
+  {
+    <h1 class="sg-card-title">@L["Welcome, {0}", Model.View.FirstName]</h1>
+    <p class="sg-card-body">@L["{0} added you to:", Model.View.AddedBy]</p>
+    <ul class="sg-list">
+      @foreach (StaffInvitePlace place in Model.View.Places)
+      {
+        <li><strong>@place.Application</strong>: @string.Join(", ", place.Organisations)</li>
+      }
+    </ul>
+    @if (Model.Message is not null)
+    {
+      <partial name="_Banner" model="@((Model.Tone, Model.Message))" />
+    }
+
+    @if (Model.Joined)
+    {
+      <p class="sg-card-body">@L["Open the application and choose Sign in with Sangam."]</p>
+    }
+    else if (Model.View.State == StaffInviteState.Accepted)
+    {
+      <p class="sg-card-body">@L["You have already joined with this link."]</p>
+    }
+    else if (Model.View.State == StaffInviteState.Expired)
+    {
+      <p class="sg-card-body">@L["This link has expired. Ask your admin to add you again."]</p>
+    }
+    else if (Model.View.State == StaffInviteState.Cancelled)
+    {
+      <p class="sg-card-body">@L["This link no longer works. Ask your admin to add you again."]</p>
+    }
+    else if (!Model.CodeAccepted)
+    {
+      <p class="sg-card-body">@L["Enter the activation code {0} gave you in person. We never send it by e-mail or text message.", Model.View.AddedBy]</p>
+      <form method="post" asp-page-handler="Code" novalidate>
+        <input type="hidden" asp-for="Token" />
+        <div class="sg-field-group">
+          <label class="sg-label" asp-for="Code">@L["Activation code"]</label>
+          <input class="sg-field sg-field--code" asp-for="Code" type="text" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="ABCD-2345" autofocus required />
+        </div>
+        <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Continue"]</button>
+      </form>
+      <p class="sg-card-body sg-hint">@L["If you were not expecting this, ignore it: nothing happens without the code."]</p>
+    }
+    else if (!Model.SignedIn)
+    {
+      @if (Model.View.ForExistingAccount)
+      {
+        <p class="sg-card-body">@L["You already have a Sangam account. Sign in with it to join."]</p>
+        <a class="sg-btn sg-btn--primary sg-btn--block" href="/login?returnUrl=@Uri.EscapeDataString(Model.BackHere)">@L["Sign in"]</a>
+      }
+      else
+      {
+        <p class="sg-card-body">@L["Create your Sangam account with {0}, or sign in if you already have one with that address.", Model.View.MaskedEmail]</p>
+        <a class="sg-btn sg-btn--primary sg-btn--block" href="/register?returnUrl=@Uri.EscapeDataString(Model.BackHere)">@L["Create your account"]</a>
+        <a class="sg-btn sg-btn--secondary sg-btn--block" href="/login?returnUrl=@Uri.EscapeDataString(Model.BackHere)">@L["Sign in"]</a>
+      }
+    }
+    else
+    {
+      <p class="sg-card-body">@L["Joining links your Sangam account to these organisations. Each application asks for your permission the first time you sign in to it."]</p>
+      <form method="post" asp-page-handler="Join">
+        <input type="hidden" asp-for="Token" />
+        <input type="hidden" asp-for="Ticket" />
+        <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Join"]</button>
+      </form>
+    }
+  }
+  <a class="sg-tertiary" href="/account">@L["Go to your Sangam account"]</a>
+</section>

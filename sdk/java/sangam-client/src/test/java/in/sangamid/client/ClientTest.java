@@ -31,8 +31,9 @@ class ClientTest {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/", exchange -> {
             String path = exchange.getRequestURI().getPath();
+            String admin = exchange.getRequestHeaders().getFirst("sangam-acting-admin");
             seen.add(exchange.getRequestMethod() + " " + path + " " + exchange.getRequestHeaders().getFirst("authorization") + " "
-                    + new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+                    + new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8) + (admin == null ? "" : " admin=" + admin));
             String body = answers.getOrDefault(path, "{\"ok\":true}");
             int status = path.endsWith("/forbidden") ? 403 : path.endsWith("/missing/merged") ? 404 : 200;
             byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
@@ -94,14 +95,65 @@ class ClientTest {
     }
 
     @Test
-    void anInvitationIsPostedToTheOrganisationsInvitations() throws Exception {
-        // rc.5 (consent first): people who do not yet use the application are invited, never added by id.
+    void lockingSendsThePersonsOwnToken() throws Exception {
+        // rc.12 (T1): the idle timer ran out; the person's own token locks their Sangam session.
+        List<String> seen = new ArrayList<>();
+        HttpServer server = serve(Map.of(), seen);
+        try {
+            ManagementClient client = new ManagementClient("http://127.0.0.1:" + server.getAddress().getPort() + "/", "app", "s", null);
+            assertTrue(client.lockSession("person-token"));
+            assertEquals("POST /api/v1/sessions/lock Bearer person-token ", seen.get(0));
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void staffAreAddedForAnAdmin_WithTheirOwnToken() throws Exception {
+        // rc.12: people who do not yet use the application are added as staff, for one of its admins.
         List<String> seen = new ArrayList<>();
         HttpServer server = serve(Map.of("/connect/token", "{\"access_token\":\"t1\",\"expires_in\":3600}"), seen);
         try {
             ManagementClient client = new ManagementClient("http://127.0.0.1:" + server.getAddress().getPort() + "/", "app", "s", null);
-            client.invite("o1", "asha@example.in", "nurse", true);
-            assertEquals("POST /api/v1/orgs/o1/invitations Bearer t1 {\"email\":\"asha@example.in\",\"role\":\"nurse\",\"appliesToDescendants\":true}", seen.get(1));
+            Map<String, Object> addition = new java.util.LinkedHashMap<>();
+            addition.put("joinCode", "K7Q2-M9XR");
+            addition.put("roles", List.of("nurse"));
+            client.addStaff("o1", "admin-token", addition);
+            assertEquals("POST /api/v1/orgs/o1/staff Bearer t1 {\"joinCode\":\"K7Q2-M9XR\",\"roles\":[\"nurse\"]} admin=admin-token", seen.get(1));
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void theOrganisationChosenForThisSignIn_IsRead() {
+        // rc.12 (A6).
+        SangamUser.CurrentOrganisation org = SangamUser.currentOrganisation(Map.of("sangam_org",
+                "{\"id\":\"0192a6b0-0000-7000-8000-000000000003\",\"name\":\"Apulki Pune\",\"type\":\"hospital\",\"path\":\"/g/p/\",\"roles\":[\"doctor\",\"administrator\"]}"));
+        assertEquals("Apulki Pune", org.organisationName());
+        assertEquals(List.of("doctor", "administrator"), org.roles());
+        assertNull(SangamUser.currentOrganisation(Map.of("sangam_org", "not json")));
+    }
+
+    @Test
+    void emergencyAccessIsRead_UntilItsEnd() {
+        // rc.12 (M12).
+        SangamUser.Emergency e = SangamUser.emergency(Map.of("sangam_emergency",
+                "{\"id\":\"0192a6b0-0000-7000-8000-0000000000e1\",\"case\":\"LIPI-48213\",\"org\":\"0192a6b0-0000-7000-8000-000000000003\",\"until\":1792000000}"));
+        assertEquals("LIPI-48213", e.caseReference());
+        assertTrue(e.isActive(1791999999L));
+        assertFalse(e.isActive(1792000000L));
+        assertNull(SangamUser.emergency(Map.of("sangam_emergency", "{\"case\":\"x\"}")));
+    }
+
+    @Test
+    void endingEmergencyAccessSendsThePersonsOwnTokenAndTheReason() throws Exception {
+        List<String> seen = new ArrayList<>();
+        HttpServer server = serve(Map.of(), seen);
+        try {
+            ManagementClient client = new ManagementClient("http://127.0.0.1:" + server.getAddress().getPort() + "/", "app", "s", null);
+            assertTrue(client.endEmergency("person-token", "Care handed over"));
+            assertEquals("POST /api/v1/sessions/emergency/end Bearer person-token {\"reason\":\"Care handed over\"}", seen.get(0));
         } finally {
             server.stop(0);
         }

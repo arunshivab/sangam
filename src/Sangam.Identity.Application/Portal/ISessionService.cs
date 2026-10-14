@@ -50,6 +50,12 @@ public interface ISessionService
     /// <param name="sessionId">The session.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     Task<IReadOnlyList<FrontChannelLogout>> FrontChannelLogoutsAsync(Guid sessionId, CancellationToken cancellationToken = default);
+
+    /// <summary>rc.12 (A9): the names of the applications the person used in this session, which signing out also signs out.</summary>
+    /// <param name="sessionId">The session.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The names, A to Z.</returns>
+    Task<IReadOnlyList<string>> AppNamesAsync(Guid sessionId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>An application's front-channel logout page (PR-20).</summary>

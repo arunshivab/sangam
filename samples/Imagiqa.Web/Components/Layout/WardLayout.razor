@@ -32,9 +32,16 @@
           <span class="iq-role">@RoleText</span>
         }
       }
+      <a class="iq-out" href="/lock" data-enhance-nav="false">Lock</a>
       <a class="iq-out" href="/signout" data-enhance-nav="false">Sign out</a>
     </span>
   </header>
+
+  @* rc.12 (M12): while emergency access lasts, say so on every screen. *@
+  @if (Ward.User?.Emergency is SangamEmergency emergency && emergency.IsActive(DateTimeOffset.UtcNow))
+  {
+    <p class="iq-emergency" role="status">Emergency access · case @emergency.CaseReference · until @emergency.Until.ToOffset(TimeSpan.FromHours(5.5)).ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture) IST</p>
+  }
 
   <main class="iq-main">
     @if (!_loaded)
