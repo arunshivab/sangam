@@ -42,6 +42,7 @@ builder.Services.AddRazorPages(o =>
     o.Conventions.AddPageRoute("/Account/Forgot", "/forgot");
     o.Conventions.AddPageRoute("/Account/Reset", "/reset");
     o.Conventions.AddPageRoute("/Account/Consent", "/consent");
+    o.Conventions.AddPageRoute("/Account/SelectOrg", "/select-org");
     o.Conventions.AddPageRoute("/Account/Device", "/device");
     o.Conventions.AddPageRoute("/Account/Home", "/account");
     o.Conventions.AddPageRoute("/Account/Logout", "/logout");
@@ -182,8 +183,11 @@ builder.Services.AddOpenIddict()
         o.SetRefreshTokenReuseLeeway(TimeSpan.FromSeconds(Math.Max(0, builder.Configuration.GetValue("Sangam:Tokens:RefreshReuseLeewaySeconds", 30))));
 
         o.RegisterScopes([.. SangamScopes.All]);
+
+        // rc.12 (A6): "prompt=select_org" sends the person back to "Working at which branch?" (an application's Switch).
+        o.RegisterPromptValues(Sangam.Identity.Server.Authorization.OrgChoice.SelectOrgPrompt);
         o.RegisterClaims(Claims.Name, Claims.GivenName, Claims.FamilyName, Claims.Birthdate, Claims.Gender, Claims.Locale, Claims.Zoneinfo, Claims.UpdatedAt,
-            Claims.Email, Claims.EmailVerified, Claims.PhoneNumber, Claims.PhoneNumberVerified, SangamClaims.SessionId, SangamClaims.Orgs, SangamClaims.IdentityVerified,
+            Claims.Email, Claims.EmailVerified, Claims.PhoneNumber, Claims.PhoneNumberVerified, SangamClaims.SessionId, SangamClaims.Orgs, SangamClaims.Org, SangamClaims.Emergency, SangamClaims.IdentityVerified,
             Claims.AuthenticationContextReference, Claims.AuthenticationMethodReference, Claims.AuthenticationTime);
 
         // R7 (ASVS V7.2.1): refused clients and grants are audited.
@@ -316,6 +320,7 @@ app.MapConnectEndpoints();
 app.MapIdentityDigiLocker();
 app.MapSamlEndpoints();
 app.MapManagementEndpoints();
+app.MapSessionEndpoints();
 app.MapSmsEndpoints();
 
 app.MapSangamHealth();

@@ -85,6 +85,13 @@ public sealed class PartnerServiceTests : IAsyncLifetime
         db.AppAdmins.AddRange(
             new AppAdmin { Id = Guid.NewGuid(), AppId = his.Id, UserId = _owner, Role = AppAdminRole.Owner, GrantedAt = now },
             new AppAdmin { Id = Guid.NewGuid(), AppId = his.Id, UserId = _admin, Role = AppAdminRole.Admin, GrantedAt = now });
+
+        // rc.12: adding people needs a DigiLocker-verified admin.
+        foreach (SangamUser verified in await db.Users.Where(u => u.Id == _owner || u.Id == _admin).ToListAsync())
+        {
+            verified.IdentityVerifiedAt = now;
+        }
+
         await db.SaveChangesAsync();
         _his = his.Id;
         _other = other.Id;
@@ -177,7 +184,17 @@ public sealed class PartnerServiceTests : IAsyncLifetime
             Assert.False(await db.AppGrants.AnyAsync(g => g.AppId == _his && g.UserId == _stranger), "a refused grant must not link the person either");
         }
 
-        Assert.True((await partner.GrantMembershipAsync(_admin, _his, _hospital, _nurse, new MembershipUpsert("nurse", true))).Succeeded);
+        // rc.12: an admin not verified with DigiLocker adds nobody.
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            (await db.Users.SingleAsync(u => u.Id == _admin)).IdentityVerifiedAt = null;
+            await db.SaveChangesAsync();
+            Assert.Contains("DigiLocker", (await partner.GrantMembershipAsync(_admin, _his, _hospital, _nurse, new MembershipUpsert("nurse", false))).Message, StringComparison.Ordinal);
+            (await db.Users.SingleAsync(u => u.Id == _admin)).IdentityVerifiedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync();
+        }
+
+        Assert.True((await partner.GrantMembershipAsync(_admin, _his, _hospital, _nurse, new MembershipUpsert("nurse", false))).Succeeded);
         PartnerMemberRow member = Assert.Single(await partner.ListMembersAsync(_admin, _his, _hospital));
         Assert.Equal("nurse", member.Role);
         Assert.Equal("nurse@lipi.test", member.Email);
@@ -205,14 +222,14 @@ public sealed class PartnerServiceTests : IAsyncLifetime
         // rc.11 (R3): "Change" ends a role on a chosen day or at once, always with a reason.
         IPartnerService partner = Service();
         await partner.UpsertRoleAsync(_admin, _his, "nurse", new RoleUpsert("Nurse", null, [], null));
-        await partner.GrantMembershipAsync(_admin, _his, _hospital, _nurse, new MembershipUpsert("nurse", true));
+        await partner.GrantMembershipAsync(_admin, _his, _hospital, _nurse, new MembershipUpsert("nurse", false));
         Assert.Equal(1, (await partner.CountPeopleAsync(_admin, _his))[_hospital]);
 
         DateOnly day = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10));
         Assert.True((await partner.EndMembershipAsync(_admin, _his, _hospital, _nurse, day, "Locum contract ends")).Succeeded);
         PartnerMemberRow shortened = Assert.Single(await partner.ListMembersAsync(_admin, _his, _hospital));
         Assert.Equal(day, DateOnly.FromDateTime(shortened.ExpiresAt!.Value.ToOffset(TimeSpan.FromHours(5.5)).DateTime));
-        Assert.True(shortened.AppliesToDescendants);
+        Assert.False(shortened.AppliesToDescendants);
 
         Assert.True((await partner.EndMembershipAsync(_admin, _his, _hospital, _nurse, null, "Left the hospital")).Succeeded);
         Assert.Empty(await partner.ListMembersAsync(_admin, _his, _hospital));
@@ -578,6 +595,12 @@ public sealed class PartnerServiceTests : IAsyncLifetime
     {
         Infrastructure.Verification.DigiLockerSettings digiLocker = _provider.GetRequiredService<Infrastructure.Verification.DigiLockerSettings>();
         Assert.False(digiLocker.Enabled);
+        await using (SangamDbContext unverify = _pg.CreateContext())
+        {
+            (await unverify.Users.SingleAsync(u => u.Id == _admin)).IdentityVerifiedAt = null;
+            await unverify.SaveChangesAsync();
+        }
+
         PartnerResult off = await Service().UpdateAccessRulesAsync(_admin, _his, null, true);
         Assert.False(off.Succeeded);
         Assert.Contains("DigiLocker is not switched on", off.Message, StringComparison.Ordinal);

@@ -14,4 +14,8 @@ public enum OrganisationStatus
 
     /// <summary>Removed; the row remains for audit integrity only.</summary>
     DeletedHard = 3,
+
+    /// <summary>rc.12: a customer (a hospital at the top of its tree) that left the application. Every role and admin right
+    /// under it ended when it closed; the people keep their own Sangam accounts.</summary>
+    Closed = 4,
 }

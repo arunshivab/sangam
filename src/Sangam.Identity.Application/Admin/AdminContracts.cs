@@ -88,7 +88,9 @@ public sealed record OperatorRow(Guid UserId, string DisplayName, string Email, 
 /// <param name="SecretSetAt">rc.10: when the client secret was last set, if Sangam has recorded it.</param>
 /// <param name="HasSecret">rc.10: whether the application signs in with a client secret at all (a public client has none);
 /// <see langword="null"/> when its registration is not found.</param>
-public sealed record AdminAppRow(Guid Id, string ClientId, string DisplayName, string OwnerCompanyName, AppStatus Status, SignInPolicy SignInPolicy, int Users, int Organisations, int PartnerOwners, bool IsPlatform, string? BackChannelLogoutUri = null, string? FrontChannelLogoutUri = null, DateTimeOffset? SecretSetAt = null, bool? HasSecret = null)
+/// <param name="AddWithoutDigiLockerUntil">rc.12: until when admins not yet verified with DigiLocker may add people (the
+/// temporary exception), if it is on.</param>
+public sealed record AdminAppRow(Guid Id, string ClientId, string DisplayName, string OwnerCompanyName, AppStatus Status, SignInPolicy SignInPolicy, int Users, int Organisations, int PartnerOwners, bool IsPlatform, string? BackChannelLogoutUri = null, string? FrontChannelLogoutUri = null, DateTimeOffset? SecretSetAt = null, bool? HasSecret = null, DateTimeOffset? AddWithoutDigiLockerUntil = null)
 {
     /// <summary>rc.10 (founder decision, 12 Oct 2026): a client secret older than this is flagged for a change.</summary>
     public static readonly TimeSpan SecretWarnAge = TimeSpan.FromDays(365);

@@ -34,9 +34,8 @@ public interface IPortalRolesService
 /// <param name="GivenBy">Who gave it, when known.</param>
 /// <param name="GivenAt">When.</param>
 /// <param name="Until">When it ends, for a time-limited role.</param>
-/// <param name="AppliesBeneath">Whether it also holds in every organisation beneath this one.</param>
 /// <param name="OnlyOrganisationAdmin">Whether the person is this application's only organisation admin here (they cannot leave it).</param>
-public sealed record PortalRole(Guid AppId, string AppName, string RoleName, string? GivenBy, DateTimeOffset GivenAt, DateTimeOffset? Until, bool AppliesBeneath, bool OnlyOrganisationAdmin);
+public sealed record PortalRole(Guid AppId, string AppName, string RoleName, string? GivenBy, DateTimeOffset GivenAt, DateTimeOffset? Until, bool OnlyOrganisationAdmin);
 
 /// <summary>An organisation the person holds roles in.</summary>
 /// <param name="OrgId">The organisation.</param>

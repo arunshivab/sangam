@@ -89,6 +89,7 @@ public sealed class EvidencePackTests : IAsyncLifetime
             }
 
             db.AppAdmins.Add(new AppAdmin { Id = Guid.NewGuid(), AppId = app.Id, UserId = _owner, Role = AppAdminRole.Owner, GrantedAt = now });
+            (await db.Users.SingleAsync(u => u.Id == _owner)).IdentityVerifiedAt = now;
             db.ScimTargets.Add(new ScimTarget { AppId = app.Id, BaseUrl = "https://lims.example.in/scim/v2", AuthMode = "bearer", ProtectedToken = "PROTECTED-SECRET-MUST-NOT-LEAK", GroupMapping = "role", Enabled = true, Status = "ok", CreatedAt = now, UpdatedAt = now });
 
             // A name typed to run as a spreadsheet formula.

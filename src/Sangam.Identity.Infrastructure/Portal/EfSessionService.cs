@@ -159,6 +159,22 @@ public sealed class EfSessionService : ISessionService
         }
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<string>> AppNamesAsync(Guid sessionId, CancellationToken cancellationToken = default)
+    {
+        SangamDbContext db = await _contextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        await using (db.ConfigureAwait(false))
+        {
+            List<string> names = await db.SessionApps.AsNoTracking()
+                .Where(x => x.SessionId == sessionId)
+                .Join(db.Apps, x => x.AppId, a => a.Id, (x, a) => a.DisplayName)
+                .Distinct()
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            return [.. names.Order(StringComparer.CurrentCultureIgnoreCase)];
+        }
+    }
+
     private static string? Trim(string? value, int max)
         => string.IsNullOrWhiteSpace(value) ? null : value.Length > max ? value[..max] : value;
 }

@@ -41,8 +41,9 @@ public sealed class AccessReviewDecision
     /// <summary>The organisation.</summary>
     public Guid OrgId { get; set; }
 
-    /// <summary>The role.</summary>
-    public Guid RoleId { get; set; }
+    /// <summary>A role the person held there (rc.12: a review covers all of them; <see langword="null"/> when they hold
+    /// none in Sangam).</summary>
+    public Guid? RoleId { get; set; }
 
     /// <summary>Which list it was on: <c>ending</c> or <c>unused</c>.</summary>
     public string Reason { get; set; } = string.Empty;

@@ -1,9 +1,9 @@
 @inject IPartnerService Partners
-@inject IInvitationService Invitations
+@inject IOrgConsoleService OrgConsole
 @inject IConfiguration Configuration
 @inject Sangam.Identity.Application.Apps.IAppDirectory Apps
 
-<p class="sg-lede">@L["The organisations using {0}, and who holds which role in each. You can only give roles to people who have already signed in to {0} and allowed it access — Sangam never lets an application look up anyone else.", Info.AppName]</p>
+<p class="sg-lede">@L["The organisations using {0}, and who holds which role in each. A role holds only in the organisation it is given in. Here you can give roles to people who already use {0}; add anyone new in the organisation console, with an activation code or their join code.", Info.AppName]</p>
 
 @if (_orgs is null || _types is null)
 {
@@ -84,14 +84,13 @@ else
         {
           <div class="sg-table-wrap" tabindex="0" role="region" aria-label="@L["People in {0}", _selected.Name]">
             <table class="sg-table sg-table--cards">
-              <thead><tr><th>@L["Person"]</th><th>@L["Role"]</th><th>@L["Reaches"]</th><th>@L["Until"]</th><th></th></tr></thead>
+              <thead><tr><th>@L["Person"]</th><th>@L["Roles"]</th><th>@L["Until"]</th><th></th></tr></thead>
               <tbody>
                 @foreach (PartnerMemberRow member in _members)
                 {
                   <tr class="@(member.UserId == _changing?.UserId ? "sg-row--selected" : null)">
                     <td><span class="sg-name">@member.DisplayName</span><span class="sg-sub">@member.Email</span></td>
-                    <td class="sg-mono" data-label="@L["Role"]">@member.Role</td>
-                    <td data-label="@L["Reaches"]">@(member.AppliesToDescendants ? L["This and below"] : L["Only this"])</td>
+                    <td class="sg-mono" data-label="@L["Roles"]">@(string.IsNullOrEmpty(member.Role) ? L["Staff"] : member.Role)</td>
                     <td data-label="@L["Until"]">
                       @if (member.ExpiresAt is DateTimeOffset until)
                       {
@@ -114,7 +113,7 @@ else
         {
           @* rc.11 (R3): ending a role is never one click: on a date or now, with a reason the person reads in their Activity. *@
           <section class="sg-end-role" data-panel="end-role" aria-labelledby="end-role-title">
-            <h3 class="sg-h3" id="end-role-title">@L["End {0}'s {1} role?", _changing.DisplayName, _changing.Role]</h3>
+            <h3 class="sg-h3" id="end-role-title">@L["End {0}'s place here?", _changing.DisplayName]</h3>
             <div class="sg-end-role-row" role="radiogroup" aria-labelledby="end-role-title">
               <label class="sg-option-inline @(_endNow ? null : "sg-option-inline--on")">
                 <input type="radio" name="end-when" checked="@(!_endNow)" @onchange="() => _endNow = false" />
@@ -172,7 +171,6 @@ else
               }
             </select>
           </div>
-          <label class="sg-check"><input type="checkbox" @bind="_descendants" /> @L["Also everything under {0}", _selected.Name]</label>
           <div class="sg-form-row">
             <label class="sg-label" for="grant-until">@L["Until (optional: for a contractor or an auditor, the role ends by itself at the end of this day)"]</label>
             <input id="grant-until" class="sg-input" type="date" @bind="_until" min="@IndiaTime.ToIndia(DateTimeOffset.UtcNow).AddDays(1).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)" />
@@ -182,26 +180,37 @@ else
           </div>
         }
 
-        <h3 class="sg-h3">@L["Invite someone by email"]</h3>
-        <p class="sg-muted">@L["They get a link that works once, for 7 days. When they accept it — signed in with this address — they join {0} with the role you choose.", _selected.Name]</p>
-        <div class="sg-form-row">
-          <label class="sg-label" for="invite-email">@L["Email"]</label>
-          <input id="invite-email" class="sg-input" type="email" autocomplete="off" @bind="_inviteEmail" />
-        </div>
-        <div class="sg-form-row">
-          <label class="sg-label" for="invite-role">@L["Role"]</label>
-          <select id="invite-role" class="sg-input" @bind="_inviteRole">
-            <option value="">@L["Choose…"]</option>
-            @foreach (RoleDto role in _roles ?? [])
-            {
-              <option value="@role.Code">@role.DisplayName</option>
-            }
-          </select>
-        </div>
-        <label class="sg-check"><input type="checkbox" @bind="_inviteDescendants" /> @L["Also everything under {0}", _selected.Name]</label>
+        @* rc.12: someone new is added in the organisation console: checked first, then an activation code or their join code. *@
+        <h3 class="sg-h3">@L["Someone new"]</h3>
+        <p class="sg-muted">@L["Add people who do not use {0} yet in the organisation console. Sangam checks their details first; they join with an activation code you hand them, or with a join code from their own portal.", Info.AppName]</p>
         <div class="sg-actions">
-          <button type="button" class="sg-btn sg-btn--secondary" @onclick="InviteAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_inviteEmail) || string.IsNullOrEmpty(_inviteRole))">@L["Send invitation"]</button>
+          <a class="sg-btn sg-btn--secondary" href="@($"/org/{CustomerOf(_selected):D}/joiners")">@L["Add a new joiner"]</a>
+          <a class="sg-btn sg-btn--ghost" href="@($"/org/{CustomerOf(_selected):D}")">@L["Open the organisation console"]</a>
         </div>
+
+        @if (_selected.ParentId is null)
+        {
+          @* rc.12: a customer that leaves the application is closed: every place and admin right under it ends at once. *@
+          <section class="sg-end-role" data-panel="close-customer" aria-labelledby="close-title">
+            <h3 class="sg-h3" id="close-title">@L["Close {0}", _selected.Name]</h3>
+            <p class="sg-muted">@L["When {0} stops using {1}: everyone's places and admin rights under it end now, the people are told, and their Sangam accounts stay theirs. This cannot be undone here.", _selected.Name, Info.AppName]</p>
+            @if (_closing)
+            {
+              <label class="sg-label" for="close-reason">@L["Reason"]</label>
+              <input id="close-reason" class="sg-input" maxlength="300" @bind="_closeReason" @bind:event="oninput" />
+              <div class="sg-actions">
+                <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _closing = false">@L["Keep {0}", _selected.Name]</button>
+                <button type="button" class="sg-btn sg-btn--danger" @onclick="CloseAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_closeReason))">@L["Close {0} now", _selected.Name]</button>
+              </div>
+            }
+            else
+            {
+              <div class="sg-actions">
+                <button type="button" class="sg-btn sg-btn--danger" @onclick="() => { _closing = true; _closeReason = string.Empty; }">@L["Close this customer…"]</button>
+              </div>
+            }
+          </section>
+        }
 
         @if (_policy is not null)
         {
@@ -241,10 +250,8 @@ else
     private string _query = string.Empty;
     private string _grantRole = string.Empty;
     private DateOnly? _until;
-    private bool _descendants;
-    private string _inviteEmail = string.Empty;
-    private string _inviteRole = string.Empty;
-    private bool _inviteDescendants;
+    private bool _closing;
+    private string _closeReason = string.Empty;
     private bool _busy;
     private PolicyView? _policy;
     private bool _ok;
@@ -351,7 +358,7 @@ else
     {
         _busy = true;
         PartnerResult result = await Partners.GrantMembershipAsync(
-            Info.UserId, Info.AppId, _selected!.Id, _pick!.UserId, new MembershipUpsert(_grantRole, _descendants, Until(_until)));
+            Info.UserId, Info.AppId, _selected!.Id, _pick!.UserId, new MembershipUpsert(_grantRole, false, Until(_until)));
         _busy = false;
         _ok = result.Succeeded;
         _message = L[result.Message ?? string.Empty];
@@ -362,7 +369,6 @@ else
             _query = string.Empty;
             _grantRole = string.Empty;
             _until = null;
-            _descendants = false;
             _members = await Partners.ListMembersAsync(Info.UserId, Info.AppId, _selected.Id);
             _counts = await Partners.CountPeopleAsync(Info.UserId, Info.AppId);
         }
@@ -392,9 +398,10 @@ else
         }
     }
 
+    // rc.12: a closed customer (and everything under it) is gone from the tree.
     private IEnumerable<OrganisationDto> TreeRows => string.IsNullOrWhiteSpace(_treeQuery)
-        ? _orgs ?? []
-        : (_orgs ?? []).Where(o => o.Name.Contains(_treeQuery.Trim(), StringComparison.CurrentCultureIgnoreCase));
+        ? (_orgs ?? []).Where(o => o.Status != OrganisationStatus.Closed)
+        : (_orgs ?? []).Where(o => o.Status != OrganisationStatus.Closed && o.Name.Contains(_treeQuery.Trim(), StringComparison.CurrentCultureIgnoreCase));
 
     private string PeopleText(Guid orgId)
     {
@@ -402,16 +409,25 @@ else
         return people == 1 ? L["1 person"] : L["{0} people", people];
     }
 
-    private async Task InviteAsync()
+    // The customer an organisation belongs to (the first id on its path).
+    private static Guid CustomerOf(OrganisationDto org) => OrganisationPathIds(org.Path).FirstOrDefault(org.Id);
+
+    private static IEnumerable<Guid> OrganisationPathIds(string path)
+        => path.Split('/', StringSplitOptions.RemoveEmptyEntries).Select(p => Guid.TryParse(p, out Guid id) ? id : Guid.Empty).Where(id => id != Guid.Empty);
+
+    private async Task CloseAsync()
     {
         _busy = true;
-        PartnerResult result = await Invitations.CreateAsync(Info.UserId, Info.AppId, _selected!.Id, _inviteEmail, _inviteRole, _inviteDescendants);
+        PartnerResult result = await OrgConsole.CloseCustomerAsync(Info.UserId, Info.AppId, _selected!.Id, _closeReason);
         _busy = false;
         _ok = result.Succeeded;
         _message = L[result.Message ?? string.Empty];
         if (result.Succeeded)
         {
-            _inviteEmail = string.Empty;
+            _closing = false;
+            _selected = null;
+            _orgs = await Partners.ListOrganisationsAsync(Info.UserId, Info.AppId);
+            _counts = await Partners.CountPeopleAsync(Info.UserId, Info.AppId);
         }
     }
 }

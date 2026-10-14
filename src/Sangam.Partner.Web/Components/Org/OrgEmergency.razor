@@ -1,0 +1,186 @@
+@using Sangam.Identity.Domain.Entities
+@inject IOrgConsoleService OrgConsole
+@inject IEmergencyAccessService Emergency
+
+@* rc.12 (M12): the emergency access log. Admins switch it on per organisation and see every use; reviewers (for example the
+   Medical Superintendent or Quality, not the IT admin) mark each use justified or not. Unreviewed uses are green under 24
+   hours, orange to 72, red after. *@
+<p class="sg-label-mono">@Scope.OrgName</p>
+<h1 class="sg-h1">@L["Emergency access"]</h1>
+<p class="sg-lede">@L["Staff of this hospital may open what they need in an emergency, for up to 60 minutes, with a reason and a fresh passkey or authenticator check; at most 3 times a day. {0} keeps the patient details; Sangam keeps who, where, when, why and {0}'s case number.", Scope.AppName]</p>
+
+@if (Scope.Admin && _tree.Count > 0)
+{
+  <section class="sg-panel" data-panel="emergency-switch">
+    <h2 class="sg-h2">@L["Where it is switched on"]</h2>
+    <p class="sg-muted">@L["Off unless you switch it on. Switching it on for an organisation covers the organisations under it too."]</p>
+    <ul class="sg-emergency-orgs">
+      @foreach (OrgNode node in _tree)
+      {
+        <li class="sg-emergency-org" style="padding-inline-start:@(node.Depth * 16)px">
+          <span class="sg-name">@node.Name</span>
+          @if (Covered(node))
+          {
+            <span class="sg-sub">@L["On through an organisation above"]</span>
+          }
+          else
+          {
+            <button type="button" class="sg-btn @(node.EmergencyAccess ? "sg-btn--danger" : "sg-btn--secondary") sg-btn--row" @onclick="() => SwitchAsync(node)" disabled="@_busy">
+              @(node.EmergencyAccess ? L["Switch off"] : L["Switch on"])
+            </button>
+          }
+        </li>
+      }
+    </ul>
+  </section>
+}
+
+<section class="sg-panel" data-panel="emergency-log">
+  <h2 class="sg-h2">@L["Uses · last 90 days"]</h2>
+  @if (_uses is null)
+  {
+    <p class="sg-muted">@L["Loading…"]</p>
+  }
+  else if (_uses.Count == 0)
+  {
+    <p class="sg-muted">@L["No emergency access has been used here."]</p>
+  }
+  else
+  {
+    <div class="sg-table-wrap" tabindex="0" role="region" aria-label="@L["Uses · last 90 days"]">
+      <table class="sg-table sg-table--cards">
+        <thead><tr><th>@L["Person"]</th><th>@L["Case"]</th><th>@L["When"]</th><th>@L["Reason"]</th><th>@L["Review"]</th></tr></thead>
+        <tbody>
+          @foreach (EmergencyUse u in _uses)
+          {
+            <tr data-use="@u.Id">
+              <td><span class="sg-name">@u.Person</span><span class="sg-sub">@u.OrgName</span></td>
+              <td class="sg-mono" data-label="@L["Case"]">@Scope.AppName · @u.CaseRef</td>
+              <td data-label="@L["When"]">@IndiaTime.Compact(u.StartedAt) – @IndiaTime.Format(u.EndedAt, "HH:mm")
+                @if (u.EndReason is not null)
+                {
+                  <span class="sg-sub">@L["Ended early: {0}", u.EndReason]</span>
+                }
+              </td>
+              <td data-label="@L["Reason"]">@u.Reason</td>
+              <td data-label="@L["Review"]">
+                @if (u.Verdict is EmergencyVerdict verdict)
+                {
+                  <span class="@(verdict == EmergencyVerdict.Justified ? "sg-ok-text" : "sg-danger-text")">@(verdict == EmergencyVerdict.Justified ? L["Justified"] : L["Not justified"])</span>
+                  <span class="sg-sub">@(u.ReviewedBy ?? "—") · @(u.ReviewedAt is DateTimeOffset at ? IndiaTime.Date(at) : "—")</span>
+                  @if (u.ReviewNote is not null)
+                  {
+                    <span class="sg-sub">@u.ReviewNote</span>
+                  }
+                }
+                else
+                {
+                  <EmergencyAge StartedAt="u.StartedAt" Reviewed="false" />
+                  @if (u.MayReview)
+                  {
+                    @if (_reviewing == u.Id)
+                    {
+                      <div class="sg-form-row">
+                        <label class="sg-label" for="note-@u.Id">@L["Note (needed when not justified)"]</label>
+                        <textarea id="note-@u.Id" class="sg-input" rows="2" maxlength="1000" @bind="_note"></textarea>
+                      </div>
+                      <div class="sg-actions">
+                        <button type="button" class="sg-btn sg-btn--secondary sg-btn--row" @onclick="() => ReviewAsync(u.Id, EmergencyVerdict.Justified)" disabled="@_busy">@L["Justified"]</button>
+                        <button type="button" class="sg-btn sg-btn--danger sg-btn--row" @onclick="() => ReviewAsync(u.Id, EmergencyVerdict.NotJustified)" disabled="@_busy">@L["Not justified"]</button>
+                        <button type="button" class="sg-btn sg-btn--secondary sg-btn--row" @onclick="() => _reviewing = null">@L["Cancel"]</button>
+                      </div>
+                    }
+                    else
+                    {
+                      <button type="button" class="sg-btn sg-btn--secondary sg-btn--row" @onclick="() => { _reviewing = u.Id; _note = string.Empty; }">@L["Review"]</button>
+                    }
+                  }
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (!Scope.Reviewer)
+    {
+      <p class="sg-muted">@L["Only an emergency access reviewer judges a use. Give the right under People to someone such as the Medical Superintendent or Quality."]</p>
+    }
+  }
+</section>
+
+<StatusLine Ok="_ok" Message="@_message" />
+
+@code {
+    /// <summary>The tree.</summary>
+    [Parameter]
+    [EditorRequired]
+    public OrgScope Scope { get; set; } = null!;
+
+    /// <summary>The admin or reviewer.</summary>
+    [Parameter]
+    public Guid UserId { get; set; }
+
+    private IReadOnlyList<OrgNode> _tree = [];
+    private IReadOnlyList<EmergencyUse>? _uses;
+    private Guid? _reviewing;
+    private string _note = string.Empty;
+    private bool _busy;
+    private bool _ok;
+    private string? _message;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _tree = Scope.Admin ? await OrgConsole.TreeAsync(UserId, Scope.AppId, Scope.OrgId) ?? [] : [];
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync() => _uses = await Emergency.LogAsync(UserId, Scope.AppId, Scope.OrgId) ?? [];
+
+    /// <summary>Whether an organisation above this one (in the tree shown) has it on.</summary>
+    private bool Covered(OrgNode node)
+    {
+        Guid? parent = node.ParentId;
+        while (parent is Guid id)
+        {
+            OrgNode? above = _tree.FirstOrDefault(n => n.Id == id);
+            if (above is null)
+            {
+                return false;
+            }
+
+            if (above.EmergencyAccess)
+            {
+                return true;
+            }
+
+            parent = above.ParentId;
+        }
+
+        return false;
+    }
+
+    private async Task SwitchAsync(OrgNode node)
+    {
+        _busy = true;
+        PartnerResult result = await OrgConsole.SetEmergencyAccessAsync(UserId, Scope.AppId, node.Id, !node.EmergencyAccess);
+        _tree = await OrgConsole.TreeAsync(UserId, Scope.AppId, Scope.OrgId) ?? [];
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = L[result.Message ?? string.Empty];
+    }
+
+    private async Task ReviewAsync(Guid id, EmergencyVerdict verdict)
+    {
+        _busy = true;
+        bool done = await Emergency.ReviewAsync(UserId, Scope.AppId, id, verdict, _note);
+        _busy = false;
+        _ok = done;
+        _message = done ? L["Review saved."] : L["Write a note saying why it was not justified."];
+        if (done)
+        {
+            _reviewing = null;
+            await LoadAsync();
+        }
+    }
+}

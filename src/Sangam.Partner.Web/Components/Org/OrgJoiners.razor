@@ -1,0 +1,432 @@
+@inject IOrgConsoleService OrgConsole
+@inject IStaffService Staff
+@inject NavigationManager Nav
+
+@* rc.12 (G2; founder decisions, 14 Oct 2026). A joiner: who (their details, or the join code they made), when they start,
+   and where — any organisations in any tree this admin runs, chosen one by one, never "everything below" by default.
+   Sangam checks the details first and says only which match. A leaver: one person, every place, one day. *@
+<p class="sg-label-mono">@Scope.OrgName</p>
+<h1 class="sg-h1">@L["Joiners & leavers"]</h1>
+<DesktopNote />
+<p class="sg-lede">@L["Add a person to the organisations they work in, or end every place a person has on one day. Each application is told."]</p>
+
+<div class="sg-grid sg-grid--joiners">
+  <section class="sg-panel" data-panel="joiner">
+    <h2 class="sg-label-mono">@L["New joiner"]</h2>
+
+    <div class="sg-end-role-row" role="radiogroup" aria-label="@L["How to add them"]">
+      <label class="sg-option-inline @(_byCode ? null : "sg-option-inline--on")">
+        <input type="radio" name="joiner-how" checked="@(!_byCode)" @onchange="() => Switch(false)" />
+        <span>@L["Enter their details"]</span>
+      </label>
+      <label class="sg-option-inline @(_byCode ? "sg-option-inline--on" : null)">
+        <input type="radio" name="joiner-how" checked="@_byCode" @onchange="() => Switch(true)" />
+        <span>@L["They gave me a join code"]</span>
+      </label>
+    </div>
+
+    @if (_byCode)
+    {
+      <p class="sg-muted">@L["People who already have Sangam make a join code in their portal (Organisations & roles) and give it to you. It adds exactly their account."]</p>
+      <div class="sg-form-row">
+        <label class="sg-label" for="join-code">@L["Join code"]</label>
+        <input id="join-code" class="sg-input sg-input--code" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="ABCD-2345" @bind="_joinCode" @bind:event="oninput" />
+      </div>
+    }
+    else
+    {
+      <div class="sg-two-fields">
+        <div class="sg-form-row">
+          <label class="sg-label" for="j-first">@L["First name"]</label>
+          <input id="j-first" class="sg-input" maxlength="100" autocomplete="off" @bind="_first" @bind:after="Changed" />
+        </div>
+        <div class="sg-form-row">
+          <label class="sg-label" for="j-last">@L["Last name"]</label>
+          <input id="j-last" class="sg-input" maxlength="100" autocomplete="off" @bind="_last" @bind:after="Changed" />
+        </div>
+      </div>
+      <p class="sg-muted">@L["As on their government ID."]</p>
+      <div class="sg-form-row">
+        <label class="sg-label" for="j-email">@L["Email"]</label>
+        <input id="j-email" class="sg-input" type="email" autocomplete="off" @bind="_email" @bind:after="Changed" />
+      </div>
+      <div class="sg-form-row">
+        <label class="sg-label" for="j-mobile">@L["Mobile number (optional)"]</label>
+        <input id="j-mobile" class="sg-input" type="tel" autocomplete="off" placeholder="+91" @bind="_mobile" @bind:after="Changed" />
+      </div>
+      <div class="sg-form-row">
+        <label class="sg-label" for="j-dob">@L["Date of birth"]</label>
+        <input id="j-dob" class="sg-input" type="date" @bind="_dob" @bind:after="Changed" />
+      </div>
+    }
+
+    <div class="sg-form-row">
+      <label class="sg-label" for="j-start">@L["Start date (optional: access begins that day)"]</label>
+      <input id="j-start" class="sg-input" type="date" min="@Today" @bind="_startsOn" />
+    </div>
+
+    <p class="sg-label-mono">@L["Where they work"]</p>
+    <p class="sg-muted">@L["Tick each organisation they work in. Being in one gives nothing in the organisations under it."]</p>
+    @foreach (Target t in _targets)
+    {
+      <div class="sg-target @(t.On ? "sg-target--on" : null)">
+        <label class="sg-check" style="padding-left:@(t.Node.Depth * 1.25)rem">
+          <input type="checkbox" checked="@t.On" @onchange="e => ToggleAsync(t, e.Value is true)" />
+          <span><span class="sg-name">@t.Node.Name</span> <span class="sg-sub">@t.Scope.AppName</span></span>
+        </label>
+        @if (t.On)
+        {
+          <div class="sg-chips sg-target-roles" style="padding-left:@(t.Node.Depth * 1.25 + 1.75)rem">
+            @if (t.Choices is null)
+            {
+              <span class="sg-muted">@L["Loading…"]</span>
+            }
+            else if (t.Choices.Count == 0)
+            {
+              <span class="sg-muted">@L["As staff: {0} keeps the roles", t.Scope.AppName]</span>
+            }
+            else
+            {
+              @foreach (OrgRoleChoice role in t.Choices)
+              {
+                <button type="button" class="sg-chip @(t.Roles.Contains(role.Code) ? "sg-chip--on" : null)" aria-pressed="@(t.Roles.Contains(role.Code) ? "true" : "false")" @onclick="() => ToggleRole(t, role.Code)">@role.Name</button>
+              }
+            }
+          </div>
+        }
+      </div>
+    }
+
+    @if (_check is not null)
+    {
+      <div class="@(_check.Outcome is StaffCheckOutcome.Differs or StaffCheckOutcome.Similar ? "sg-warn-box" : "sg-read-note")" role="status" data-panel="staff-check">
+        <p>@CheckText(_check)</p>
+        @if (_check.Outcome is StaffCheckOutcome.Differs or StaffCheckOutcome.Similar)
+        {
+          <label class="sg-check"><input type="checkbox" checked="@_confirmed" @onchange="e => _confirmed = e.Value is true" /> @L["I have checked the details against our records, and want to go on"]</label>
+        }
+      </div>
+    }
+
+    @if (_askMany)
+    {
+      <div class="sg-confirm" role="alertdialog" aria-labelledby="many-title">
+        <p class="sg-confirm-title" id="many-title">@L["Add {0} to {1} organisations?", WhoName, Chosen.Count]</p>
+        <p class="sg-muted">@L["Each one is a separate place, and each application is told separately."]</p>
+        <div class="sg-actions">
+          <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _askMany = false">@L["Go back"]</button>
+          <button type="button" class="sg-btn sg-btn--primary" @onclick="AddAllAsync" disabled="@_busy">@L["Add to {0} organisations", Chosen.Count]</button>
+        </div>
+      </div>
+    }
+    else
+    {
+      <div class="sg-actions">
+        @if (!_byCode)
+        {
+          <button type="button" class="sg-btn sg-btn--secondary" @onclick="CheckAsync" disabled="@(_busy || !DetailsComplete || Chosen.Count == 0)">@L["Check details"]</button>
+        }
+        <button type="button" class="sg-btn sg-btn--primary" @onclick="AddAsync" disabled="@(_busy || !ReadyToAdd)">@(Chosen.Count > 1 ? L["Add to {0} organisations", Chosen.Count] : L["Add"])</button>
+      </div>
+    }
+
+    @if (_code is not null)
+    {
+      <div class="sg-code-out" data-panel="activation-code">
+        <p class="sg-label-mono">@L["Activation code"]</p>
+        <p class="sg-code-value">@_code</p>
+        <p class="sg-muted">@L["Give this code to {0} in person. It is shown only now. We have e-mailed them a link that works with it for 14 days.", WhoName]</p>
+      </div>
+    }
+
+    @if (_results.Count > 0)
+    {
+      <ul class="sg-results" data-panel="joiner-results">
+        @foreach ((string where, StaffAddResult r) in _results)
+        {
+          <li class="@(r.Status is StaffAddStatus.Added or StaffAddStatus.Waiting ? "sg-ok" : "sg-warn")"><strong>@where</strong>: @(r.Status == StaffAddStatus.Waiting && r.ActivationCode is not null ? L["Added. It starts when the person activates with your code."] : L[r.Message])</li>
+        }
+      </ul>
+    }
+  </section>
+
+  <section class="sg-panel" data-panel="leaver">
+    <h2 class="sg-label-mono">@L["Leaver · every place at once"]</h2>
+    <div class="sg-search">
+      <input class="sg-input" aria-label="@L["Name or email"]" placeholder="@L["Name or email"]" @bind="_find" @bind:event="oninput" @onkeydown="FindOnEnterAsync" />
+      <button type="button" class="sg-btn sg-btn--secondary" @onclick="FindAsync" disabled="@_busy">@L["Find"]</button>
+    </div>
+    @if (_found is not null && _leaver is null)
+    {
+      @if (_found.Count == 0)
+      {
+        <p class="sg-muted">@L["Nobody in your organisations matches."]</p>
+      }
+      <ul class="sg-list sg-list--plain">
+        @foreach (OrgLeaver person in _found)
+        {
+          <li><button type="button" class="sg-tree-item" @onclick="() => _leaver = person"><span class="sg-name">@person.Name</span><span class="sg-sub">@person.Email</span></button></li>
+        }
+      </ul>
+    }
+    @if (_leaver is not null)
+    {
+      <p class="sg-name">@_leaver.Name</p>
+      <ul class="sg-leaver-places">
+        @foreach (OrgLeaverPlace place in _leaver.Places)
+        {
+          <li><span>@place.AppName · @place.OrgName</span><span class="sg-mono">@(place.Roles.Count == 0 ? L["Staff"] : string.Join(", ", place.Roles))</span></li>
+        }
+      </ul>
+      <div class="sg-end-role-row" role="radiogroup" aria-label="@L["When it ends"]">
+        <label class="sg-option-inline @(_leaveNow ? null : "sg-option-inline--on")">
+          <input type="radio" name="leave-when" checked="@(!_leaveNow)" @onchange="() => _leaveNow = false" />
+          <span>@L["Last working day"]</span>
+          <input class="sg-input sg-input--toolbar" type="date" aria-label="@L["Last working day"]" min="@Today" @bind="_lastDay" disabled="@_leaveNow" />
+        </label>
+        <label class="sg-option-inline @(_leaveNow ? "sg-option-inline--on" : null)">
+          <input type="radio" name="leave-when" checked="@_leaveNow" @onchange="() => _leaveNow = true" />
+          <span>@L["Now"]</span>
+        </label>
+      </div>
+      <label class="sg-label" for="leave-reason">@L["Reason (the person sees it in their Activity)"]</label>
+      <input id="leave-reason" class="sg-input" maxlength="300" @bind="_leaveReason" @bind:event="oninput" />
+      <div class="sg-actions">
+        <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _leaver = null">@L["Choose someone else"]</button>
+        <button type="button" class="sg-btn sg-btn--danger" @onclick="LeaveAsync" disabled="@(_busy || string.IsNullOrWhiteSpace(_leaveReason) || (!_leaveNow && _lastDay is null))">
+          @(_leaveNow ? L["End {0} places now", _leaver.Places.Count] : _lastDay is DateOnly d ? L["End {0} places on {1}", _leaver.Places.Count, d.ToString("d MMM yyyy", System.Globalization.CultureInfo.CurrentCulture)] : L["End on a date"])
+        </button>
+      </div>
+    }
+  </section>
+</div>
+
+<StatusLine Ok="_ok" Message="@_message" />
+
+@code {
+    /// <summary>The tree the console is open on.</summary>
+    [Parameter]
+    [EditorRequired]
+    public OrgScope Scope { get; set; } = null!;
+
+    /// <summary>The admin.</summary>
+    [Parameter]
+    public Guid UserId { get; set; }
+
+    /// <summary>Every tree the admin may use.</summary>
+    [Parameter]
+    public IReadOnlyList<OrgScope> Scopes { get; set; } = [];
+
+    private readonly List<Target> _targets = [];
+    private readonly List<(string Where, StaffAddResult Result)> _results = [];
+    private bool _byCode;
+    private string _joinCode = string.Empty;
+    private string _first = string.Empty;
+    private string _last = string.Empty;
+    private string _email = string.Empty;
+    private string _mobile = string.Empty;
+    private DateOnly? _dob;
+    private DateOnly? _startsOn;
+    private StaffCheckResult? _check;
+    private bool _confirmed;
+    private bool _askMany;
+    private string? _code;
+    private string _find = string.Empty;
+    private IReadOnlyList<OrgLeaver>? _found;
+    private OrgLeaver? _leaver;
+    private bool _leaveNow;
+    private DateOnly? _lastDay;
+    private string _leaveReason = string.Empty;
+    private bool _busy;
+    private bool _ok;
+    private string? _message;
+
+    private static string Today => IndiaTime.ToIndia(DateTimeOffset.UtcNow).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+
+    private List<Target> Chosen => [.. _targets.Where(t => t.On)];
+
+    private bool DetailsComplete => !string.IsNullOrWhiteSpace(_first) && !string.IsNullOrWhiteSpace(_email) && _dob is not null;
+
+    private bool ReadyToAdd => Chosen.Count > 0 && (_byCode
+        ? _joinCode.Count(char.IsLetterOrDigit) == 8
+        : DetailsComplete && _check is not null && (_check.Outcome is StaffCheckOutcome.None or StaffCheckOutcome.Match || _confirmed));
+
+    private string WhoName => _byCode ? L["this person"] : (_first + " " + _last).Trim();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // The trees offered: this one, and every other tree the admin holds a right in themselves.
+        _targets.Clear();
+        string? at = System.Web.HttpUtility.ParseQueryString(new Uri(Nav.Uri).Query)["at"];
+        foreach (OrgScope scope in Scopes.Where(s => s.Admin && (s.OrgId == Scope.OrgId || !s.ViaApplication)).OrderBy(s => s.OrgId == Scope.OrgId ? 0 : 1))
+        {
+            foreach (OrgNode node in await OrgConsole.TreeAsync(UserId, scope.AppId, scope.OrgId) ?? [])
+            {
+                Target target = new(scope, node);
+                _targets.Add(target);
+                if (Guid.TryParse(at, out Guid preset) && preset == node.Id && scope.OrgId == Scope.OrgId)
+                {
+                    await ToggleAsync(target, true);
+                }
+            }
+        }
+    }
+
+    private void Switch(bool byCode)
+    {
+        _byCode = byCode;
+        _check = null;
+        _confirmed = false;
+        _code = null;
+        _results.Clear();
+    }
+
+    // Changed details need a fresh check.
+    private void Changed()
+    {
+        _check = null;
+        _confirmed = false;
+    }
+
+    private async Task ToggleAsync(Target target, bool on)
+    {
+        target.On = on;
+        _askMany = false;
+        if (on && target.Choices is null)
+        {
+            target.Choices = await OrgConsole.RolesAsync(UserId, target.Scope.AppId, target.Node.Id);
+        }
+    }
+
+    private static void ToggleRole(Target target, string code)
+    {
+        if (!target.Roles.Remove(code))
+        {
+            target.Roles.Add(code);
+        }
+    }
+
+    private StaffDetails Details() => new(_first.Trim(), _last.Trim(), _email.Trim(), string.IsNullOrWhiteSpace(_mobile) || _mobile.Trim() == "+91" ? null : _mobile.Replace(" ", string.Empty, StringComparison.Ordinal).Trim(), _dob ?? default);
+
+    private async Task CheckAsync()
+    {
+        _busy = true;
+        Target first = Chosen[0];
+        _check = await Staff.CheckAsync(new StaffActor(first.Scope.AppId, UserId), first.Node.Id, Details());
+        _confirmed = false;
+        _busy = false;
+    }
+
+    private void AddAsync()
+    {
+        if (Chosen.Count > 1)
+        {
+            _askMany = true;
+            return;
+        }
+
+        _ = AddAllAsync();
+    }
+
+    private async Task AddAllAsync()
+    {
+        _busy = true;
+        _askMany = false;
+        _results.Clear();
+        _code = null;
+        Guid? staffRef = null;
+        foreach (Target t in Chosen)
+        {
+            StaffAddition addition = _byCode
+                ? new StaffAddition(JoinCode: _joinCode, Roles: [.. t.Roles], StartsOn: _startsOn)
+                : staffRef is Guid known
+                    ? new StaffAddition(StaffRef: known, Roles: [.. t.Roles], StartsOn: _startsOn)
+                    : new StaffAddition(Details: Details(), Roles: [.. t.Roles], StartsOn: _startsOn, Confirmed: _confirmed);
+            StaffAddResult result = await Staff.AddAsync(new StaffActor(t.Scope.AppId, UserId), t.Node.Id, addition);
+            staffRef ??= result.StaffRef;
+            _code ??= result.ActivationCode;
+            _results.Add(($"{t.Node.Name} · {t.Scope.AppName}", result));
+            if (result.Status is StaffAddStatus.NeedsConfirmation or StaffAddStatus.TooMany && result.Check is not null)
+            {
+                _check = result.Check;
+                break;
+            }
+        }
+
+        _busy = false;
+        _ok = _results.All(r => r.Result.Status is StaffAddStatus.Added or StaffAddStatus.Waiting);
+        _message = _ok ? L["Done. Waiting additions are listed under Settings until the person joins."].Value : null;
+        StateHasChanged();
+        if (_ok)
+        {
+            foreach (Target t in _targets)
+            {
+                t.On = false;
+                t.Roles.Clear();
+            }
+
+            _joinCode = string.Empty;
+        }
+    }
+
+    private string CheckText(StaffCheckResult check) => check.Outcome switch
+    {
+        StaffCheckOutcome.Match => L["This person already has a Sangam account. They will enter your code to join."],
+        StaffCheckOutcome.Differs => L["A person with this {0} is already registered in Sangam, but the {1} is different. Are you sure you have checked the details against their records?", Fields(check.Matching), Fields(check.Differing)],
+        StaffCheckOutcome.Similar => L["A person with this name and date of birth may already be registered in Sangam. Ask them for their join code."],
+        _ => L["No Sangam account matches. A new account will be made when the person activates."],
+    };
+
+    private string Fields(IReadOnlyList<string> fields) => string.Join(", ", fields.Select(f => f switch
+    {
+        "first_name" => L["first name"].Value,
+        "last_name" => L["last name"].Value,
+        "date_of_birth" => L["date of birth"].Value,
+        "email" => L["email"].Value,
+        "mobile" => L["mobile number"].Value,
+        _ => f,
+    }));
+
+    private async Task FindOnEnterAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await FindAsync();
+        }
+    }
+
+    private async Task FindAsync()
+    {
+        _leaver = null;
+        _found = await OrgConsole.FindAsync(UserId, _find);
+    }
+
+    private async Task LeaveAsync()
+    {
+        _busy = true;
+        int ended = await OrgConsole.LeaverAsync(UserId, _leaver!.UserId, _leaveNow ? null : _lastDay, _leaveReason);
+        _busy = false;
+        _ok = ended > 0;
+        _message = ended == 0
+            ? L["Nothing changed."]
+            : _leaveNow ? L["{0} places ended for {1}. Each application is told.", ended, _leaver.Name] : L["{0} places end on {1} for {2}. Each application is told.", ended, _lastDay!.Value.ToString("d MMM yyyy", System.Globalization.CultureInfo.CurrentCulture), _leaver.Name];
+        _leaver = null;
+        _found = null;
+        _find = string.Empty;
+        _leaveReason = string.Empty;
+    }
+
+    /// <summary>One organisation that can be ticked.</summary>
+    private sealed class Target(OrgScope scope, OrgNode node)
+    {
+        public OrgScope Scope { get; } = scope;
+
+        public OrgNode Node { get; } = node;
+
+        public bool On { get; set; }
+
+        public HashSet<string> Roles { get; } = new(StringComparer.Ordinal);
+
+        public IReadOnlyList<OrgRoleChoice>? Choices { get; set; }
+    }
+}

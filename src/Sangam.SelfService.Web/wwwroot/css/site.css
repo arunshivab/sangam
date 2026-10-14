@@ -307,6 +307,13 @@ h1[tabindex="-1"]:focus { outline: none; }
 .sg-leave-list { margin: 0 0 12px; padding-left: 20px; font: 400 15px/1.6 var(--sg-font-body); }
 .sg-warn-note { padding: 8px 12px; border-left: 3px solid #7E5A14; background: #F6F1E4; }
 
+/* rc.12: the person's join code, big enough to read across a desk, with its QR code for the admin to scan. */
+.sg-join .sg-note { margin-bottom: 12px; }
+.sg-join-code { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+.sg-join-qr { width: 160px; height: 160px; flex: 0 0 auto; }
+.sg-join-qr svg { width: 100%; height: 100%; display: block; }
+.sg-join-value { margin: 0 0 8px; font: 600 32px/1.1 var(--sg-font-mono); letter-spacing: 0.08em; color: var(--sg-ink, #15302E); }
+
 /* P6: what DigiLocker set stays read-only, and says so. */
 .sg-locked-hint { display: block; margin-top: 4px; font: 400 13px/1.4 var(--sg-font-body); color: var(--sg-slate); }
 .sg-two--panels { align-items: stretch; }

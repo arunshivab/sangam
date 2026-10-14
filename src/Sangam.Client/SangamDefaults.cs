@@ -17,4 +17,22 @@ public static class SangamDefaults
 
     /// <summary>The path <see cref="SangamEndpointRouteBuilderExtensions.MapSangamSignOut"/> maps by default.</summary>
     public const string SignOutPath = "/signout";
+
+    /// <summary>rc.12 (A6): the path <c>MapSangamSwitchOrganisation</c> maps by default.</summary>
+    public const string SwitchOrganisationPath = "/switch-organisation";
+
+    /// <summary>rc.12: the authentication property that carries an OpenID Connect <c>prompt</c> to Sangam.</summary>
+    public const string PromptItem = "sangam.prompt";
+
+    /// <summary>rc.12 (A6): the prompt that asks "Working at which branch?" again.</summary>
+    public const string SelectOrganisationPrompt = "select_org";
+
+    /// <summary>rc.12 (T1): the path <c>MapSangamLock</c> maps by default.</summary>
+    public const string LockPath = "/lock";
+
+    /// <summary>rc.12 (M12): the path <c>MapSangamEmergency</c> maps by default.</summary>
+    public const string EmergencyPath = "/emergency-access";
+
+    /// <summary>rc.12 (M12): the authentication property that carries the case reference to Sangam.</summary>
+    public const string EmergencyItem = "sangam.emergency";
 }

@@ -1,0 +1,144 @@
+@inject IOrgConsoleService OrgConsole
+@inject IStaffService Staff
+
+@* rc.12: what waits (and can be cancelled), and the customer's own choices. *@
+<p class="sg-label-mono">@Scope.OrgName</p>
+<h1 class="sg-h1">@L["Settings"]</h1>
+<DesktopNote />
+
+<section class="sg-panel" data-panel="waiting">
+  <h2 class="sg-h2">@L["Waiting to join"]</h2>
+  <p class="sg-muted">@L["People you added who have not activated yet, or who start later. Cancelling ends the activation link when nothing else waits on it."]</p>
+  @if (_waiting is null)
+  {
+    <p class="sg-note">@L["Loading…"]</p>
+  }
+  else if (_waiting.Count == 0)
+  {
+    <p class="sg-muted">@L["Nobody is waiting."]</p>
+  }
+  else
+  {
+    <div class="sg-table-wrap" tabindex="0" role="region" aria-label="@L["Waiting to join"]">
+      <table class="sg-table sg-table--cards">
+        <thead><tr><th>@L["Person"]</th><th>@L["Where"]</th><th>@L["Roles"]</th><th>@L["Status"]</th><th></th></tr></thead>
+        <tbody>
+          @foreach ((OrgNode node, StaffWaiting w) in _waiting)
+          {
+            <tr>
+              <td><span class="sg-name">@w.Name</span>@if (w.AddedBeforeDigiLocker) {<span class="sg-sub">@L["Added before DigiLocker"]</span>}</td>
+              <td data-label="@L["Where"]">@node.Name</td>
+              <td class="sg-mono" data-label="@L["Roles"]">@(w.Roles.Count == 0 ? L["Staff"] : string.Join(", ", w.Roles))</td>
+              <td data-label="@L["Status"]">
+                @if (!w.Activated)
+                {
+                  @L["Not activated · link works until {0}", w.ExpiresAt is DateTimeOffset e ? IndiaTime.Date(e) : "—"]
+                }
+                else if (w.StartsOn is DateOnly starts)
+                {
+                  @L["Starts {0}", starts.ToString("d MMM yyyy", System.Globalization.CultureInfo.CurrentCulture)]
+                }
+              </td>
+              <td class="sg-row-actions-cell">
+                @if (_cancelling == w.Id)
+                {
+                  <button type="button" class="sg-btn sg-btn--secondary sg-btn--row" @onclick="() => _cancelling = null">@L["Keep"]</button>
+                  <button type="button" class="sg-btn sg-btn--danger sg-btn--row" @onclick="() => CancelAsync(w.Id)" disabled="@_busy">@L["Cancel the addition"]</button>
+                }
+                else
+                {
+                  <button type="button" class="sg-btn sg-btn--secondary sg-btn--row" @onclick="() => _cancelling = w.Id">@L["Cancel"]</button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>
+
+@if (Scope.IsCustomer && _overview is not null)
+{
+  <section class="sg-panel" data-panel="roles-kept">
+    <h2 class="sg-h2">@L["Where roles are kept"]</h2>
+    <p class="sg-muted">@L["Either Sangam keeps each person's roles (admins choose them when adding people, and {0} reads them at sign-in), or {0} keeps them itself and Sangam only says who works where.", Scope.AppName]</p>
+    <div class="sg-end-role-row" role="radiogroup" aria-label="@L["Where roles are kept"]">
+      <label class="sg-option-inline @(_kept ? "sg-option-inline--on" : null)">
+        <input type="radio" name="roles-kept" checked="@_kept" @onchange="() => _kept = true" />
+        <span>@L["In Sangam"]</span>
+      </label>
+      <label class="sg-option-inline @(_kept ? null : "sg-option-inline--on")">
+        <input type="radio" name="roles-kept" checked="@(!_kept)" @onchange="() => _kept = false" />
+        <span>@L["In {0}", Scope.AppName]</span>
+      </label>
+    </div>
+    <div class="sg-actions">
+      <button type="button" class="sg-btn sg-btn--secondary" @onclick="SaveKeptAsync" disabled="@(_busy || _kept == _overview.RolesKeptInSangam)">@L["Save"]</button>
+    </div>
+  </section>
+}
+
+<StatusLine Ok="_ok" Message="@_message" />
+
+@code {
+    /// <summary>The tree.</summary>
+    [Parameter]
+    [EditorRequired]
+    public OrgScope Scope { get; set; } = null!;
+
+    /// <summary>The admin.</summary>
+    [Parameter]
+    public Guid UserId { get; set; }
+
+    private List<(OrgNode Node, StaffWaiting Waiting)>? _waiting;
+    private OrgOverview? _overview;
+    private bool _kept;
+    private Guid? _cancelling;
+    private bool _busy;
+    private bool _ok;
+    private string? _message;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _overview = await OrgConsole.OverviewAsync(UserId, Scope.AppId, Scope.OrgId);
+        _kept = _overview?.RolesKeptInSangam ?? true;
+        await LoadWaitingAsync();
+    }
+
+    private async Task LoadWaitingAsync()
+    {
+        List<(OrgNode, StaffWaiting)> rows = [];
+        StaffActor actor = new(Scope.AppId, UserId);
+        foreach (OrgNode node in await OrgConsole.TreeAsync(UserId, Scope.AppId, Scope.OrgId) ?? [])
+        {
+            foreach (StaffWaiting w in await Staff.WaitingAsync(actor, node.Id) ?? [])
+            {
+                rows.Add((node, w));
+            }
+        }
+
+        _waiting = rows;
+    }
+
+    private async Task CancelAsync(Guid id)
+    {
+        _busy = true;
+        bool done = await Staff.CancelAsync(new StaffActor(Scope.AppId, UserId), id);
+        _busy = false;
+        _cancelling = null;
+        _ok = done;
+        _message = done ? L["The addition is cancelled."] : L["Nothing changed."];
+        await LoadWaitingAsync();
+    }
+
+    private async Task SaveKeptAsync()
+    {
+        _busy = true;
+        PartnerResult result = await OrgConsole.SetRolesKeptAsync(UserId, Scope.AppId, Scope.OrgId, _kept);
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = L[result.Message ?? string.Empty];
+        _overview = await OrgConsole.OverviewAsync(UserId, Scope.AppId, Scope.OrgId);
+    }
+}

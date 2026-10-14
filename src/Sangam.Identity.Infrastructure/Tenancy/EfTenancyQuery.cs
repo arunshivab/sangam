@@ -32,14 +32,22 @@ public sealed class EfTenancyQuery : ITenancyQuery
                 m.Org!.Name,
                 m.Org.OrgTypeCode,
                 m.Org.Path,
-                RoleCode = m.Role!.Code,
-                m.Role.Permissions,
-                m.AppliesToDescendants,
+                RoleCode = m.Role == null ? null : m.Role.Code,
+                Permissions = m.Role == null ? null : m.Role.Permissions,
             })
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return [.. rows.Select(r => new OrgClaim(r.OrgId, r.Name, r.OrgTypeCode, r.Path, r.RoleCode, ParsePermissions(r.Permissions), r.AppliesToDescendants))];
+        // rc.12: one element per organisation, carrying every role held there (several allowed, or none).
+        return [.. rows
+            .GroupBy(r => r.OrgId)
+            .Select(g =>
+            {
+                var first = g.First();
+                List<string> roles = [.. g.Where(r => r.RoleCode is not null).Select(r => r.RoleCode!).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)];
+                List<string> permissions = [.. g.Where(r => r.Permissions is not null).SelectMany(r => ParsePermissions(r.Permissions!)).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)];
+                return new OrgClaim(g.Key, first.Name, first.OrgTypeCode, first.Path, roles.Count > 0 ? roles[0] : null, permissions, false, roles);
+            })];
     }
 
     internal static IReadOnlyList<string> ParsePermissions(string json)

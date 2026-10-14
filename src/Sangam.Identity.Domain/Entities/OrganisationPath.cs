@@ -57,4 +57,14 @@ public static class OrganisationPath
 
         return ids;
     }
+
+    /// <summary>rc.12: the customer of an organisation — the top of its tree (the first id on its path).</summary>
+    /// <param name="path">A materialised path.</param>
+    public static Guid CustomerId(string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        int start = path.IndexOf(Separator, StringComparison.Ordinal) + 1;
+        int end = path.IndexOf(Separator, start);
+        return Guid.ParseExact(path[start..end], "D");
+    }
 }

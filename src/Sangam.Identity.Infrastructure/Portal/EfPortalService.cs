@@ -264,7 +264,7 @@ public sealed class EfPortalService : IPortalService
 
         var memberships = await _db.OrgMemberships.AsNoTracking()
             .Where(m => m.UserId == userId)
-            .Select(m => new { organisation = m.Org!.Name, organisationType = m.Org.OrgTypeCode, application = m.App!.DisplayName, role = m.Role!.Code, appliesToDescendants = m.AppliesToDescendants, grantedAt = m.GrantedAt, revokedAt = m.RevokedAt })
+            .Select(m => new { organisation = m.Org!.Name, organisationType = m.Org.OrgTypeCode, application = m.App!.DisplayName, role = m.Role == null ? null : m.Role.Code, grantedAt = m.GrantedAt, revokedAt = m.RevokedAt })
             .ToListAsync(cancellationToken).ConfigureAwait(false);
 
         var consents = await _db.Consents.AsNoTracking()

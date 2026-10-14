@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
@@ -42,13 +43,13 @@ public record SangamUser(String id, String name, String email, List<SangamMember
 
     /** Whether the person holds the role at the organisation, directly or inherited. */
     public boolean hasRole(String organisationPath, String role) {
-        return memberships.stream().anyMatch(m -> m.role().equals(role) && m.covers(organisationPath));
+        return !role.isEmpty() && memberships.stream().anyMatch(m -> m.role().equals(role) && m.covers(organisationPath));
     }
 
     /** The roles held at an organisation, sorted. */
     public List<String> rolesIn(String organisationPath) {
         TreeSet<String> roles = new TreeSet<>();
-        memberships.stream().filter(m -> m.covers(organisationPath)).forEach(m -> roles.add(m.role()));
+        memberships.stream().filter(m -> !m.role().isEmpty() && m.covers(organisationPath)).forEach(m -> roles.add(m.role()));
         return List.copyOf(roles);
     }
 
@@ -102,16 +103,88 @@ public record SangamUser(String id, String name, String email, List<SangamMember
             if (!(item instanceof Map<?, ?> o)) {
                 continue;
             }
-            if (!(o.get("id") instanceof String id) || !UUID.matcher(id).matches() || !(o.get("path") instanceof String path) || path.isEmpty()
-                    || !(o.get("role") instanceof String role) || role.isEmpty()) {
+            if (!(o.get("id") instanceof String id) || !UUID.matcher(id).matches() || !(o.get("path") instanceof String path) || path.isEmpty()) {
                 continue;
             }
-            List<String> permissions = new ArrayList<>();
-            if (o.get("permissions") instanceof Collection<?> list) {
-                list.stream().filter(String.class::isInstance).map(String.class::cast).forEach(permissions::add);
+            // rc.12: one entry carries every role held there ("roles"; older tokens carry only "role"). Each role is one
+            // membership; a place with no role in Sangam (the application keeps roles itself) is one with an empty role.
+            LinkedHashSet<String> roles = new LinkedHashSet<>(strings(o.get("roles")));
+            if (roles.isEmpty() && o.get("role") instanceof String single && !single.isEmpty()) {
+                roles.add(single);
             }
-            result.add(new SangamMembership(id, o.get("name") instanceof String n ? n : "", o.get("type") instanceof String t ? t : "", path, role, permissions,
-                    Boolean.TRUE.equals(o.get("inherits"))));
+            if (roles.isEmpty()) {
+                roles.add("");
+            }
+            List<String> permissions = strings(o.get("permissions"));
+            for (String role : roles) {
+                result.add(new SangamMembership(id, o.get("name") instanceof String n ? n : "", o.get("type") instanceof String t ? t : "", path, role, permissions,
+                        Boolean.TRUE.equals(o.get("inherits"))));
+            }
+        }
+        return result;
+    }
+
+    /** rc.12 (A6): the organisation the person chose to work at for this sign-in. */
+    public record CurrentOrganisation(String organisationId, String organisationName, String organisationType, String path,
+                                      List<String> roles, List<String> permissions) {
+    }
+
+    /**
+     * rc.12 (A6): reads {@code sangam_org} (a JSON string or one object) from token claims; {@code null} when absent or
+     * malformed. Send the person back with {@code prompt=select_org} to choose again.
+     */
+    public static CurrentOrganisation currentOrganisation(Map<String, ?> claims) {
+        Object value = claims.get("sangam_org");
+        if (value instanceof String text) {
+            try {
+                value = JSON.readValue(text, Object.class);
+            } catch (JsonProcessingException e) {
+                return null;
+            }
+        }
+        if (!(value instanceof Map<?, ?> o) || !(o.get("id") instanceof String id) || !UUID.matcher(id).matches()
+                || !(o.get("path") instanceof String path) || path.isEmpty()) {
+            return null;
+        }
+        List<String> roles = strings(o.get("roles"));
+        if (roles.isEmpty() && o.get("role") instanceof String single && !single.isEmpty()) {
+            roles.add(single);
+        }
+        return new CurrentOrganisation(id, o.get("name") instanceof String n ? n : "", o.get("type") instanceof String t ? t : "", path,
+                List.copyOf(roles), List.copyOf(strings(o.get("permissions"))));
+    }
+
+    /** rc.12 (M12): emergency access in progress. Show a banner, apply your own limits, stop at {@code until} (Unix seconds). */
+    public record Emergency(String id, String caseReference, String organisationId, long until) {
+        /** Whether it is still in force at {@code nowSeconds}. */
+        public boolean isActive(long nowSeconds) {
+            return nowSeconds < until;
+        }
+    }
+
+    /** rc.12 (M12): reads {@code sangam_emergency} (a JSON string or one object); {@code null} when absent or malformed. */
+    public static Emergency emergency(Map<String, ?> claims) {
+        Object value = claims.get("sangam_emergency");
+        if (value instanceof String text) {
+            try {
+                value = JSON.readValue(text, Object.class);
+            } catch (JsonProcessingException e) {
+                return null;
+            }
+        }
+        if (!(value instanceof Map<?, ?> o) || !(o.get("id") instanceof String id) || !UUID.matcher(id).matches()
+                || !(o.get("org") instanceof String org) || !UUID.matcher(org).matches()
+                || !(o.get("case") instanceof String caseRef) || caseRef.isEmpty()
+                || !(o.get("until") instanceof Number until) || until instanceof Double || until instanceof Float) {
+            return null;
+        }
+        return new Emergency(id, caseRef, org, until.longValue());
+    }
+
+    private static List<String> strings(Object value) {
+        List<String> result = new ArrayList<>();
+        if (value instanceof Collection<?> list) {
+            list.stream().filter(String.class::isInstance).map(String.class::cast).filter(s -> !s.isEmpty()).forEach(result::add);
         }
         return result;
     }

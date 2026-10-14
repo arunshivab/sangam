@@ -20,6 +20,7 @@ class FakeOP:
     def __init__(self, client_id="app", client_secret="secret"):
         self.key = RSAKey.generate_key(2048, parameters={"kid": "k1", "use": "sig", "alg": "RS256"})
         self.codes = {}
+        self.locks = []
         self.client_id, self.client_secret = client_id, client_secret
         op = self
 
@@ -46,6 +47,12 @@ class FakeOP:
                     self._json({}, 404)
 
             def do_POST(self):
+                if urlparse(self.path).path == "/api/v1/sessions/lock":
+                    op.locks.append(self.headers.get("authorization"))
+                    self.send_response(204)
+                    self.send_header("content-length", "0")
+                    self.end_headers()
+                    return
                 form = {k: v[0] for k, v in parse_qs(self.rfile.read(int(self.headers["content-length"])).decode()).items()}
                 grant = op.codes.pop(form.get("code"), None)
                 challenge = base64.urlsafe_b64encode(hashlib.sha256(form.get("code_verifier", "").encode()).digest()).rstrip(b"=").decode()

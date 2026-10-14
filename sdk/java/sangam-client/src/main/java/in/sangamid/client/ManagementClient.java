@@ -73,7 +73,18 @@ public final class ManagementClient {
 
     /** Any call; {@code path} is relative to /api/v1/. */
     public JsonNode send(String method, String path, Object body) throws IOException, InterruptedException {
+        return send(method, path, body, null);
+    }
+
+    /**
+     * Any call, for one of your admins (rc.12): {@code adminAccessToken} is their own access token, sent as
+     * {@code Sangam-Acting-Admin}; {@code null} for an ordinary call.
+     */
+    public JsonNode send(String method, String path, Object body, String adminAccessToken) throws IOException, InterruptedException {
         HttpRequest.Builder b = HttpRequest.newBuilder(URI.create(authority + "/api/v1/" + path.replaceAll("^/+", ""))).header("authorization", "Bearer " + token("sangam.manage"));
+        if (adminAccessToken != null && !adminAccessToken.isEmpty()) {
+            b.header("sangam-acting-admin", adminAccessToken);
+        }
         if (body != null) {
             b.header("content-type", "application/json").method(method, HttpRequest.BodyPublishers.ofString(JSON.writeValueAsString(body)));
         } else {
@@ -84,6 +95,50 @@ public final class ManagementClient {
             throw new SangamApiException(r.statusCode(), "Sangam's management API answered " + r.statusCode() + " to " + method + " " + path + ": " + r.body());
         }
         return r.body().isEmpty() ? null : JSON.readTree(r.body());
+    }
+
+    /**
+     * rc.12 (T1): locks the person's Sangam session with their own access token (from their sign-in, not client
+     * credentials), when your idle timer runs out. Sangam tells the person's other applications in that session
+     * ({@code session.locked}); on an enrolled shared ward device they come back with their PIN, anywhere else with a full
+     * sign-in. Returns {@code false} when that sign-in had already ended.
+     */
+    public boolean lockSession(String personAccessToken) throws IOException, InterruptedException {
+        HttpRequest request = HttpRequest.newBuilder(URI.create(authority + "/api/v1/sessions/lock"))
+                .header("authorization", "Bearer " + personAccessToken)
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .build();
+        HttpResponse<String> r = http.send(request, HttpResponse.BodyHandlers.ofString());
+        if (r.statusCode() == 404) {
+            return false;
+        }
+        if (r.statusCode() >= 300) {
+            throw new SangamApiException(r.statusCode(), "Sangam answered " + r.statusCode() + " to the lock: " + r.body());
+        }
+        return true;
+    }
+
+    /**
+     * rc.12 (M12): ends the person's emergency access early, with a reason, with their own access token. Returns
+     * {@code false} when none was in progress; tokens refreshed afterwards no longer carry it.
+     */
+    public boolean endEmergency(String personAccessToken, String reason) throws IOException, InterruptedException {
+        if (reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException("Say why emergency access ends.");
+        }
+        HttpRequest request = HttpRequest.newBuilder(URI.create(authority + "/api/v1/sessions/emergency/end"))
+                .header("authorization", "Bearer " + personAccessToken)
+                .header("content-type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(JSON.writeValueAsString(Map.of("reason", reason))))
+                .build();
+        HttpResponse<String> r = http.send(request, HttpResponse.BodyHandlers.ofString());
+        if (r.statusCode() == 404) {
+            return false;
+        }
+        if (r.statusCode() >= 300) {
+            throw new SangamApiException(r.statusCode(), "Sangam answered " + r.statusCode() + " to ending emergency access: " + r.body());
+        }
+        return true;
     }
 
     public JsonNode upsertRole(String code, String displayName, List<String> permissions) throws IOException, InterruptedException {
@@ -106,7 +161,8 @@ public final class ManagementClient {
 
     /**
      * Gives a person a role at an organisation; {@code expiresAt} (ISO 8601) makes it time-limited. rc.5: only someone who
-     * already uses your application; anyone else answers 404 — invite them with {@link #invite} instead.
+     * already uses your application; anyone else answers 404 — add them with {@link #addStaff} instead. rc.12: a role holds
+     * only where it is given, so {@code appliesToDescendants} must be false.
      */
     public JsonNode upsertMembership(String orgId, String userId, String role, boolean appliesToDescendants, String expiresAt) throws IOException, InterruptedException {
         Map<String, Object> body = new LinkedHashMap<>();
@@ -118,13 +174,30 @@ public final class ManagementClient {
         return send("PUT", "orgs/" + orgId + "/members/" + userId, body);
     }
 
-    /** Invites someone by e-mail to a role at an organisation (rc.5); they are added when they accept. At most 200 a day. */
-    public JsonNode invite(String orgId, String email, String role, boolean appliesToDescendants) throws IOException, InterruptedException {
+    /** rc.12: every role a person holds at an organisation; an empty list keeps them there as staff. */
+    public JsonNode setRoles(String orgId, String userId, List<String> roles, String expiresAt) throws IOException, InterruptedException {
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("email", email);
-        body.put("role", role);
-        body.put("appliesToDescendants", appliesToDescendants);
-        return send("POST", "orgs/" + orgId + "/invitations", body);
+        body.put("roles", roles);
+        if (expiresAt != null) {
+            body.put("expiresAt", expiresAt);
+        }
+        return send("PUT", "orgs/" + orgId + "/members/" + userId, body);
+    }
+
+    /**
+     * rc.12: the check before adding a person (which details match an existing account, never what Sangam holds), for one
+     * of your admins. {@code person} has firstName, lastName, email, mobile (E.164 or null) and dateOfBirth (yyyy-mm-dd).
+     */
+    public JsonNode checkStaff(String orgId, String adminAccessToken, Map<String, Object> person) throws IOException, InterruptedException {
+        return send("POST", "orgs/" + orgId + "/staff/check", person, adminAccessToken);
+    }
+
+    /**
+     * rc.12: adds one person to one organisation for one of your admins (verified with DigiLocker). {@code addition} has
+     * exactly one of person, joinCode, staffRef or userId, and optionally roles, startsOn, expiresAt and confirmed.
+     */
+    public JsonNode addStaff(String orgId, String adminAccessToken, Map<String, Object> addition) throws IOException, InterruptedException {
+        return send("POST", "orgs/" + orgId + "/staff", addition, adminAccessToken);
     }
 
     /**

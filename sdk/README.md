@@ -25,6 +25,22 @@ checks permissions, steps up and audits the same way.
   client filled in by the helper, sensitive changes masked, UUID v7 ids; checked before they are kept, buffered in a
   JSON Lines file until the audit service exists, then sent in batches of 500 with an `audit.write` token.
 
+## rc.12: organisations, shared ward devices, emergency access
+
+The same in every SDK:
+
+- **Several roles, or none**: each `sangam_orgs` entry lists every role held there (`roles`); `role` still carries the
+  first, for older code. An entry with no role is staff with no role in Sangam. A membership never reaches the
+  organisations beneath it any more (`inherits` is always `false`).
+- **"Working at which branch?"**: `sangam_org` is the one organisation chosen for this sign-in (scope `org.current`, or
+  `orgs.read` with the whole list). Choose again with `prompt=select_org`; name one with `sangam_org=<id>`.
+- **Adding staff** is done for one of your admins (their own access token, `Sangam-Acting-Admin`): `checkStaff`,
+  `addStaff`, `setRoles`. The old invitation call is gone.
+- **Lock** (shared ward devices): your idle timer calls `lockSession` with the person's own access token, or sends them to
+  the lock route; Sangam tells their other applications (`session.locked`) and decides how they get back in.
+- **Emergency access**: send the person to Sangam with `sangam_emergency=<your case number>`; the token then carries
+  `sangam_emergency` (`id`, `case`, `org`, `until`). End it early with `endEmergency(reason)`.
+
 ## Conformance
 
 - `conformance/vectors.json`: permissions, step-up, the challenge header, webhook signatures, audit validation and

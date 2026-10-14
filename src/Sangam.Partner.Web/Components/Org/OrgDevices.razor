@@ -1,0 +1,191 @@
+@using Sangam.Identity.Application.Devices
+@inject IOrgConsoleService OrgConsole
+@inject ISharedDeviceService Devices
+@inject IConfiguration Configuration
+
+@* rc.12 (T1): shared ward devices — enrolled from the device itself, removed at once when lost, stolen or moved — and, for a
+   customer, how people get back in after an application locks the screen (stricter than Sangam's, never looser). *@
+<p class="sg-label-mono">@Scope.OrgName</p>
+<h1 class="sg-h1">@L["Shared devices"]</h1>
+<p class="sg-lede">@L["Tablets and computers at nursing stations, used by many people in turn. On an enrolled device the sign-in page shows who used it last, and after an application locks the screen a person comes back with a 6-digit PIN."]</p>
+
+<section class="sg-panel" data-panel="enrol">
+  <h2 class="sg-h2">@L["Enrol this device"]</h2>
+  <p class="sg-muted">@L["Do this on the device itself: open this console there, then follow the link. The link works once, for 15 minutes, and only for you."]</p>
+  @if (_link is not null)
+  {
+    <p class="sg-muted" data-panel="enrol-link">@L["Open this link on the device you are enrolling. If you are on it now, open it here."]</p>
+    <div class="sg-actions">
+      <a class="sg-btn sg-btn--primary" href="@_link">@L["Finish enrolling this device"]</a>
+      <button type="button" class="sg-btn sg-btn--secondary" @onclick="() => _link = null">@L["Done"]</button>
+    </div>
+  }
+  else
+  {
+    <div class="sg-two-fields">
+      <div class="sg-form-row">
+        <label class="sg-label" for="d-org">@L["Where it is"]</label>
+        <select id="d-org" class="sg-input" @bind="_orgId">
+          @foreach (OrgNode node in _tree)
+          {
+            <option value="@node.Id">@(new string('\u00a0', node.Depth * 3))@node.Name</option>
+          }
+        </select>
+      </div>
+      <div class="sg-form-row">
+        <label class="sg-label" for="d-label">@L["Label (for example Ward 4B · Nursing station)"]</label>
+        <input id="d-label" class="sg-input" @bind="_label" maxlength="100" autocomplete="off" />
+      </div>
+    </div>
+    <div class="sg-actions">
+      <button type="button" class="sg-btn sg-btn--primary" @onclick="StartAsync" disabled="@_busy">@L["Make an enrolment link"]</button>
+    </div>
+  }
+</section>
+
+<section class="sg-panel" data-panel="devices">
+  <h2 class="sg-h2">@L["Enrolled devices"]</h2>
+  @if (_devices is null)
+  {
+    <p class="sg-note">@L["Loading…"]</p>
+  }
+  else if (_devices.Count == 0)
+  {
+    <p class="sg-muted">@L["No device is enrolled yet."]</p>
+  }
+  else
+  {
+    <div class="sg-table-wrap" tabindex="0" role="region" aria-label="@L["Enrolled devices"]">
+      <table class="sg-table sg-table--cards">
+        <thead><tr><th>@L["Device"]</th><th>@L["Where"]</th><th>@L["Enrolled"]</th><th>@L["Last used"]</th><th>@L["People"]</th><th></th></tr></thead>
+        <tbody>
+          @foreach (SharedDeviceRow d in _devices)
+          {
+            <tr>
+              <td><span class="sg-name">@d.Label</span><span class="sg-sub">@L["By {0}", d.EnrolledBy]</span></td>
+              <td data-label="@L["Where"]">@d.OrgName</td>
+              <td data-label="@L["Enrolled"]">@(d.EnrolledAt is DateTimeOffset e ? IndiaTime.Date(e) : L["Waiting for the device"])</td>
+              <td data-label="@L["Last used"]">@(d.LastSeenAt is DateTimeOffset s ? IndiaTime.Compact(s) : "—")</td>
+              <td class="sg-mono" data-label="@L["People"]">@d.People</td>
+              <td class="sg-row-actions-cell">
+                @if (_removing == d.Id)
+                {
+                  <button type="button" class="sg-btn sg-btn--secondary sg-btn--row" @onclick="() => _removing = null">@L["Keep"]</button>
+                  <button type="button" class="sg-btn sg-btn--danger sg-btn--row" @onclick="() => RemoveAsync(d.Id)" disabled="@_busy">@L["Remove now"]</button>
+                }
+                else
+                {
+                  <button type="button" class="sg-btn sg-btn--secondary sg-btn--row" @onclick="() => _removing = d.Id">@L["Remove"]</button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="sg-muted">@L["Removing a device ends every session still open on it at once."]</p>
+  }
+</section>
+
+@if (Scope.IsCustomer)
+{
+  <section class="sg-panel" data-panel="device-rules">
+    <h2 class="sg-h2">@L["Getting back in"]</h2>
+    <p class="sg-muted">@L["Each application decides when to lock its screen. Sangam decides how a person gets back in: a PIN within 2 hours of the lock, and a full sign-in at least every 12 hours. You may make these shorter for {0}, never longer.", Scope.OrgName]</p>
+    <div class="sg-two-fields">
+      <div class="sg-form-row">
+        <label class="sg-label" for="d-pin">@L["A PIN works for (minutes after the lock, 5 to 120)"]</label>
+        <input id="d-pin" class="sg-input" type="number" min="5" max="120" @bind="_pinMinutes" />
+      </div>
+      <div class="sg-form-row">
+        <label class="sg-label" for="d-full">@L["Full sign-in every (hours, 1 to 12)"]</label>
+        <input id="d-full" class="sg-input" type="number" min="1" max="12" @bind="_fullHours" />
+      </div>
+    </div>
+    <div class="sg-actions">
+      <button type="button" class="sg-btn sg-btn--secondary" @onclick="SaveRulesAsync" disabled="@_busy">@L["Save"]</button>
+    </div>
+  </section>
+}
+
+<StatusLine Ok="_ok" Message="@_message" />
+
+@code {
+    /// <summary>The tree.</summary>
+    [Parameter]
+    [EditorRequired]
+    public OrgScope Scope { get; set; } = null!;
+
+    /// <summary>The admin.</summary>
+    [Parameter]
+    public Guid UserId { get; set; }
+
+    private IReadOnlyList<OrgNode> _tree = [];
+    private IReadOnlyList<SharedDeviceRow>? _devices;
+    private Guid _orgId;
+    private string _label = string.Empty;
+    private string? _link;
+    private Guid? _removing;
+    private int _pinMinutes = DeviceRules.Sangam.PinMinutes;
+    private int _fullHours = DeviceRules.Sangam.FullSignInHours;
+    private bool _busy;
+    private bool _ok;
+    private string? _message;
+
+    private string Authority => (Configuration["Sangam:Authority"] ?? "https://id.sangamid.in").TrimEnd('/');
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _tree = await OrgConsole.TreeAsync(UserId, Scope.AppId, Scope.OrgId) ?? [];
+        _orgId = _tree.Count > 0 ? _tree[0].Id : Scope.OrgId;
+        DeviceRules rules = await Devices.RulesAsync(Scope.OrgId);
+        _pinMinutes = rules.PinMinutes;
+        _fullHours = rules.FullSignInHours;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync() => _devices = await Devices.ListAsync(Scope.AppId, UserId, Scope.OrgId);
+
+    private async Task StartAsync()
+    {
+        _busy = true;
+        DeviceEnrolStart start = await Devices.StartEnrolAsync(Scope.AppId, UserId, _orgId, _label);
+        _busy = false;
+        _ok = start.Status == DeviceEnrolStatus.Started;
+        _message = start.Status switch
+        {
+            DeviceEnrolStatus.Started => null,
+            DeviceEnrolStatus.LabelRequired => L["Give the device a label people will recognise."].Value,
+            _ => L["You are not an admin there."].Value,
+        };
+        if (start.Token is not null)
+        {
+            _link = Authority + "/shared-device/enrol?token=" + Uri.EscapeDataString(start.Token);
+            _label = string.Empty;
+            await LoadAsync();
+        }
+    }
+
+    private async Task RemoveAsync(Guid id)
+    {
+        _busy = true;
+        bool done = await Devices.RemoveAsync(Scope.AppId, UserId, id);
+        _busy = false;
+        _removing = null;
+        _ok = done;
+        _message = done ? L["The device is removed; sessions open on it have ended."] : L["Nothing changed."];
+        await LoadAsync();
+    }
+
+    private async Task SaveRulesAsync()
+    {
+        _busy = true;
+        bool done = await Devices.SetRulesAsync(Scope.AppId, UserId, Scope.OrgId, new DeviceRules(_pinMinutes, _fullHours));
+        DeviceRules kept = await Devices.RulesAsync(Scope.OrgId);
+        _busy = false;
+        _pinMinutes = kept.PinMinutes;
+        _fullHours = kept.FullSignInHours;
+        _ok = done;
+        _message = done ? L["Saved: a PIN works for {0} minutes after a lock; a full sign-in every {1} hours.", kept.PinMinutes, kept.FullSignInHours] : L["Only a customer's own admins choose these."];
+    }
+}

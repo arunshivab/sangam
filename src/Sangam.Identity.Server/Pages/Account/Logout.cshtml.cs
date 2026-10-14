@@ -68,6 +68,9 @@ public sealed class LogoutModel : AuthPageModel
     /// <summary>The hidden frames to load: each application's front-channel page with <c>iss</c> and <c>sid</c>.</summary>
     public IReadOnlyList<FrontChannelLogout> Frames { get; private set; } = [];
 
+    /// <summary>rc.12 (A9): the applications used in this session on this device, which signing out also signs out.</summary>
+    public IReadOnlyList<string> SessionApps { get; private set; } = [];
+
     /// <summary>Where the "signed out" page continues to once the frames have loaded (plain sign-out).</summary>
     public string ContinueUrl { get; private set; } = "/login?signedout=true";
 
@@ -91,6 +94,11 @@ public sealed class LogoutModel : AuthPageModel
         }
 
         OnDeviceList = SangamAuthentication.UserId(base.User) is Guid me && DeviceAccounts.List(HttpContext).Any(a => a.UserId == me);
+        if (SangamAuthentication.SessionId(base.User) is Guid session)
+        {
+            SessionApps = await _sessions.AppNamesAsync(session, cancellationToken);
+        }
+
         return Page();
     }
 

@@ -1,5 +1,6 @@
 @page "/roles"
 @inject IPortalRolesService RoleService
+@inject IJoinCodeService JoinCodes
 @inject AuthenticationStateProvider AuthProvider
 
 @* rc.10 (P4; founder decisions, 12 Oct 2026): the roles applications have given you, by organisation. Each role is shown
@@ -13,6 +14,27 @@
 {
   <ReauthNotice ReturnTo="/roles" />
 }
+
+@* rc.12 (4.1 of the design): the person's own join code. Giving it to a hospital admin is how they agree to be added. *@
+<section class="sg-panel sg-join" data-panel="join-code">
+  <h2 class="sg-panel-title">@L["Join an organisation"]</h2>
+  @if (_code is null)
+  {
+    <p class="sg-note">@L["Starting at a hospital or clinic? Make a join code and give it to its admin, in person or on a call you made. It adds you only where they choose, and works once, for 4 hours."]</p>
+    <button type="button" class="sg-btn sg-btn--primary sg-btn--row" @onclick="MakeCodeAsync" disabled="@_working">@L["Make a join code"]</button>
+  }
+  else
+  {
+    <div class="sg-join-code">
+      <div class="sg-join-qr" aria-hidden="true">@((MarkupString)_code.QrSvg)</div>
+      <div>
+        <p class="sg-join-value" data-field="join-code">@_code.Code</p>
+        <p class="sg-note">@L["Works until {0}, once. Give it only to the admin who is adding you.", IndiaTime.Format(_code.ExpiresAt, "h:mm tt, d MMM")]</p>
+        <button type="button" class="sg-btn sg-btn--secondary sg-btn--row" @onclick="CancelCodeAsync" disabled="@_working">@L["Cancel this code"]</button>
+      </div>
+    </div>
+  }
+</section>
 
 @if (_orgs is null)
 {
@@ -58,7 +80,7 @@ else
             <span role="cell" class="sg-app-name">@role.AppName</span>
             <span role="cell">
               <span class="sg-chip sg-chip--role">@role.RoleName</span>
-              <span class="sg-app-orgs">@L["as named by {0}", role.AppName]@if (role.AppliesBeneath) { <text> · </text>@L["also every organisation beneath it"] }</span>
+              <span class="sg-app-orgs">@L["as named by {0}", role.AppName]</span>
             </span>
             <span role="cell">
               @IndiaTime.Date(role.GivenAt)
@@ -116,6 +138,7 @@ else
     private string? _message;
     private Guid _userId;
     private DateTimeOffset _now = DateTimeOffset.UtcNow;
+    private JoinCodeIssued? _code;
 
     // rc.9 (ASVS V3.7.1): leaving needs a sign-in from the last 15 minutes (founder decision, 12 Oct 2026).
     private System.Security.Claims.ClaimsPrincipal _principal = new();
@@ -133,6 +156,30 @@ else
     {
         _now = DateTimeOffset.UtcNow;
         _orgs = _userId == Guid.Empty ? [] : await RoleService.GetAsync(_userId);
+    }
+
+    // rc.12: a join code lets an admin link this account, so it needs a recent sign-in, like leaving.
+    private async Task MakeCodeAsync()
+    {
+        _message = null;
+        if (!Sangam.Web.Shared.Security.RecentSignIn.IsRecent(_principal, DateTimeOffset.UtcNow))
+        {
+            _reauth = true;
+            return;
+        }
+
+        _working = true;
+        _code = await JoinCodes.CreateAsync(_userId);
+        _working = false;
+    }
+
+    private async Task CancelCodeAsync()
+    {
+        _working = true;
+        await JoinCodes.CancelAsync(_userId);
+        _code = null;
+        _working = false;
+        _message = L["Your join code no longer works."];
     }
 
     private void AskLeave(PortalOrganisation org)

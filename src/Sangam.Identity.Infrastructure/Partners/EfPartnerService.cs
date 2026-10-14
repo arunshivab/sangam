@@ -182,11 +182,19 @@ public sealed partial class EfPartnerService : IPartnerService
         var rows = await _db.OrgMemberships.AsNoTracking()
             .Where(m => m.AppId == appId && m.OrgId == orgId && m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > DateTimeOffset.UtcNow))
             .OrderBy(m => m.User!.FirstName)
-            .Select(m => new { m.UserId, m.User!.FirstName, m.User.LastName, m.User.Email, Role = m.Role!.Code, m.AppliesToDescendants, m.GrantedAt, m.ExpiresAt })
+            .Select(m => new { m.UserId, m.User!.FirstName, m.User.LastName, m.User.Email, Role = m.Role == null ? null : m.Role.Code, m.GrantedAt, m.ExpiresAt })
             .ToListAsync(cancellationToken).ConfigureAwait(false);
 
-        await PeopleViewedAsync(userId, appId, "org_members", rows.Count, orgId, false, cancellationToken).ConfigureAwait(false);
-        return [.. rows.Select(r => new PartnerMemberRow(r.UserId, (r.FirstName + " " + r.LastName).Trim(), r.Email ?? string.Empty, r.Role, r.AppliesToDescendants, r.GrantedAt, r.ExpiresAt))];
+        // rc.12: one row per person, with every role they hold there.
+        List<PartnerMemberRow> members = [.. rows.GroupBy(r => r.UserId).Select(g =>
+        {
+            var first = g.First();
+            string roles = string.Join(", ", g.Where(r => r.Role is not null).Select(r => r.Role!).Order(StringComparer.Ordinal));
+            DateTimeOffset? until = g.Any(r => r.ExpiresAt is null) ? null : g.Min(r => r.ExpiresAt);
+            return new PartnerMemberRow(g.Key, (first.FirstName + " " + first.LastName).Trim(), first.Email ?? string.Empty, roles, false, g.Min(r => r.GrantedAt), until);
+        })];
+        await PeopleViewedAsync(userId, appId, "org_members", members.Count, orgId, false, cancellationToken).ConfigureAwait(false);
+        return members;
     }
 
     /// <inheritdoc />
@@ -204,6 +212,16 @@ public sealed partial class EfPartnerService : IPartnerService
         if (!await IsLinkedAsync(appId, memberUserId, cancellationToken).ConfigureAwait(false))
         {
             return PartnerResult.Refused("That person has not linked this application. They must sign in to it once and allow access first.");
+        }
+
+        // rc.12 (decision 2 of 14 Oct 2026): only an admin verified with DigiLocker adds people (or, until DigiLocker is live,
+        // anyone while a Sangam operator has switched on the application's temporary exception).
+        DateTimeOffset now = _clock.UtcNow;
+        bool mayAdd = await _db.Users.AnyAsync(u => u.Id == userId && u.IdentityVerifiedAt != null, cancellationToken).ConfigureAwait(false)
+            || await _db.Apps.AnyAsync(a => a.Id == appId && a.AddWithoutDigiLockerUntil != null && a.AddWithoutDigiLockerUntil > now, cancellationToken).ConfigureAwait(false);
+        if (!mayAdd)
+        {
+            return PartnerResult.Refused("Only an admin verified with DigiLocker can add people. Verify your account in your Sangam portal first.");
         }
 
         ManagementResult<MembershipDto> result = await _management

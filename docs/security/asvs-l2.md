@@ -47,6 +47,16 @@ After rc.9 (for rc.10): V13.1.1 is Met (OI-058): the production Caddy image forw
 
 rc.11 strengthens V1.6.3 (already Met) and V2.10.x for applications' own secrets: an application's owner replaces its client secret on the partner console with no break in sign-in (two live secrets, each owner-made one ending after 12 months), hashed by OpenIddict and audited without the secret (`src/Sangam.Identity.Infrastructure/Apps/SangamApplicationManager.cs`, `tests/Sangam.Identity.Infrastructure.Tests/Partners/ClientSecretServiceTests.cs`, `tests/Sangam.Identity.Server.Tests/Oidc/ManagementApiTests.cs`). Access reviews (V1.4.x, least privilege over time) list roles ending soon or unused for 90 days for a recorded decision. No status changes.
 
+rc.12 strengthens V4.1.x/V4.2.1 (access control on every organisation's path, for customer and branch admins and emergency
+access reviewers; `src/Sangam.Identity.Infrastructure/Tenancy/StaffRights.cs`, `EfOrgConsoleService.cs`), V2.1.x and
+V3.3.x for shared ward devices (a hashed 6-digit PIN only on an enrolled device, within 2 hours of a lock and 12 hours of
+a full sign-in, five wrong PINs cancel it; `EfSharedDeviceService.cs`, `tests/Sangam.Identity.Server.Tests/Oidc/SharedDeviceTests.cs`),
+V2.2.x/V3.7.1 for emergency access (a fresh passkey or authenticator check within five minutes, a reason, 60 minutes, three
+a day, reviewed; `EfEmergencyAccessService.cs`, `tests/Sangam.Identity.Server.Tests/Oidc/EmergencyAccessTests.cs`) and
+V11.1.x for adding staff (DigiLocker-verified admins, a rate-limited check that says only which fields match, activation
+codes handed over in person; `EfStaffService.cs`, `tests/Sangam.Identity.Infrastructure.Tests/Tenancy/StaffServiceTests.cs`).
+No status changes.
+
 ## V1 Architecture, Design and Threat Modeling
 
 | ID | Requirement | Status | Evidence | Note | Updated |

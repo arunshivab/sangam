@@ -25,6 +25,10 @@ app.post("/results/:id/sign", sangam.requireStepUp({ acr: SangamAcr.signature })
 app.get("/api/v1/results", sangam.requireToken({ scope: "lims.read" }), handler);    // APIs called with a token
 ```
 
+rc.12: `sangam.switchOrganisationUrl(returnTo)` asks "Working at which branch?" again; `/auth/lock?returnTo=` locks the
+person's Sangam session (point `startIdleTimer` at it); `sangam.emergencyUrl(caseNumber, returnTo)` asks for emergency
+access to one of your cases (your own number, never the patient's name) and `user.emergency` is set when they return.
+
 - **Sessions**: in memory by default; pass `store` (get, set, delete) to share them between processes.
 - **Step-up**: a page is sent back to Sangam with `acr_values` (and `max_age`); a `fetch` gets 401 with `login`,
   which `@sangam/react` follows. An API answers with the RFC 9470 challenge.

@@ -4,7 +4,8 @@ using Sangam.Identity.Domain.Entities;
 
 namespace Sangam.Identity.Infrastructure.Persistence.Configurations;
 
-/// <summary>Maps <see cref="OrgMembership"/> with the partial unique index that allows re-grants after revocation.</summary>
+/// <summary>Maps <see cref="OrgMembership"/> with the partial unique index that allows re-grants after revocation (rc.12: one live
+/// row per role, and at most one without a role).</summary>
 internal sealed class OrgMembershipConfiguration : IEntityTypeConfiguration<OrgMembership>
 {
     public void Configure(EntityTypeBuilder<OrgMembership> b)
@@ -17,8 +18,9 @@ internal sealed class OrgMembershipConfiguration : IEntityTypeConfiguration<OrgM
         b.HasOne(m => m.App).WithMany().HasForeignKey(m => m.AppId).OnDelete(DeleteBehavior.Cascade);
         b.HasOne(m => m.Role).WithMany().HasForeignKey(m => m.RoleId).OnDelete(DeleteBehavior.Restrict);
 
-        b.HasIndex(m => new { m.UserId, m.OrgId, m.AppId })
+        b.HasIndex(m => new { m.UserId, m.OrgId, m.AppId, m.RoleId })
             .IsUnique()
+            .AreNullsDistinct(false)
             .HasFilter("revoked_at IS NULL")
             .HasDatabaseName("ux_org_memberships_active");
         b.HasIndex(m => m.UserId).HasFilter("revoked_at IS NULL").HasDatabaseName("idx_org_memberships_user");

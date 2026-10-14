@@ -22,6 +22,12 @@ public static class SangamScopes
     /// <summary>Read access to the organisations the user belongs to and their roles there (<c>sangam_orgs</c>).</summary>
     public const string OrgsRead = "orgs.read";
 
+    /// <summary>
+    /// rc.12 (A6, A7): only the organisation the person is working at for this sign-in, and their roles there
+    /// (<c>sangam_org</c>), never their other organisations. Under <see cref="OrgsRead"/> an application gets both.
+    /// </summary>
+    public const string OrgCurrent = "org.current";
+
     /// <summary>Refresh tokens (standard <c>offline_access</c>).</summary>
     public const string OfflineAccess = "offline_access";
 
@@ -35,8 +41,8 @@ public static class SangamScopes
     public const string Attributes = "attributes";
 
     /// <summary>Scopes a user can be asked to consent to, in canonical order.</summary>
-    public static IReadOnlyList<string> UserScopes { get; } = [OpenId, Profile, Email, Phone, OrgsRead, Attributes, OfflineAccess];
+    public static IReadOnlyList<string> UserScopes { get; } = [OpenId, Profile, Email, Phone, OrgsRead, OrgCurrent, Attributes, OfflineAccess];
 
     /// <summary>Every scope Sangam knows how to issue, in canonical order.</summary>
-    public static IReadOnlyList<string> All { get; } = [OpenId, Profile, Email, Phone, OrgsRead, Attributes, OfflineAccess, Manage];
+    public static IReadOnlyList<string> All { get; } = [OpenId, Profile, Email, Phone, OrgsRead, OrgCurrent, Attributes, OfflineAccess, Manage];
 }

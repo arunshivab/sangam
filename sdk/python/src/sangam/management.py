@@ -38,12 +38,45 @@ class ManagementClient:
             self._tokens[scope] = (body["access_token"], time.time() + int(body.get("expires_in", 300)))
             return body["access_token"]
 
-    def send(self, method: str, path: str, body: Any = None) -> Any:
-        """Any call; ``path`` is relative to /api/v1/."""
-        r = self._http.request(method, f"{self.authority}/api/v1/{path.lstrip('/')}", json=body, headers={"authorization": f"Bearer {self.token()}"})
+    def send(self, method: str, path: str, body: Any = None, admin_access_token: str | None = None) -> Any:
+        """Any call; ``path`` is relative to /api/v1/.
+
+        rc.12: ``admin_access_token`` is one of your admins' own access token, sent as Sangam-Acting-Admin on staff calls.
+        """
+        headers = {"authorization": f"Bearer {self.token()}"}
+        if admin_access_token:
+            headers["sangam-acting-admin"] = admin_access_token
+        r = self._http.request(method, f"{self.authority}/api/v1/{path.lstrip('/')}", json=body, headers=headers)
         if r.status_code >= 300:
             raise SangamApiError(r.status_code, r.text, f"Sangam's management API answered {r.status_code} to {method} {path}")
         return r.json() if r.content else None
+
+    def lock_session(self, person_access_token: str) -> bool:
+        """rc.12 (T1): locks the person's Sangam session with their own access token (from their sign-in).
+
+        Sangam tells the person's other applications in that session (``session.locked``); on an enrolled shared ward device
+        they come back with their PIN, anywhere else with a full sign-in. False when that sign-in had already ended.
+        """
+        r = self._http.post(f"{self.authority}/api/v1/sessions/lock", headers={"authorization": f"Bearer {person_access_token}"})
+        if r.status_code == 404:
+            return False
+        if r.status_code >= 300:
+            raise SangamApiError(r.status_code, r.text, f"Sangam answered {r.status_code} to the lock")
+        return True
+
+    def end_emergency(self, person_access_token: str, reason: str) -> bool:
+        """rc.12 (M12): ends the person's emergency access early, with a reason, with their own access token.
+
+        False when none was in progress. Tokens refreshed afterwards no longer carry it.
+        """
+        if not reason.strip():
+            raise ValueError("Say why emergency access ends.")
+        r = self._http.post(f"{self.authority}/api/v1/sessions/emergency/end", json={"reason": reason}, headers={"authorization": f"Bearer {person_access_token}"})
+        if r.status_code == 404:
+            return False
+        if r.status_code >= 300:
+            raise SangamApiError(r.status_code, r.text, f"Sangam answered {r.status_code} to ending emergency access")
+        return True
 
     def upsert_role(self, code: str, display_name: str, permissions: list[str]) -> Any:
         return self.send("PUT", f"roles/{quote(code)}", {"displayName": display_name, "description": None, "permissions": permissions, "orgId": None})
@@ -57,12 +90,27 @@ class ManagementClient:
             body["expiresAt"] = expires_at
         return self.send("PUT", f"orgs/{org_id}/members/{user_id}", body)
 
-    def invite(self, org_id: str, email: str, role: str, applies_to_descendants: bool = False) -> Any:
-        """Invites someone by e-mail to a role at an organisation (rc.5); they are added when they accept.
+    def set_roles(self, org_id: str, user_id: str, roles: list[str], expires_at: str | None = None) -> Any:
+        """rc.12: every role a person holds at an organisation; an empty list keeps them there as staff."""
+        body: dict[str, Any] = {"roles": roles}
+        if expires_at:
+            body["expiresAt"] = expires_at
+        return self.send("PUT", f"orgs/{org_id}/members/{user_id}", body)
 
-        upsert_membership adds only people who already use your application; invite anyone else. At most 200 a day.
+    def check_staff(self, org_id: str, admin_access_token: str, person: dict[str, Any]) -> Any:
+        """rc.12: the check before adding a person (which details match, never what Sangam holds), for one of your admins.
+
+        ``person`` has firstName, lastName, email, mobile (E.164 or None) and dateOfBirth (yyyy-mm-dd).
         """
-        return self.send("POST", f"orgs/{org_id}/invitations", {"email": email, "role": role, "appliesToDescendants": applies_to_descendants})
+        return self.send("POST", f"orgs/{org_id}/staff/check", person, admin_access_token)
+
+    def add_staff(self, org_id: str, admin_access_token: str, addition: dict[str, Any]) -> Any:
+        """rc.12: adds one person to one organisation for one of your admins (verified with DigiLocker).
+
+        ``addition`` has exactly one of person, joinCode, staffRef or userId, and optionally roles, startsOn, expiresAt
+        and confirmed. A new person's activationCode comes back once, for your admin to hand over in person.
+        """
+        return self.send("POST", f"orgs/{org_id}/staff", addition, admin_access_token)
 
     def merged_into(self, user_id: str) -> str | None:
         """Where a person's account went if they merged it into another of theirs (rc.7).

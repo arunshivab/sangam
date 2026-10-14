@@ -174,8 +174,7 @@ public sealed class EfEvidencePackService : IEvidencePackService
                 m.User.TwoFactorEnabled,
                 UserStatus = m.User.Status,
                 m.OrgId,
-                RoleCode = m.Role!.Code,
-                m.AppliesToDescendants,
+                RoleCode = m.Role == null ? null : m.Role.Code,
                 m.GrantedAt,
                 m.GrantedByUserId,
                 m.ExpiresAt,
@@ -190,11 +189,11 @@ public sealed class EfEvidencePackService : IEvidencePackService
             .Select(g => new { UserId = g.Key, Last = g.Max(e => e.OccurredAt) })
             .ToListAsync(cancellationToken).ConfigureAwait(false)).ToDictionary(x => x.UserId, x => x.Last);
         files.Add(("access-list.csv", Csv(
-            ["user_id", "name", "email", "account_status", "two_step_enrolled", "organisation", "org_id", "role", "includes_organisations_below", "granted_at", "expires_at", "revoked_at", "last_token_issued_at"],
+            ["user_id", "name", "email", "account_status", "two_step_enrolled", "organisation", "org_id", "role", "granted_at", "expires_at", "revoked_at", "last_token_issued_at"],
             memberships.Where(m => m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > now)).Select(m => new[]
             {
                 m.UserId.ToString(), Name(m.FirstName, m.LastName), m.Email, m.UserStatus.ToString(), YesNo(m.TwoFactorEnabled),
-                orgNames.GetValueOrDefault(m.OrgId), m.OrgId.ToString(), m.RoleCode, YesNo(m.AppliesToDescendants), Stamp(m.GrantedAt), Stamp(m.ExpiresAt), null,
+                orgNames.GetValueOrDefault(m.OrgId), m.OrgId.ToString(), m.RoleCode ?? "(staff, role kept in the application)", Stamp(m.GrantedAt), Stamp(m.ExpiresAt), null, // i18n-ignore: English document for auditors
                 lastSignIn.TryGetValue(m.UserId, out DateTimeOffset last) ? Stamp(last) : null,
             })),
             "Everyone who holds a role in the application now, where, as what, until when, and when Sangam last issued them a token for it — the list an access review starts from.")); // i18n-ignore: the pack is an English document for auditors

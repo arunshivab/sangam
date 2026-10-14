@@ -41,6 +41,10 @@
       <h2 class="sg-consent-head sg-consent-head--not">@L["WILL NOT BE SHARED"]</h2>
       <ul class="sg-not-list">
         <li>@L["Your password"]</li>
+        @if (Model.OtherOrganisationsKept)
+        {
+          <li>@L["Other organisations' roles"]</li>
+        }
         <li>@L["Data held by other apps"]</li>
         <li>@L["Clinical records or prescriptions"]</li>
         <li>@L["Your sign-in history"]</li>

@@ -46,6 +46,9 @@ public sealed partial class ProvisioningWorker : BackgroundService
         {
             // PR-25: time-limited memberships end within a minute of their time (they stop counting at once).
             await services.GetRequiredService<Sangam.Identity.Infrastructure.Tenancy.MembershipExpiry>().RunAsync(cancellationToken).ConfigureAwait(false);
+
+            // rc.12: joiners whose start date has come.
+            await services.GetRequiredService<Sangam.Identity.Infrastructure.Tenancy.EfStaffService>().ApplyDueAsync(cancellationToken).ConfigureAwait(false);
         }
 
         await services.GetRequiredService<AppEventDispatcher>().DispatchAsync(cancellationToken).ConfigureAwait(false);

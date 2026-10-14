@@ -103,6 +103,19 @@ public interface IAdminService
     Task<AdminResult> SetAppLogoutUrisAsync(Guid operatorUserId, Guid appId, string? backChannelLogoutUri, string? frontChannelLogoutUri, string? ipAddress, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// rc.12 (decision 2 of 14 Oct 2026): until DigiLocker is live, lets an application's admins who are not yet verified
+    /// add people, until a day (at most 120 days ahead); each such addition is marked "added before DigiLocker".
+    /// <see langword="null"/> switches it off. AppManager and above.
+    /// </summary>
+    /// <param name="operatorUserId">The operator.</param>
+    /// <param name="appId">The application.</param>
+    /// <param name="until">The last day (India time), or <see langword="null"/> to switch it off.</param>
+    /// <param name="ipAddress">Where from.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    Task<AdminResult> SetAddWithoutDigiLockerAsync(Guid operatorUserId, Guid appId, DateOnly? until, string? ipAddress, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Makes someone an owner of an application, so its partner can manage it on the partner console.
     /// AppManager and above. Unlike an owner adding an administrator, the person need not have linked
     /// the application yet: this is the platform operators' own act, done when a partner is onboarded.

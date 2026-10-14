@@ -118,6 +118,15 @@ app.MapHealthChecks("/health/live").AllowAnonymous();
 app.MapHealthChecks("/health/ready").AllowAnonymous();
 app.MapSangamSignOut();
 
+// rc.12 (A6): "Switch hospital" asks Sangam's "Working at which branch?" again.
+app.MapSangamSwitchOrganisation();
+
+// rc.12 (T1): "Lock" — the screen locks at Sangam; on an enrolled ward device the person comes back with their PIN.
+app.MapSangamLock();
+
+// rc.12 (M12): emergency access for a case (the demo uses its own made-up case numbers).
+app.MapSangamEmergency();
+
 // V-15: on the demo, a tester with no role joins the made-up Demo Hospital, then signs in again for the new role.
 app.MapPost("/demo/join", async (HttpContext context, Microsoft.AspNetCore.Antiforgery.IAntiforgery antiforgery, DemoHospital demo, CancellationToken cancellationToken) =>
 {

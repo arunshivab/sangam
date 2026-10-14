@@ -33,7 +33,7 @@ public sealed class PartnerGateTests : IClassFixture<PartnerFactory>
         Guid patient = await _factory.SeedUserAsync(mfa: true, "Patient");
 
         string home = await GetAsync(patient, "/");
-        Assert.Contains("You do not administer any application", home, StringComparison.Ordinal);
+        Assert.Contains("You do not administer any application or organisation", home, StringComparison.Ordinal);
         Assert.DoesNotContain("Hidden HIS", home, StringComparison.Ordinal);
 
         string workspace = await GetAsync(patient, $"/apps/{app:D}");
@@ -300,6 +300,36 @@ public sealed class PartnerGateTests : IClassFixture<PartnerFactory>
         string html = await client.GetStringAsync(new Uri($"/apps/{app:D}", UriKind.Relative));
         Assert.Contains("data-panel=\"two-step-required\"", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Weak HIS", html, StringComparison.Ordinal);
+    }
+
+    [PostgresFact]
+    public async Task ACustomerAdmin_OpensTheOrganisationConsole_ForTheirTreeOnly()
+    {
+        // rc.12 (G1, G2): a hospital's own admin runs no application, so the console opens on their organisation.
+        Guid app = await _factory.SeedAppAsync("Org HIS");
+        (Guid customer, Guid branch) = await _factory.SeedCustomerAsync(app, "Kauvery");
+        (Guid other, _) = await _factory.SeedCustomerAsync(app, "Elsewhere");
+        Guid lakshmi = await _factory.SeedUserAsync(mfa: true, "Lakshmi");
+        await _factory.MakeOrgAdminAsync(app, customer, lakshmi);
+
+        string overview = await GetAsync(lakshmi, $"/org/{customer:D}");
+        Assert.Contains("data-panel=\"org-stats\"", overview, StringComparison.Ordinal);
+        Assert.Contains("Add a new joiner", overview, StringComparison.Ordinal);
+        Assert.Contains("Joiners &amp; leavers", overview, StringComparison.Ordinal);
+
+        string people = await GetAsync(lakshmi, $"/org/{customer:D}/people?at={branch:D}");
+        Assert.Contains("Kauvery Pune", people, StringComparison.Ordinal);
+
+        string joiners = await GetAsync(lakshmi, $"/org/{customer:D}/joiners");
+        Assert.Contains("data-panel=\"joiner\"", joiners, StringComparison.Ordinal);
+        Assert.Contains("data-panel=\"leaver\"", joiners, StringComparison.Ordinal);
+        Assert.Contains("They gave me a join code", joiners, StringComparison.Ordinal);
+
+        // Another customer of the same application stays shut, and so does the application itself.
+        string elsewhere = await GetAsync(lakshmi, $"/org/{other:D}");
+        Assert.Contains("You do not administer that organisation", elsewhere, StringComparison.Ordinal);
+        string workspace = await GetAsync(lakshmi, $"/apps/{app:D}");
+        Assert.DoesNotContain("Credentials &amp; redirects", workspace, StringComparison.Ordinal);
     }
 
     private async Task<string> GetAsync(Guid userId, string path)

@@ -32,3 +32,38 @@ test("access tokens are checked against Sangam's published keys, issuer and audi
     server.close();
   }
 });
+
+test("rc.12: the organisation chosen for this sign-in is read from sangam_org, with every role held there", async () => {
+  const { userFromClaims } = await import("../src/index.js");
+  const user = userFromClaims({
+    sub: "0192a6b0-0000-7000-8000-000000000042",
+    sangam_org: JSON.stringify({ id: "0192a6b0-0000-7000-8000-000000000003", name: "Apulki Pune", type: "hospital", path: "/g/p/", roles: ["doctor", "administrator"], permissions: ["staff:manage"] }),
+  });
+  assert.equal(user.currentOrganisation?.organisationName, "Apulki Pune");
+  assert.deepEqual(user.currentOrganisation?.roles, ["doctor", "administrator"]);
+  assert.equal(userFromClaims({ sub: "x", sangam_org: "not json" }).currentOrganisation, undefined);
+});
+
+test("rc.12: emergency access is read from sangam_emergency, until its end", async () => {
+  const { userFromClaims, emergencyActive } = await import("../src/index.js");
+  const user = userFromClaims({
+    sub: "0192a6b0-0000-7000-8000-000000000042",
+    sangam_emergency: JSON.stringify({ id: "0192a6b0-0000-7000-8000-0000000000e1", case: "LIPI-48213", org: "0192a6b0-0000-7000-8000-000000000003", until: 1792000000 }),
+  });
+  assert.equal(user.emergency?.caseReference, "LIPI-48213");
+  assert.equal(emergencyActive(user.emergency, 1791999999), true);
+  assert.equal(emergencyActive(user.emergency, 1792000000), false);
+  assert.equal(userFromClaims({ sub: "x", sangam_emergency: "{\"case\":\"x\"}" }).emergency, undefined);
+});
+
+test("rc.12: endEmergency sends the person's own token and the reason", async () => {
+  const { endEmergency } = await import("../src/index.js");
+  const seen: string[] = [];
+  const fake = (async (url: string | URL | Request, init?: RequestInit) => {
+    seen.push(`${String(url)} ${(init?.headers as Record<string, string>).authorization} ${String(init?.body)}`);
+    return new Response(null, { status: 204 });
+  }) as typeof fetch;
+  assert.equal(await endEmergency("https://id.example.in/", "person-token", "Care handed over", fake), true);
+  assert.equal(seen[0], 'https://id.example.in/api/v1/sessions/emergency/end Bearer person-token {"reason":"Care handed over"}');
+  await assert.rejects(() => endEmergency("https://id.example.in", "t", " ", fake));
+});

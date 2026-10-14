@@ -19,14 +19,17 @@ public sealed class LoginMethodModel : AuthPageModel
     private readonly IPasskeyService _passkeys;
     private readonly IDataProtectionProvider _protection;
     private readonly IClock _clock;
+    private readonly Sangam.Identity.Application.Devices.ISharedDeviceService _devices;
 
     /// <summary>Initialises the page.</summary>
     /// <param name="apps">App directory (the application's rule).</param>
     /// <param name="passkeys">Passkeys.</param>
     /// <param name="protection">Data protection, for the bot-check token of a name picked from this device's list.</param>
     /// <param name="clock">Clock.</param>
-    public LoginMethodModel(IAppDirectory apps, IPasskeyService passkeys, IDataProtectionProvider protection, IClock clock)
+    /// <param name="devices">Shared ward devices (rc.12, T1), for a tile picked there.</param>
+    public LoginMethodModel(IAppDirectory apps, IPasskeyService passkeys, IDataProtectionProvider protection, IClock clock, Sangam.Identity.Application.Devices.ISharedDeviceService devices)
     {
+        _devices = devices ?? throw new ArgumentNullException(nameof(devices));
         _apps = apps ?? throw new ArgumentNullException(nameof(apps));
         _passkeys = passkeys ?? throw new ArgumentNullException(nameof(passkeys));
         _protection = protection ?? throw new ArgumentNullException(nameof(protection));
@@ -57,15 +60,31 @@ public sealed class LoginMethodModel : AuthPageModel
 
     /// <summary>Shows the choices.</summary>
     /// <param name="pick">The key of a name picked from this device's list.</param>
+    /// <param name="tile">rc.12 (T1): a tile picked on an enrolled shared device.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    public async Task<IActionResult> OnGetAsync(string? pick = null, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> OnGetAsync(string? pick = null, Guid? tile = null, CancellationToken cancellationToken = default)
     {
         if (User.Identity?.IsAuthenticated == true)
         {
             return LocalRedirect(SafeReturnUrl(ReturnUrl));
         }
 
-        if (!string.IsNullOrEmpty(pick))
+        if (tile is not null)
+        {
+            // A tile on an enrolled shared device: only that browser holds the device key, so, as with the list, the bot
+            // check's clock starts as though the first screen had been shown a moment ago.
+            (Guid UserId, string Name)? person = await SharedDeviceCookie.CurrentAsync(HttpContext, cancellationToken) is Sangam.Identity.Application.Devices.SharedDeviceInfo device
+                ? await _devices.TileAsync(device.Id, tile.Value, cancellationToken)
+                : null;
+            if (person is null)
+            {
+                return Redirect(WithReturn("/login", ReturnUrl));
+            }
+
+            Start = new SignInStart(person.Value.Name, false, Antibot.CreateToken(_protection, _clock.UtcNow.AddMinutes(-1)), person.Value.UserId);
+            SignInFlow.Store(HttpContext, Start);
+        }
+        else if (!string.IsNullOrEmpty(pick))
         {
             DeviceAccount? person = DeviceAccounts.List(HttpContext).FirstOrDefault(a => string.Equals(a.Key, pick, StringComparison.Ordinal));
             if (person is null)

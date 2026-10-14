@@ -33,4 +33,7 @@ public sealed class AppGrant
 
     /// <summary>When the person was told the connection will end for inactivity; cleared when they use it again (rc.6).</summary>
     public DateTimeOffset? InactivityNoticeAt { get; set; }
+
+    /// <summary>rc.12 (A6): the organisation the person last chose to work at in this application, listed first next time.</summary>
+    public Guid? LastOrgId { get; set; }
 }

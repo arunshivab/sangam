@@ -1,0 +1,27 @@
+@* rc.12 (M12): how long an emergency access use has waited for review — green under 24 hours, orange to 72, red after. The
+   words say it too, so colour is never the only signal. *@
+@switch (IEmergencyAccessService.AgeOf(StartedAt, Reviewed, DateTimeOffset.UtcNow))
+{
+  case EmergencyReviewAge.Reviewed:
+    <span class="sg-age sg-age--done">@L["Reviewed"]</span>
+    break;
+  case EmergencyReviewAge.Fresh:
+    <span class="sg-age sg-age--fresh"><span class="sg-dot sg-dot--ok" aria-hidden="true"></span>@L["Waiting for review · under 24 hours"]</span>
+    break;
+  case EmergencyReviewAge.Due:
+    <span class="sg-age sg-age--due"><span class="sg-dot sg-dot--warn" aria-hidden="true"></span>@L["Waiting for review · over 24 hours"]</span>
+    break;
+  default:
+    <span class="sg-age sg-age--late"><span class="sg-dot sg-dot--danger" aria-hidden="true"></span>@L["Waiting for review · over 72 hours"]</span>
+    break;
+}
+
+@code {
+    /// <summary>When the use started.</summary>
+    [Parameter]
+    public DateTimeOffset StartedAt { get; set; }
+
+    /// <summary>Whether it was reviewed.</summary>
+    [Parameter]
+    public bool Reviewed { get; set; }
+}

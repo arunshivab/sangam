@@ -142,16 +142,17 @@ public sealed class ManagementServiceTests : IAsyncLifetime
 
         // rc.5 (ASVS V4.2.1, consent first): through the API, a person who does not use the application is not added —
         // with the same answer as an id that does not exist — and is not linked to it.
-        ManagementResult<MembershipDto> refused = await mgmt.UpsertMembershipAsync(_appId, orgId, _userId, new MembershipUpsert("doctor", true), ManagementActor.Api);
-        ManagementResult<MembershipDto> unknown = await mgmt.UpsertMembershipAsync(_appId, orgId, Guid.NewGuid(), new MembershipUpsert("doctor", true), ManagementActor.Api);
+        ManagementResult<MembershipDto> refused = await mgmt.UpsertMembershipAsync(_appId, orgId, _userId, new MembershipUpsert("doctor", false), ManagementActor.Api);
+        ManagementResult<MembershipDto> unknown = await mgmt.UpsertMembershipAsync(_appId, orgId, Guid.NewGuid(), new MembershipUpsert("doctor", false), ManagementActor.Api);
         Assert.Equal((ManagementStatus.NotFound, EfManagementService.NotAUserOfThisApplication), (refused.Status, refused.Message));
         Assert.Equal((refused.Status, refused.Message), (unknown.Status, unknown.Message));
         Assert.False(await db.AppGrants.AnyAsync(g => g.UserId == _userId && g.AppId == _appId));
 
         // Accepting an invitation is the person's own act, and links them.
-        ManagementResult<MembershipDto> granted = await mgmt.UpsertMembershipAsync(_appId, orgId, _userId, new MembershipUpsert("doctor", true), ManagementActor.Person(_userId));
+        ManagementResult<MembershipDto> granted = await mgmt.UpsertMembershipAsync(_appId, orgId, _userId, new MembershipUpsert("doctor", false), ManagementActor.Person(_userId));
         Assert.Equal(ManagementStatus.Ok, granted.Status);
-        Assert.True(granted.Value!.AppliesToDescendants);
+        Assert.False(granted.Value!.AppliesToDescendants);
+        Assert.Equal(["doctor"], granted.Value.Roles);
         Assert.True(await db.AppGrants.AnyAsync(g => g.UserId == _userId && g.AppId == _appId && g.RevokedAt == null));
 
         ManagementResult<MembershipDto> changed = await mgmt.UpsertMembershipAsync(_appId, orgId, _userId, new MembershipUpsert("nurse", false), ManagementActor.Api);
@@ -165,6 +166,58 @@ public sealed class ManagementServiceTests : IAsyncLifetime
         Assert.Equal(ManagementStatus.Ok, (await mgmt.RevokeMembershipAsync(_appId, orgId, _userId, ManagementActor.Api)).Status);
         Assert.Empty(await mgmt.ListMembersAsync(_appId, orgId));
         Assert.Equal(ManagementStatus.NotFound, (await mgmt.RevokeMembershipAsync(_appId, orgId, _userId, ManagementActor.Api)).Status);
+    }
+
+    [PostgresFact]
+    public async Task SeveralRoles_OrNone_AtOneOrganisation_AndNothingFlowsDown()
+    {
+        // rc.12: a doctor who also runs the department holds both roles at that branch; a role holds only where it was
+        // given; and a customer that keeps its roles in the application adds people without any.
+        EfManagementService mgmt = Create(out SangamDbContext db);
+        EfTenancyQuery tenancy = new(db);
+        Guid groupId = Guid.NewGuid();
+        Guid branchId = Guid.NewGuid();
+        await mgmt.UpsertRoleAsync(_appId, "doctor", Doctor, ManagementActor.Api);
+        await mgmt.UpsertRoleAsync(_appId, "administrator", Doctor with { DisplayName = "Administrator", Permissions = ["staff:manage"] }, ManagementActor.Api);
+        await mgmt.UpsertOrganisationAsync(_appId, groupId, new OrganisationUpsert("Apulki", "hospital", null, null), ManagementActor.Api);
+        await mgmt.UpsertOrganisationAsync(_appId, branchId, new OrganisationUpsert("Apulki Pune", "hospital", groupId, null), ManagementActor.Api);
+
+        ManagementResult<MembershipDto> flows = await mgmt.UpsertMembershipAsync(_appId, groupId, _userId, new MembershipUpsert("doctor", true), ManagementActor.Person(_userId));
+        Assert.Equal(ManagementStatus.Invalid, flows.Status);
+
+        ManagementResult<MembershipDto> both = await mgmt.UpsertMembershipAsync(_appId, branchId, _userId, new MembershipUpsert(Roles: ["doctor", "administrator"]), ManagementActor.Person(_userId));
+        Assert.Equal(ManagementStatus.Ok, both.Status);
+        Assert.Equal(["administrator", "doctor"], both.Value!.Roles!.Order(StringComparer.Ordinal));
+        OrgClaim claim = Assert.Single(await tenancy.GetOrgClaimsAsync(_userId, _appId));
+        Assert.Equal(branchId, claim.Id);
+        Assert.False(claim.Inherits);
+        Assert.Equal(["administrator", "doctor"], claim.Roles!.Order(StringComparer.Ordinal));
+        Assert.Equal(["patient:read", "rx:write", "staff:manage"], claim.Permissions.Order(StringComparer.Ordinal));
+
+        // Dropping one role keeps the other; repeating the call changes nothing.
+        Assert.Equal(["doctor"], (await mgmt.UpsertMembershipAsync(_appId, branchId, _userId, new MembershipUpsert(Roles: ["doctor"]), ManagementActor.Api)).Value!.Roles);
+        Assert.Equal(["doctor"], (await mgmt.UpsertMembershipAsync(_appId, branchId, _userId, new MembershipUpsert(Roles: ["doctor"]), ManagementActor.Api)).Value!.Roles);
+        Assert.Equal(1, await db.OrgMemberships.CountAsync(m => m.UserId == _userId && m.OrgId == branchId && m.RevokedAt == null));
+
+        // Eleven roles are too many.
+        Assert.Equal(ManagementStatus.Invalid, (await mgmt.UpsertMembershipAsync(_appId, branchId, _userId, new MembershipUpsert(Roles: [.. Enumerable.Range(0, 11).Select(i => "r" + i)]), ManagementActor.Api)).Status);
+
+        // A customer that keeps roles in the application: people are added without roles, and roles are refused.
+        await using (SangamDbContext edit = _pg.CreateContext())
+        {
+            (await edit.Organisations.SingleAsync(o => o.Id == groupId)).RolesKeptInSangam = false;
+            await edit.SaveChangesAsync();
+        }
+
+        Assert.Equal(ManagementStatus.Invalid, (await mgmt.UpsertMembershipAsync(_appId, branchId, _userId, new MembershipUpsert(Roles: ["doctor"]), ManagementActor.Api)).Status);
+        ManagementResult<MembershipDto> staff = await mgmt.UpsertMembershipAsync(_appId, branchId, _userId, new MembershipUpsert(), ManagementActor.Api);
+        Assert.Equal(ManagementStatus.Ok, staff.Status);
+        Assert.Null(staff.Value!.Role);
+        Assert.Empty(staff.Value.Roles!);
+        OrgClaim place = Assert.Single(await tenancy.GetOrgClaimsAsync(_userId, _appId));
+        Assert.Null(place.Role);
+        Assert.Empty(place.Roles!);
+        Assert.Empty(place.Permissions);
     }
 
     [PostgresFact]

@@ -41,5 +41,10 @@ Map<String, Object> sign(@PathVariable String id, HttpServletRequest request) {
 }
 ```
 
+rc.12: `SangamUser.currentOrganisation(claims)` reads `sangam_org`; `SangamUser.emergency(claims)` reads
+`sangam_emergency` (`caseReference()`, `until()`, `isActive(now)`). `ManagementClient` gains `checkStaff`, `addStaff`,
+`setRoles` (the invitation call is gone), `lockSession(personToken)` and `endEmergency(personToken, reason)`. To ask for
+emergency access, add `sangam_emergency=<your case number>` to the authorization request.
+
 `mvn test` runs the shared vectors and the adapter's tests; `mvn package` builds the sample
 (`samples/spring-boot`, port 5930).

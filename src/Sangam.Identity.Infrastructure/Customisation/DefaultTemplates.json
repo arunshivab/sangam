@@ -446,5 +446,61 @@
       "subject": "{{member}} {{application}}-ൽ {{organisation}} വിട്ടു",
       "body": "നമസ്കാരം {{name}},\n\n{{member}} തങ്ങളുടെ Sangam അക്കൗണ്ടിൽ നിന്ന് {{organisation}} വിട്ടു. അവിടെ {{application}}-ലെ അവരുടെ റോളുകൾ അവസാനിച്ചു:\n\n{{roles}}\n\n{{application}}-നെ അറിയിച്ചിട്ടുണ്ട്. അവർക്ക് ഇപ്പോഴും ആക്സസ് വേണമെങ്കിൽ, {{application}}-ൽ നിന്നോ പാർട്ണർ\nകൺസോളിൽ നിന്നോ റോൾ വീണ്ടും നൽകുക.\n\n{{application}}-ൽ {{organisation}}-ന്റെ ഓർഗനൈസേഷൻ അഡ്മിൻ ആയതിനാലാണ് നിങ്ങൾക്ക് ഇത് ലഭിക്കുന്നത്.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
     }
+  },
+  "staff_activation": {
+    "en-IN": {
+      "subject": "{{admin}} added you to {{organisations}} in {{application}}",
+      "body": "Hello {{name}},\n\n{{admin}} added you to {{organisations}} in {{application}}.\n\nTo start, open this link and enter the activation code {{admin}} gives you in person:\n\n{{link}}\n\nThe link works for {{days}} days and only with that code. We never send the code by e-mail or text message.\nIf you have not met {{admin}} about this, ignore this e-mail: nothing happens without the code.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "{{admin}} ने आपको {{application}} में {{organisations}} में जोड़ा है",
+      "body": "नमस्ते {{name}},\n\n{{admin}} ने आपको {{application}} में {{organisations}} में जोड़ा है।\n\nशुरू करने के लिए यह लिंक खोलें और वह सक्रियण कोड डालें जो {{admin}} आपको व्यक्तिगत रूप से देंगे:\n\n{{link}}\n\nयह लिंक {{days}} दिन तक और केवल उसी कोड के साथ काम करता है। हम कोड कभी ई-मेल या टेक्स्ट संदेश से नहीं भेजते।\nअगर आप इस बारे में {{admin}} से नहीं मिले हैं, तो इस ई-मेल को अनदेखा करें: कोड के बिना कुछ नहीं होता।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "{{admin}} നിങ്ങളെ {{application}}-ൽ {{organisations}}-ലേക്ക് ചേർത്തു",
+      "body": "നമസ്കാരം {{name}},\n\n{{admin}} നിങ്ങളെ {{application}}-ൽ {{organisations}}-ലേക്ക് ചേർത്തു.\n\nതുടങ്ങാൻ ഈ ലിങ്ക് തുറന്ന്, {{admin}} നേരിട്ട് തരുന്ന ആക്ടിവേഷൻ കോഡ് നൽകുക:\n\n{{link}}\n\nഈ ലിങ്ക് {{days}} ദിവസത്തേക്ക്, ആ കോഡിനൊപ്പം മാത്രം പ്രവർത്തിക്കും. ഞങ്ങൾ ഒരിക്കലും കോഡ് ഇ-മെയിലായോ ടെക്സ്റ്റ് സന്ദേശമായോ അയയ്ക്കില്ല.\nഇതിനെക്കുറിച്ച് നിങ്ങൾ {{admin}}-നെ കണ്ടിട്ടില്ലെങ്കിൽ ഈ ഇ-മെയിൽ അവഗണിക്കുക: കോഡ് ഇല്ലാതെ ഒന്നും സംഭവിക്കില്ല.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
+  "staff_join_stopped": {
+    "en-IN": {
+      "subject": "{{member}} could not join: their details differ",
+      "body": "Hello {{name}},\n\n{{member}} entered your activation code, but the {{fields}} on their Sangam account is different from what you\nentered, so they have not joined {{organisations}}.\n\nCheck the details against your records. If they are right, add the person again and confirm the difference, or ask\nthem for a join code from their Sangam portal.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "{{member}} नहीं जुड़ सके: उनका विवरण अलग है",
+      "body": "नमस्ते {{name}},\n\n{{member}} ने आपका सक्रियण कोड डाला, लेकिन उनके Sangam खाते में {{fields}} आपके डाले गए विवरण से अलग है,\nइसलिए वे {{organisations}} से नहीं जुड़े हैं।\n\nविवरण को अपने रिकॉर्ड से मिलाएँ। अगर वे सही हैं, तो व्यक्ति को फिर से जोड़ें और अंतर की पुष्टि करें, या उनसे उनके\nSangam पोर्टल से जुड़ने का कोड माँगें।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "{{member}}-ന് ചേരാനായില്ല: വിവരങ്ങൾ വ്യത്യസ്തമാണ്",
+      "body": "നമസ്കാരം {{name}},\n\n{{member}} നിങ്ങളുടെ ആക്ടിവേഷൻ കോഡ് നൽകി, എന്നാൽ അവരുടെ Sangam അക്കൗണ്ടിലെ {{fields}} നിങ്ങൾ നൽകിയതിൽ നിന്ന്\nവ്യത്യസ്തമാണ്, അതിനാൽ അവർ {{organisations}}-ൽ ചേർന്നിട്ടില്ല.\n\nവിവരങ്ങൾ നിങ്ങളുടെ രേഖകളുമായി ഒത്തുനോക്കുക. അവ ശരിയാണെങ്കിൽ, വ്യക്തിയെ വീണ്ടും ചേർത്ത് വ്യത്യാസം സ്ഥിരീകരിക്കുക,\nഅല്ലെങ്കിൽ അവരുടെ Sangam പോർട്ടലിൽ നിന്നുള്ള ചേരൽ കോഡ് ചോദിക്കുക.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
+  "organisation_closed": {
+    "en-IN": {
+      "subject": "{{organisation}} no longer uses {{application}}",
+      "body": "Hello {{name}},\n\n{{organisation}} has stopped using {{application}}, so your places and roles there have ended.\n\nYour Sangam account is still yours, with everything else in it. If you work at {{organisation}} and still need\n{{application}}, ask its administration.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "{{organisation}} अब {{application}} का उपयोग नहीं करता",
+      "body": "नमस्ते {{name}},\n\n{{organisation}} ने {{application}} का उपयोग बंद कर दिया है, इसलिए वहाँ आपके स्थान और भूमिकाएँ समाप्त हो गई हैं।\n\nआपका Sangam खाता बाकी सब के साथ आपका ही है। अगर आप {{organisation}} में काम करते हैं और आपको अब भी\n{{application}} चाहिए, तो वहाँ के प्रशासन से पूछें।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "{{organisation}} ഇനി {{application}} ഉപയോഗിക്കുന്നില്ല",
+      "body": "നമസ്കാരം {{name}},\n\n{{organisation}} {{application}} ഉപയോഗിക്കുന്നത് നിർത്തി, അതിനാൽ അവിടെ നിങ്ങളുടെ സ്ഥാനങ്ങളും റോളുകളും അവസാനിച്ചു.\n\nനിങ്ങളുടെ Sangam അക്കൗണ്ട് മറ്റെല്ലാറ്റിനുമൊപ്പം നിങ്ങളുടേതായി തുടരും. നിങ്ങൾ {{organisation}}-ൽ ജോലി ചെയ്യുകയും ഇപ്പോഴും\n{{application}} ആവശ്യമുണ്ടെങ്കിൽ, അവിടത്തെ ഭരണവിഭാഗത്തോട് ചോദിക്കുക.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
+  },
+  "emergency_access_used": {
+    "en-IN": {
+      "subject": "Emergency access used: {{member}} in {{application}}, case {{case}}",
+      "body": "Hello {{name}},\n\n{{member}} used emergency access in {{application}} at {{organisation}}.\n\nCase: {{case}} (the application's own reference)\nFrom {{start}} until {{end}} at the latest\nReason given: {{reason}}\n\nThey proved it was them again with a passkey or an authenticator app. Please review this use and mark it justified or\nnot justified:\n\n{{link}}\n\nYou receive this because you review emergency access for {{organisation}}.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "आपातकालीन पहुँच का उपयोग: {{application}} में {{member}}, केस {{case}}",
+      "body": "नमस्ते {{name}},\n\n{{member}} ने {{organisation}} में {{application}} में आपातकालीन पहुँच का उपयोग किया।\n\nकेस: {{case}} (एप्लिकेशन का अपना संदर्भ)\n{{start}} से अधिकतम {{end}} तक\nबताया गया कारण: {{reason}}\n\nउन्होंने पासकी या ऑथेंटिकेटर ऐप से फिर से साबित किया कि यह वही हैं। कृपया इस उपयोग की समीक्षा करें और इसे उचित या\nअनुचित चिह्नित करें:\n\n{{link}}\n\nयह आपको इसलिए मिला है क्योंकि आप {{organisation}} के लिए आपातकालीन पहुँच की समीक्षा करते हैं।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "അടിയന്തര ആക്സസ് ഉപയോഗിച്ചു: {{application}}-ൽ {{member}}, കേസ് {{case}}",
+      "body": "നമസ്കാരം {{name}},\n\n{{member}} {{organisation}}-ൽ {{application}}-ൽ അടിയന്തര ആക്സസ് ഉപയോഗിച്ചു.\n\nകേസ്: {{case}} (ആപ്ലിക്കേഷന്റെ സ്വന്തം റഫറൻസ്)\n{{start}} മുതൽ പരമാവധി {{end}} വരെ\nനൽകിയ കാരണം: {{reason}}\n\nപാസ്‌കീ അല്ലെങ്കിൽ ഓതന്റിക്കേറ്റർ ആപ്പ് ഉപയോഗിച്ച് അത് അവർ തന്നെയാണെന്ന് വീണ്ടും തെളിയിച്ചു. ദയവായി ഈ ഉപയോഗം പരിശോധിച്ച്\nന്യായീകരിക്കാവുന്നത് അല്ലെങ്കിൽ ന്യായീകരിക്കാനാവാത്തത് എന്ന് അടയാളപ്പെടുത്തുക:\n\n{{link}}\n\n{{organisation}}-നുള്ള അടിയന്തര ആക്സസ് നിങ്ങൾ പരിശോധിക്കുന്നതിനാലാണ് നിങ്ങൾക്ക് ഇത് ലഭിക്കുന്നത്.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
   }
 }

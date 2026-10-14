@@ -140,6 +140,34 @@ public sealed class PartnerFactory : WebApplicationFactory<Program>
         await db.SaveChangesAsync();
     }
 
+    /// <summary>rc.12: a customer of the application with one branch; returns both ids.</summary>
+    public async Task<(Guid Customer, Guid Branch)> SeedCustomerAsync(Guid appId, string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        using IServiceScope scope = Services.CreateScope();
+        SangamDbContext db = scope.ServiceProvider.GetRequiredService<SangamDbContext>();
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        Guid customerId = Guid.NewGuid();
+        Guid branchId = Guid.NewGuid();
+        Organisation customer = new() { Id = customerId, Name = name, OrgTypeCode = "hospital", Path = OrganisationPath.ForRoot(customerId), RegisteredViaAppId = appId, CreatedAt = now, UpdatedAt = now };
+        db.Organisations.AddRange(
+            customer,
+            new Organisation { Id = branchId, Name = name + " Pune", OrgTypeCode = "hospital", ParentOrgId = customerId, Path = OrganisationPath.ForChild(customer.Path, branchId), Depth = 1, RegisteredViaAppId = appId, CreatedAt = now, UpdatedAt = now });
+        await db.SaveChangesAsync();
+        return (customerId, branchId);
+    }
+
+    /// <summary>rc.12: makes <paramref name="userId"/> an admin of the organisation (with a place there, as admins have).</summary>
+    public async Task MakeOrgAdminAsync(Guid appId, Guid orgId, Guid userId)
+    {
+        using IServiceScope scope = Services.CreateScope();
+        SangamDbContext db = scope.ServiceProvider.GetRequiredService<SangamDbContext>();
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        db.OrgMemberships.Add(new OrgMembership { Id = Guid.NewGuid(), AppId = appId, OrgId = orgId, UserId = userId, GrantedAt = now });
+        db.OrgAdmins.Add(new OrgAdmin { Id = Guid.NewGuid(), AppId = appId, OrgId = orgId, UserId = userId, Right = OrgAdminRight.Admin, GrantedAt = now });
+        await db.SaveChangesAsync();
+    }
+
     /// <summary>Turns two-step sign-in on or off for a user (R7).</summary>
     public async Task SetTwoFactorAsync(Guid userId, bool enabled)
     {

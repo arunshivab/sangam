@@ -15,6 +15,19 @@ exist, so there is no production database to act on yet.
       check it again: the new certificate first, the previous one "still published".
 - [ ] rc.11: tell each partner application's owner that they can rotate their own client secret on the partner console
       (Credentials & redirects → Client secrets), and that a secret they make ends after 12 months.
+- [ ] rc.12: migration `Rc12Tenancy` runs once: today's `org_admin` role holders become customer or branch admins (their
+      role stays), every top organisation becomes a customer, and memberships that applied to everything beneath are
+      expanded into explicit places. Before it runs, take a backup; after it, open one customer in the organisation
+      console and check its admins and people.
+- [ ] rc.12: until DigiLocker is live, set each application's **DigiLocker exception** (operator console → Applications)
+      to a date, or its admins cannot add people. When DigiLocker goes live, set it 30 days ahead and let it end.
+- [ ] rc.12: tell each hospital's admin that emergency access is **off** until they switch it on (organisation console →
+      Emergency access), and that they should first give the emergency access reviewer right to someone such as the
+      Medical Superintendent or Quality (not the IT admin).
+- [ ] rc.12: shared ward devices are enrolled from the device itself (organisation console → Shared devices). Check one
+      enrolment and one PIN unlock on a real ward tablet before telling the hospitals.
+- [ ] rc.12: applications that listen for webhooks add `session.locked` to their subscribed events if they show patient data
+      on shared devices.
 - [ ] `Sangam:Seed:DevelopmentSample` is **false**. The seeder creates the sample partner app and
       development redirect URIs; none of that belongs in production.
 - [ ] `Sangam:Email:UseOutbox` is **false**, and Anjal's API (D-B) is configured with production

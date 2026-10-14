@@ -28,7 +28,9 @@ public static class SangamClaimsBuilder
     /// <param name="sessionId">The Sangam browser session the token is issued from (the OIDC <c>sid</c>), when known.</param>
     /// <param name="proof">How and when the person authenticated (PR-17): <c>acr</c>, <c>amr</c>, <c>auth_time</c>.</param>
     /// <param name="custom">PR-25: the application's custom claims, released under the <c>attributes</c> scope.</param>
-    public static ClaimsIdentity Build(UserSummary user, IReadOnlyCollection<string> scopes, IReadOnlyList<OrgClaim> orgs, string authenticationScheme, string? sessionId = null, AuthenticationProof? proof = null, IReadOnlyDictionary<string, object>? custom = null)
+    /// <param name="current">rc.12 (A6): the organisation the person chose to work at for this sign-in, if any.</param>
+    /// <param name="emergency">rc.12 (M12): emergency access in progress, if any.</param>
+    public static ClaimsIdentity Build(UserSummary user, IReadOnlyCollection<string> scopes, IReadOnlyList<OrgClaim> orgs, string authenticationScheme, string? sessionId = null, AuthenticationProof? proof = null, IReadOnlyDictionary<string, object>? custom = null, OrgClaim? current = null, EmergencyGrant? emergency = null)
     {
         ArgumentNullException.ThrowIfNull(user);
         ArgumentNullException.ThrowIfNull(scopes);
@@ -71,6 +73,17 @@ public static class SangamClaimsBuilder
         if (scopes.Contains(SangamScopes.OrgsRead))
         {
             identity.AddClaim(new Claim(SangamClaims.Orgs, JsonSerializer.Serialize(orgs.Select(ToJson), JsonOptions), "JSON_ARRAY"));
+        }
+
+        if (current is not null && (scopes.Contains(SangamScopes.OrgsRead) || scopes.Contains(SangamScopes.OrgCurrent)))
+        {
+            identity.AddClaim(new Claim(SangamClaims.Org, JsonSerializer.Serialize(ToJson(current), JsonOptions), "JSON"));
+        }
+
+        // rc.12 (M12): emergency access in progress: the application shows a banner and applies its own limits until `until`.
+        if (emergency is not null)
+        {
+            identity.AddClaim(new Claim(SangamClaims.Emergency, JsonSerializer.Serialize(EmergencyJson(emergency), JsonOptions), "JSON"));
         }
 
         if (custom is not null && scopes.Contains(SangamScopes.Attributes))
@@ -129,7 +142,7 @@ public static class SangamClaimsBuilder
         ArgumentNullException.ThrowIfNull(claim);
         return claim.Type switch
         {
-            Claims.Subject or Claims.Name or Claims.Email or Claims.EmailVerified or SangamClaims.SessionId or SangamClaims.Orgs
+            Claims.Subject or Claims.Name or Claims.Email or Claims.EmailVerified or SangamClaims.SessionId or SangamClaims.Orgs or SangamClaims.Org or SangamClaims.Emergency
                 or Claims.AuthenticationContextReference or Claims.AuthenticationMethodReference or Claims.AuthenticationTime
                 => [Destinations.AccessToken, Destinations.IdentityToken],
             "AspNet.Identity.SecurityStamp" or SangamClaims.SecurityStamp => [],
@@ -137,16 +150,60 @@ public static class SangamClaimsBuilder
         };
     }
 
-    private static Dictionary<string, object> ToJson(OrgClaim o) => new()
+    /// <summary>The emergency access claim: the use, the application's case reference, the organisation and the end (Unix seconds).</summary>
+    /// <param name="e">The use.</param>
+    internal static Dictionary<string, object> EmergencyJson(EmergencyGrant e) => new()
     {
-        [SangamOrgClaim.Id] = o.Id.ToString("D"),
-        [SangamOrgClaim.Name] = o.Name,
-        [SangamOrgClaim.Type] = o.Type,
-        [SangamOrgClaim.Path] = o.Path,
-        [SangamOrgClaim.Role] = o.Role,
-        [SangamOrgClaim.Permissions] = o.Permissions,
-        [SangamOrgClaim.Inherits] = o.Inherits,
+        ["id"] = e.Id.ToString("D"),
+        ["case"] = e.CaseRef,
+        ["org"] = e.OrgId.ToString("D"),
+        ["until"] = e.EndsAt.ToUnixTimeSeconds(),
     };
+
+    /// <summary>The use id inside a <c>sangam_emergency</c> claim, if it is one.</summary>
+    /// <param name="json">The claim's value.</param>
+    public static Guid? EmergencyIdOf(string? json)
+    {
+        if (string.IsNullOrEmpty(json))
+        {
+            return null;
+        }
+
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(json);
+            return document.RootElement.ValueKind == JsonValueKind.Object
+                && document.RootElement.TryGetProperty("id", out JsonElement id)
+                && Guid.TryParse(id.GetString(), out Guid use) ? use : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>One element of the organisations claim (rc.12: every role held there, and the first as <c>role</c> when
+    /// there is one, for clients written earlier).</summary>
+    /// <param name="o">The organisation claim.</param>
+    internal static Dictionary<string, object> ToJson(OrgClaim o)
+    {
+        Dictionary<string, object> json = new()
+        {
+            [SangamOrgClaim.Id] = o.Id.ToString("D"),
+            [SangamOrgClaim.Name] = o.Name,
+            [SangamOrgClaim.Type] = o.Type,
+            [SangamOrgClaim.Path] = o.Path,
+            [SangamOrgClaim.Roles] = o.Roles ?? (o.Role is null ? [] : [o.Role]),
+            [SangamOrgClaim.Permissions] = o.Permissions,
+            [SangamOrgClaim.Inherits] = false,
+        };
+        if (o.Role is not null)
+        {
+            json[SangamOrgClaim.Role] = o.Role;
+        }
+
+        return json;
+    }
 }
 
 /// <summary>How and when a person authenticated, as tokens carry it (PR-17, OpenID Connect Core §2).</summary>

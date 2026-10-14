@@ -124,7 +124,7 @@ public sealed class WebhookTests : IAsyncLifetime
         WebhookResult revokedOnly = await AddAsync([AppEventTypes.MembershipRevoked], "/other");
         Assert.StartsWith(WebhookSigner.SecretPrefix, granted.Secret, StringComparison.Ordinal);
 
-        Assert.Equal(ManagementStatus.Ok, (await Scoped<IManagementService>().UpsertMembershipAsync(_app, _hospital, _nurse, new MembershipUpsert("nurse", true), ManagementActor.Api)).Status);
+        Assert.Equal(ManagementStatus.Ok, (await Scoped<IManagementService>().UpsertMembershipAsync(_app, _hospital, _nurse, new MembershipUpsert("nurse", false), ManagementActor.Api)).Status);
         await RunAsync();
 
         Received message = Assert.Single(_receiver.Messages, m => m.Path == "/hook");
@@ -139,7 +139,7 @@ public sealed class WebhookTests : IAsyncLifetime
         Assert.Equal(_nurse.ToString("D"), body.GetProperty("subject").GetProperty("sub").GetString());
         Assert.Equal(_hospital.ToString("D"), body.GetProperty("tenant").GetProperty("org_id").GetString());
         Assert.Equal("nurse", body.GetProperty("data").GetProperty("role").GetString());
-        Assert.True(body.GetProperty("data").GetProperty("applies_to_descendants").GetBoolean());
+        Assert.False(body.GetProperty("data").GetProperty("applies_to_descendants").GetBoolean());
         Assert.DoesNotContain("meera", message.Body, StringComparison.OrdinalIgnoreCase);
         Assert.Equal("application/json; charset=utf-8", message.ContentType);
     }

@@ -219,7 +219,7 @@ public sealed class ManagementApiTests
     }
 
     [PostgresFact]
-    public async Task APersonWhoDoesNotUseTheApplication_IsInvited_NotAdded()
+    public async Task APersonWhoDoesNotUseTheApplication_IsNotAdded_AndEmailInvitationsAreGone()
     {
         // rc.5 (ASVS V4.2.1, consent first).
         using HttpClient client = _factory.CreateClient();
@@ -241,19 +241,12 @@ public sealed class ManagementApiTests
 
         using HttpResponseMessage added = await SendAsync(client, token, HttpMethod.Put, $"/api/v1/orgs/{orgId:D}/members/{stranger:D}", new { role = "invitee", appliesToDescendants = false });
         Assert.Equal(HttpStatusCode.NotFound, added.StatusCode);
-        Assert.Contains("Invite them instead", await added.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        Assert.Contains("Add them as staff instead", await added.Content.ReadAsStringAsync(), StringComparison.Ordinal);
 
-        string email = $"invitee-{Guid.NewGuid():N}@example.in";
-        using HttpResponseMessage invited = await SendAsync(client, token, HttpMethod.Post, $"/api/v1/orgs/{orgId:D}/invitations", new { email, role = "invitee", appliesToDescendants = false });
-        string body = await invited.Content.ReadAsStringAsync();
-        Assert.Equal(HttpStatusCode.OK, invited.StatusCode);
-        Assert.Equal(email, JsonDocument.Parse(body).RootElement.GetProperty("email").GetString());
-        Assert.NotNull(_factory.Services.GetRequiredService<Infrastructure.Services.InMemoryEmailOutbox>().LatestFor(email));
-
-        using HttpResponseMessage badRole = await SendAsync(client, token, HttpMethod.Post, $"/api/v1/orgs/{orgId:D}/invitations", new { email, role = "ghost", appliesToDescendants = false });
-        Assert.Equal(HttpStatusCode.NotFound, badRole.StatusCode);
-        using HttpResponseMessage badEmail = await SendAsync(client, token, HttpMethod.Post, $"/api/v1/orgs/{orgId:D}/invitations", new { email = "not an address", role = "invitee", appliesToDescendants = false });
-        Assert.Equal(HttpStatusCode.BadRequest, badEmail.StatusCode);
+        // rc.12: an invitation by e-mail alone is refused; staff are added under an admin's own identity (StaffApiTests).
+        using HttpResponseMessage invited = await SendAsync(client, token, HttpMethod.Post, $"/api/v1/orgs/{orgId:D}/invitations", new { email = $"invitee-{Guid.NewGuid():N}@example.in", role = "invitee", appliesToDescendants = false });
+        Assert.Equal(HttpStatusCode.Gone, invited.StatusCode);
+        Assert.Contains("/staff", await invited.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
     private static async Task<string> ClientTokenAsync(HttpClient client, string scope, string clientId = DevelopmentSeeder.SampleClientId, string clientSecret = DevelopmentSeeder.SampleClientSecret)

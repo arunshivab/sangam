@@ -16,6 +16,7 @@ namespace Sangam.Identity.Infrastructure.Tests.Portal;
 /// rc.10 (P4; founder decisions, 12 Oct 2026): a person sees their roles by organisation, in each application's own words,
 /// and can leave an organisation. Leaving ends the roles held there through the partner's own path (audited, the
 /// application told), tells the person and every organisation admin, and never strands an application without one.
+/// rc.12: admin rights are kept apart from roles (<see cref="OrgAdmin"/>), and a role holds only where it was given.
 /// </summary>
 [Collection("postgres")]
 public sealed class PortalRolesTests : IAsyncLifetime
@@ -28,8 +29,6 @@ public sealed class PortalRolesTests : IAsyncLifetime
     private Guid _group;
     private Guid _hospital;
     private Guid _doctor;
-    private Guid _hisOrgAdmin;
-    private Guid _labOrgAdmin;
     private Guid _person;
     private Guid _otherAdmin;
 
@@ -70,9 +69,7 @@ public sealed class PortalRolesTests : IAsyncLifetime
         Organisation hospital = new() { Id = hospitalId, Name = "Apulki Medical Center", OrgTypeCode = "hospital", ParentOrgId = groupId, Path = OrganisationPath.ForChild(group.Path, hospitalId), Depth = 1, RegisteredViaAppId = his.Id, CreatedAt = now, UpdatedAt = now };
         db.Organisations.AddRange(group, hospital);
         Role doctor = new() { Id = Guid.NewGuid(), AppId = his.Id, Code = "doc", DisplayName = "Doctor", CreatedAt = now };
-        Role hisAdmin = new() { Id = Guid.NewGuid(), AppId = his.Id, Code = "org_admin", DisplayName = "Organisation admin", IsSystem = true, CreatedAt = now };
-        Role labAdmin = new() { Id = Guid.NewGuid(), AppId = lab.Id, Code = "org_admin", DisplayName = string.Empty, IsSystem = true, CreatedAt = now };
-        db.Roles.AddRange(doctor, hisAdmin, labAdmin);
+        db.Roles.Add(doctor);
         SangamUser person = TestUsers.New("ravi@roles.test", null);
         person.FirstName = "Ravi";
         person.LastName = "Menon";
@@ -80,7 +77,7 @@ public sealed class PortalRolesTests : IAsyncLifetime
         other.FirstName = "Asha";
         db.Users.AddRange(person, other);
         await db.SaveChangesAsync();
-        (_his, _lab, _group, _hospital, _doctor, _hisOrgAdmin, _labOrgAdmin, _person, _otherAdmin) = (his.Id, lab.Id, groupId, hospitalId, doctor.Id, hisAdmin.Id, labAdmin.Id, person.Id, other.Id);
+        (_his, _lab, _group, _hospital, _doctor, _person, _otherAdmin) = (his.Id, lab.Id, groupId, hospitalId, doctor.Id, person.Id, other.Id);
     }
 
     public async Task DisposeAsync()
@@ -100,7 +97,8 @@ public sealed class PortalRolesTests : IAsyncLifetime
     public async Task Roles_AreGroupedByOrganisation_InTheApplicationsOwnWords()
     {
         await GrantAsync(_person, _hospital, _his, _doctor, grantedBy: _otherAdmin, expires: DateTimeOffset.UtcNow.AddDays(10));
-        await GrantAsync(_person, _group, _lab, _labOrgAdmin, beneath: true);
+        await GrantAsync(_person, _group, _lab, null);
+        await AdminAsync(_person, _group, _lab);
 
         IReadOnlyList<PortalOrganisation> orgs = await Service().GetAsync(_person);
         Assert.Equal(2, orgs.Count);
@@ -111,10 +109,9 @@ public sealed class PortalRolesTests : IAsyncLifetime
         Assert.Equal("Asha User", doctor.GivenBy);
         Assert.NotNull(doctor.Until);
 
-        // An application that named no role is shown by its code; a role given at the group holds beneath it.
+        // A place where the application keeps the role itself shows as staff; the group's only admin cannot leave it.
         PortalRole groupRole = Assert.Single(Assert.Single(orgs, o => o.OrgId == _group).Roles);
-        Assert.Equal("org_admin", groupRole.RoleName);
-        Assert.True(groupRole.AppliesBeneath);
+        Assert.Equal("Staff", groupRole.RoleName);
         Assert.True(groupRole.OnlyOrganisationAdmin);
     }
 
@@ -122,9 +119,9 @@ public sealed class PortalRolesTests : IAsyncLifetime
     public async Task Leaving_EndsTheRolesThere_TellsTheApplication_ThePerson_AndEveryOrganisationAdmin()
     {
         await GrantAsync(_person, _hospital, _his, _doctor);
-        await GrantAsync(_otherAdmin, _hospital, _his, _hisOrgAdmin);
+        await AdminAsync(_otherAdmin, _hospital, _his);
         // A role at the group above is not touched by leaving the hospital.
-        await GrantAsync(_person, _group, _his, _doctor, beneath: true);
+        await GrantAsync(_person, _group, _his, _doctor);
         // The HIS listens (a webhook), so the events it is sent are recorded.
         await using (SangamDbContext seed = _pg.CreateContext())
         {
@@ -159,9 +156,11 @@ public sealed class PortalRolesTests : IAsyncLifetime
     [PostgresFact]
     public async Task TheOnlyOrganisationAdmin_KeepsThatRole_AndLeavesTheRest()
     {
-        await GrantAsync(_person, _hospital, _his, _hisOrgAdmin);
-        await GrantAsync(_person, _hospital, _lab, _labOrgAdmin);
-        await GrantAsync(_otherAdmin, _hospital, _lab, _labOrgAdmin);
+        await GrantAsync(_person, _hospital, _his, null);
+        await AdminAsync(_person, _hospital, _his);
+        await GrantAsync(_person, _hospital, _lab, null);
+        await AdminAsync(_person, _hospital, _lab);
+        await AdminAsync(_otherAdmin, _hospital, _lab);
 
         PortalOrganisation hospital = Assert.Single(await Service().GetAsync(_person));
         Assert.True(hospital.CanLeave);
@@ -175,10 +174,24 @@ public sealed class PortalRolesTests : IAsyncLifetime
         await using SangamDbContext db = _pg.CreateContext();
         Assert.Null((await db.OrgMemberships.SingleAsync(m => m.UserId == _person && m.AppId == _his)).RevokedAt);
         Assert.NotNull((await db.OrgMemberships.SingleAsync(m => m.UserId == _person && m.AppId == _lab)).RevokedAt);
+        Assert.NotNull((await db.OrgAdmins.SingleAsync(a => a.UserId == _person && a.AppId == _lab)).RevokedAt);
+        Assert.Null((await db.OrgAdmins.SingleAsync(a => a.UserId == _person && a.AppId == _his)).RevokedAt);
 
         // Now only the HIS role is left, and it cannot be left.
         Assert.False(Assert.Single(await Service().GetAsync(_person)).CanLeave);
         Assert.False((await Service().LeaveAsync(_person, _hospital, null)).Succeeded);
+    }
+
+    [PostgresFact]
+    public async Task AnAdminAtTheGroup_CoversTheHospital_SoTheHospitalsAdminCanLeave()
+    {
+        await GrantAsync(_person, _hospital, _his, null);
+        await AdminAsync(_person, _hospital, _his);
+        await AdminAsync(_otherAdmin, _group, _his);
+
+        PortalOrganisation hospital = Assert.Single(await Service().GetAsync(_person));
+        Assert.False(Assert.Single(hospital.Roles).OnlyOrganisationAdmin);
+        Assert.True((await Service().LeaveAsync(_person, _hospital, null)).Succeeded);
     }
 
     [PostgresFact]
@@ -191,7 +204,7 @@ public sealed class PortalRolesTests : IAsyncLifetime
         Assert.Null((await db.OrgMemberships.SingleAsync(m => m.UserId == _otherAdmin)).RevokedAt);
     }
 
-    private async Task GrantAsync(Guid userId, Guid orgId, Guid appId, Guid roleId, Guid? grantedBy = null, DateTimeOffset? expires = null, bool beneath = false)
+    private async Task GrantAsync(Guid userId, Guid orgId, Guid appId, Guid? roleId, Guid? grantedBy = null, DateTimeOffset? expires = null)
     {
         await using SangamDbContext db = _pg.CreateContext();
         db.OrgMemberships.Add(new OrgMembership
@@ -204,8 +217,14 @@ public sealed class PortalRolesTests : IAsyncLifetime
             GrantedByUserId = grantedBy,
             GrantedAt = DateTimeOffset.UtcNow,
             ExpiresAt = expires,
-            AppliesToDescendants = beneath,
         });
+        await db.SaveChangesAsync();
+    }
+
+    private async Task AdminAsync(Guid userId, Guid orgId, Guid appId)
+    {
+        await using SangamDbContext db = _pg.CreateContext();
+        db.OrgAdmins.Add(new OrgAdmin { Id = Guid.NewGuid(), AppId = appId, OrgId = orgId, UserId = userId, Right = OrgAdminRight.Admin, GrantedAt = DateTimeOffset.UtcNow });
         await db.SaveChangesAsync();
     }
 

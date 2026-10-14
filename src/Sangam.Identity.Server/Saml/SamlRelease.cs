@@ -47,12 +47,12 @@ public static class SamlRelease
 
         if (released.Contains("roles") && orgs.Count > 0)
         {
-            attributes.Add(new("roles", new("urn:sangam:attribute:roles", "roles", [.. orgs.Select(o => o.Role).Distinct(StringComparer.Ordinal)])));
+            attributes.Add(new("roles", new("urn:sangam:attribute:roles", "roles", [.. orgs.SelectMany(o => o.Roles ?? (o.Role is null ? [] : [o.Role])).Distinct(StringComparer.Ordinal)])));
         }
 
         if (released.Contains("orgs") && orgs.Count > 0)
         {
-            attributes.Add(new("orgs", new("urn:sangam:attribute:orgs", "orgs", [.. orgs.Select(o => JsonSerializer.Serialize(new Dictionary<string, string> { ["id"] = o.Id.ToString("D"), ["name"] = o.Name, ["role"] = o.Role }))])));
+            attributes.Add(new("orgs", new("urn:sangam:attribute:orgs", "orgs", [.. orgs.Select(o => JsonSerializer.Serialize(new Dictionary<string, string> { ["id"] = o.Id.ToString("D"), ["name"] = o.Name, ["role"] = o.Role ?? string.Empty, ["roles"] = string.Join(",", o.Roles ?? []) }))])));
         }
 
         return attributes;

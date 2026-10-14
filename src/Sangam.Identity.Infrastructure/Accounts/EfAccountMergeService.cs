@@ -300,9 +300,8 @@ public sealed class EfAccountMergeService : IAccountMergeService
 
     private async Task<bool> IsPrivilegedAsync(Guid userId, CancellationToken cancellationToken)
     {
-        DateTimeOffset now = _clock.UtcNow;
         return await _db.AppAdmins.AsNoTracking().AnyAsync(a => a.UserId == userId && a.RevokedAt == null, cancellationToken).ConfigureAwait(false)
-            || await _db.OrgMemberships.AsNoTracking().AnyAsync(m => m.UserId == userId && m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > now) && m.Role!.Code == "org_admin", cancellationToken).ConfigureAwait(false);
+            || await _db.OrgAdmins.AsNoTracking().AnyAsync(a => a.UserId == userId && a.RevokedAt == null, cancellationToken).ConfigureAwait(false);
     }
 
     // ------------------------------------------------------------------ views
@@ -474,7 +473,6 @@ public sealed class EfAccountMergeService : IAccountMergeService
                     OrgId = membership.OrgId,
                     AppId = membership.AppId,
                     RoleId = membership.RoleId,
-                    AppliesToDescendants = membership.AppliesToDescendants,
                     GrantedByUserId = membership.GrantedByUserId,
                     GrantedAt = membership.GrantedAt,
                     ExpiresAt = membership.ExpiresAt,
@@ -483,6 +481,20 @@ public sealed class EfAccountMergeService : IAccountMergeService
             }
 
             membership.RevokedAt = now;
+        }
+
+        // rc.12: customer and branch admin rights (and emergency-review rights) move too, unless the survivor already has them.
+        List<OrgAdmin> closedOrgRights = await _db.OrgAdmins.Where(a => a.UserId == closed && a.RevokedAt == null).ToListAsync(cancellationToken).ConfigureAwait(false);
+        HashSet<(Guid AppId, Guid OrgId, OrgAdminRight Right)> survivorOrgRights = [.. (await _db.OrgAdmins.Where(a => a.UserId == survivor && a.RevokedAt == null)
+            .Select(a => new { a.AppId, a.OrgId, a.Right }).ToListAsync(cancellationToken).ConfigureAwait(false)).Select(a => (a.AppId, a.OrgId, a.Right))];
+        foreach (OrgAdmin right in closedOrgRights)
+        {
+            if (survivorOrgRights.Add((right.AppId, right.OrgId, right.Right)))
+            {
+                _db.OrgAdmins.Add(new OrgAdmin { Id = Guid.NewGuid(), AppId = right.AppId, OrgId = right.OrgId, UserId = survivor, Right = right.Right, GrantedByUserId = right.GrantedByUserId, GrantedAt = right.GrantedAt });
+            }
+
+            right.RevokedAt = now;
         }
 
         // Administrators: the role moves; where both administer the same application the survivor keeps the higher role,

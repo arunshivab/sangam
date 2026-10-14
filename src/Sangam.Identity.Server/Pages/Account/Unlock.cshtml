@@ -1,0 +1,44 @@
+@page "/unlock"
+@model UnlockModel
+@{
+    ViewData["Title"] = L["Locked"].Value;
+}
+
+@* rc.12 (T1): a locked screen on an enrolled shared device: the person's tile, their PIN, or someone else. *@
+<section class="sg-card">
+  <p class="sg-label-mono">@Model.Device.Label · @Model.Device.OrgName</p>
+  <h1 class="sg-card-title">@L["Locked"]</h1>
+  <partial name="_Banner" model="@(("danger", Model.Error ?? string.Empty))" />
+  @if (Model.Person is not null)
+  {
+    <div class="sg-who sg-who--current" data-panel="locked-person">
+      <span class="sg-avatar sg-avatar--large" aria-hidden="true">@Model.Person.Name[..1].ToUpperInvariant()</span>
+      <span class="sg-who-text">
+        <span class="sg-who-name">@Model.Person.Name</span>
+        @if (Model.Person.Role is not null)
+        {
+          <span class="sg-who-role">@Model.Person.Role</span>
+        }
+      </span>
+    </div>
+  }
+
+  @if (!Model.SignInOnly)
+  {
+    <form method="post" novalidate>
+      <input type="hidden" asp-for="ReturnUrl" />
+      <input type="hidden" asp-for="Tile" />
+      <div class="sg-field-group">
+        <label class="sg-label" for="Pin">@L["Your PIN"]</label>
+        <input class="sg-field sg-field--pin" id="Pin" name="Pin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" autofocus required />
+      </div>
+      <button type="submit" class="sg-btn sg-btn--primary sg-btn--block">@L["Unlock"]</button>
+    </form>
+  }
+
+  <form method="post" asp-page-handler="Else" class="sg-form-after">
+    <input type="hidden" asp-for="ReturnUrl" />
+    <button type="submit" class="sg-btn @(Model.SignInOnly ? "sg-btn--primary" : "sg-btn--secondary") sg-btn--block">@(Model.SignInOnly ? L["Sign in fully"] : L["Someone else, sign in"])</button>
+  </form>
+  <p class="sg-note">@L["Your session stays locked for anyone else who uses this device."]</p>
+</section>

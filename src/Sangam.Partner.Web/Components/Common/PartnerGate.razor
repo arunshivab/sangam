@@ -1,4 +1,5 @@
 @inject IPartnerService Partners
+@inject IOrgConsoleService OrgConsole
 @inject IMfaService Mfa
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationManager Nav
@@ -10,9 +11,9 @@
 else if (_state == GateState.NotAnAdministrator)
 {
     <section class="sg-shut">
-        <h1 class="sg-shut-title">@L["You do not administer any application"]</h1>
+        <h1 class="sg-shut-title">@L["You do not administer any application or organisation"]</h1>
         <p class="sg-shut-body">
-            @L["Your Sangam account is fine — it simply is not an administrator of any application on Sangam. If you should be, ask an owner of the application to add you, or ask the Sangam team to make you its first owner."]
+            @L["Your Sangam account is fine — it simply is not an administrator of any application or organisation on Sangam. If you should be, ask an owner of the application, or your hospital's admin, to add you."]
         </p>
         <a class="sg-btn sg-btn--secondary" href="/signout">@L["Sign out"]</a>
     </section>
@@ -23,7 +24,7 @@ else if (_state == GateState.MfaRequired)
     <section class="sg-shut">
         <h1 class="sg-shut-title">@L["Set up two-step sign-in first"]</h1>
         <p class="sg-shut-body">
-            @L["Application administrators must have an authenticator app. Open your Sangam account portal, set one up under Sign-in & security, then sign in here again."]
+            @L["Administrators must have an authenticator app. Open your Sangam account portal, set one up under Sign-in & security, then sign in here again."]
         </p>
         <a class="sg-btn sg-btn--primary" href="@PortalUrl">@L["Go to your account portal"]</a>
         <a class="sg-btn sg-btn--secondary" href="/signout">@L["Sign out"]</a>
@@ -74,7 +75,10 @@ else
 
         // Re-read on every visit: an administrator removed a minute ago is out now.
         IReadOnlyList<PartnerAppRow> apps = await Partners.GetMyAppsAsync(userId.Value);
-        if (apps.Count == 0)
+
+        // rc.12: customer and branch admins (and emergency access reviewers) come in for their organisations.
+        IReadOnlyList<OrgScope> scopes = await OrgConsole.ScopesAsync(userId.Value);
+        if (apps.Count == 0 && scopes.Count == 0)
         {
             _state = GateState.NotAnAdministrator;
             return;
@@ -98,6 +102,7 @@ else
         {
             SignInLevel = ConsoleSession.Level(state.User),
             SessionEndsAt = ConsoleSession.EndsAt(state.User),
+            Scopes = scopes,
         };
         _state = GateState.Open;
     }

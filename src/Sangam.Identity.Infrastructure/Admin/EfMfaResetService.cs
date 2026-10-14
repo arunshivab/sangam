@@ -165,10 +165,9 @@ public sealed class EfMfaResetService : IMfaResetService
     /// <param name="cancellationToken">Cancellation token.</param>
     internal async Task<bool> IsPrivilegedAsync(Guid userId, CancellationToken cancellationToken)
     {
-        DateTimeOffset now = _clock.UtcNow;
         return await _db.PlatformOperators.AnyAsync(o => o.UserId == userId && o.RevokedAt == null, cancellationToken).ConfigureAwait(false)
             || await _db.AppAdmins.AnyAsync(a => a.UserId == userId && a.RevokedAt == null, cancellationToken).ConfigureAwait(false)
-            || await _db.OrgMemberships.AnyAsync(m => m.UserId == userId && m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > now) && m.Role!.Code == "org_admin", cancellationToken).ConfigureAwait(false);
+            || await _db.OrgAdmins.AnyAsync(a => a.UserId == userId && a.RevokedAt == null, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

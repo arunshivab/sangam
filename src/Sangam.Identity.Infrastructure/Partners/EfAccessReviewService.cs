@@ -121,7 +121,7 @@ public sealed class EfAccessReviewService : IAccessReviewService
                 DateTimeOffset from = candidate.ExpiresAt is DateTimeOffset ends && ends > now ? ends : now;
                 newExpiry = from.AddMonths(decision.ExtendMonths.Value).ToUniversalTime();
                 ManagementResult<MembershipDto> extended = await _management.UpsertMembershipAsync(
-                    appId, candidate.OrgId, candidate.MemberUserId, new MembershipUpsert(candidate.RoleCode, candidate.AppliesToDescendants, newExpiry), actor, cancellationToken).ConfigureAwait(false);
+                    appId, candidate.OrgId, candidate.MemberUserId, new MembershipUpsert(null, false, newExpiry, candidate.RoleCodes), actor, cancellationToken).ConfigureAwait(false);
                 if (extended.Status != ManagementStatus.Ok)
                 {
                     return PartnerResult.Refused(extended.Message ?? "That could not be saved.");
@@ -172,7 +172,7 @@ public sealed class EfAccessReviewService : IAccessReviewService
                     outcome = decision.Outcome.ToString().ToLowerInvariant(),
                     list = candidate.List,
                     org_id = candidate.OrgId,
-                    role = candidate.RoleCode,
+                    roles = candidate.RoleCodes,
                     new_expires_at = newExpiry,
                 })),
             cancellationToken).ConfigureAwait(false);
@@ -203,43 +203,52 @@ public sealed class EfAccessReviewService : IAccessReviewService
                 m.UserId,
                 m.OrgId,
                 m.RoleId,
-                RoleCode = m.Role!.Code,
-                RoleName = m.Role.DisplayName == string.Empty ? m.Role.Code : m.Role.DisplayName,
-                m.AppliesToDescendants,
+                RoleCode = m.Role == null ? null : m.Role.Code,
+                RoleName = m.Role == null ? null : (m.Role.DisplayName == string.Empty ? m.Role.Code : m.Role.DisplayName),
                 m.GrantedAt,
                 m.ExpiresAt,
                 Person = (m.User!.FirstName + " " + m.User.LastName).Trim(),
                 Email = m.User.Email ?? string.Empty,
                 Organisation = m.Org!.Name,
                 LastSignIn = _db.AppGrants.Where(g => g.AppId == appId && g.UserId == m.UserId && g.RevokedAt == null).Select(g => g.LastUsedAt).FirstOrDefault(),
-                LastDecided = _db.AccessReviewDecisions.Where(d => d.MembershipId == m.Id).Max(d => (DateTimeOffset?)d.DecidedAt),
+                LastDecided = _db.AccessReviewDecisions.Where(d => d.AppId == appId && d.MemberUserId == m.UserId && d.OrgId == m.OrgId).Max(d => (DateTimeOffset?)d.DecidedAt),
             })
-            .Where(m => (m.ExpiresAt != null && m.ExpiresAt <= endingBy) || (m.GrantedAt < unusedSince && (m.LastSignIn == null || m.LastSignIn < unusedSince)))
             .ToListAsync(cancellationToken).ConfigureAwait(false);
 
+        // rc.12: one item per person per organisation, with every role they hold there (several, or none).
         List<Candidate> candidates = [];
-        foreach (var m in rows)
+        foreach (var g in rows.GroupBy(r => (r.UserId, r.OrgId)))
         {
-            bool ending = m.ExpiresAt is DateTimeOffset ends && ends <= endingBy;
-            DateTimeOffset decidedSince = ending ? endingDecidedSince : unusedSince;
-            if (m.LastDecided is DateTimeOffset decided && decided >= decidedSince)
+            var first = g.OrderBy(r => r.GrantedAt).First();
+            DateTimeOffset? expiresAt = g.Any(r => r.ExpiresAt is null) ? null : g.Min(r => r.ExpiresAt);
+            DateTimeOffset grantedAt = g.Min(r => r.GrantedAt);
+            bool ending = expiresAt is DateTimeOffset ends && ends <= endingBy;
+            bool unused = grantedAt < unusedSince && (first.LastSignIn == null || first.LastSignIn < unusedSince);
+            if (!ending && !unused)
             {
                 continue;
             }
 
+            DateTimeOffset decidedSince = ending ? endingDecidedSince : unusedSince;
+            if (first.LastDecided is DateTimeOffset decided && decided >= decidedSince)
+            {
+                continue;
+            }
+
+            List<string> codes = [.. g.Where(r => r.RoleCode is not null).Select(r => r.RoleCode!).Order(StringComparer.Ordinal)];
+            string names = string.Join(", ", g.Where(r => r.RoleName is not null).Select(r => r.RoleName!).Order(StringComparer.CurrentCulture));
             candidates.Add(new Candidate(
                 ending ? EndingList : UnusedList,
-                m.UserId,
-                m.OrgId,
-                m.RoleId,
-                m.RoleCode,
-                m.AppliesToDescendants,
-                m.ExpiresAt,
-                new AccessReviewItem(m.Id, m.Person, m.Email, m.Organisation, m.RoleName, m.GrantedAt, m.ExpiresAt, m.LastSignIn)));
+                g.Key.UserId,
+                g.Key.OrgId,
+                g.Where(r => r.RoleId is not null).Select(r => r.RoleId).FirstOrDefault(),
+                codes,
+                expiresAt,
+                new AccessReviewItem(first.Id, first.Person, first.Email, first.Organisation, names, grantedAt, expiresAt, first.LastSignIn)));
         }
 
         return candidates;
     }
 
-    private sealed record Candidate(string List, Guid MemberUserId, Guid OrgId, Guid RoleId, string RoleCode, bool AppliesToDescendants, DateTimeOffset? ExpiresAt, AccessReviewItem Item);
+    private sealed record Candidate(string List, Guid MemberUserId, Guid OrgId, Guid? RoleId, IReadOnlyList<string> RoleCodes, DateTimeOffset? ExpiresAt, AccessReviewItem Item);
 }

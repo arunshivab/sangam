@@ -33,7 +33,10 @@ public sealed class WardState
     {
         User = user;
         Hospitals = user is null ? [] : [.. user.Organisations.Where(o => PatientRecords.IsClinician(user, o.OrganisationId))];
-        Current = Hospitals.FirstOrDefault(h => h.OrganisationId == Current?.OrganisationId) ?? (Hospitals.Count > 0 ? Hospitals[0] : null);
+        // rc.12 (A6): the hospital chosen at Sangam's "Working at which branch?" comes first.
+        Current = Hospitals.FirstOrDefault(h => h.OrganisationId == Current?.OrganisationId)
+            ?? Hospitals.FirstOrDefault(h => h.OrganisationId == user?.CurrentOrganisation?.OrganisationId)
+            ?? (Hospitals.Count > 0 ? Hospitals[0] : null);
     }
 
     /// <summary>Switches to another of their hospitals.</summary>

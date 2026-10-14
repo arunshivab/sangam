@@ -1,4 +1,6 @@
 @inject IPartnerService Partners
+@inject IAccessReviewService Reviews
+@inject IEmergencyAccessService Emergency
 
 @* rc.10 (R2): how the application stands — the go-live checklist, then the last 24 hours of its integration. *@
 @if (_overview is null)
@@ -8,6 +10,21 @@
 else
 {
   <p class="sg-lede">@L["How {0} stands: what is left before people rely on it, and how its integration with Sangam has run in the last 24 hours.", Info.AppName]</p>
+  @* rc.12 (R2): what waits in the access review, with a way straight there. *@
+  @if (_reviewCount > 0 || _emergencyWaiting > 0)
+  {
+    <p class="sg-notice" data-panel="review-banner">
+      @if (_reviewCount > 0)
+      {
+        @(_reviewCount == 1 ? L["1 role waiting for a decision."] : L["{0} roles waiting for a decision.", _reviewCount])
+      }
+      @if (_emergencyWaiting > 0)
+      {
+        @(" ")@(_emergencyWaiting == 1 ? L["1 emergency access use waiting for review."] : L["{0} emergency access uses waiting for review.", _emergencyWaiting])
+      }
+      @(" ")<a href="@Link("reviews")">@L["Open the access review"]</a>
+    </p>
+  }
   <div class="sg-grid">
     <section class="sg-panel" data-panel="go-live">
       <h2 class="sg-h2">@L["Go-live checklist"]</h2>
@@ -96,9 +113,16 @@ else
     public WorkspaceInfo Info { get; set; } = null!;
 
     private PartnerAppOverview? _overview;
+    private int _reviewCount;
+    private int _emergencyWaiting;
 
     /// <inheritdoc />
-    protected override async Task OnParametersSetAsync() => _overview = await Partners.GetOverviewAsync(Info.UserId, Info.AppId);
+    protected override async Task OnParametersSetAsync()
+    {
+        _overview = await Partners.GetOverviewAsync(Info.UserId, Info.AppId);
+        _reviewCount = await Reviews.CountAsync(Info.UserId, Info.AppId);
+        _emergencyWaiting = (await Emergency.WaitingAsync(Info.UserId, Info.AppId)).Sum(w => w.Fresh + w.Due + w.Late);
+    }
 
     private string Link(string section) => $"/apps/{Info.AppId:D}/{section}";
 }

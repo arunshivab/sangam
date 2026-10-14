@@ -1,0 +1,34 @@
+@page "/emergency"
+@model EmergencyModel
+@{
+    ViewData["Title"] = L["Emergency access"].Value;
+}
+
+@* rc.12 (M12): break-glass. Sangam holds no patient details: only who, where, when, why and the application's case number. *@
+<section class="sg-card sg-card--emergency">
+  <p class="sg-label-mono">@Model.App.DisplayName@(Model.OrgName is null ? string.Empty : " · " + Model.OrgName)</p>
+  <h1 class="sg-card-title">@L["Emergency access"]</h1>
+  @if (Model.Refusal is not null)
+  {
+    <partial name="_Banner" model="@(("danger", Model.Refusal))" />
+  }
+  else
+  {
+    <p class="sg-card-body">@L["For case {0} in {1}. It lasts up to 60 minutes and ends sooner when {1} ends it. It is recorded in your name, and your hospital's emergency access reviewers are told now.", Model.CaseRef, Model.App.DisplayName]</p>
+    <partial name="_Banner" model="@(("danger", Model.Error ?? string.Empty))" />
+    <form method="post">
+      <input type="hidden" asp-for="ReturnUrl" />
+      <input type="hidden" asp-for="Org" />
+      <div class="sg-field-group">
+        <label class="sg-label" asp-for="Reason">@L["Reason"]</label>
+        <textarea class="sg-field sg-field--area" asp-for="Reason" rows="3" maxlength="500" required autofocus></textarea>
+        <span class="sg-check-hint">@L["For example: patient deteriorating, treating doctor not reachable."]</span>
+      </div>
+      <button type="submit" class="sg-btn sg-btn--danger sg-btn--block">@L["Start emergency access"]</button>
+    </form>
+  }
+  <form method="post" asp-page-handler="Cancel" class="sg-form-after">
+    <input type="hidden" asp-for="ReturnUrl" />
+    <button type="submit" class="sg-btn sg-btn--secondary sg-btn--block">@L["Go back without it"]</button>
+  </form>
+</section>

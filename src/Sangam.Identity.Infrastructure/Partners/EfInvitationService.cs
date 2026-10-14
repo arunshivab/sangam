@@ -1,12 +1,8 @@
-using System.ComponentModel.DataAnnotations;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Sangam.Identity.Application.Abstractions;
-using Sangam.Identity.Application.Customisation;
 using Sangam.Identity.Application.Partners;
 using Sangam.Identity.Application.Tenancy;
 using Sangam.Identity.Domain;
@@ -17,179 +13,31 @@ using Sangam.Identity.Infrastructure.Services;
 
 namespace Sangam.Identity.Infrastructure.Partners;
 
-/// <summary>Invitations by e-mail (PR-13). See <see cref="IInvitationService"/>.</summary>
+/// <summary>Invitations by e-mail (PR-13): accepting the links already sent. See <see cref="IInvitationService"/>.</summary>
 public sealed class EfInvitationService : IInvitationService
 {
     /// <summary>How long an invitation works.</summary>
     public static readonly TimeSpan Lifetime = TimeSpan.FromDays(7);
 
-    /// <summary>How many invitations an application may send through the API in 24 hours (rc.5), so the API cannot
-    /// be used to send mail in bulk.</summary>
-    public const int ApiDailyLimit = 200;
-
-    private static readonly EmailAddressAttribute EmailFormat = new();
     private readonly SangamDbContext _db;
     private readonly UserManager<SangamUser> _users;
     private readonly IManagementService _management;
-    private readonly IEmailSender _email;
-    private readonly IMessageTemplates _templates;
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
-    private readonly string _origin;
 
     /// <summary>Initialises the service.</summary>
     /// <param name="db">Database.</param>
     /// <param name="users">User manager.</param>
     /// <param name="management">Management service (grants the membership on acceptance).</param>
-    /// <param name="email">E-mail sender.</param>
     /// <param name="audit">Audit writer.</param>
     /// <param name="clock">Clock.</param>
-    /// <param name="configuration">Configuration (<c>Sangam:Issuer</c> for the link).</param>
-    /// <param name="templates">Message templates (PR-19).</param>
-    public EfInvitationService(SangamDbContext db, UserManager<SangamUser> users, IManagementService management, IEmailSender email, IAuditWriter audit, IClock clock, IConfiguration configuration, IMessageTemplates templates)
+    public EfInvitationService(SangamDbContext db, UserManager<SangamUser> users, IManagementService management, IAuditWriter audit, IClock clock)
     {
-        ArgumentNullException.ThrowIfNull(configuration);
         _db = db ?? throw new ArgumentNullException(nameof(db));
         _users = users ?? throw new ArgumentNullException(nameof(users));
         _management = management ?? throw new ArgumentNullException(nameof(management));
-        _email = email ?? throw new ArgumentNullException(nameof(email));
-        _templates = templates ?? throw new ArgumentNullException(nameof(templates));
         _audit = audit ?? throw new ArgumentNullException(nameof(audit));
         _clock = clock ?? throw new ArgumentNullException(nameof(clock));
-        string? issuer = configuration["Sangam:Issuer"];
-        _origin = string.IsNullOrWhiteSpace(issuer) ? "https://id.sangamid.in" : issuer.TrimEnd('/');
-    }
-
-    /// <inheritdoc />
-    public async Task<PartnerResult> CreateAsync(Guid inviterUserId, Guid appId, Guid orgId, string email, string roleCode, bool appliesToDescendants, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(email);
-        ArgumentNullException.ThrowIfNull(roleCode);
-        if (!await IsAdminAsync(inviterUserId, appId, cancellationToken).ConfigureAwait(false))
-        {
-            return PartnerResult.Refused("You do not administer this application.");
-        }
-
-        string address = email.Trim();
-        if (address.Length == 0 || address.Length > 256 || !EmailFormat.IsValid(address))
-        {
-            return PartnerResult.Refused("Enter a valid email address.");
-        }
-
-        Organisation? org = await _db.Organisations.AsNoTracking()
-            .FirstOrDefaultAsync(o => o.Id == orgId && o.RegisteredViaAppId == appId && o.DeletedAt == null, cancellationToken).ConfigureAwait(false);
-        Role? role = await _db.Roles.AsNoTracking()
-            .FirstOrDefaultAsync(r => r.AppId == appId && r.Code == roleCode && r.RetiredAt == null && (r.OrgId == null || r.OrgId == orgId), cancellationToken).ConfigureAwait(false);
-        App? app = await _db.Apps.AsNoTracking().FirstOrDefaultAsync(a => a.Id == appId, cancellationToken).ConfigureAwait(false);
-        if (org is null || role is null || app is null)
-        {
-            return PartnerResult.Refused("That organisation or role does not exist in this application.");
-        }
-
-        string token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
-        DateTimeOffset now = _clock.UtcNow;
-        _db.Invitations.Add(new Invitation
-        {
-            Id = Guid.NewGuid(),
-            AppId = appId,
-            OrgId = orgId,
-            RoleCode = role.Code,
-            AppliesToDescendants = appliesToDescendants,
-            Email = address,
-            NormalizedEmail = _users.NormalizeEmail(address),
-            TokenHash = Hash(token),
-            InvitedByUserId = inviterUserId,
-            CreatedAt = now,
-            ExpiresAt = now + Lifetime,
-        });
-        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-        Dictionary<string, string> values = new(StringComparer.Ordinal)
-        {
-            ["application"] = app.DisplayName,
-            ["organisation"] = org.Name,
-            ["role"] = role.DisplayName,
-            ["link"] = $"{_origin}/invite/{token}",
-            ["days"] = ((int)Lifetime.TotalDays).ToString(System.Globalization.CultureInfo.InvariantCulture),
-        };
-
-        // In the inviter's language (the invitee may not have an account yet), with the organisation's and application's own wording if set.
-        EmailMessage invitation = await _templates.EmailAsync(MessageTemplateKinds.Invitation, System.Globalization.CultureInfo.CurrentUICulture.Name, appId, orgId, values, address, address, cancellationToken).ConfigureAwait(false);
-        await _email.SendAsync(invitation, cancellationToken).ConfigureAwait(false);
-        await _audit.WriteAsync(new AuditEntry(AuditActions.AppInvitationCreate, AuditActorType.Admin, inviterUserId, appId, "organisation", orgId,
-            Metadata: JsonSerializer.Serialize(new Dictionary<string, string> { ["email"] = LogRedaction.MaskEmail(address), ["role"] = role.Code })), cancellationToken).ConfigureAwait(false);
-        return PartnerResult.Ok($"Invitation sent to {address}. It works for {(int)Lifetime.TotalDays} days.");
-    }
-
-    /// <inheritdoc />
-    public async Task<ManagementResult<InvitationSent>> CreateForApplicationAsync(Guid appId, Guid orgId, string email, string roleCode, bool appliesToDescendants, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(email);
-        ArgumentNullException.ThrowIfNull(roleCode);
-        string address = email.Trim();
-        if (address.Length == 0 || address.Length > 256 || !EmailFormat.IsValid(address))
-        {
-            return ManagementResult.Invalid<InvitationSent>("A valid email address is required.");
-        }
-
-        Organisation? org = await _db.Organisations.AsNoTracking()
-            .FirstOrDefaultAsync(o => o.Id == orgId && o.RegisteredViaAppId == appId && o.DeletedAt == null && o.Status == OrganisationStatus.Active, cancellationToken).ConfigureAwait(false);
-        if (org is null)
-        {
-            return ManagementResult.NotFound<InvitationSent>("The organisation does not exist.");
-        }
-
-        Role? role = await _db.Roles.AsNoTracking()
-            .Where(r => r.AppId == appId && r.Code == roleCode && r.RetiredAt == null && (r.OrgId == null || r.OrgId == orgId))
-            .OrderByDescending(r => r.OrgId != null)
-            .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
-        App? app = await _db.Apps.AsNoTracking().FirstOrDefaultAsync(a => a.Id == appId, cancellationToken).ConfigureAwait(false);
-        if (role is null || app is null)
-        {
-            return ManagementResult.NotFound<InvitationSent>("No live role with that code for this app.");
-        }
-
-        DateTimeOffset now = _clock.UtcNow;
-        int sentToday = await _db.Invitations.CountAsync(i => i.AppId == appId && i.InvitedByUserId == null && i.CreatedAt > now.AddDays(-1), cancellationToken).ConfigureAwait(false);
-        if (sentToday >= ApiDailyLimit)
-        {
-            return ManagementResult.Invalid<InvitationSent>($"This application has sent {ApiDailyLimit} invitations in the last 24 hours. Try again later.");
-        }
-
-        string token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
-        Invitation invitation = new()
-        {
-            Id = Guid.NewGuid(),
-            AppId = appId,
-            OrgId = orgId,
-            RoleCode = role.Code,
-            AppliesToDescendants = appliesToDescendants,
-            Email = address,
-            NormalizedEmail = _users.NormalizeEmail(address),
-            TokenHash = Hash(token),
-            InvitedByUserId = null,
-            CreatedAt = now,
-            ExpiresAt = now + Lifetime,
-        };
-        _db.Invitations.Add(invitation);
-        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-        Dictionary<string, string> values = new(StringComparer.Ordinal)
-        {
-            ["application"] = app.DisplayName,
-            ["organisation"] = org.Name,
-            ["role"] = role.DisplayName,
-            ["link"] = $"{_origin}/invite/{token}",
-            ["days"] = ((int)Lifetime.TotalDays).ToString(System.Globalization.CultureInfo.InvariantCulture),
-        };
-
-        // The person may not have an account, so the language is the platform's default, with the organisation's and
-        // application's own wording if set.
-        EmailMessage message = await _templates.EmailAsync(MessageTemplateKinds.Invitation, System.Globalization.CultureInfo.CurrentUICulture.Name, appId, orgId, values, address, address, cancellationToken).ConfigureAwait(false);
-        await _email.SendAsync(message, cancellationToken).ConfigureAwait(false);
-        await _audit.WriteAsync(new AuditEntry(AuditActions.AppInvitationCreate, AuditActorType.Api, null, appId, "organisation", orgId,
-            Metadata: JsonSerializer.Serialize(new Dictionary<string, string> { ["email"] = LogRedaction.MaskEmail(address), ["role"] = role.Code, ["via"] = "api" })), cancellationToken).ConfigureAwait(false);
-        return ManagementResult.Ok(new InvitationSent(invitation.Id, address, role.Code, invitation.ExpiresAt));
     }
 
     /// <inheritdoc />
@@ -236,11 +84,12 @@ public sealed class EfInvitationService : IInvitationService
             return PartnerResult.Refused($"This invitation was sent to {LogRedaction.MaskEmail(invitation.Email)}. Sign in with that address to accept it.");
         }
 
+        // rc.12: the role is given at that organisation only, whatever the old invitation said about below it.
         // Accepting is the person's consent (rc.5): an invitation the application sent through the API is granted as
         // the person's own act; one an administrator sent, as theirs.
         ManagementActor actor = invitation.InvitedByUserId is Guid inviter ? ManagementActor.AppAdmin(inviter) : ManagementActor.Person(userId);
         ManagementResult<MembershipDto> granted = await _management.UpsertMembershipAsync(invitation.AppId, invitation.OrgId, userId,
-            new MembershipUpsert(invitation.RoleCode, invitation.AppliesToDescendants), actor, cancellationToken).ConfigureAwait(false);
+            new MembershipUpsert(invitation.RoleCode, false), actor, cancellationToken).ConfigureAwait(false);
         if (granted.Status != ManagementStatus.Ok)
         {
             return PartnerResult.Refused("This invitation is no longer valid.");

@@ -468,4 +468,84 @@ public static class AuditActions
 
     /// <summary>rc.11: the person removed their login ID; they sign in with their email or mobile number.</summary>
     public const string UserLoginIdRemove = "user.login_id.remove";
+
+    /// <summary>rc.12: an admin checked a person's details before adding them. Metadata: organisation, outcome and the fields that
+    /// matched or differed (never the values).</summary>
+    public const string StaffCheck = "staff.check";
+
+    /// <summary>rc.12: an admin added a person to an organisation (push with an activation code, pull with a join code, or someone
+    /// already there). Metadata: organisation, how, roles, start date, and whether added before DigiLocker.</summary>
+    public const string StaffAdd = "staff.add";
+
+    /// <summary>rc.12: an admin cancelled a waiting addition.</summary>
+    public const string StaffCancel = "staff.cancel";
+
+    /// <summary>rc.12: the person entered the admin's activation code and joined.</summary>
+    public const string StaffJoin = "staff.join";
+
+    /// <summary>rc.12: joining stopped because the account's name or date of birth differs from what the admin entered.</summary>
+    public const string StaffJoinStop = "staff.join.stop";
+
+    /// <summary>rc.12: wrong activation codes ended an activation link.</summary>
+    public const string StaffInviteLock = "staff.invite.lock";
+
+    /// <summary>rc.12: the person made a join code in their portal.</summary>
+    public const string UserJoinCodeCreate = "user.join_code.create";
+
+    /// <summary>rc.12: an admin right (customer or branch admin, or emergency access reviewer) was given. Metadata: organisation, right.</summary>
+    public const string OrgAdminGrant = "org.admin.grant";
+
+    /// <summary>rc.12: an admin right was ended. Metadata: organisation, right, and why when it ended with the person's last place.</summary>
+    public const string OrgAdminRevoke = "org.admin.revoke";
+
+    /// <summary>rc.12: an application admin closed a customer that left the application. Metadata: reason, places ended.</summary>
+    public const string OrgClose = "org.close";
+
+    /// <summary>rc.12: a customer chose whether its roles are kept in Sangam or in the application.</summary>
+    public const string OrgRolesKept = "org.roles_kept";
+
+    /// <summary>rc.12: emergency access was switched on or off for an organisation.</summary>
+    public const string OrgEmergencyAccess = "org.emergency_access";
+
+    /// <summary>rc.12: a leaver: every place a person had in an admin's trees ends on one day. Metadata: places, last day, reason.</summary>
+    public const string StaffLeaver = "staff.leaver";
+
+    /// <summary>rc.12 (T1): an admin started enrolling a shared ward device. Metadata: organisation, label.</summary>
+    public const string DeviceEnrolStart = "device.enrol.start";
+
+    /// <summary>rc.12 (T1): the device took its key; enrolment is complete.</summary>
+    public const string DeviceEnrol = "device.enrol";
+
+    /// <summary>rc.12 (T1): an admin removed a shared device (lost, stolen, moved); its locked sessions end.</summary>
+    public const string DeviceRemove = "device.remove";
+
+    /// <summary>rc.12 (T1): a customer made its shared-device rules stricter (or back to Sangam's).</summary>
+    public const string DeviceRules = "device.rules";
+
+    /// <summary>rc.12 (T1): an application locked the person's session.</summary>
+    public const string SessionLock = "session.lock";
+
+    /// <summary>rc.12 (T1): the person unlocked a shared device with their PIN.</summary>
+    public const string DeviceUnlock = "device.unlock";
+
+    /// <summary>rc.12 (T1): a wrong PIN on a shared device.</summary>
+    public const string DeviceUnlockFailed = "device.unlock.failed";
+
+    /// <summary>rc.12 (T1): the person set their shared-device PIN.</summary>
+    public const string UserPinSet = "user.pin.set";
+
+    /// <summary>rc.12 (T1): five wrong PINs cancelled the person's PIN until their next full sign-in.</summary>
+    public const string UserPinCancel = "user.pin.cancel";
+
+    /// <summary>rc.12 (M12): emergency access started. Metadata: organisation, case reference, reason, method, end time.</summary>
+    public const string EmergencyStart = "emergency.start";
+
+    /// <summary>rc.12 (M12): the application ended emergency access early. Metadata: reason.</summary>
+    public const string EmergencyEnd = "emergency.end";
+
+    /// <summary>rc.12 (M12): a reviewer judged a use of emergency access. Metadata: verdict, note.</summary>
+    public const string EmergencyReview = "emergency.review";
+
+    /// <summary>rc.12 (M12): emergency access was refused (not staff there, switched off, the daily limit, no fresh check).</summary>
+    public const string EmergencyRefused = "emergency.refused";
 }
