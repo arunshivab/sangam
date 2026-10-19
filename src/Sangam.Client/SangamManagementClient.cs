@@ -90,28 +90,49 @@ public sealed class SangamManagementClient : IDisposable
     /// <summary>
     /// Gives a person a role at an organisation. rc.5: only someone who already uses your application (has signed in to
     /// it); anyone else answers 404 — add them as staff with <see cref="AddStaffAsync"/> instead. rc.12: a role holds only
-    /// where it is given, so <paramref name="appliesToDescendants"/> must be <see langword="false"/>.
+    /// where it is given, so <paramref name="appliesToDescendants"/> must be <see langword="false"/>. rc.13: done for one of
+    /// your admins, who must be an admin of that organisation.
     /// </summary>
     /// <param name="orgId">The organisation.</param>
     /// <param name="userId">The person (their <c>sub</c>).</param>
+    /// <param name="adminAccessToken">The admin's own access token, issued to your application.</param>
     /// <param name="role">The role code.</param>
     /// <param name="appliesToDescendants">Must be <see langword="false"/> since rc.12.</param>
     /// <param name="expiresAt">When it ends, for a time-limited role.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    public Task<JsonNode?> UpsertMembershipAsync(Guid orgId, Guid userId, string role, bool appliesToDescendants = false, DateTimeOffset? expiresAt = null, CancellationToken cancellationToken = default)
-        => SendAsync(HttpMethod.Put, $"orgs/{orgId:D}/members/{userId:D}", new { role, appliesToDescendants, expiresAt }, cancellationToken);
+    public Task<JsonNode?> UpsertMembershipAsync(Guid orgId, Guid userId, string adminAccessToken, string role, bool appliesToDescendants = false, DateTimeOffset? expiresAt = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(adminAccessToken);
+        return SendForAdminAsync(HttpMethod.Put, $"orgs/{orgId:D}/members/{userId:D}", new { role, appliesToDescendants, expiresAt }, adminAccessToken, cancellationToken);
+    }
 
     /// <summary>
     /// rc.12: sets every role a person holds at an organisation (a doctor who is also the department's administrator, say);
-    /// an empty list keeps them there as staff, for a customer whose roles your application keeps.
+    /// an empty list keeps them there as staff, for a customer whose roles your application keeps. rc.13: done for one of
+    /// your admins, who must be an admin of that organisation.
     /// </summary>
     /// <param name="orgId">The organisation.</param>
     /// <param name="userId">The person (their <c>sub</c>).</param>
+    /// <param name="adminAccessToken">The admin's own access token, issued to your application.</param>
     /// <param name="roles">Every role code they hold there.</param>
     /// <param name="expiresAt">When they end, if they do.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    public Task<JsonNode?> SetRolesAsync(Guid orgId, Guid userId, IReadOnlyList<string> roles, DateTimeOffset? expiresAt = null, CancellationToken cancellationToken = default)
-        => SendAsync(HttpMethod.Put, $"orgs/{orgId:D}/members/{userId:D}", new { roles, expiresAt }, cancellationToken);
+    public Task<JsonNode?> SetRolesAsync(Guid orgId, Guid userId, string adminAccessToken, IReadOnlyList<string> roles, DateTimeOffset? expiresAt = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(adminAccessToken);
+        return SendForAdminAsync(HttpMethod.Put, $"orgs/{orgId:D}/members/{userId:D}", new { roles, expiresAt }, adminAccessToken, cancellationToken);
+    }
+
+    /// <summary>rc.13: ends a person's place at an organisation now, for one of your admins.</summary>
+    /// <param name="orgId">The organisation.</param>
+    /// <param name="userId">The person (their <c>sub</c>).</param>
+    /// <param name="adminAccessToken">The admin's own access token, issued to your application.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public Task<JsonNode?> RemoveMemberAsync(Guid orgId, Guid userId, string adminAccessToken, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(adminAccessToken);
+        return SendForAdminAsync(HttpMethod.Delete, $"orgs/{orgId:D}/members/{userId:D}", null, adminAccessToken, cancellationToken);
+    }
 
     /// <summary>
     /// rc.12: the check before adding a person — which details match an existing Sangam account and which differ, never

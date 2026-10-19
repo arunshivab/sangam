@@ -161,13 +161,16 @@ bool genuine = SangamWebhook.Verify(Request.Headers["webhook-id"], Request.Heade
 
 // The management API from your back end (needs sangam.manage); tokens are fetched and cached for you.
 SangamManagementClient sangam = services.GetRequiredService<SangamManagementClient>();
-await sangam.UpsertMembershipAsync(wardId, personId, "nurse", appliesToDescendants: false, expiresAt: contractEnd);
+// rc.13: every change to a person's place is done for one of your admins (their own access token), who must be an
+// admin of that organisation; the place and the audit trail record who asked.
+await sangam.UpsertMembershipAsync(wardId, personId, adminAccessToken, "nurse", appliesToDescendants: false, expiresAt: contractEnd);
 // rc.12: adding someone who does not use your application yet is done for one of your admins (their own access token):
 // Sangam checks the details first (which fields match an existing account, nothing more), then the person joins with the
 // activation code the admin hands them, or with a join code from their own portal. InviteAsync is gone.
 JsonNode? check = await sangam.CheckStaffAsync(wardId, adminAccessToken, new SangamStaffPerson("Asha", "Nair", "asha@example.in", null, new DateOnly(1994, 3, 2)));
 await sangam.AddStaffAsync(wardId, adminAccessToken, new SangamStaffAddition(Person: new SangamStaffPerson("Asha", "Nair", "asha@example.in", null, new DateOnly(1994, 3, 2)), Roles: ["nurse"]));
-// Several roles at one organisation, or none (staff): SetRolesAsync(wardId, personId, ["nurse", "charge-nurse"]).
+// Several roles at one organisation, or none (staff): SetRolesAsync(wardId, personId, adminAccessToken, ["nurse", "charge-nurse"]);
+// ending a place now: RemoveMemberAsync(wardId, personId, adminAccessToken).
 // rc.7: on account.merged (or for an id that stopped signing in), find the account the person kept.
 Guid? survivor = await sangam.GetMergedIntoAsync(personId);
 

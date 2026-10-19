@@ -28,6 +28,16 @@ exist, so there is no production database to act on yet.
       enrolment and one PIN unlock on a real ward tablet before telling the hospitals.
 - [ ] rc.12: applications that listen for webhooks add `session.locked` to their subscribed events if they show patient data
       on shared devices.
+- [ ] rc.13: migration `Rc13Tenancy` adds two columns (both off for every organisation).
+- [ ] rc.13: tell each application's developers that `PUT` and `DELETE /api/v1/orgs/{id}/members/{user}` now need the
+      acting admin's own access token in `Sangam-Acting-Admin` (the SDKs' `setRoles`, `upsertMembership` and the new
+      `removeMember` take it), and that the admin must be an admin of that organisation. Calls without it answer 401.
+- [ ] rc.13: for each hospital that asked for it, its admin switches on **Only people verified with DigiLocker**
+      (organisation console → Settings). Until DigiLocker is live nobody can verify, so an organisation with it on can take
+      no one new; switch it on when DigiLocker goes live.
+- [ ] rc.13: **Testers may join themselves** is on only for made-up demo organisations (check with
+      `select name from organisations where testers_may_join_themselves;` — it should list only Demo Hospital (made up),
+      or nothing in production).
 - [ ] `Sangam:Seed:DevelopmentSample` is **false**. The seeder creates the sample partner app and
       development redirect URIs; none of that belongs in production.
 - [ ] `Sangam:Email:UseOutbox` is **false**, and Anjal's API (D-B) is configured with production

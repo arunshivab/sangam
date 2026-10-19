@@ -10,6 +10,9 @@ namespace Imagiqa.Web.Demo;
 /// <em>Demo Hospital</em>, as a doctor or a nurse with one click. imagiQa does it the way any application would:
 /// through Sangam's management API with its own client credentials (<c>sangam.manage</c>), creating the hospital and
 /// the two roles if they are not there yet. The tester signs in again so the new role is in their token.
+/// rc.13: Sangam gives a place only when someone asks; here the tester asks for themselves, with their own access token,
+/// which Sangam accepts only because an administrator of imagiQa switched on "Testers may join themselves" for the demo
+/// hospital (partner console → Organisations &amp; people).
 /// </summary>
 public sealed class DemoHospital
 {
@@ -40,8 +43,9 @@ public sealed class DemoHospital
     /// <summary>Gives the person the role at the demo hospital; <see langword="null"/> when done, else why not.</summary>
     /// <param name="userId">The person (their Sangam subject).</param>
     /// <param name="role"><c>doctor</c> or <c>nurse</c>.</param>
+    /// <param name="testerAccessToken">The tester's own access token (from their sign-in to imagiQa).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    public async Task<string?> JoinAsync(Guid userId, string role, CancellationToken cancellationToken = default)
+    public async Task<string?> JoinAsync(Guid userId, string role, string? testerAccessToken, CancellationToken cancellationToken = default)
     {
         if (!Enabled)
         {
@@ -53,6 +57,11 @@ public sealed class DemoHospital
             return "Choose doctor or nurse.";
         }
 
+        if (string.IsNullOrEmpty(testerAccessToken))
+        {
+            return "Sign in again: imagiQa needs your own sign-in to ask Sangam for your place.";
+        }
+
         string authority = (_configuration["Sangam:Authority"] ?? string.Empty).TrimEnd('/');
         string? token = await TokenAsync(authority, cancellationToken).ConfigureAwait(false);
         if (token is null)
@@ -60,17 +69,22 @@ public sealed class DemoHospital
             return "Sangam did not let imagiQa manage its demo hospital (client credentials with sangam.manage).";
         }
 
-        (string Path, object Body)[] calls =
+        (string Path, object Body, bool AsTester)[] calls =
         [
-            ("/api/v1/roles/" + ImagiqaRoles.Doctor, new { displayName = "Doctor", description = "Registers and finds patients, reads vitals, writes consultation notes.", permissions = new[] { "patients:read", "patients:write", "vitals:read", "notes:write" }, orgId = (Guid?)null }),
-            ("/api/v1/roles/" + ImagiqaRoles.Nurse, new { displayName = "Nurse", description = "Registers and finds patients, records vitals, reads consultation notes.", permissions = new[] { "patients:read", "patients:write", "vitals:write", "notes:read" }, orgId = (Guid?)null }),
-            ($"/api/v1/orgs/{HospitalId:D}", new { name = Name, type = "hospital", parentId = (Guid?)null, metadata = "{\"demo\":true}" }),
-            ($"/api/v1/orgs/{HospitalId:D}/members/{userId:D}", new { role, appliesToDescendants = false }),
+            ("/api/v1/roles/" + ImagiqaRoles.Doctor, new { displayName = "Doctor", description = "Registers and finds patients, reads vitals, writes consultation notes.", permissions = new[] { "patients:read", "patients:write", "vitals:read", "notes:write" }, orgId = (Guid?)null }, false),
+            ("/api/v1/roles/" + ImagiqaRoles.Nurse, new { displayName = "Nurse", description = "Registers and finds patients, records vitals, reads consultation notes.", permissions = new[] { "patients:read", "patients:write", "vitals:write", "notes:read" }, orgId = (Guid?)null }, false),
+            ($"/api/v1/orgs/{HospitalId:D}", new { name = Name, type = "hospital", parentId = (Guid?)null, metadata = "{\"demo\":true}" }, false),
+            ($"/api/v1/orgs/{HospitalId:D}/members/{userId:D}", new { role, appliesToDescendants = false }, true),
         ];
-        foreach ((string path, object body) in calls)
+        foreach ((string path, object body, bool asTester) in calls)
         {
             using HttpRequestMessage request = new(HttpMethod.Put, new Uri(authority + path));
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            if (asTester)
+            {
+                request.Headers.Add("Sangam-Acting-Admin", testerAccessToken);
+            }
+
             request.Content = JsonContent.Create(body);
             using HttpResponseMessage response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)

@@ -87,14 +87,29 @@ public sealed class Organisation
     public DateTimeOffset? ClosedAt { get; set; }
 
     /// <summary>
-    /// rc.12 (T1): on a customer, how many minutes after a lock a PIN may unlock a shared ward device (at most 120, the
-    /// default); a customer may only make it shorter.
+    /// rc.12 (T1): how many minutes after a lock a PIN may unlock a shared ward device here (at most 120, the default).
+    /// rc.13: set on any organisation, not only a customer; an organisation may only make it shorter than the ones above
+    /// it, and a device follows the shortest set at its organisation or above.
     /// </summary>
     public int? DevicePinMinutes { get; set; }
 
     /// <summary>
-    /// rc.12 (T1): on a customer, how many hours may pass on a shared ward device before a full sign-in is asked again
-    /// (at most 12, the default); a customer may only make it shorter.
+    /// rc.12 (T1): how many hours may pass on a shared ward device here before a full sign-in is asked again (at most 12,
+    /// the default). rc.13: set on any organisation, only shorter than above, the shortest at or above a device applying.
     /// </summary>
     public int? DeviceFullSignInHours { get; set; }
+
+    /// <summary>
+    /// rc.13 (tenants' request of 14 Oct 2026): only people verified with DigiLocker may join this organisation and the ones
+    /// under it. Someone added who is not verified waits, and is asked to verify, until they are. People already here keep
+    /// their place.
+    /// </summary>
+    public bool VerifiedStaffOnly { get; set; }
+
+    /// <summary>
+    /// rc.13 (decision of 19 Oct 2026, for demos): people may give themselves a place here through the application, with
+    /// their own access token, without an admin asking. Only the application's administrators switch it on, one
+    /// organisation at a time (for example a made-up demo hospital); it never reaches the organisations under it.
+    /// </summary>
+    public bool TestersMayJoinThemselves { get; set; }
 }

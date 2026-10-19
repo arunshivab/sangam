@@ -522,6 +522,12 @@ public static class AuditActions
     /// <summary>rc.12 (T1): a customer made its shared-device rules stricter (or back to Sangam's).</summary>
     public const string DeviceRules = "device.rules";
 
+    /// <summary>rc.13: an admin switched "only people verified with DigiLocker may join" on or off for an organisation.</summary>
+    public const string OrgVerifiedStaff = "org.verified_staff";
+
+    /// <summary>rc.13: an application administrator let testers join an organisation themselves, or stopped it.</summary>
+    public const string OrgTestersJoin = "org.testers_join";
+
     /// <summary>rc.12 (T1): an application locked the person's session.</summary>
     public const string SessionLock = "session.lock";
 

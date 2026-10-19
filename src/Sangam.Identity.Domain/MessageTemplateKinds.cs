@@ -143,6 +143,12 @@ public static class MessageTemplateKinds
     /// </summary>
     public const string EmergencyAccessUsed = "emergency_access_used";
 
+    /// <summary>
+    /// To someone an admin added with their join code, or who already works at the customer (rc.13): the organisation takes
+    /// only people verified with DigiLocker, so the addition waits until they verify.
+    /// </summary>
+    public const string StaffVerifyRequired = "staff_verify_required";
+
     /// <summary>Every kind, in the order the consoles list them.</summary>
     public static IReadOnlyList<MessageTemplateKind> All { get; } =
     [
@@ -151,6 +157,7 @@ public static class MessageTemplateKinds
         new(PasswordReset, false, true, ["name", "code", "minutes", "application"], ["code"]),
         new(Invitation, false, true, ["application", "organisation", "role", "link", "days"], ["link"]),
         new(StaffActivation, false, true, ["name", "application", "organisations", "admin", "link", "days"], ["link"]),
+        new(StaffVerifyRequired, false, true, ["name", "application", "organisations", "admin", "link"], ["link"]),
         new(StaffJoinStopped, false, false, ["name", "member", "organisations", "fields"], ["member", "fields"]),
         new(EmailChangeCode, false, false, ["name", "code", "minutes"], ["code"]),
         new(EmailChangedNotice, false, false, ["name", "new_email"], []),

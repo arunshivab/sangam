@@ -6,11 +6,55 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0-rc.13] - thirteenth release candidate
+
+Sangam 1.0.0-rc.13 answers what hospitals asked for after rc.12 (decisions of 14 Oct 2026): organisations that take only
+people verified with DigiLocker, an admin named for every change to a person's place, and shared-device rules per branch.
+
+### Hospitals and their staff
+- **Only people verified with DigiLocker.** An organisation may take only verified people (organisation console →
+  Settings); it holds for the organisations under it, and cannot be switched off beneath one that has it on. People
+  already there keep their place. Someone added who is not verified waits: the activation page says "This organisation
+  wants you to verify with DigiLocker to join" with a button to verify; they may also join now and verify later, so the
+  link running out never loses the place (it starts once they verify, other organisations on the link at once); someone
+  added by their join code (or already at the customer) is e-mailed how to verify (new template
+  `staff_verify_required`, in English, Hindi and Malayalam), and their place starts within a minute of verifying. The
+  waiting list shows "Waiting for them to verify with DigiLocker". Every other way of giving a new place refuses too.
+  Migration `Rc13Tenancy` adds the setting (and the one below), off everywhere.
+- **The admin who asked, for every change to a person's place.** `PUT` and `DELETE /api/v1/orgs/{id}/members/{user}` now
+  need the acting admin's own access token in `Sangam-Acting-Admin`, as adding staff already did: 401 without it, 404
+  when that person is not an admin of the organisation (or above it, or of the application), 403 when a new place needs
+  an admin verified with DigiLocker. The place records the admin as `granted_by`, and the audit entry as its actor.
+- **Testers may join themselves** (for demos, decision of 19 Oct 2026). An application's administrators may switch it on
+  for one organisation (partner console → Organisations & people); there a person may give themselves a place with
+  their own access token, and nobody else's. imagiQa's demo uses it for its one-click "Join Demo Hospital"; switch it on
+  once for the demo hospital (`docs/pilot-guide.md`).
+- **Shared-device rules per organisation.** A branch, department or ward may shorten the PIN window and the full sign-in
+  interval for its own devices, never beyond the organisations above it; a device follows the shortest at its
+  organisation or above. The console's Shared devices page chooses the organisation and shows the limit from above.
+
+### Sign-in
+- **The device flow says where the person works.** Approving a TV or kiosk sign-in asks "Working at which branch?" when
+  the person works at more than one and the application asked for organisations; the device's tokens carry `sangam_org`,
+  as an ordinary sign-in's do. Emergency access is still started only in an ordinary sign-in (it needs the person on
+  Sangam's screen), so a device's token never carries it.
+- **Userinfo** carries `sangam_org` (while the person still works there) and `sangam_emergency` (while it lasts), as the
+  tokens do. It now answers `org.current` alone too.
+
 ### Partner console
 - "Your organisations" (`/org`) now lists, for an application's administrators, every customer of the applications they
   administer, grouped by application ("Customers of …"), with a find box when there are more than six. Before, it showed
   only organisations where the person held a customer or branch admin right themselves, so an application administrator
   saw an empty page. The sidebar offers the page to them too. Nothing of an application they do not administer is shown.
+
+### SDKs (C#, JS, Python, Java)
+- **Breaking:** `upsertMembership` and `setRoles` take the acting admin's access token (third argument); new
+  `removeMember`. The staff result carries `waitsForDigiLocker`. Python and Java move to 1.0.0-rc.13.
+
+### Dependencies
+- `QRCoder` 1.8.0 → 1.8.1 and `Microsoft.NET.Test.Sdk` 18.10.1 → 18.11.0 (Dependabot's #47, with every lock file
+  regenerated: Dependabot updated only the projects that reference a package directly, so locked restore failed with
+  NU1004 in the projects that get it through another project).
 
 ## [1.0.0-rc.12] - twelfth release candidate
 

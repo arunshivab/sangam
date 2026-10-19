@@ -34,8 +34,15 @@ up)** with that role and signs them in again so the role is in their session —
   management API (`PUT /api/v1/roles/{doctor|nurse}`, `PUT /api/v1/orgs/{id}`, `PUT /api/v1/orgs/{id}/members/{user}`).
   The hospital and the two roles are created the first time; every tester joins the same hospital
   (`d3770000-0000-4000-8000-000000000001`, or `Imagiqa__DemoHospitalId`).
+- rc.13: Sangam gives a place only when someone asks, so the tester asks for themselves: imagiQa sends the tester's own
+  access token in `Sangam-Acting-Admin`. Sangam accepts that only where an administrator of imagiQa has switched on
+  **Testers may join themselves** for the demo hospital. **One-time setup on the demo:** after the first tester has
+  pressed Join (which creates the hospital, then fails), an imagiQa administrator opens partner console → imagiQa →
+  Organisations & people → Demo Hospital (made up) → *Testers may join themselves* → Switch on. Never switch it on for a
+  real hospital.
 - It is offered only when `Imagiqa:Demo` is true. Outside the demo the page says to ask the hospital's administrator.
-- Each join is in Sangam's audit log (the membership grant, with imagiQa as the acting application).
+- Each join is in Sangam's audit log (the membership grant, with imagiQa as the acting application and the tester as
+  the one who asked).
 - To take a tester out: partner console → imagiQa → Demo Hospital (made up) → remove their role. They can join again
   from the demo; to stop that, end the pilot or remove `ManagementApi` from the demo's registration.
 - Patients, notes and vitals at the demo hospital are whatever testers type. Remind testers never to enter real

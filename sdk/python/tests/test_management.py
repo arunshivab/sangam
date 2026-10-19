@@ -17,7 +17,7 @@ def test_the_management_client_caches_its_token_and_calls_api_v1():
 
     client = ManagementClient("https://id.example.in/", "app", "s", client=httpx.Client(transport=httpx.MockTransport(handler)))
     client.upsert_role("nurse", "Nurse", ["vitals:read"])
-    client.upsert_membership("o1", "u1", "nurse", True, "2026-12-31T23:59:59+05:30")
+    client.upsert_membership("o1", "u1", "admin-token", "nurse", True, "2026-12-31T23:59:59+05:30")
     assert sum(1 for c in calls if c.url.path == "/connect/token") == 1
     assert str(calls[1].url) == "https://id.example.in/api/v1/roles/nurse"
     assert calls[1].headers["authorization"] == "Bearer t1"
@@ -25,6 +25,22 @@ def test_the_management_client_caches_its_token_and_calls_api_v1():
     with pytest.raises(SangamApiError) as e:
         client.send("GET", "forbidden")
     assert e.value.status == 403
+
+
+def test_changing_a_place_sends_the_admins_own_token():
+    # rc.13: as adding staff does.
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/connect/token":
+            return httpx.Response(200, json={"access_token": "t1", "expires_in": 3600})
+        seen.append((request.method, request.url.path, request.headers.get("sangam-acting-admin")))
+        return httpx.Response(200, json={"ok": True})
+
+    client = ManagementClient("https://id.example.in", "app", "s", client=httpx.Client(transport=httpx.MockTransport(handler)))
+    client.set_roles("o1", "u1", "admin-token", ["doctor"])
+    client.remove_member("o1", "u1", "admin-token")
+    assert seen == [("PUT", "/api/v1/orgs/o1/members/u1", "admin-token"), ("DELETE", "/api/v1/orgs/o1/members/u1", "admin-token")]
 
 
 def test_merged_into_gives_the_surviving_id_and_none_for_an_id_that_was_not_merged():

@@ -35,6 +35,10 @@ public sealed class IdentityRequiredModel : AuthPageModel
     [BindProperty(SupportsGet = true)]
     public string? ReturnUrl { get; set; }
 
+    /// <summary>rc.13: whether the person came from joining an organisation that takes only verified people.</summary>
+    [BindProperty(SupportsGet = true)]
+    public bool Join { get; set; }
+
     /// <summary>What happened on the last attempt, if anything.</summary>
     [BindProperty(SupportsGet = true)]
     public string? Result { get; set; }
@@ -77,7 +81,7 @@ public sealed class IdentityRequiredModel : AuthPageModel
 
         if (Request.Form["agree"] != "true")
         {
-            return RedirectToPage(new { returnUrl = ReturnUrl });
+            return RedirectToPage(new { returnUrl = ReturnUrl, join = Join });
         }
 
         return Redirect(IdentityDigiLocker.Start(HttpContext, IdentityDigiLocker.Verify, userId, SafeReturnUrl(ReturnUrl)));

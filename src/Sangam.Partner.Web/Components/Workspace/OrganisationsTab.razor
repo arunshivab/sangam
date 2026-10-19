@@ -212,6 +212,20 @@ else
           </section>
         }
 
+        @if (_testersJoin is bool testersJoin)
+        {
+          @* rc.13 (decision of 19 Oct 2026): for a made-up demo organisation only, people may give themselves a place. *@
+          <section class="sg-end-role" data-panel="testers-join" aria-labelledby="testers-title">
+            <h3 class="sg-h3" id="testers-title">@L["Testers may join themselves"]</h3>
+            <p class="sg-muted">@L["For a made-up demo organisation only. When it is on, anyone signed in to {0} can give themselves a place in {1} through {0}, with no admin asking; each joins in their own name. It does not reach the organisations under it.", Info.AppName, _selected.Name]</p>
+            <div class="sg-actions">
+              <button type="button" class="sg-btn @(testersJoin ? "sg-btn--danger" : "sg-btn--secondary")" aria-pressed="@(testersJoin ? "true" : "false")" @onclick="SwitchTestersAsync" disabled="@_busy">
+                @(testersJoin ? L["Switch off"] : L["Switch on"])
+              </button>
+            </div>
+          </section>
+        }
+
         @if (_policy is not null)
         {
           <h3 class="sg-h3" data-panel="org-policy">@L["Security policy for {0}", _selected.Name]</h3>
@@ -254,6 +268,7 @@ else
     private string _closeReason = string.Empty;
     private bool _busy;
     private PolicyView? _policy;
+    private bool? _testersJoin;
     private bool _ok;
     private string? _message;
     private PartnerMemberRow? _changing;
@@ -307,6 +322,17 @@ else
         _changing = null;
         _members = await Partners.ListMembersAsync(Info.UserId, Info.AppId, org.Id);
         _policy = await Partners.GetOrganisationPolicyAsync(Info.UserId, Info.AppId, org.Id);
+        _testersJoin = await OrgConsole.TestersMayJoinAsync(Info.UserId, Info.AppId, org.Id);
+    }
+
+    private async Task SwitchTestersAsync()
+    {
+        _busy = true;
+        PartnerResult result = await OrgConsole.SetTestersMayJoinAsync(Info.UserId, Info.AppId, _selected!.Id, _testersJoin != true);
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = L[result.Message ?? string.Empty];
+        _testersJoin = await OrgConsole.TestersMayJoinAsync(Info.UserId, Info.AppId, _selected.Id);
     }
 
     private string PolicyParent => _selected?.ParentId is null ? L["the application"] : L["the organisations above"];

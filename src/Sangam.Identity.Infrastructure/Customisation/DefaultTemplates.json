@@ -502,5 +502,19 @@
       "subject": "അടിയന്തര ആക്സസ് ഉപയോഗിച്ചു: {{application}}-ൽ {{member}}, കേസ് {{case}}",
       "body": "നമസ്കാരം {{name}},\n\n{{member}} {{organisation}}-ൽ {{application}}-ൽ അടിയന്തര ആക്സസ് ഉപയോഗിച്ചു.\n\nകേസ്: {{case}} (ആപ്ലിക്കേഷന്റെ സ്വന്തം റഫറൻസ്)\n{{start}} മുതൽ പരമാവധി {{end}} വരെ\nനൽകിയ കാരണം: {{reason}}\n\nപാസ്‌കീ അല്ലെങ്കിൽ ഓതന്റിക്കേറ്റർ ആപ്പ് ഉപയോഗിച്ച് അത് അവർ തന്നെയാണെന്ന് വീണ്ടും തെളിയിച്ചു. ദയവായി ഈ ഉപയോഗം പരിശോധിച്ച്\nന്യായീകരിക്കാവുന്നത് അല്ലെങ്കിൽ ന്യായീകരിക്കാനാവാത്തത് എന്ന് അടയാളപ്പെടുത്തുക:\n\n{{link}}\n\n{{organisation}}-നുള്ള അടിയന്തര ആക്സസ് നിങ്ങൾ പരിശോധിക്കുന്നതിനാലാണ് നിങ്ങൾക്ക് ഇത് ലഭിക്കുന്നത്.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
     }
+  },
+  "staff_verify_required": {
+    "en-IN": {
+      "subject": "{{organisations}} asks you to verify with DigiLocker",
+      "body": "Hello {{name}},\n\n{{admin}} added you to {{organisations}} in {{application}}. {{organisations}} takes only people verified with DigiLocker, the government's document wallet, so your place starts once you verify.\n\nVerify here (sign in to your Sangam account if asked):\n\n{{link}}\n\nSangam reads only the name, date of birth and gender on your DigiLocker record, never a document or an Aadhaar number. Your place starts within a minute of verifying.\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "{{organisations}} आपसे DigiLocker से सत्यापन करने को कहता है",
+      "body": "नमस्ते {{name}},\n\n{{admin}} ने आपको {{application}} में {{organisations}} में जोड़ा है। {{organisations}} केवल DigiLocker (सरकार का दस्तावेज़ वॉलेट) से सत्यापित लोगों को लेता है, इसलिए आपका स्थान सत्यापन के बाद शुरू होगा।\n\nयहाँ सत्यापन करें (पूछे जाने पर अपने Sangam खाते में साइन इन करें):\n\n{{link}}\n\nSangam आपके DigiLocker रिकॉर्ड से केवल नाम, जन्मतिथि और लिंग पढ़ता है, कभी कोई दस्तावेज़ या आधार नंबर नहीं। सत्यापन के एक मिनट के भीतर आपका स्थान शुरू हो जाएगा।\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "DigiLocker ഉപയോഗിച്ച് സ്ഥിരീകരിക്കാൻ {{organisations}} ആവശ്യപ്പെടുന്നു",
+      "body": "നമസ്കാരം {{name}},\n\n{{admin}} നിങ്ങളെ {{application}}-ൽ {{organisations}}-ലേക്ക് ചേർത്തു. DigiLocker (സർക്കാരിന്റെ ഡോക്യുമെന്റ് വാലറ്റ്) ഉപയോഗിച്ച് സ്ഥിരീകരിച്ചവരെ മാത്രമേ {{organisations}} ചേർക്കുന്നുള്ളൂ, അതിനാൽ നിങ്ങൾ സ്ഥിരീകരിച്ചാൽ നിങ്ങളുടെ സ്ഥാനം ആരംഭിക്കും.\n\nഇവിടെ സ്ഥിരീകരിക്കുക (ആവശ്യപ്പെട്ടാൽ നിങ്ങളുടെ Sangam അക്കൗണ്ടിൽ സൈൻ ഇൻ ചെയ്യുക):\n\n{{link}}\n\nനിങ്ങളുടെ DigiLocker രേഖയിലെ പേര്, ജനനത്തീയതി, ലിംഗം എന്നിവ മാത്രമേ Sangam വായിക്കുന്നുള്ളൂ, ഒരിക്കലും ഒരു രേഖയോ ആധാർ നമ്പറോ അല്ല. സ്ഥിരീകരിച്ച് ഒരു മിനിറ്റിനുള്ളിൽ നിങ്ങളുടെ സ്ഥാനം ആരംഭിക്കും.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
   }
 }

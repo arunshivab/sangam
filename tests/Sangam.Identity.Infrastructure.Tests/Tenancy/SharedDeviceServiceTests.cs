@@ -172,7 +172,6 @@ public sealed class SharedDeviceServiceTests : IAsyncLifetime
     {
         (SharedDeviceInfo device, Guid session) = await EnrolledWithNurseAsync();
         Assert.False(await Devices().SetRulesAsync(_lipi, _nurse, _apulki, new DeviceRules(30, 8)));
-        Assert.False(await Devices().SetRulesAsync(_lipi, _admin, _ward, new DeviceRules(30, 8)));
         Assert.True(await Devices().SetRulesAsync(_lipi, _admin, _apulki, new DeviceRules(500, 48)));
         Assert.Equal(DeviceRules.Sangam, await Devices().RulesAsync(_apulki));
         Assert.True(await Devices().SetRulesAsync(_lipi, _admin, _apulki, new DeviceRules(30, 8)));
@@ -189,6 +188,32 @@ public sealed class SharedDeviceServiceTests : IAsyncLifetime
         Assert.Equal(DeviceGate.SignInAgain, await Devices().GateAsync(session, device.Id));
         Guid tile = await TileIdAsync(session);
         Assert.Equal(PinUnlockStatus.SignInAgain, (await Devices().UnlockAsync(device.Id, tile, "482916")).Status);
+    }
+
+    [PostgresFact]
+    public async Task AWard_MaySetItsOwnRules_OnlyStricterThanAbove_AndTheShortestHolds()
+    {
+        // rc.13: rules per organisation, not only per customer.
+        Assert.False(await Devices().SetRulesAsync(_lipi, _nurse, _ward, new DeviceRules(30, 8)));
+        Assert.True(await Devices().SetRulesAsync(_lipi, _admin, _apulki, new DeviceRules(60, 10)));
+        Assert.True(await Devices().SetRulesAsync(_lipi, _admin, _ward, new DeviceRules(90, 4)));
+
+        // Never longer than above: the ward's 90 minutes is kept as the customer's 60, which it simply follows.
+        Assert.Equal(new DeviceRules(60, 4), await Devices().RulesAsync(_ward));
+        DeviceRulesHere? here = await Devices().RulesHereAsync(_lipi, _admin, _ward);
+        Assert.NotNull(here);
+        Assert.Equal(new DeviceRules(60, 10), here.Limit);
+        Assert.True(here.SetHere);
+        Assert.Equal(new DeviceRules(60, 10), await Devices().RulesAsync(_apulki));
+
+        // The customer becoming stricter than the ward wins too.
+        Assert.True(await Devices().SetRulesAsync(_lipi, _admin, _apulki, new DeviceRules(30, 2)));
+        Assert.Equal(new DeviceRules(30, 2), await Devices().RulesAsync(_ward));
+
+        // Asking for the limit again means following the organisations above.
+        Assert.True(await Devices().SetRulesAsync(_lipi, _admin, _ward, new DeviceRules(30, 2)));
+        Assert.False((await Devices().RulesHereAsync(_lipi, _admin, _ward))!.SetHere);
+        Assert.Null(await Devices().RulesHereAsync(_lipi, _nurse, _ward));
     }
 
     [PostgresFact]

@@ -63,7 +63,9 @@ public sealed record OrgDecision(OrgDecisionKind Kind, string Name, string OrgNa
 /// <param name="Depth">How far below the tree's top.</param>
 /// <param name="People">People with a place there.</param>
 /// <param name="EmergencyAccess">rc.12 (M12): whether this organisation itself has switched emergency access on.</param>
-public sealed record OrgNode(Guid Id, string Name, Guid? ParentId, int Depth, int People, bool EmergencyAccess = false);
+/// <param name="VerifiedStaffOnly">rc.13: whether this organisation itself takes only people verified with DigiLocker.</param>
+/// <param name="VerifiedStaffAbove">rc.13: whether an organisation above it (inside the tree or not) has that on.</param>
+public sealed record OrgNode(Guid Id, string Name, Guid? ParentId, int Depth, int People, bool EmergencyAccess = false, bool VerifiedStaffOnly = false, bool VerifiedStaffAbove = false);
 
 /// <summary>One person's place at an organisation.</summary>
 /// <param name="UserId">The person.</param>
@@ -207,6 +209,38 @@ public interface IOrgConsoleService
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The result.</returns>
     Task<PartnerResult> SetEmergencyAccessAsync(Guid userId, Guid appId, Guid orgId, bool on, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// rc.13: switches "only people verified with DigiLocker may join" on or off for an organisation and those under it.
+    /// People already there keep their place; it cannot be switched off where an organisation above has it on.
+    /// </summary>
+    /// <param name="userId">An admin of the organisation (or above it, or of the application).</param>
+    /// <param name="appId">The application.</param>
+    /// <param name="orgId">The organisation.</param>
+    /// <param name="on">On or off.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    Task<PartnerResult> SetVerifiedStaffOnlyAsync(Guid userId, Guid appId, Guid orgId, bool on, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// rc.13 (for demos): whether people may give themselves a place at the organisation through the application, with
+    /// their own access token. <see langword="null"/> when the person is not one of the application's administrators.
+    /// </summary>
+    /// <param name="userId">An administrator of the application.</param>
+    /// <param name="appId">The application.</param>
+    /// <param name="orgId">The organisation.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The setting, or <see langword="null"/>.</returns>
+    Task<bool?> TestersMayJoinAsync(Guid userId, Guid appId, Guid orgId, CancellationToken cancellationToken = default);
+
+    /// <summary>rc.13 (for demos): lets testers join the organisation themselves, or stops it. Application administrators only.</summary>
+    /// <param name="userId">An administrator of the application.</param>
+    /// <param name="appId">The application.</param>
+    /// <param name="orgId">The organisation.</param>
+    /// <param name="on">On or off.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    Task<PartnerResult> SetTestersMayJoinAsync(Guid userId, Guid appId, Guid orgId, bool on, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Closes a customer that leaves the application (an application admin only): every place and admin right under it ends

@@ -356,6 +356,143 @@ public sealed partial class StaffServiceTests : IAsyncLifetime
         Assert.Equal(StaffAddStatus.Added, (await Staff().AddAsync(new StaffActor(_app, _admin), _mumbai, new StaffAddition(JoinCode: code.Code))).Status);
     }
 
+    [PostgresFact]
+    public async Task AVerifiedOnlyOrganisation_KeepsAnUnverifiedPersonWaiting_UntilTheyVerify()
+    {
+        // rc.13 (tenants' request): switched on at the group, it holds in the branches under it too.
+        Assert.False((await Scoped<IOrgConsoleService>().SetVerifiedStaffOnlyAsync(_priya, _app, _group, true)).Succeeded);
+        Assert.True((await Scoped<IOrgConsoleService>().SetVerifiedStaffOnlyAsync(_admin, _app, _group, true)).Succeeded);
+        Assert.False((await Scoped<IOrgConsoleService>().SetVerifiedStaffOnlyAsync(_admin, _app, _pune, false)).Succeeded);
+        OrgNode pune = (await Scoped<IOrgConsoleService>().TreeAsync(_admin, _app, _group))!.Single(n => n.Id == _pune);
+        Assert.True(pune.VerifiedStaffAbove);
+        Assert.False(pune.VerifiedStaffOnly);
+
+        JoinCodeIssued code = await Scoped<IJoinCodeService>().CreateAsync(_priya);
+        StaffAddResult added = await Staff().AddAsync(new StaffActor(_app, _admin), _pune, new StaffAddition(JoinCode: code.Code, Roles: ["doctor"]));
+        Assert.Equal(StaffAddStatus.Waiting, added.Status);
+        Assert.True(added.WaitsForDigiLocker);
+        Assert.Contains("verify", _provider.GetRequiredService<InMemoryEmailOutbox>().LatestFor("priya@example.test")!.Message.TextBody, StringComparison.OrdinalIgnoreCase);
+        StaffWaiting row = Assert.Single((await Staff().WaitingAsync(new StaffActor(_app, _admin), _pune))!);
+        Assert.True(row.WaitsForDigiLocker);
+
+        // Nothing is given, and nothing is given another way either (the management service refuses a new place).
+        Assert.Equal(0, await Scoped<EfStaffService>().ApplyDueAsync());
+        ManagementResult<MembershipDto> direct = await Scoped<IManagementService>().UpsertMembershipAsync(_app, _mumbai, _priya, new MembershipUpsert(), ManagementActor.AppAdmin(_admin));
+        Assert.Equal(ManagementStatus.Invalid, direct.Status);
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            Assert.False(await db.OrgMemberships.AnyAsync(m => m.UserId == _priya && m.RevokedAt == null));
+            (await db.Users.SingleAsync(u => u.Id == _priya)).IdentityVerifiedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync();
+        }
+
+        // Once she verifies, the sweep gives the place; it no longer waits.
+        Assert.Equal(1, await Scoped<EfStaffService>().ApplyDueAsync());
+        await using SangamDbContext check = _pg.CreateContext();
+        Assert.True(await check.OrgMemberships.AnyAsync(m => m.UserId == _priya && m.OrgId == _pune && m.RevokedAt == null));
+        Assert.Empty((await Staff().WaitingAsync(new StaffActor(_app, _admin), _pune))!);
+    }
+
+    [PostgresFact]
+    public async Task ANewJoiner_AtAVerifiedOnlyOrganisation_JoinsOnlyOnceVerified()
+    {
+        Assert.True((await Scoped<IOrgConsoleService>().SetVerifiedStaffOnlyAsync(_admin, _app, _pune, true)).Succeeded);
+        StaffAddResult added = await Staff().AddAsync(new StaffActor(_app, _admin), _pune, new StaffAddition(Details: Ravi()));
+        string token = LinkToken().Match(_provider.GetRequiredService<InMemoryEmailOutbox>().LatestFor("ravi@example.test")!.Message.TextBody).Groups[1].Value;
+        Assert.True((await Staff().GetInviteAsync(token))!.VerifiedOnly);
+        StaffCodeResult right = await Staff().CheckCodeAsync(token, added.ActivationCode!);
+        Guid ravi = await NewUserAsync("ravi@example.test", "Ravi", "Kumar");
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            SangamUser user = await db.Users.SingleAsync(u => u.Id == ravi);
+            user.DateOfBirth = new DateOnly(1992, 7, 1);
+            user.EmailConfirmed = true;
+            await db.SaveChangesAsync();
+        }
+
+        // He joins now (the link is used, so it cannot run out on him); the place at Pune waits for DigiLocker.
+        Assert.Equal(StaffJoinStatus.NeedsVerification, (await Staff().JoinAsync(right.InviteId!.Value, ravi)).Status);
+        Assert.Equal(StaffInviteState.Accepted, (await Staff().GetInviteAsync(token))!.State);
+        Assert.Equal(0, await Scoped<EfStaffService>().ApplyDueAsync());
+        Assert.True(Assert.Single((await Staff().WaitingAsync(new StaffActor(_app, _admin), _pune))!).WaitsForDigiLocker);
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            Assert.False(await db.OrgMemberships.AnyAsync(m => m.UserId == ravi));
+            (await db.Users.SingleAsync(u => u.Id == ravi)).IdentityVerifiedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync();
+        }
+
+        Assert.Equal(1, await Scoped<EfStaffService>().ApplyDueAsync());
+        await using SangamDbContext check = _pg.CreateContext();
+        Assert.True(await check.OrgMemberships.AnyAsync(m => m.UserId == ravi && m.OrgId == _pune && m.RevokedAt == null));
+    }
+
+    [PostgresFact]
+    public async Task SomeoneAlreadyThere_KeepsTheirPlace_WhenTheOrganisationTurnsVerifiedOnly()
+    {
+        JoinCodeIssued code = await Scoped<IJoinCodeService>().CreateAsync(_priya);
+        Assert.Equal(StaffAddStatus.Added, (await Staff().AddAsync(new StaffActor(_app, _admin), _pune, new StaffAddition(JoinCode: code.Code, Roles: ["doctor"]))).Status);
+        Assert.True((await Scoped<IOrgConsoleService>().SetVerifiedStaffOnlyAsync(_admin, _app, _pune, true)).Succeeded);
+
+        // Her roles there can still change; a new branch waits for DigiLocker.
+        Assert.Equal(StaffAddStatus.Added, (await Staff().AddAsync(new StaffActor(_app, _admin), _pune, new StaffAddition(UserId: _priya, Roles: ["administrator"]))).Status);
+        Assert.Equal(StaffAddStatus.Added, (await Staff().AddAsync(new StaffActor(_app, _admin), _mumbai, new StaffAddition(UserId: _priya))).Status);
+        Assert.True((await Scoped<IOrgConsoleService>().SetVerifiedStaffOnlyAsync(_admin, _app, _group, true)).Succeeded);
+        Assert.Equal(StaffAddStatus.Added, (await Staff().AddAsync(new StaffActor(_app, _admin), _mumbai, new StaffAddition(UserId: _priya, Roles: ["doctor"]))).Status);
+        StaffAddResult group = await Staff().AddAsync(new StaffActor(_app, _admin), _group, new StaffAddition(UserId: _priya));
+        Assert.True(group.WaitsForDigiLocker);
+    }
+
+    [PostgresFact]
+    public async Task WaitingForDigiLocker_NeverHoldsUpOthers_AndAnEndedAdditionIsCancelled()
+    {
+        // rc.13 (review): additions that can only wait are not in the sweep's batch; one that ended before it started goes.
+        Assert.True((await Scoped<IOrgConsoleService>().SetVerifiedStaffOnlyAsync(_admin, _app, _pune, true)).Succeeded);
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        Guid ended = Guid.NewGuid();
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                Guid stuck = await NewUserAsync($"stuck{i}@example.test", "Stuck", "Person" + i);
+                db.PendingMemberships.Add(new PendingMembership { Id = Guid.NewGuid(), UserId = stuck, AppId = _app, OrgId = _pune, Roles = "[]", CreatedByUserId = _admin, CreatedAt = now.AddDays(-10) });
+            }
+
+            db.PendingMemberships.Add(new PendingMembership { Id = ended, UserId = _priya, AppId = _app, OrgId = _pune, Roles = "[]", CreatedByUserId = _admin, CreatedAt = now.AddDays(-9), ExpiresAt = now.AddMinutes(-1) });
+            db.PendingMemberships.Add(new PendingMembership { Id = Guid.NewGuid(), UserId = _priya, AppId = _app, OrgId = _mumbai, Roles = "[]", CreatedByUserId = _admin, CreatedAt = now });
+            await db.SaveChangesAsync();
+        }
+
+        Assert.Equal(1, await Scoped<EfStaffService>().ApplyDueAsync());
+        await using SangamDbContext check = _pg.CreateContext();
+        Assert.True(await check.OrgMemberships.AnyAsync(m => m.UserId == _priya && m.OrgId == _mumbai && m.RevokedAt == null));
+        Assert.NotNull((await check.PendingMemberships.SingleAsync(p => p.Id == ended)).CancelledAt);
+        Assert.Equal(3, await check.PendingMemberships.CountAsync(p => p.OrgId == _pune && p.AppliedAt == null && p.CancelledAt == null));
+    }
+
+    [PostgresFact]
+    public async Task TheAdminAnApplicationNames_MustBeAnAdminThere_AndVerifiedForANewPlace()
+    {
+        // rc.13: what PUT and DELETE /orgs/{id}/members/{user} check.
+        Assert.Equal(StaffActingAdmin.May, await Staff().ActingAdminAsync(new StaffActor(_app, _admin, ViaApi: true), _mumbai, _priya));
+        Assert.Equal(StaffActingAdmin.NotAdmin, await Staff().ActingAdminAsync(new StaffActor(_app, _unverified, ViaApi: true), _mumbai, _priya));
+        Assert.Equal(StaffActingAdmin.NotAdmin, await Staff().ActingAdminAsync(new StaffActor(_app, _priya, ViaApi: true), _pune, _priya));
+        Assert.Equal(StaffActingAdmin.MustBeVerified, await Staff().ActingAdminAsync(new StaffActor(_app, _unverified, ViaApi: true), _pune, _priya));
+        Assert.Equal(StaffActingAdmin.NotAdmin, await Staff().ActingAdminAsync(new StaffActor(_app, _admin, ViaApi: true), Guid.NewGuid(), _priya));
+
+        // The management service checks the admin's right to add too, however the call reaches it (Priya uses the
+        // application, so the consent-first rule is not what refuses).
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            db.AppGrants.Add(new AppGrant { Id = Guid.NewGuid(), UserId = _priya, AppId = _app, GrantedAt = DateTimeOffset.UtcNow });
+            await db.SaveChangesAsync();
+        }
+
+        ManagementResult<MembershipDto> refused = await Scoped<IManagementService>().UpsertMembershipAsync(_app, _pune, _priya, new MembershipUpsert(), ManagementActor.ApiFor(_unverified));
+        Assert.Equal(ManagementStatus.Invalid, refused.Status);
+        Assert.Contains("verified with DigiLocker", refused.Message, StringComparison.Ordinal);
+    }
+
     private static StaffDetails Ravi() => new("Ravi", "Kumar", "ravi@example.test", "+919811111111", new DateOnly(1992, 7, 1));
 
     [GeneratedRegex(@"/staff/([A-Za-z0-9_-]+)")]

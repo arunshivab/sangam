@@ -274,6 +274,25 @@ public sealed partial class EfManagementService : IManagementService
             return ManagementResult.NotFound<MembershipDto>("The user does not exist or is not active.");
         }
 
+        // rc.13: an organisation that takes only people verified with DigiLocker gives no new place to anyone else. Someone
+        // already there keeps their place and may have their roles changed.
+        DateTimeOffset checkedAt = _clock.UtcNow;
+        bool newPlace = !await _db.OrgMemberships.AnyAsync(m => m.AppId == appId && m.OrgId == orgId && m.UserId == userId && m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > checkedAt), cancellationToken).ConfigureAwait(false);
+        if (newPlace && !await VerifiedStaff.MayJoinAsync(_db, org.Path, userId, cancellationToken).ConfigureAwait(false))
+        {
+            return ManagementResult.Invalid<MembershipDto>(VerifiedStaff.Required);
+        }
+
+        // rc.13: through the API a new place needs the admin who asked to be one who may add people (verified with
+        // DigiLocker, or under the application's dated exception), checked here too so it holds however the call arrives.
+        if (newPlace && actor.Type == AuditActorType.Api && actor.UserId is Guid asking
+            && !(asking == userId && org.TestersMayJoinThemselves)
+            && !await _db.Users.AnyAsync(u => u.Id == asking && u.IdentityVerifiedAt != null, cancellationToken).ConfigureAwait(false)
+            && !await _db.Apps.AnyAsync(a => a.Id == appId && a.AddWithoutDigiLockerUntil != null && a.AddWithoutDigiLockerUntil > checkedAt, cancellationToken).ConfigureAwait(false))
+        {
+            return ManagementResult.Invalid<MembershipDto>("Only an admin verified with DigiLocker can add people.");
+        }
+
         List<string> codes = [.. input.RoleCodes.Select(c => c.Trim()).Where(c => c.Length > 0).Distinct(StringComparer.Ordinal)];
         if (codes.Count > MaxRolesPerOrganisation)
         {

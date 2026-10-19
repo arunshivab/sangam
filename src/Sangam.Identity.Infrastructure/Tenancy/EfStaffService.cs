@@ -327,6 +327,24 @@ public sealed partial class EfStaffService : IStaffService
     private async Task<StaffAddResult> PlaceAsync(StaffActor actor, Placement placement, Guid userId, string how, Guid? inviteId, CancellationToken cancellationToken)
     {
         DateTimeOffset now = _clock.UtcNow;
+
+        // rc.13: an organisation that takes only people verified with DigiLocker keeps the addition waiting until the person
+        // verifies (the sweep then gives the place within a minute). Someone already there is not affected.
+        bool alreadyThere = await HasLivePlaceAsync(actor.AppId, placement.Org.Id, userId, cancellationToken).ConfigureAwait(false);
+        if (!alreadyThere && !await VerifiedStaff.MayJoinAsync(_db, placement.Org.Path, userId, cancellationToken).ConfigureAwait(false))
+        {
+            _db.PendingMemberships.Add(Pending(actor, placement, inviteId, userId, now));
+            await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await AuditAddAsync(actor, placement, userId, how, cancellationToken, inviteId, waitsForDigiLocker: true).ConfigureAwait(false);
+            await AskToVerifyAsync(actor, placement.Org, userId, cancellationToken).ConfigureAwait(false);
+            return new StaffAddResult(
+                StaffAddStatus.Waiting,
+                "Added. This organisation takes only people verified with DigiLocker, so it starts when they verify. We have e-mailed them how.",
+                UserId: userId,
+                AddedBeforeDigiLocker: placement.BeforeDigiLocker,
+                WaitsForDigiLocker: true);
+        }
+
         if (placement.StartsOn is not null)
         {
             _db.PendingMemberships.Add(Pending(actor, placement, inviteId, userId, now));
@@ -367,7 +385,7 @@ public sealed partial class EfStaffService : IStaffService
         CreatedAt = now,
     };
 
-    private Task AuditAddAsync(StaffActor actor, Placement placement, Guid? userId, string how, CancellationToken cancellationToken, Guid? inviteId = null)
+    private Task AuditAddAsync(StaffActor actor, Placement placement, Guid? userId, string how, CancellationToken cancellationToken, Guid? inviteId = null, bool waitsForDigiLocker = false)
         => _audit.WriteAsync(
             new AuditEntry(AuditActions.StaffAdd, AuditActorType.Admin, actor.AdminUserId, actor.AppId, userId is null ? "staff_invite" : "user", userId ?? inviteId,
                 Metadata: JsonSerializer.Serialize(new Dictionary<string, object?>
@@ -380,8 +398,39 @@ public sealed partial class EfStaffService : IStaffService
                     ["before_digilocker"] = placement.BeforeDigiLocker,
                     ["via"] = actor.ViaApi ? "api" : "console",
                     ["invite"] = inviteId,
+                    ["waits_for_digilocker"] = waitsForDigiLocker,
                 })),
             cancellationToken);
+
+    /// <summary>rc.13: tells a known person that the organisation takes only people verified with DigiLocker, and how to verify.</summary>
+    private async Task AskToVerifyAsync(StaffActor actor, Organisation org, Guid userId, CancellationToken cancellationToken)
+    {
+        SangamUser? person = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId, cancellationToken).ConfigureAwait(false);
+        if (person?.Email is not { Length: > 0 } address)
+        {
+            return;
+        }
+
+        string adminName = await NameAsync(actor.AdminUserId, cancellationToken).ConfigureAwait(false);
+        string application = await _db.Apps.Where(a => a.Id == actor.AppId).Select(a => a.DisplayName).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false) ?? string.Empty;
+        EmailMessage message = await _templates.EmailAsync(
+            MessageTemplateKinds.StaffVerifyRequired,
+            CultureInfo.CurrentUICulture.Name,
+            actor.AppId,
+            org.Id,
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["name"] = person.FirstName,
+                ["application"] = application,
+                ["organisations"] = org.Name,
+                ["admin"] = adminName,
+                ["link"] = $"{_origin}/identity/required?join=true&returnUrl=%2Faccount",
+            },
+            address,
+            (person.FirstName + " " + person.LastName).Trim(),
+            cancellationToken).ConfigureAwait(false);
+        await _email.SendAsync(message, cancellationToken).ConfigureAwait(false);
+    }
 
     // ------------------------------------------------------------------ waiting additions
 
@@ -396,6 +445,7 @@ public sealed partial class EfStaffService : IStaffService
         }
 
         DateTimeOffset now = _clock.UtcNow;
+        bool verifiedOnly = await VerifiedStaff.OnAtAsync(_db, org.Path, cancellationToken).ConfigureAwait(false);
         var rows = await (
             from p in _db.PendingMemberships.AsNoTracking()
             where p.AppId == actor.AppId && p.OrgId == orgId && p.AppliedAt == null && p.CancelledAt == null
@@ -417,6 +467,7 @@ public sealed partial class EfStaffService : IStaffService
                 Accepted = i != null && i.AcceptedAt != null,
                 InviteExpires = i == null ? (DateTimeOffset?)null : i.ExpiresAt,
                 Before = i != null && i.AddedBeforeDigiLocker,
+                Verified = u != null && u.IdentityVerifiedAt != null,
             }).ToListAsync(cancellationToken).ConfigureAwait(false);
         return
         [
@@ -428,8 +479,32 @@ public sealed partial class EfStaffService : IStaffService
                 r.StartsOn,
                 r.UserId is not null || r.Accepted,
                 r.UserId is null ? r.InviteExpires : null,
-                r.Before)),
+                r.Before,
+                verifiedOnly && r.UserId is not null && !r.Verified)),
         ];
+    }
+
+    /// <inheritdoc />
+    public async Task<StaffActingAdmin> ActingAdminAsync(StaffActor actor, Guid orgId, Guid personId, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(actor);
+        Organisation? org = await _rights.OrganisationAsync(actor.AppId, orgId, cancellationToken).ConfigureAwait(false);
+
+        // rc.13 (for demos): a tester giving themselves a place where the application's administrators allow it.
+        if (org is not null && actor.AdminUserId == personId && org.TestersMayJoinThemselves && org.Status == OrganisationStatus.Active)
+        {
+            return StaffActingAdmin.Themselves;
+        }
+
+        if (org is null || !await _rights.ManagesAsync(actor.AppId, org, actor.AdminUserId, cancellationToken).ConfigureAwait(false))
+        {
+            return StaffActingAdmin.NotAdmin;
+        }
+
+        bool newPlace = !await HasLivePlaceAsync(actor.AppId, orgId, personId, cancellationToken).ConfigureAwait(false);
+        return newPlace && !(await _rights.MayAddAsync(actor.AppId, actor.AdminUserId, cancellationToken).ConfigureAwait(false)).May
+            ? StaffActingAdmin.MustBeVerified
+            : StaffActingAdmin.May;
     }
 
     /// <inheritdoc />
@@ -478,14 +553,21 @@ public sealed partial class EfStaffService : IStaffService
             join o in _db.Organisations.AsNoTracking() on p.OrgId equals o.Id
             join a in _db.Apps.AsNoTracking() on p.AppId equals a.Id
             orderby a.DisplayName, o.Name
-            select new { App = a.DisplayName, Org = o.Name }).ToListAsync(cancellationToken).ConfigureAwait(false);
+            select new { App = a.DisplayName, Org = o.Name, o.Path }).ToListAsync(cancellationToken).ConfigureAwait(false);
+        bool verifiedOnly = false;
+        foreach (string path in places.Select(p => p.Path).Distinct(StringComparer.Ordinal))
+        {
+            verifiedOnly |= await VerifiedStaff.OnAtAsync(_db, path, cancellationToken).ConfigureAwait(false);
+        }
+
         return new StaffInviteView(
             State(invite),
             invite.FirstName,
             LogRedaction.MaskEmail(invite.Email),
             invite.ExistingUserId is not null,
             [.. places.GroupBy(p => p.App).Select(g => new StaffInvitePlace(g.Key, [.. g.Select(p => p.Org).Distinct()]))],
-            await NameAsync(invite.CreatedByUserId, cancellationToken).ConfigureAwait(false));
+            await NameAsync(invite.CreatedByUserId, cancellationToken).ConfigureAwait(false),
+            verifiedOnly);
     }
 
     /// <inheritdoc />
@@ -563,12 +645,26 @@ public sealed partial class EfStaffService : IStaffService
             return new StaffJoinResult(StaffJoinStatus.Refused, $"This activation was sent to {LogRedaction.MaskEmail(invite.Email)}. Sign in with the account that has that address, or create one with it.");
         }
 
-        DateTimeOffset now = _clock.UtcNow;
-        invite.AcceptedAt = now;
-        invite.AcceptedByUserId = userId;
         List<PendingMembership> waiting = await _db.PendingMemberships
             .Where(p => p.InviteId == invite.Id && p.AppliedAt == null && p.CancelledAt == null)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
+
+        // rc.13: the person joins now; a place at an organisation that takes only people verified with DigiLocker waits
+        // (the sweep gives it within a minute of their verifying), the others start as usual.
+        bool waitsForDigiLocker = false;
+        if (user.IdentityVerifiedAt is null)
+        {
+            List<Guid> orgIds = [.. waiting.Select(p => p.OrgId).Distinct()];
+            List<string> paths = await _db.Organisations.AsNoTracking().Where(o => orgIds.Contains(o.Id)).Select(o => o.Path).ToListAsync(cancellationToken).ConfigureAwait(false);
+            foreach (string path in paths)
+            {
+                waitsForDigiLocker |= await VerifiedStaff.OnAtAsync(_db, path, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        DateTimeOffset now = _clock.UtcNow;
+        invite.AcceptedAt = now;
+        invite.AcceptedByUserId = userId;
         foreach (PendingMembership p in waiting)
         {
             p.UserId = userId;
@@ -582,7 +678,9 @@ public sealed partial class EfStaffService : IStaffService
 
         // Joining is the person's own act, so each application is linked; what starts later waits for the sweep.
         await ApplyDueAsync(waiting, cancellationToken).ConfigureAwait(false);
-        return new StaffJoinResult(StaffJoinStatus.Joined, "You have joined. Sign in to the application with Sangam to start.");
+        return waitsForDigiLocker
+            ? new StaffJoinResult(StaffJoinStatus.NeedsVerification, "You have joined. This organisation wants you to verify with DigiLocker before your place there starts; it starts within a minute of verifying.")
+            : new StaffJoinResult(StaffJoinStatus.Joined, "You have joined. Sign in to the application with Sangam to start.");
     }
 
     // ------------------------------------------------------------------ applying (also the sweep)
@@ -595,11 +693,27 @@ public sealed partial class EfStaffService : IStaffService
     /// <returns>How many were applied.</returns>
     public async Task<int> ApplyDueAsync(CancellationToken cancellationToken = default)
     {
-        DateOnly today = StaffCodes.IndiaToday(_clock.UtcNow);
-        List<PendingMembership> due = await _db.PendingMemberships
-            .Where(p => p.UserId != null && p.AppliedAt == null && p.CancelledAt == null && (p.StartsOn == null || p.StartsOn <= today))
-            .OrderBy(p => p.CreatedAt)
-            .Take(200)
+        DateTimeOffset now = _clock.UtcNow;
+        DateOnly today = StaffCodes.IndiaToday(now);
+
+        // rc.13: an addition that ended before it could start is cancelled, waiting for DigiLocker or not.
+        await _db.PendingMemberships
+            .Where(p => p.AppliedAt == null && p.CancelledAt == null && p.ExpiresAt != null && p.ExpiresAt <= now)
+            .ExecuteUpdateAsync(u => u.SetProperty(p => p.CancelledAt, now), cancellationToken).ConfigureAwait(false);
+
+        // rc.13: additions that can only wait (the person has not verified with DigiLocker, the organisation or one above it
+        // takes only verified people, and they have no live place there yet) are left out in the query itself, so however
+        // many there are they never hold up the rest.
+        List<PendingMembership> due = await (
+            from p in _db.PendingMemberships
+            where p.UserId != null && p.AppliedAt == null && p.CancelledAt == null && (p.StartsOn == null || p.StartsOn <= today)
+            join o in _db.Organisations on p.OrgId equals o.Id
+            where _db.Users.Any(u => u.Id == p.UserId && u.IdentityVerifiedAt != null)
+                || !_db.Organisations.Any(v => v.VerifiedStaffOnly && v.DeletedAt == null && o.Path.StartsWith(v.Path))
+                || _db.OrgMemberships.Any(m => m.AppId == p.AppId && m.OrgId == p.OrgId && m.UserId == p.UserId && m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > now))
+            orderby p.CreatedAt
+            select p)
+            .Take(500)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
         return await ApplyDueAsync(due, cancellationToken).ConfigureAwait(false);
     }
@@ -619,21 +733,37 @@ public sealed partial class EfStaffService : IStaffService
                 continue;
             }
 
+            // rc.13: it waits (it is not cancelled) while the organisation takes only verified people and they have not verified.
+            string? path = await _db.Organisations.AsNoTracking().Where(o => o.Id == p.OrgId).Select(o => o.Path).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+            if (path is not null && !await HasLivePlaceAsync(p.AppId, p.OrgId, p.UserId!.Value, cancellationToken).ConfigureAwait(false)
+                && !await VerifiedStaff.MayJoinAsync(_db, path, p.UserId.Value, cancellationToken).ConfigureAwait(false))
+            {
+                continue;
+            }
+
             ManagementResult<MembershipDto> given = await GiveAsync(p.AppId, p.OrgId, p.UserId!.Value, Codes(p.Roles), expires, p.CreatedByUserId, cancellationToken).ConfigureAwait(false);
             if (given.Status == ManagementStatus.Ok)
             {
                 p.AppliedAt = now;
                 applied++;
             }
-            else
+            else if (!string.Equals(given.Message, VerifiedStaff.Required, StringComparison.Ordinal))
             {
-                // The organisation closed or a role was retired meanwhile: it is not retried for ever.
+                // The organisation closed or a role was retired meanwhile: it is not retried for ever. (One that became
+                // DigiLocker-only meanwhile keeps waiting instead.)
                 p.CancelledAt = now;
             }
         }
 
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return applied;
+    }
+
+    /// <summary>rc.13: whether the person holds a live place (not ended, not expired) at the organisation.</summary>
+    private Task<bool> HasLivePlaceAsync(Guid appId, Guid orgId, Guid userId, CancellationToken cancellationToken)
+    {
+        DateTimeOffset now = _clock.UtcNow;
+        return _db.OrgMemberships.AnyAsync(m => m.AppId == appId && m.OrgId == orgId && m.UserId == userId && m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > now), cancellationToken);
     }
 
     /// <summary>

@@ -554,3 +554,7 @@ a.sg-who:focus-visible { outline: 2px solid var(--sg-ochre); outline-offset: 2px
 .sg-field--area { min-height: 96px; padding-top: 10px; resize: vertical; font: 400 16px/1.5 var(--sg-font-body); }
 .sg-name-hint { margin: -8px 0 var(--sg-space-3); }
 @media (max-width: 480px) { .sg-btn-row .sg-btn { white-space: normal; } }
+
+/* rc.13: the branch choice when approving a TV or kiosk sign-in. */
+.sg-device-branch { border: 0; padding: 0; margin: 0 0 var(--sg-space-4); display: grid; gap: var(--sg-space-2); min-width: 0; }
+.sg-device-branch legend { padding: 0; margin-bottom: var(--sg-space-2); }

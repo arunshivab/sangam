@@ -162,26 +162,32 @@ public final class ManagementClient {
     /**
      * Gives a person a role at an organisation; {@code expiresAt} (ISO 8601) makes it time-limited. rc.5: only someone who
      * already uses your application; anyone else answers 404 — add them with {@link #addStaff} instead. rc.12: a role holds
-     * only where it is given, so {@code appliesToDescendants} must be false.
+     * only where it is given, so {@code appliesToDescendants} must be false. rc.13: for one of your admins (an admin of
+     * that organisation): {@code adminAccessToken} is the token Sangam gave your application when they signed in.
      */
-    public JsonNode upsertMembership(String orgId, String userId, String role, boolean appliesToDescendants, String expiresAt) throws IOException, InterruptedException {
+    public JsonNode upsertMembership(String orgId, String userId, String adminAccessToken, String role, boolean appliesToDescendants, String expiresAt) throws IOException, InterruptedException {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("role", role);
         body.put("appliesToDescendants", appliesToDescendants);
         if (expiresAt != null) {
             body.put("expiresAt", expiresAt);
         }
-        return send("PUT", "orgs/" + orgId + "/members/" + userId, body);
+        return send("PUT", "orgs/" + orgId + "/members/" + userId, body, adminAccessToken);
     }
 
-    /** rc.12: every role a person holds at an organisation; an empty list keeps them there as staff. */
-    public JsonNode setRoles(String orgId, String userId, List<String> roles, String expiresAt) throws IOException, InterruptedException {
+    /** rc.12: every role a person holds at an organisation; an empty list keeps them there as staff. rc.13: for one of your admins. */
+    public JsonNode setRoles(String orgId, String userId, String adminAccessToken, List<String> roles, String expiresAt) throws IOException, InterruptedException {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("roles", roles);
         if (expiresAt != null) {
             body.put("expiresAt", expiresAt);
         }
-        return send("PUT", "orgs/" + orgId + "/members/" + userId, body);
+        return send("PUT", "orgs/" + orgId + "/members/" + userId, body, adminAccessToken);
+    }
+
+    /** rc.13: ends a person's place at an organisation now, for one of your admins. */
+    public JsonNode removeMember(String orgId, String userId, String adminAccessToken) throws IOException, InterruptedException {
+        return send("DELETE", "orgs/" + orgId + "/members/" + userId, null, adminAccessToken);
     }
 
     /**

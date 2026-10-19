@@ -187,12 +187,18 @@ public sealed class EfOrgConsoleService : IOrgConsoleService
             .Select(g => new { g.Key, People = g.Select(m => m.UserId).Distinct().Count() })
             .ToDictionaryAsync(x => x.Key, x => x.People, cancellationToken).ConfigureAwait(false);
 
+        // rc.13: which organisations on the way down (above the tree's top too) take only DigiLocker-verified people.
+        List<Guid> above = [.. OrganisationPath.Ids(org.Path).Where(id => id != org.Id)];
+        HashSet<Guid> verifiedOnly = [.. orgs.Where(o => o.VerifiedStaffOnly).Select(o => o.Id)];
+        verifiedOnly.UnionWith(await _db.Organisations.AsNoTracking().Where(o => above.Contains(o.Id) && o.VerifiedStaffOnly && o.DeletedAt == null).Select(o => o.Id).ToListAsync(cancellationToken).ConfigureAwait(false));
+        bool Inherited(Organisation node) => OrganisationPath.Ids(node.Path).Any(id => id != node.Id && verifiedOnly.Contains(id));
+
         // Depth-first, children by name, so the list reads as the tree.
         ILookup<Guid?, Organisation> children = orgs.ToLookup(o => o.Id == org.Id ? null : o.ParentOrgId);
         List<OrgNode> nodes = [];
         void Walk(Organisation node, int depth)
         {
-            nodes.Add(new OrgNode(node.Id, node.Name, node.Id == org.Id ? null : node.ParentOrgId, depth, people.GetValueOrDefault(node.Id), node.EmergencyAccess));
+            nodes.Add(new OrgNode(node.Id, node.Name, node.Id == org.Id ? null : node.ParentOrgId, depth, people.GetValueOrDefault(node.Id), node.EmergencyAccess, node.VerifiedStaffOnly, Inherited(node)));
             foreach (Organisation child in children[node.Id].OrderBy(c => c.Name, StringComparer.CurrentCulture))
             {
                 Walk(child, depth + 1);
@@ -450,6 +456,72 @@ public sealed class EfOrgConsoleService : IOrgConsoleService
             new AuditEntry(AuditActions.OrgEmergencyAccess, AuditActorType.Admin, userId, appId, "organisation", orgId, Metadata: JsonSerializer.Serialize(new { on })),
             cancellationToken).ConfigureAwait(false);
         return PartnerResult.Ok(on ? "Emergency access is on here." : "Emergency access is off here.");
+    }
+
+    /// <inheritdoc />
+    public async Task<PartnerResult> SetVerifiedStaffOnlyAsync(Guid userId, Guid appId, Guid orgId, bool on, CancellationToken cancellationToken = default)
+    {
+        Organisation? org = await ManagedAsync(userId, appId, orgId, cancellationToken).ConfigureAwait(false);
+        if (org is null)
+        {
+            return PartnerResult.Refused("You are not an admin there.");
+        }
+
+        List<Guid> above = [.. OrganisationPath.Ids(org.Path).Where(id => id != org.Id)];
+        if (!on && await _db.Organisations.AnyAsync(o => above.Contains(o.Id) && o.VerifiedStaffOnly && o.DeletedAt == null, cancellationToken).ConfigureAwait(false))
+        {
+            return PartnerResult.Refused("An organisation above this one takes only people verified with DigiLocker, so this one does too.");
+        }
+
+        Organisation tracked = await _db.Organisations.SingleAsync(o => o.Id == orgId, cancellationToken).ConfigureAwait(false);
+        tracked.VerifiedStaffOnly = on;
+        tracked.UpdatedAt = _clock.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await _audit.WriteAsync(
+            new AuditEntry(AuditActions.OrgVerifiedStaff, AuditActorType.Admin, userId, appId, "organisation", orgId, Metadata: JsonSerializer.Serialize(new { on })),
+            cancellationToken).ConfigureAwait(false);
+        return PartnerResult.Ok(on
+            ? "Only people verified with DigiLocker can join here now. People already here keep their place."
+            : "People can join here without DigiLocker again.");
+    }
+
+    /// <inheritdoc />
+    public async Task<bool?> TestersMayJoinAsync(Guid userId, Guid appId, Guid orgId, CancellationToken cancellationToken = default)
+    {
+        if (!await _db.AppAdmins.AnyAsync(a => a.AppId == appId && a.UserId == userId && a.RevokedAt == null, cancellationToken).ConfigureAwait(false))
+        {
+            return null;
+        }
+
+        return await _db.Organisations.AsNoTracking()
+            .Where(o => o.Id == orgId && o.RegisteredViaAppId == appId && o.DeletedAt == null)
+            .Select(o => (bool?)o.TestersMayJoinThemselves)
+            .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<PartnerResult> SetTestersMayJoinAsync(Guid userId, Guid appId, Guid orgId, bool on, CancellationToken cancellationToken = default)
+    {
+        if (!await _db.AppAdmins.AnyAsync(a => a.AppId == appId && a.UserId == userId && a.RevokedAt == null, cancellationToken).ConfigureAwait(false))
+        {
+            return PartnerResult.Refused("Only the application's administrators can let testers join an organisation themselves.");
+        }
+
+        Organisation? org = await _db.Organisations.FirstOrDefaultAsync(o => o.Id == orgId && o.RegisteredViaAppId == appId && o.DeletedAt == null, cancellationToken).ConfigureAwait(false);
+        if (org is null)
+        {
+            return PartnerResult.Refused("The organisation does not exist.");
+        }
+
+        org.TestersMayJoinThemselves = on;
+        org.UpdatedAt = _clock.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await _audit.WriteAsync(
+            new AuditEntry(AuditActions.OrgTestersJoin, AuditActorType.Admin, userId, appId, "organisation", orgId, Metadata: JsonSerializer.Serialize(new { on })),
+            cancellationToken).ConfigureAwait(false);
+        return PartnerResult.Ok(on
+            ? "Testers may now join this organisation themselves. Use it only for a made-up demo organisation."
+            : "Testers can no longer join this organisation themselves.");
     }
 
     /// <inheritdoc />

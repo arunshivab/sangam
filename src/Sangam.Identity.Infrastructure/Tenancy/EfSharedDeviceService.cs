@@ -28,6 +28,10 @@ public sealed class EfSharedDeviceService : ISharedDeviceService
     public static readonly TimeSpan EnrolLifetime = TimeSpan.FromMinutes(15);
 
     private static readonly PasswordHasher<UserPin> PinHasher = new();
+
+    // The shortest an organisation may make the rules.
+    private const int MinPinMinutes = 5;
+    private const int MinFullSignInHours = 1;
     private readonly SangamDbContext _db;
     private readonly StaffRights _rights;
     private readonly IAuditWriter _audit;
@@ -152,7 +156,7 @@ public sealed class EfSharedDeviceService : ISharedDeviceService
             return null;
         }
 
-        DeviceRules rules = await RulesAsync(OrganisationPath.CustomerId(found.Path), cancellationToken).ConfigureAwait(false);
+        DeviceRules rules = await RulesOnPathAsync(OrganisationPath.Ids(found.Path), cancellationToken).ConfigureAwait(false);
         return new SharedDeviceInfo(found.Device.Id, found.Device.AppId, found.Device.OrgId, found.Device.Label, found.Name, rules);
     }
 
@@ -223,36 +227,70 @@ public sealed class EfSharedDeviceService : ISharedDeviceService
     }
 
     /// <inheritdoc />
-    public async Task<DeviceRules> RulesAsync(Guid customerId, CancellationToken cancellationToken = default)
+    public async Task<DeviceRules> RulesAsync(Guid orgId, CancellationToken cancellationToken = default)
     {
-        var stored = await _db.Organisations.AsNoTracking()
-            .Where(o => o.Id == customerId)
-            .Select(o => new { o.DevicePinMinutes, o.DeviceFullSignInHours })
-            .FirstOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
-        return Stricter(stored?.DevicePinMinutes, stored?.DeviceFullSignInHours);
+        string? path = await _db.Organisations.AsNoTracking().Where(o => o.Id == orgId).Select(o => o.Path).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        return path is null ? DeviceRules.Sangam : await RulesOnPathAsync(OrganisationPath.Ids(path), cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> SetRulesAsync(Guid appId, Guid adminUserId, Guid customerId, DeviceRules rules, CancellationToken cancellationToken = default)
+    public async Task<DeviceRulesHere?> RulesHereAsync(Guid appId, Guid adminUserId, Guid orgId, CancellationToken cancellationToken = default)
+    {
+        Organisation? org = await _rights.OrganisationAsync(appId, orgId, cancellationToken).ConfigureAwait(false);
+        if (org is null || !await _rights.ManagesAsync(appId, org, adminUserId, cancellationToken).ConfigureAwait(false))
+        {
+            return null;
+        }
+
+        IReadOnlyList<Guid> ids = OrganisationPath.Ids(org.Path);
+        DeviceRules limit = await RulesOnPathAsync([.. ids.Where(id => id != org.Id)], cancellationToken).ConfigureAwait(false);
+        DeviceRules rules = await RulesOnPathAsync(ids, cancellationToken).ConfigureAwait(false);
+        return new DeviceRulesHere(rules, limit, org.DevicePinMinutes is not null || org.DeviceFullSignInHours is not null);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> SetRulesAsync(Guid appId, Guid adminUserId, Guid orgId, DeviceRules rules, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(rules);
-        Organisation? customer = await _db.Organisations.FirstOrDefaultAsync(o => o.Id == customerId && o.RegisteredViaAppId == appId && o.ParentOrgId == null && o.DeletedAt == null, cancellationToken).ConfigureAwait(false);
-        if (customer is null || !await _rights.ManagesAsync(appId, customer, adminUserId, cancellationToken).ConfigureAwait(false))
+        Organisation? org = await _db.Organisations.FirstOrDefaultAsync(o => o.Id == orgId && o.RegisteredViaAppId == appId && o.DeletedAt == null, cancellationToken).ConfigureAwait(false);
+        if (org is null || !await _rights.ManagesAsync(appId, org, adminUserId, cancellationToken).ConfigureAwait(false))
         {
             return false;
         }
 
-        DeviceRules kept = Stricter(rules.PinMinutes, rules.FullSignInHours);
-        customer.DevicePinMinutes = kept.PinMinutes == DeviceRules.Sangam.PinMinutes ? null : kept.PinMinutes;
-        customer.DeviceFullSignInHours = kept.FullSignInHours == DeviceRules.Sangam.FullSignInHours ? null : kept.FullSignInHours;
-        customer.UpdatedAt = _clock.UtcNow;
+        // rc.13: never longer than what holds above; the same as above is not stored, so it keeps following them.
+        DeviceRules limit = await RulesOnPathAsync([.. OrganisationPath.Ids(org.Path).Where(id => id != org.Id)], cancellationToken).ConfigureAwait(false);
+        DeviceRules kept = new(
+            Math.Clamp(rules.PinMinutes, MinPinMinutes, limit.PinMinutes),
+            Math.Clamp(rules.FullSignInHours, MinFullSignInHours, limit.FullSignInHours));
+        org.DevicePinMinutes = kept.PinMinutes >= limit.PinMinutes ? null : kept.PinMinutes;
+        org.DeviceFullSignInHours = kept.FullSignInHours >= limit.FullSignInHours ? null : kept.FullSignInHours;
+        org.UpdatedAt = _clock.UtcNow;
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await _audit.WriteAsync(
-            new AuditEntry(AuditActions.DeviceRules, AuditActorType.Admin, adminUserId, appId, "organisation", customerId,
-                JsonSerializer.Serialize(new Dictionary<string, object> { ["pin_minutes"] = kept.PinMinutes, ["full_sign_in_hours"] = kept.FullSignInHours })),
+            new AuditEntry(AuditActions.DeviceRules, AuditActorType.Admin, adminUserId, appId, "organisation", orgId,
+                JsonSerializer.Serialize(new Dictionary<string, object> { ["pin_minutes"] = kept.PinMinutes, ["full_sign_in_hours"] = kept.FullSignInHours, ["set_here"] = org.DevicePinMinutes is not null || org.DeviceFullSignInHours is not null })),
             cancellationToken).ConfigureAwait(false);
         return true;
+    }
+
+    /// <summary>The shortest rules set on any of the organisations, never longer than Sangam's.</summary>
+    private async Task<DeviceRules> RulesOnPathAsync(IReadOnlyList<Guid> ids, CancellationToken cancellationToken)
+    {
+        List<Guid> list = [.. ids];
+        if (list.Count == 0)
+        {
+            return DeviceRules.Sangam;
+        }
+
+        var stored = await _db.Organisations.AsNoTracking()
+            .Where(o => list.Contains(o.Id) && o.DeletedAt == null)
+            .Select(o => new { o.DevicePinMinutes, o.DeviceFullSignInHours })
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        int pin = stored.Select(o => o.DevicePinMinutes).Where(v => v is not null).Select(v => v!.Value).DefaultIfEmpty(DeviceRules.Sangam.PinMinutes).Min();
+        int full = stored.Select(o => o.DeviceFullSignInHours).Where(v => v is not null).Select(v => v!.Value).DefaultIfEmpty(DeviceRules.Sangam.FullSignInHours).Min();
+        return Stricter(pin, full);
     }
 
     /// <inheritdoc />
@@ -535,14 +573,11 @@ public sealed class EfSharedDeviceService : ISharedDeviceService
 
     private static DeviceRules Stricter(int? pinMinutes, int? fullSignInHours)
         => new(
-            Math.Clamp(pinMinutes ?? DeviceRules.Sangam.PinMinutes, 5, DeviceRules.Sangam.PinMinutes),
-            Math.Clamp(fullSignInHours ?? DeviceRules.Sangam.FullSignInHours, 1, DeviceRules.Sangam.FullSignInHours));
+            Math.Clamp(pinMinutes ?? DeviceRules.Sangam.PinMinutes, MinPinMinutes, DeviceRules.Sangam.PinMinutes),
+            Math.Clamp(fullSignInHours ?? DeviceRules.Sangam.FullSignInHours, MinFullSignInHours, DeviceRules.Sangam.FullSignInHours));
 
-    private async Task<DeviceRules> RulesForAsync(SharedDevice device, CancellationToken cancellationToken)
-    {
-        string? path = await _db.Organisations.AsNoTracking().Where(o => o.Id == device.OrgId).Select(o => o.Path).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
-        return path is null ? DeviceRules.Sangam : await RulesAsync(OrganisationPath.CustomerId(path), cancellationToken).ConfigureAwait(false);
-    }
+    // rc.13: the device's own organisation decides, through the shortest rules at it or above.
+    private Task<DeviceRules> RulesForAsync(SharedDevice device, CancellationToken cancellationToken) => RulesAsync(device.OrgId, cancellationToken);
 
     /// <summary>
     /// The people on the device whose locked session a PIN may unlock now: locked within the PIN window, signed in fully

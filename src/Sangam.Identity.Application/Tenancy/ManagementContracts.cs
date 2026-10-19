@@ -165,6 +165,13 @@ public sealed record ManagementActor(AuditActorType Type, Guid? UserId)
     /// <summary>An application's own backend, using its client credentials.</summary>
     public static ManagementActor Api { get; } = new(AuditActorType.Api, null);
 
+    /// <summary>
+    /// rc.13 (decision of 14 Oct 2026): an application's backend acting for one of its admins, named by their own access
+    /// token, so every change to a person's place records who asked.
+    /// </summary>
+    /// <param name="adminUserId">The admin's Sangam user id.</param>
+    public static ManagementActor ApiFor(Guid adminUserId) => new(AuditActorType.Api, adminUserId);
+
     /// <summary>A partner's staff member acting on the partner console.</summary>
     /// <param name="userId">Their Sangam user id.</param>
     public static ManagementActor AppAdmin(Guid userId) => new(AuditActorType.Admin, userId);

@@ -78,6 +78,16 @@ calling application; for anyone else — or an id that does not exist — it ans
 person is invited with `POST /orgs/{orgId}/invitations` (`email`, `role`, `appliesToDescendants`) and is linked only
 when they accept, signed in with that address. An application may send 200 invitations a day.
 
+rc.12 replaced the e-mail invitation with adding staff for one of the application's admins (`POST /orgs/{orgId}/staff`,
+with that admin's own access token in `Sangam-Acting-Admin`). rc.13 (decision of 14 Oct 2026): every change to a
+person's place does the same. `PUT` and `DELETE /orgs/{orgId}/members/{userId}` answer 401 without an admin, 404 when
+the admin named is not an admin of that organisation (or above it, or of the application), and 403 when a new place
+needs an admin verified with DigiLocker and they are not. The place records the admin as `granted_by` and the audit
+entry as its actor, with `actor_type = 'api'`. An organisation that takes only people verified with DigiLocker answers
+400 for a new place for anyone else. For demos only (decision of 19 Oct 2026), an application administrator may switch on
+"Testers may join themselves" for one organisation: there a person may name themselves with their own token, for their
+own place only.
+
 The app id comes **from the token, never from the URL**, so an app cannot address another
 app's roles, organisations or memberships. Rules enforced: role codes are
 `^[a-z][a-z0-9_]{1,49}$`; the system `org_admin` cannot be retired or re-scoped; an

@@ -79,9 +79,13 @@ public sealed partial class EmergencyAccessTests
 
         // The application ends it early, with a reason.
         string access = tokens.GetProperty("access_token").GetString()!;
+
+        // rc.13: userinfo carries the marker too, while it lasts.
+        Assert.Equal("LIPI-48213", (await UserInfoAsync(access)).GetProperty("sangam_emergency").GetProperty("case").GetString());
         Assert.Equal(HttpStatusCode.BadRequest, await EndAsync(access, ""));
         Assert.Equal(HttpStatusCode.NoContent, await EndAsync(access, "Care handed over"));
         Assert.Equal(HttpStatusCode.NotFound, await EndAsync(access, "Again"));
+        Assert.False((await UserInfoAsync(access)).TryGetProperty("sangam_emergency", out _));
         using IServiceScope scope = _factory.Services.CreateScope();
         EmergencyAccess use = await scope.ServiceProvider.GetRequiredService<SangamDbContext>().EmergencyAccesses.SingleAsync(e => e.CaseRef == "LIPI-48213" && e.OrgId == ward);
         Assert.Equal("Care handed over", use.EndReason);
@@ -254,4 +258,13 @@ public sealed partial class EmergencyAccessTests
 
     [GeneratedRegex("[0-9]{6}")]
     private static partial Regex SixDigits();
+
+    private async Task<JsonElement> UserInfoAsync(string access)
+    {
+        using HttpClient client = _factory.CreateClient();
+        using HttpRequestMessage request = new(HttpMethod.Get, "/connect/userinfo");
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", access);
+        using HttpResponseMessage response = await client.SendAsync(request);
+        return JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.Clone();
+    }
 }

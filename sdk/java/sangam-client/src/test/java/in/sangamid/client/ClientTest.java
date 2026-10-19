@@ -83,12 +83,30 @@ class ClientTest {
         try {
             ManagementClient client = new ManagementClient("http://127.0.0.1:" + server.getAddress().getPort() + "/", "app", "s", null);
             client.upsertRole("nurse", "Nurse", List.of("vitals:read"));
-            client.upsertMembership("o1", "u1", "nurse", true, "2026-12-31T23:59:59+05:30");
+            client.upsertMembership("o1", "u1", "admin-token", "nurse", true, "2026-12-31T23:59:59+05:30");
             assertEquals(1, seen.stream().filter(s -> s.startsWith("POST /connect/token")).count());
             assertTrue(seen.get(1).startsWith("PUT /api/v1/roles/nurse Bearer t1"));
             assertTrue(seen.get(2).contains("\"expiresAt\":\"2026-12-31T23:59:59+05:30\""));
             ManagementClient.SangamApiException e = assertThrows(ManagementClient.SangamApiException.class, () -> client.send("GET", "forbidden", null));
             assertEquals(403, e.status());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void changingAPlaceSendsTheAdminsOwnToken() throws Exception {
+        // rc.13: as adding staff does.
+        List<String> seen = new ArrayList<>();
+        HttpServer server = serve(Map.of("/connect/token", "{\"access_token\":\"t1\",\"expires_in\":3600}"), seen);
+        try {
+            ManagementClient client = new ManagementClient("http://127.0.0.1:" + server.getAddress().getPort() + "/", "app", "s", null);
+            client.setRoles("o1", "u1", "admin-token", List.of("doctor"), null);
+            client.removeMember("o1", "u1", "admin-token");
+            assertTrue(seen.get(1).startsWith("PUT /api/v1/orgs/o1/members/u1 Bearer t1"));
+            assertTrue(seen.get(1).endsWith(" admin=admin-token"));
+            assertTrue(seen.get(2).startsWith("DELETE /api/v1/orgs/o1/members/u1 Bearer t1"));
+            assertTrue(seen.get(2).endsWith(" admin=admin-token"));
         } finally {
             server.stop(0);
         }

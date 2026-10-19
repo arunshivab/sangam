@@ -87,24 +87,44 @@
   }
 </section>
 
-@if (Scope.IsCustomer)
+@if (_tree.Count > 0)
 {
+  @* rc.13: rules per organisation (a branch, department or ward), only stricter than the ones above it. *@
   <section class="sg-panel" data-panel="device-rules">
     <h2 class="sg-h2">@L["Getting back in"]</h2>
-    <p class="sg-muted">@L["Each application decides when to lock its screen. Sangam decides how a person gets back in: a PIN within 2 hours of the lock, and a full sign-in at least every 12 hours. You may make these shorter for {0}, never longer.", Scope.OrgName]</p>
-    <div class="sg-two-fields">
-      <div class="sg-form-row">
-        <label class="sg-label" for="d-pin">@L["A PIN works for (minutes after the lock, 5 to 120)"]</label>
-        <input id="d-pin" class="sg-input" type="number" min="5" max="120" @bind="_pinMinutes" />
-      </div>
-      <div class="sg-form-row">
-        <label class="sg-label" for="d-full">@L["Full sign-in every (hours, 1 to 12)"]</label>
-        <input id="d-full" class="sg-input" type="number" min="1" max="12" @bind="_fullHours" />
-      </div>
+    <p class="sg-muted">@L["Each application decides when to lock its screen. Sangam decides how a person gets back in: a PIN within 2 hours of the lock, and a full sign-in at least every 12 hours. Any organisation may make these shorter for its own devices, never longer than the organisations above it."]</p>
+    <div class="sg-form-row">
+      <label class="sg-label" for="d-rules-org">@L["For devices at"]</label>
+      <select id="d-rules-org" class="sg-input" value="@_rulesOrgId" @onchange="RulesOrgChangedAsync">
+        @foreach (OrgNode node in _tree)
+        {
+          <option value="@node.Id">@(new string('\u00a0', node.Depth * 3))@node.Name</option>
+        }
+      </select>
     </div>
-    <div class="sg-actions">
-      <button type="button" class="sg-btn sg-btn--secondary" @onclick="SaveRulesAsync" disabled="@_busy">@L["Save"]</button>
-    </div>
+    @if (_here is not null)
+    {
+      <p class="sg-muted" data-panel="device-rules-limit">
+        @(_here.SetHere ? L["Set here. At most {0} minutes and {1} hours, from the organisations above.", _here.Limit.PinMinutes, _here.Limit.FullSignInHours] : L["Follows the organisations above: {0} minutes and {1} hours.", _here.Limit.PinMinutes, _here.Limit.FullSignInHours])
+      </p>
+      <div class="sg-two-fields">
+        <div class="sg-form-row">
+          <label class="sg-label" for="d-pin">@L["A PIN works for (minutes after the lock, 5 to {0})", _here.Limit.PinMinutes]</label>
+          <input id="d-pin" class="sg-input" type="number" min="5" max="@_here.Limit.PinMinutes" @bind="_pinMinutes" />
+        </div>
+        <div class="sg-form-row">
+          <label class="sg-label" for="d-full">@L["Full sign-in every (hours, 1 to {0})", _here.Limit.FullSignInHours]</label>
+          <input id="d-full" class="sg-input" type="number" min="1" max="@_here.Limit.FullSignInHours" @bind="_fullHours" />
+        </div>
+      </div>
+      <div class="sg-actions">
+        @if (_here.SetHere)
+        {
+          <button type="button" class="sg-btn sg-btn--ghost" @onclick="FollowAboveAsync" disabled="@_busy">@L["Follow the organisations above"]</button>
+        }
+        <button type="button" class="sg-btn sg-btn--secondary" @onclick="SaveRulesAsync" disabled="@_busy">@L["Save"]</button>
+      </div>
+    }
   </section>
 }
 
@@ -128,6 +148,8 @@
     private Guid? _removing;
     private int _pinMinutes = DeviceRules.Sangam.PinMinutes;
     private int _fullHours = DeviceRules.Sangam.FullSignInHours;
+    private Guid _rulesOrgId;
+    private DeviceRulesHere? _here;
     private bool _busy;
     private bool _ok;
     private string? _message;
@@ -138,9 +160,8 @@
     {
         _tree = await OrgConsole.TreeAsync(UserId, Scope.AppId, Scope.OrgId) ?? [];
         _orgId = _tree.Count > 0 ? _tree[0].Id : Scope.OrgId;
-        DeviceRules rules = await Devices.RulesAsync(Scope.OrgId);
-        _pinMinutes = rules.PinMinutes;
-        _fullHours = rules.FullSignInHours;
+        _rulesOrgId = _orgId;
+        await LoadRulesAsync();
         await LoadAsync();
     }
 
@@ -177,15 +198,37 @@
         await LoadAsync();
     }
 
+    private async Task LoadRulesAsync()
+    {
+        _here = await Devices.RulesHereAsync(Scope.AppId, UserId, _rulesOrgId);
+        _pinMinutes = _here?.Rules.PinMinutes ?? DeviceRules.Sangam.PinMinutes;
+        _fullHours = _here?.Rules.FullSignInHours ?? DeviceRules.Sangam.FullSignInHours;
+    }
+
+    private async Task RulesOrgChangedAsync(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out Guid id))
+        {
+            _rulesOrgId = id;
+            _message = null;
+            await LoadRulesAsync();
+        }
+    }
+
+    private Task FollowAboveAsync()
+    {
+        _pinMinutes = _here?.Limit.PinMinutes ?? DeviceRules.Sangam.PinMinutes;
+        _fullHours = _here?.Limit.FullSignInHours ?? DeviceRules.Sangam.FullSignInHours;
+        return SaveRulesAsync();
+    }
+
     private async Task SaveRulesAsync()
     {
         _busy = true;
-        bool done = await Devices.SetRulesAsync(Scope.AppId, UserId, Scope.OrgId, new DeviceRules(_pinMinutes, _fullHours));
-        DeviceRules kept = await Devices.RulesAsync(Scope.OrgId);
+        bool done = await Devices.SetRulesAsync(Scope.AppId, UserId, _rulesOrgId, new DeviceRules(_pinMinutes, _fullHours));
+        await LoadRulesAsync();
         _busy = false;
-        _pinMinutes = kept.PinMinutes;
-        _fullHours = kept.FullSignInHours;
         _ok = done;
-        _message = done ? L["Saved: a PIN works for {0} minutes after a lock; a full sign-in every {1} hours.", kept.PinMinutes, kept.FullSignInHours] : L["Only a customer's own admins choose these."];
+        _message = done ? L["Saved: a PIN works for {0} minutes after a lock; a full sign-in every {1} hours.", _pinMinutes, _fullHours] : L["You are not an admin there."];
     }
 }

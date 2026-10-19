@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
+using Sangam.Identity.Application.Accounts;
 using Sangam.Identity.Application.Tenancy;
 using Sangam.Identity.Server.Authentication;
 using Sangam.Identity.Server.Staff;
@@ -15,14 +16,17 @@ public sealed class StaffModel : AuthPageModel
 {
     private readonly IStaffService _staff;
     private readonly IDataProtectionProvider _protection;
+    private readonly IAccountService _accounts;
 
     /// <summary>Initialises the page.</summary>
     /// <param name="staff">Staff service.</param>
     /// <param name="protection">Data protection, for the activation ticket.</param>
-    public StaffModel(IStaffService staff, IDataProtectionProvider protection)
+    /// <param name="accounts">Accounts, for whether the signed-in person is verified with DigiLocker.</param>
+    public StaffModel(IStaffService staff, IDataProtectionProvider protection, IAccountService accounts)
     {
         _staff = staff ?? throw new ArgumentNullException(nameof(staff));
         _protection = protection ?? throw new ArgumentNullException(nameof(protection));
+        _accounts = accounts ?? throw new ArgumentNullException(nameof(accounts));
     }
 
     /// <summary>The token from the link.</summary>
@@ -54,6 +58,15 @@ public sealed class StaffModel : AuthPageModel
 
     /// <summary>Whether the person has joined now.</summary>
     public bool Joined { get; private set; }
+
+    /// <summary>rc.13: whether the signed-in person is verified with DigiLocker.</summary>
+    public bool Verified { get; private set; }
+
+    /// <summary>rc.13: whether the person must verify with DigiLocker before they can join.</summary>
+    public bool MustVerify => View?.VerifiedOnly == true && SignedIn && !Verified;
+
+    /// <summary>rc.13: DigiLocker verification, coming back to this link afterwards.</summary>
+    public string VerifyUrl => "/identity/required?join=true&returnUrl=" + Uri.EscapeDataString(BackHere);
 
     /// <summary>Where signing in or registering comes back to.</summary>
     public string BackHere => $"/staff/{Token}?ticket={Uri.EscapeDataString(Ticket ?? string.Empty)}";
@@ -100,7 +113,7 @@ public sealed class StaffModel : AuthPageModel
 
         StaffJoinResult result = await _staff.JoinAsync(inviteId.Value, userId.Value, cancellationToken);
         await LoadAsync(cancellationToken);
-        Joined = result.Status == StaffJoinStatus.Joined;
+        Joined = result.Status is StaffJoinStatus.Joined or StaffJoinStatus.NeedsVerification;
         Tone = Joined ? "success" : "danger";
         Message = L[result.Message];
         return Page();
@@ -109,7 +122,9 @@ public sealed class StaffModel : AuthPageModel
     private async Task LoadAsync(CancellationToken cancellationToken)
     {
         View = await _staff.GetInviteAsync(Token, cancellationToken);
-        SignedIn = SangamAuthentication.UserId(User) is not null;
+        Guid? userId = SangamAuthentication.UserId(User);
+        SignedIn = userId is not null;
+        Verified = userId is Guid id && (await _accounts.FindByIdAsync(id, cancellationToken))?.IdentityVerifiedAt is not null;
         CodeAccepted = View is { State: StaffInviteState.Open } && StaffTicket.Read(_protection, Ticket) is not null;
     }
 }

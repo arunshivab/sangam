@@ -30,7 +30,11 @@
               <td data-label="@L["Where"]">@node.Name</td>
               <td class="sg-mono" data-label="@L["Roles"]">@(w.Roles.Count == 0 ? L["Staff"] : string.Join(", ", w.Roles))</td>
               <td data-label="@L["Status"]">
-                @if (!w.Activated)
+                @if (w.WaitsForDigiLocker)
+                {
+                  @L["Waiting for them to verify with DigiLocker"]
+                }
+                else if (!w.Activated)
                 {
                   @L["Not activated · link works until {0}", w.ExpiresAt is DateTimeOffset e ? IndiaTime.Date(e) : "—"]
                 }
@@ -57,6 +61,33 @@
     </div>
   }
 </section>
+
+@if (_tree.Count > 0)
+{
+  @* rc.13 (tenants' request): only people verified with DigiLocker may join, per organisation and those under it. *@
+  <section class="sg-panel" data-panel="verified-staff">
+    <h2 class="sg-h2">@L["Only people verified with DigiLocker"]</h2>
+    <p class="sg-muted">@L["When this is on, someone you add who has not verified with DigiLocker is asked to verify, and joins only once they have. People already here keep their place. Switching it on for an organisation covers the organisations under it too."]</p>
+    <ul class="sg-emergency-orgs">
+      @foreach (OrgNode node in _tree)
+      {
+        <li class="sg-emergency-org" style="padding-inline-start:@(node.Depth * 16)px">
+          <span class="sg-name">@node.Name</span>
+          @if (node.VerifiedStaffAbove)
+          {
+            <span class="sg-sub">@L["On through an organisation above"]</span>
+          }
+          else
+          {
+            <button type="button" class="sg-btn @(node.VerifiedStaffOnly ? "sg-btn--danger" : "sg-btn--secondary") sg-btn--row" @onclick="() => SwitchVerifiedAsync(node)" disabled="@_busy" aria-pressed="@(node.VerifiedStaffOnly ? "true" : "false")">
+              @(node.VerifiedStaffOnly ? L["Switch off"] : L["Switch on"])
+            </button>
+          }
+        </li>
+      }
+    </ul>
+  </section>
+}
 
 @if (Scope.IsCustomer && _overview is not null)
 {
@@ -92,6 +123,7 @@
     public Guid UserId { get; set; }
 
     private List<(OrgNode Node, StaffWaiting Waiting)>? _waiting;
+    private IReadOnlyList<OrgNode> _tree = [];
     private OrgOverview? _overview;
     private bool _kept;
     private Guid? _cancelling;
@@ -110,7 +142,8 @@
     {
         List<(OrgNode, StaffWaiting)> rows = [];
         StaffActor actor = new(Scope.AppId, UserId);
-        foreach (OrgNode node in await OrgConsole.TreeAsync(UserId, Scope.AppId, Scope.OrgId) ?? [])
+        _tree = await OrgConsole.TreeAsync(UserId, Scope.AppId, Scope.OrgId) ?? [];
+        foreach (OrgNode node in _tree)
         {
             foreach (StaffWaiting w in await Staff.WaitingAsync(actor, node.Id) ?? [])
             {
@@ -129,6 +162,16 @@
         _cancelling = null;
         _ok = done;
         _message = done ? L["The addition is cancelled."] : L["Nothing changed."];
+        await LoadWaitingAsync();
+    }
+
+    private async Task SwitchVerifiedAsync(OrgNode node)
+    {
+        _busy = true;
+        PartnerResult result = await OrgConsole.SetVerifiedStaffOnlyAsync(UserId, Scope.AppId, node.Id, !node.VerifiedStaffOnly);
+        _busy = false;
+        _ok = result.Succeeded;
+        _message = L[result.Message ?? string.Empty];
         await LoadWaitingAsync();
     }
 
