@@ -72,8 +72,6 @@ public sealed class EfPortalService : IPortalService
     /// <inheritdoc />
     public async Task<IReadOnlyList<LinkedApp>> GetLinkedAppsAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        string subject = userId.ToString("D");
-
         var grants = await _db.AppGrants
             .AsNoTracking()
             .Where(g => g.UserId == userId && g.RevokedAt == null)
@@ -106,6 +104,8 @@ public sealed class EfPortalService : IPortalService
             string? applicationId = await ApplicationIdAsync(grant.App.ClientId, cancellationToken).ConfigureAwait(false);
             if (applicationId is not null)
             {
+                // rc.14: an application's tokens name the person by its own id for them.
+                string subject = (await Apps.PairwiseSubjects.ForAsync(_db, grant.AppId, userId, cancellationToken).ConfigureAwait(false)).ToString("D");
                 await foreach (object token in _tokens.FindAsync(subject, applicationId, Statuses.Valid, type: null, cancellationToken).ConfigureAwait(false))
                 {
                     _ = token;
@@ -149,7 +149,7 @@ public sealed class EfPortalService : IPortalService
         await _db.Consents.Where(c => c.UserId == userId && c.AppId == appId && c.RevokedAt == null)
             .ExecuteUpdateAsync(u => u.SetProperty(c => c.RevokedAt, now), cancellationToken).ConfigureAwait(false);
 
-        await RevokeOpenIddictAsync(userId, app.ClientId, cancellationToken).ConfigureAwait(false);
+        await RevokeOpenIddictAsync(userId, app.Id, app.ClientId, cancellationToken).ConfigureAwait(false);
         await Provisioning.AppEventLog.RaiseAsync(_db, AppEventTypes.ConsentRevoked, appId, userId, null, null, now, cancellationToken).ConfigureAwait(false);
 
         await _audit.WriteAsync(new AuditEntry(AuditActions.AppAccessRevoke, AuditActorType.User, userId, appId, "app", appId, IpAddress: ipAddress), cancellationToken).ConfigureAwait(false);
@@ -491,9 +491,11 @@ public sealed class EfPortalService : IPortalService
     }
 
     /// <summary>Revokes this user's authorizations and tokens for one application, leaving other apps alone.</summary>
-    private async Task RevokeOpenIddictAsync(Guid userId, string clientId, CancellationToken cancellationToken)
+    private async Task RevokeOpenIddictAsync(Guid userId, Guid appId, string clientId, CancellationToken cancellationToken)
     {
+        // Authorizations are kept under the person's Sangam id; rc.14: tokens under the application's own id for them.
         string subject = userId.ToString("D");
+        string tokenSubject = (await Apps.PairwiseSubjects.ForAsync(_db, appId, userId, cancellationToken).ConfigureAwait(false)).ToString("D");
         string? applicationId = await ApplicationIdAsync(clientId, cancellationToken).ConfigureAwait(false);
         if (applicationId is null)
         {
@@ -518,7 +520,7 @@ public sealed class EfPortalService : IPortalService
         }
 
         List<object> tokens = [];
-        await foreach (object token in _tokens.FindAsync(subject, applicationId, status: null, type: null, cancellationToken).ConfigureAwait(false))
+        await foreach (object token in _tokens.FindAsync(tokenSubject, applicationId, status: null, type: null, cancellationToken).ConfigureAwait(false))
         {
             tokens.Add(token);
         }

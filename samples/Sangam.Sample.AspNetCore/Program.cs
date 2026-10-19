@@ -19,7 +19,7 @@ builder.Services.AddSangam(o =>
 builder.Services.AddSangamAudit(o =>
 {
     o.AppId = "sangam-dev-sample";
-    o.AppVersion = "1.0.0-rc.13";
+    o.AppVersion = "1.0.0-rc.14";
     o.Environment = "development";
     o.BufferPath = builder.Configuration["Sangam:AuditBuffer"] ?? "sangam-audit/pending.jsonl";
 });

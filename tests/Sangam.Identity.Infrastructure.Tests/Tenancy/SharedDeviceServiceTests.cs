@@ -1,10 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Sangam.Identity.Application.Apps;
 using Sangam.Identity.Application.Devices;
 using Sangam.Identity.Domain.Entities;
 using Sangam.Identity.Domain.Enums;
+using Sangam.Identity.Infrastructure.Apps;
 using Sangam.Identity.Infrastructure.Persistence;
+using Sangam.Identity.Infrastructure.Provisioning;
 using Sangam.Identity.Infrastructure.Tenancy;
 using Sangam.Identity.Infrastructure.Tests.Accounts;
 using Sangam.Identity.Infrastructure.Tests.Postgres;
@@ -153,6 +156,14 @@ public sealed class SharedDeviceServiceTests : IAsyncLifetime
         {
             AppEvent told = Assert.Single(await db.AppEvents.Where(e => e.Type == AppEventTypes.SessionLocked).ToListAsync());
             Assert.Equal(_labs, told.AppId);
+
+            // rc.14 (ADR-0017): the webhook names the person and the session by the laboratory system's own ids for them.
+            string body = AppEventDispatcher.Payload(told, "labs", null, await PairwiseSubjects.ForManyAsync(db, _labs, [_nurse]));
+            Assert.Contains(AppSessionIds.For(session, _labs, platform: false).ToString("D"), body, StringComparison.Ordinal);
+            Assert.Contains((await PairwiseSubjects.ForAsync(db, _labs, _nurse)).ToString("D"), body, StringComparison.Ordinal);
+            Assert.DoesNotContain(session.ToString("D"), body, StringComparison.Ordinal);
+            Assert.DoesNotContain(_nurse.ToString("D"), body, StringComparison.Ordinal);
+            Assert.NotEqual(AppSessionIds.For(session, _labs, platform: false), AppSessionIds.For(session, _lipi, platform: false));
         }
 
         Assert.Equal(DeviceGate.Unlock, await Devices().GateAsync(session, device.Id));

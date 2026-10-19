@@ -131,6 +131,7 @@ public static class DependencyInjection
         services.AddScoped<Accounts.SecurityNotices>();
         services.AddSingleton(sp => new UnknownAddressLockout(sp.GetRequiredService<IDbContextFactory<SangamDbContext>>(), sp.GetRequiredService<IClock>(), 5, TimeSpan.FromMinutes(15)));
         services.AddScoped<IAppDirectory, EfAppDirectory>();
+        services.AddScoped<ISubjectIds, EfSubjectIds>();
         services.AddScoped<IConsentService, EfConsentService>();
         services.AddScoped<ITenancyQuery, EfTenancyQuery>();
         services.AddScoped<IManagementService, EfManagementService>();

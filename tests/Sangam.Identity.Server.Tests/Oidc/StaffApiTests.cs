@@ -124,6 +124,28 @@ public sealed partial class StaffApiTests
         SangamDbContext db = scope.ServiceProvider.GetRequiredService<SangamDbContext>();
         Guid kiranId = await db.Users.Where(u => u.Email == email).Select(u => u.Id).SingleAsync();
         Assert.Equal("ward_nurse", await db.OrgMemberships.Where(m => m.UserId == kiranId && m.OrgId == orgId && m.RevokedAt == null).Select(m => m.Role!.Code).SingleAsync());
+
+        // rc.14: someone already in the customer is added elsewhere in it by the application's own id for them; their
+        // Sangam id names nobody the application knows.
+        Guid wardId = Guid.NewGuid();
+        using (HttpResponseMessage ward = await SendAsync(client, appToken, HttpMethod.Put, $"/api/v1/orgs/{wardId:D}", new { name = "Staff Clinic Ward 2", type = "department", parentId = (Guid?)orgId, metadata = (string?)null }, null))
+        {
+            Assert.Equal(HttpStatusCode.OK, ward.StatusCode);
+        }
+
+        using (HttpResponseMessage bySangamId = await SendAsync(client, appToken, HttpMethod.Post, $"/api/v1/orgs/{wardId:D}/staff", new { userId = kiranId, roles = WardNurse }, adminToken))
+        {
+            Assert.Equal(HttpStatusCode.NotFound, bySangamId.StatusCode);
+        }
+
+        Guid kiranSubject = await _factory.SubjectAsync(DevelopmentSeeder.SampleClientId, kiranId);
+        using (HttpResponseMessage again = await SendAsync(client, appToken, HttpMethod.Post, $"/api/v1/orgs/{wardId:D}/staff", new { userId = kiranSubject, roles = WardNurse }, adminToken))
+        {
+            string body = await again.Content.ReadAsStringAsync();
+            Assert.Equal(HttpStatusCode.OK, again.StatusCode);
+            Assert.Equal("added", JsonDocument.Parse(body).RootElement.GetProperty("status").GetString());
+            Assert.Equal(kiranSubject.ToString("D"), JsonDocument.Parse(body).RootElement.GetProperty("userId").GetString());
+        }
     }
 
     [PostgresFact]
@@ -166,8 +188,15 @@ public sealed partial class StaffApiTests
             nurseId = await db.Users.Where(u => u.Email == nurseEmail).Select(u => u.Id).SingleAsync();
         }
 
-        string path = $"/api/v1/orgs/{orgId:D}/members/{nurseId:D}";
+        // rc.14: the application names the nurse by its own id for her; her Sangam id means nothing to it.
+        Guid nurseSubject = await _factory.SubjectAsync(DevelopmentSeeder.SampleClientId, nurseId);
+        Assert.NotEqual(nurseId, nurseSubject);
+        string path = $"/api/v1/orgs/{orgId:D}/members/{nurseSubject:D}";
         object body = new { roles = WardNurse };
+        using (HttpResponseMessage bySangamId = await SendAsync(client, appToken, HttpMethod.Put, $"/api/v1/orgs/{orgId:D}/members/{nurseId:D}", body, adminToken))
+        {
+            Assert.Equal(HttpStatusCode.NotFound, bySangamId.StatusCode);
+        }
 
         // No admin named, the application's own token in its place, or someone who is not an admin there: nothing changes.
         using (HttpResponseMessage none = await SendAsync(client, appToken, HttpMethod.Put, path, body, null))
@@ -189,6 +218,7 @@ public sealed partial class StaffApiTests
         using (HttpResponseMessage given = await SendAsync(client, appToken, HttpMethod.Put, path, body, adminToken))
         {
             Assert.Equal(HttpStatusCode.OK, given.StatusCode);
+            Assert.Equal(nurseSubject.ToString("D"), JsonDocument.Parse(await given.Content.ReadAsStringAsync()).RootElement.GetProperty("userId").GetString());
         }
 
         using (IServiceScope scope = _factory.Services.CreateScope())
@@ -322,7 +352,7 @@ public sealed partial class StaffApiTests
             otherId = await db.Users.Where(u => u.Id != testerId).Select(u => u.Id).FirstAsync();
         }
 
-        string path = $"/api/v1/orgs/{demo:D}/members/{testerId:D}";
+        string path = $"/api/v1/orgs/{demo:D}/members/{await _factory.SubjectAsync(DevelopmentSeeder.SampleClientId, testerId):D}";
         using (HttpResponseMessage notYet = await SendAsync(client, appToken, HttpMethod.Put, path, new { }, testerToken))
         {
             Assert.Equal(HttpStatusCode.NotFound, notYet.StatusCode);
@@ -351,7 +381,7 @@ public sealed partial class StaffApiTests
         }
 
         // Only themselves: the same token cannot place anyone else there.
-        using (HttpResponseMessage someoneElse = await SendAsync(client, appToken, HttpMethod.Put, $"/api/v1/orgs/{demo:D}/members/{otherId:D}", new { }, testerToken))
+        using (HttpResponseMessage someoneElse = await SendAsync(client, appToken, HttpMethod.Put, $"/api/v1/orgs/{demo:D}/members/{await _factory.SubjectAsync(DevelopmentSeeder.SampleClientId, otherId):D}", new { }, testerToken))
         {
             Assert.Equal(HttpStatusCode.NotFound, someoneElse.StatusCode);
         }

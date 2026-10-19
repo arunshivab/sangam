@@ -48,4 +48,9 @@ await sangam.setRoles(orgId, sub, adminAccessToken, ["doctor"]);
 await sangam.removeMember(orgId, sub, adminAccessToken);
 ```
 
+rc.14: `setAttributes(sub, adminAccessToken, values)` names the admin too, who must administer your application or an
+organisation where the person works. Every application knows a person by its own id (the `sub` of its tokens, and the id the management API, webhooks and
+SCIM use); another application's id for the same person is unrelated, and the API answers *not found* to an id that is
+not yours (ADR-0017).
+
 `npm test` runs the shared vectors and unit tests.

@@ -1563,7 +1563,7 @@
   "The message is back to the one above it.": "സന്ദേശം മുകളിലെ തലത്തിലുള്ളതിലേക്ക് തിരികെ മാറി.",
   "The message must contain the variable “{0}”.": "സന്ദേശത്തിൽ “{0}” എന്ന വേരിയബിൾ ഉണ്ടായിരിക്കണം.",
   "The metadata has no HTTP-POST assertion consumer address.": "മെറ്റാഡാറ്റയിൽ HTTP-POST assertion consumer വിലാസമില്ല.",
-  "The named signer is not an active Sangam account.": "പേരുള്ള ഒപ്പിടുന്നയാൾ ഒരു സജീവ Sangam അക്കൗണ്ട് അല്ല.",
+  "The named signer is not an active Sangam account that has used your application.": "പേരുള്ള ഒപ്പിടുന്നയാൾ നിങ്ങളുടെ ആപ്ലിക്കേഷൻ ഉപയോഗിച്ചിട്ടുള്ള ഒരു സജീവ Sangam അക്കൗണ്ട് അല്ല.",
   "The names of their organisations": "അവരുടെ സ്ഥാപനങ്ങളുടെ പേരുകൾ",
   "The organisation does not exist, or you are not an admin there.": "സ്ഥാപനം നിലവിലില്ല, അല്ലെങ്കിൽ നിങ്ങൾ അവിടെ അഡ്മിൻ അല്ല.",
   "The organisation does not exist.": "ഈ ഓർഗനൈസേഷൻ നിലവിലില്ല.",

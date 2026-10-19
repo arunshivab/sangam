@@ -272,6 +272,53 @@ public sealed partial class AccountMergeTests : IAsyncLifetime
     }
 
     [PostgresFact]
+    public async Task TheApplication_IsToldOfTheMerge_ByItsOwnIds_NeverTheSangamIds()
+    {
+        Assert.True((await Merges().RequestAsync(_new, _old, null)).Succeeded);
+        await DueNowAsync();
+        Assert.Equal(1, await Merges().ApplyDueAsync());
+        await Scoped<Sangam.Identity.Infrastructure.Provisioning.AppEventDispatcher>().DispatchAsync();
+
+        // rc.14 (decision record 0017): the HIS knows both accounts by its own ids, in the event and its details alike.
+        Guid closedSubject = await _pg.SubjectAsync(_his, _old);
+        Guid survivorSubject = await _pg.SubjectAsync(_his, _new);
+        await using SangamDbContext db = _pg.CreateContext();
+        string payload = await db.WebhookDeliveries.Where(d => d.AppId == _his && d.EventType == AppEventTypes.AccountMerged).Select(d => d.Payload).SingleAsync();
+        System.Text.Json.JsonElement body = System.Text.Json.JsonDocument.Parse(payload).RootElement;
+        Assert.Equal(closedSubject.ToString("D"), body.GetProperty("subject").GetProperty("sub").GetString());
+        Assert.Equal(survivorSubject.ToString("D"), body.GetProperty("data").GetProperty("merged_into").GetString());
+        Assert.DoesNotContain(_old.ToString("D"), payload, StringComparison.Ordinal);
+        Assert.DoesNotContain(_new.ToString("D"), payload, StringComparison.Ordinal);
+
+        string updated = await db.WebhookDeliveries.Where(d => d.AppId == _his && d.EventType == AppEventTypes.UserUpdated && d.Payload.Contains("merged_from")).Select(d => d.Payload).SingleAsync();
+        Assert.Contains(closedSubject.ToString("D"), updated, StringComparison.Ordinal);
+        Assert.DoesNotContain(_old.ToString("D"), updated, StringComparison.Ordinal);
+
+        // Two applications never share an id for the same person.
+        Assert.NotEqual(survivorSubject, await _pg.SubjectAsync(_lab, _new));
+    }
+
+    [PostgresFact]
+    public async Task AnOrganisationTakingOnlyVerifiedPeople_KeepsAPlace_FromAnUnverifiedSurvivor()
+    {
+        // rc.14 (rc.13 known gap): a place moving in a merge is new to the survivor, so the DigiLocker-only rule holds.
+        await using (SangamDbContext setup = _pg.CreateContext())
+        {
+            await setup.Organisations.Where(o => o.Id == _baner).ExecuteUpdateAsync(u => u.SetProperty(o => o.VerifiedStaffOnly, true));
+        }
+
+        Assert.True((await Merges().RequestAsync(_new, _old, null)).Succeeded);
+        await DueNowAsync();
+        Assert.Equal(1, await Merges().ApplyDueAsync());
+
+        await using SangamDbContext db = _pg.CreateContext();
+        var roles = await db.OrgMemberships.Where(m => m.UserId == _new && m.RevokedAt == null).Select(m => new { m.OrgId, m.Role!.Code }).ToListAsync();
+        Assert.Contains(roles, r => r.OrgId == _apulki && r.Code == "doctor");
+        Assert.DoesNotContain(roles, r => r.OrgId == _baner);
+        Assert.False(await db.OrgMemberships.AnyAsync(m => m.UserId == _old && m.RevokedAt == null));
+    }
+
+    [PostgresFact]
     public async Task WhenTheSurvivorIsDeleted_TheMergeRecordGoesToo()
     {
         Assert.True((await Merges().RequestAsync(_new, _old, null)).Succeeded);
@@ -306,6 +353,9 @@ public sealed partial class AccountMergeTests : IAsyncLifetime
             oldAdmin.Role = AppAdminRole.Owner;
             db.AppAdmins.Add(new AppAdmin { Id = Guid.NewGuid(), AppId = _lab, UserId = _new, Role = AppAdminRole.Admin, GrantedAt = DateTimeOffset.UtcNow });
             await db.SaveChangesAsync();
+
+            // rc.14: Baner takes only verified people; the identity moves first, so the place moves with it.
+            await db.Organisations.Where(o => o.Id == _baner).ExecuteUpdateAsync(u => u.SetProperty(o => o.VerifiedStaffOnly, true));
         }
 
         MergePreview preview = await Merges().PreviewAsync(_old, _new);
@@ -323,6 +373,7 @@ public sealed partial class AccountMergeTests : IAsyncLifetime
         Assert.Equal("hash-asha", (await check.IdentityVerifications.SingleAsync(v => v.UserId == _new)).SubjectHash);
         Assert.False(await check.IdentityVerifications.AnyAsync(v => v.UserId == _old));
         Assert.Equal(AppAdminRole.Owner, (await check.AppAdmins.SingleAsync(a => a.UserId == _new && a.RevokedAt == null)).Role);
+        Assert.True(await check.OrgMemberships.AnyAsync(m => m.UserId == _new && m.OrgId == _baner && m.RevokedAt == null));
     }
 
     [PostgresFact]

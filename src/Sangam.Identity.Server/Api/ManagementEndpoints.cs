@@ -85,7 +85,7 @@ public static class ManagementEndpoints
             return app is null ? Results.Forbid() : ToResult(await mgmt.UpsertOrganisationAsync(app.Id, orgId, input, ManagementActor.Api, ct).ConfigureAwait(false));
         }).WithName("UpsertOrganisation");
 
-        api.MapGet("/orgs/{orgId:guid}/members", async (Guid orgId, ClaimsPrincipal caller, IAppDirectory apps, IManagementService mgmt, IAuditWriter audit, CancellationToken ct) =>
+        api.MapGet("/orgs/{orgId:guid}/members", async (Guid orgId, ClaimsPrincipal caller, IAppDirectory apps, ISubjectIds subjects, IManagementService mgmt, IAuditWriter audit, CancellationToken ct) =>
         {
             AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
             if (app is null)
@@ -105,24 +105,30 @@ public static class ManagementEndpoints
                     TargetId: orgId,
                     Metadata: JsonSerializer.Serialize(new Dictionary<string, object> { ["list"] = "org_members", ["rows"] = members.Count, ["searched"] = false })),
                 ct).ConfigureAwait(false);
-            return Results.Ok(members);
+            return Results.Ok(await ForAppAsync(members, app.Id, subjects, ct).ConfigureAwait(false));
         }).WithName("ListMembers");
 
         // rc.13 (decision of 14 Oct 2026): changing a person's place says which admin asked, and that admin must be one.
-        api.MapPut("/orgs/{orgId:guid}/members/{userId:guid}", async (Guid orgId, Guid userId, MembershipUpsert input, HttpContext http, ClaimsPrincipal caller, IAppDirectory apps, IManagementService mgmt, IStaffService staff, OpenIddict.Validation.OpenIddictValidationService validation, CancellationToken ct) =>
+        api.MapPut("/orgs/{orgId:guid}/members/{userId:guid}", async (Guid orgId, Guid userId, MembershipUpsert input, HttpContext http, ClaimsPrincipal caller, IAppDirectory apps, ISubjectIds subjects, IManagementService mgmt, IStaffService staff, OpenIddict.Validation.OpenIddictValidationService validation, CancellationToken ct) =>
         {
             AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
-            Guid? admin = app is null ? null : await ActingAdminAsync(http, app, validation, ct).ConfigureAwait(false);
+            Guid? admin = app is null ? null : await ActingAdminAsync(http, app, subjects, validation, ct).ConfigureAwait(false);
             if (app is null || admin is null)
             {
                 return app is null ? Results.Forbid() : MissingAdmin();
             }
 
-            return await staff.ActingAdminAsync(new StaffActor(app.Id, admin.Value, ViaApi: true), orgId, userId, ct).ConfigureAwait(false) switch
+            // rc.14: the person is named by this application's own id; one it does not know is not found.
+            if (await subjects.UserAsync(app.Id, userId, ct).ConfigureAwait(false) is not Guid person)
+            {
+                return UnknownPerson();
+            }
+
+            return await staff.ActingAdminAsync(new StaffActor(app.Id, admin.Value, ViaApi: true), orgId, person, ct).ConfigureAwait(false) switch
             {
                 StaffActingAdmin.NotAdmin => NotAnAdminThere(),
                 StaffActingAdmin.MustBeVerified => Results.Json(new { error = "Only an admin verified with DigiLocker can add people." }, statusCode: StatusCodes.Status403Forbidden),
-                _ => ToResult(await mgmt.UpsertMembershipAsync(app.Id, orgId, userId, input, ManagementActor.ApiFor(admin.Value), ct).ConfigureAwait(false)),
+                _ => ToResult(ForApp(await mgmt.UpsertMembershipAsync(app.Id, orgId, person, input, ManagementActor.ApiFor(admin.Value), ct).ConfigureAwait(false), userId)),
             };
         }).WithName("UpsertMembership");
 
@@ -134,11 +140,11 @@ public static class ManagementEndpoints
         // rc.12 (founder decisions, 14 Oct 2026): adding staff. The application acts for one of its admins, who signed in to
         // it with Sangam: their access token, issued to this application, goes in the Sangam-Acting-Admin header, and every
         // action is recorded under their name. Only a DigiLocker-verified admin may add (or link) people.
-        api.MapPost("/orgs/{orgId:guid}/staff/check", async (Guid orgId, StaffDetailsRequest input, HttpContext http, ClaimsPrincipal caller, IAppDirectory apps, IStaffService staff, OpenIddict.Validation.OpenIddictValidationService validation, CancellationToken ct) =>
+        api.MapPost("/orgs/{orgId:guid}/staff/check", async (Guid orgId, StaffDetailsRequest input, HttpContext http, ClaimsPrincipal caller, IAppDirectory apps, ISubjectIds subjects, IStaffService staff, OpenIddict.Validation.OpenIddictValidationService validation, CancellationToken ct) =>
         {
             ArgumentNullException.ThrowIfNull(input);
             AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
-            Guid? admin = app is null ? null : await ActingAdminAsync(http, app, validation, ct).ConfigureAwait(false);
+            Guid? admin = app is null ? null : await ActingAdminAsync(http, app, subjects, validation, ct).ConfigureAwait(false);
             if (app is null || admin is null)
             {
                 return app is null ? Results.Forbid() : MissingAdmin();
@@ -148,23 +154,35 @@ public static class ManagementEndpoints
             return check is null ? Results.NotFound(new { error = "The organisation does not exist, or that person is not an admin there." }) : Results.Ok(CheckJson(check));
         }).WithName("CheckStaff");
 
-        api.MapPost("/orgs/{orgId:guid}/staff", async (Guid orgId, StaffAddRequest input, HttpContext http, ClaimsPrincipal caller, IAppDirectory apps, IStaffService staff, OpenIddict.Validation.OpenIddictValidationService validation, CancellationToken ct) =>
+        api.MapPost("/orgs/{orgId:guid}/staff", async (Guid orgId, StaffAddRequest input, HttpContext http, ClaimsPrincipal caller, IAppDirectory apps, ISubjectIds subjects, IStaffService staff, OpenIddict.Validation.OpenIddictValidationService validation, CancellationToken ct) =>
         {
             ArgumentNullException.ThrowIfNull(input);
             AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
-            Guid? admin = app is null ? null : await ActingAdminAsync(http, app, validation, ct).ConfigureAwait(false);
+            Guid? admin = app is null ? null : await ActingAdminAsync(http, app, subjects, validation, ct).ConfigureAwait(false);
             if (app is null || admin is null)
             {
                 return app is null ? Results.Forbid() : MissingAdmin();
             }
 
-            StaffAddResult result = await staff.AddAsync(new StaffActor(app.Id, admin.Value, ViaApi: true), orgId, input.ToAddition(), ct).ConfigureAwait(false);
+            // rc.14: someone already in the customer is named by this application's own id for them.
+            StaffAddition addition = input.ToAddition();
+            if (addition.UserId is Guid named)
+            {
+                if (await subjects.UserAsync(app.Id, named, ct).ConfigureAwait(false) is not Guid person)
+                {
+                    return UnknownPerson();
+                }
+
+                addition = addition with { UserId = person };
+            }
+
+            StaffAddResult result = await staff.AddAsync(new StaffActor(app.Id, admin.Value, ViaApi: true), orgId, addition, ct).ConfigureAwait(false);
             object body = new
             {
                 status = Snake(result.Status.ToString()),
                 message = result.Message,
                 staffRef = result.StaffRef,
-                userId = result.UserId,
+                userId = result.UserId is Guid joined ? await subjects.SubjectAsync(app.Id, joined, ct).ConfigureAwait(false) : (Guid?)null,
                 activationCode = result.ActivationCode,
                 check = result.Check is null ? null : CheckJson(result.Check),
                 addedBeforeDigiLocker = result.AddedBeforeDigiLocker,
@@ -179,10 +197,10 @@ public static class ManagementEndpoints
             };
         }).WithName("AddStaff");
 
-        api.MapGet("/orgs/{orgId:guid}/staff/waiting", async (Guid orgId, HttpContext http, ClaimsPrincipal caller, IAppDirectory apps, IStaffService staff, OpenIddict.Validation.OpenIddictValidationService validation, CancellationToken ct) =>
+        api.MapGet("/orgs/{orgId:guid}/staff/waiting", async (Guid orgId, HttpContext http, ClaimsPrincipal caller, IAppDirectory apps, ISubjectIds subjects, IStaffService staff, OpenIddict.Validation.OpenIddictValidationService validation, CancellationToken ct) =>
         {
             AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
-            Guid? admin = app is null ? null : await ActingAdminAsync(http, app, validation, ct).ConfigureAwait(false);
+            Guid? admin = app is null ? null : await ActingAdminAsync(http, app, subjects, validation, ct).ConfigureAwait(false);
             if (app is null || admin is null)
             {
                 return app is null ? Results.Forbid() : MissingAdmin();
@@ -192,10 +210,10 @@ public static class ManagementEndpoints
             return waiting is null ? Results.NotFound(new { error = "The organisation does not exist, or that person is not an admin there." }) : Results.Ok(waiting);
         }).WithName("ListWaitingStaff");
 
-        api.MapDelete("/staff/waiting/{waitingId:guid}", async (Guid waitingId, HttpContext http, ClaimsPrincipal caller, IAppDirectory apps, IStaffService staff, OpenIddict.Validation.OpenIddictValidationService validation, CancellationToken ct) =>
+        api.MapDelete("/staff/waiting/{waitingId:guid}", async (Guid waitingId, HttpContext http, ClaimsPrincipal caller, IAppDirectory apps, ISubjectIds subjects, IStaffService staff, OpenIddict.Validation.OpenIddictValidationService validation, CancellationToken ct) =>
         {
             AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
-            Guid? admin = app is null ? null : await ActingAdminAsync(http, app, validation, ct).ConfigureAwait(false);
+            Guid? admin = app is null ? null : await ActingAdminAsync(http, app, subjects, validation, ct).ConfigureAwait(false);
             if (app is null || admin is null)
             {
                 return app is null ? Results.Forbid() : MissingAdmin();
@@ -206,22 +224,27 @@ public static class ManagementEndpoints
                 : Results.NotFound(new { error = "No waiting addition with that id that this admin may cancel." });
         }).WithName("CancelWaitingStaff");
 
-        api.MapDelete("/orgs/{orgId:guid}/members/{userId:guid}", async (Guid orgId, Guid userId, HttpContext http, ClaimsPrincipal caller, IAppDirectory apps, IManagementService mgmt, IStaffService staff, OpenIddict.Validation.OpenIddictValidationService validation, CancellationToken ct) =>
+        api.MapDelete("/orgs/{orgId:guid}/members/{userId:guid}", async (Guid orgId, Guid userId, HttpContext http, ClaimsPrincipal caller, IAppDirectory apps, ISubjectIds subjects, IManagementService mgmt, IStaffService staff, OpenIddict.Validation.OpenIddictValidationService validation, CancellationToken ct) =>
         {
             AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
-            Guid? admin = app is null ? null : await ActingAdminAsync(http, app, validation, ct).ConfigureAwait(false);
+            Guid? admin = app is null ? null : await ActingAdminAsync(http, app, subjects, validation, ct).ConfigureAwait(false);
             if (app is null || admin is null)
             {
                 return app is null ? Results.Forbid() : MissingAdmin();
             }
 
-            return await staff.ActingAdminAsync(new StaffActor(app.Id, admin.Value, ViaApi: true), orgId, userId, ct).ConfigureAwait(false) == StaffActingAdmin.NotAdmin
+            if (await subjects.UserAsync(app.Id, userId, ct).ConfigureAwait(false) is not Guid person)
+            {
+                return UnknownPerson();
+            }
+
+            return await staff.ActingAdminAsync(new StaffActor(app.Id, admin.Value, ViaApi: true), orgId, person, ct).ConfigureAwait(false) == StaffActingAdmin.NotAdmin
                 ? NotAnAdminThere()
-                : ToResult(await mgmt.RevokeMembershipAsync(app.Id, orgId, userId, ManagementActor.ApiFor(admin.Value), ct).ConfigureAwait(false));
+                : ToResult(ForApp(await mgmt.RevokeMembershipAsync(app.Id, orgId, person, ManagementActor.ApiFor(admin.Value), ct).ConfigureAwait(false), userId));
         }).WithName("RevokeMembership");
 
         // PR-25: custom attribute values, for people who have linked the calling application.
-        api.MapGet("/users/{userId:guid}/attributes", async (Guid userId, ClaimsPrincipal caller, IAppDirectory apps, IAttributeService attributes, CancellationToken ct) =>
+        api.MapGet("/users/{userId:guid}/attributes", async (Guid userId, ClaimsPrincipal caller, IAppDirectory apps, ISubjectIds subjects, IAttributeService attributes, CancellationToken ct) =>
         {
             AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
             if (app is null)
@@ -229,13 +252,18 @@ public static class ManagementEndpoints
                 return Results.Forbid();
             }
 
-            IReadOnlyList<AttributeValueRow>? rows = await attributes.GetValuesAsync(null, app.Id, userId, ct).ConfigureAwait(false);
+            if (await subjects.UserAsync(app.Id, userId, ct).ConfigureAwait(false) is not Guid person)
+            {
+                return Results.NotFound();
+            }
+
+            IReadOnlyList<AttributeValueRow>? rows = await attributes.GetValuesAsync(null, app.Id, person, ct).ConfigureAwait(false);
             return rows is null ? Results.NotFound() : Results.Ok(rows.ToDictionary(r => r.Key, r => r.Value));
         }).WithName("GetUserAttributes");
 
         // rc.7 (SGM-914 section 9): where a closed account went, for an application that knew it. 404 for any id the
         // application never had, merged or not, so the API tells it nothing about other people.
-        api.MapGet("/users/{userId:guid}/merged", async (Guid userId, ClaimsPrincipal caller, IAppDirectory apps, IAccountMergeService merges, CancellationToken ct) =>
+        api.MapGet("/users/{userId:guid}/merged", async (Guid userId, ClaimsPrincipal caller, IAppDirectory apps, ISubjectIds subjects, IAccountMergeService merges, CancellationToken ct) =>
         {
             AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
             if (app is null)
@@ -243,21 +271,37 @@ public static class ManagementEndpoints
                 return Results.Forbid();
             }
 
-            MergedInto? merged = await merges.MergedIntoAsync(app.Id, userId, ct).ConfigureAwait(false);
+            // rc.14: both ids are this application's own: the closed account's, and the survivor's (given out now if needed).
+            MergedInto? merged = await subjects.UserAsync(app.Id, userId, ct).ConfigureAwait(false) is Guid closed
+                ? await merges.MergedIntoAsync(app.Id, closed, ct).ConfigureAwait(false)
+                : null;
             return merged is null
                 ? Results.NotFound()
-                : Results.Ok(new { merged_into = merged.UserId.ToString("D"), merged_at = merged.MergedAt.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture) });
+                : Results.Ok(new { merged_into = (await subjects.SubjectAsync(app.Id, merged.UserId, ct).ConfigureAwait(false)).ToString("D"), merged_at = merged.MergedAt.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture) });
         }).WithName("GetMergedInto");
 
-        api.MapPut("/users/{userId:guid}/attributes", async (Guid userId, Dictionary<string, string?> values, ClaimsPrincipal caller, IAppDirectory apps, IAttributeService attributes, CancellationToken ct) =>
+        // rc.14 (decision of 14 Oct 2026): changing values about a person says which admin asked, and that admin must
+        // administer the application or an organisation where the person works in it.
+        api.MapPut("/users/{userId:guid}/attributes", async (Guid userId, Dictionary<string, string?> values, HttpContext http, ClaimsPrincipal caller, IAppDirectory apps, ISubjectIds subjects, IAttributeService attributes, OpenIddict.Validation.OpenIddictValidationService validation, CancellationToken ct) =>
         {
             AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
-            if (app is null)
+            Guid? admin = app is null ? null : await ActingAdminAsync(http, app, subjects, validation, ct).ConfigureAwait(false);
+            if (app is null || admin is null)
             {
-                return Results.Forbid();
+                return app is null ? Results.Forbid() : MissingAdmin();
             }
 
-            Sangam.Identity.Application.Partners.PartnerResult result = await attributes.SetValuesAsync(null, app.Id, userId, values ?? [], ct).ConfigureAwait(false);
+            if (await subjects.UserAsync(app.Id, userId, ct).ConfigureAwait(false) is not Guid person)
+            {
+                return UnknownPerson();
+            }
+
+            (AttributeSetOutcome outcome, Sangam.Identity.Application.Partners.PartnerResult result) = await attributes.SetValuesForAdminAsync(app.Id, admin.Value, person, values ?? [], ct).ConfigureAwait(false);
+            if (outcome == AttributeSetOutcome.NotAdmin)
+            {
+                return Results.NotFound(new { error = "That person does not work anywhere this admin administers in your application." });
+            }
+
             return result.Succeeded ? Results.Ok(new { message = result.Message }) : Results.Problem(title: result.Message, statusCode: StatusCodes.Status400BadRequest);
         }).WithName("SetUserAttributes");
 
@@ -306,7 +350,7 @@ public static class ManagementEndpoints
     /// The admin the application acts for: their access token (from signing in to this application with Sangam) is valid,
     /// was issued to this same application, and names a person. Anything else is no admin.
     /// </summary>
-    private static async Task<Guid?> ActingAdminAsync(HttpContext http, AppSummary app, OpenIddict.Validation.OpenIddictValidationService validation, CancellationToken ct)
+    private static async Task<Guid?> ActingAdminAsync(HttpContext http, AppSummary app, ISubjectIds subjects, OpenIddict.Validation.OpenIddictValidationService validation, CancellationToken ct)
     {
         string? token = http.Request.Headers[ActingAdminHeader].ToString();
         if (string.IsNullOrWhiteSpace(token))
@@ -324,7 +368,10 @@ public static class ManagementEndpoints
             ClaimsPrincipal admin = await validation.ValidateAccessTokenAsync(token, ct).ConfigureAwait(false);
             string? clientId = admin.GetClaim(Claims.ClientId) ?? admin.GetClaim(Claims.Private.Presenter);
             bool sameApp = string.Equals(clientId, app.ClientId, StringComparison.Ordinal) || admin.GetPresenters().Contains(app.ClientId, StringComparer.Ordinal);
-            return sameApp && Guid.TryParse(admin.GetClaim(Claims.Subject), out Guid id) ? id : null;
+            // rc.14: the token names the admin by this application's own id, and the admin's account must still be active.
+            Guid? person = sameApp && Guid.TryParse(admin.GetClaim(Claims.Subject), out Guid id) ? await subjects.UserAsync(app.Id, id, ct).ConfigureAwait(false) : null;
+            UserSummary? account = person is Guid found ? await http.RequestServices.GetRequiredService<IAccountService>().FindByIdAsync(found, ct).ConfigureAwait(false) : null;
+            return account is { Status: UserStatus.Active, EmailVerified: true } ? account.Id : null;
         }
         catch (Exception ex) when (ex is OpenIddict.Abstractions.OpenIddictExceptions.ValidationException or OpenIddict.Abstractions.OpenIddictExceptions.ProtocolException or InvalidOperationException)
         {
@@ -333,8 +380,21 @@ public static class ManagementEndpoints
     }
 
     private static IResult MissingAdmin() => Results.Json(
-        new { error = "Changing staff is done for one of your admins: send their own Sangam access token, issued to your application, in the " + ActingAdminHeader + " header." },
+        new { error = "Changing people is done for one of your admins: send their own Sangam access token, issued to your application, in the " + ActingAdminHeader + " header." },
         statusCode: StatusCodes.Status401Unauthorized);
+
+    private static IResult UnknownPerson() => Results.NotFound(new { error = "No person with that id has used your application." });
+
+    /// <summary>rc.14: a membership as the application sees it, under the id it sent.</summary>
+    private static ManagementResult<MembershipDto> ForApp(ManagementResult<MembershipDto> result, Guid subject)
+        => result.Value is null ? result : result with { Value = result.Value with { UserId = subject } };
+
+    /// <summary>rc.14: memberships as the application sees them, under its own ids for the people.</summary>
+    private static async Task<IReadOnlyList<MembershipDto>> ForAppAsync(IReadOnlyList<MembershipDto> members, Guid appId, ISubjectIds subjects, CancellationToken ct)
+    {
+        IReadOnlyDictionary<Guid, Guid> ids = await subjects.SubjectsAsync(appId, [.. members.Select(m => m.UserId)], ct).ConfigureAwait(false);
+        return [.. members.Select(m => m with { UserId = ids[m.UserId] })];
+    }
 
     private static IResult NotAnAdminThere() => Results.NotFound(new { error = "The organisation does not exist, or that person is not an admin there." });
 

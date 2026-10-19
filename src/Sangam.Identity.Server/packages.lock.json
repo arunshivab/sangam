@@ -358,14 +358,14 @@
       "sangam.identity.application": {
         "type": "Project",
         "dependencies": {
-          "Sangam.Identity.Domain": "[1.0.0-rc.13, )",
-          "Sangam.Shared": "[1.0.0-rc.13, )"
+          "Sangam.Identity.Domain": "[1.0.0-rc.14, )",
+          "Sangam.Shared": "[1.0.0-rc.14, )"
         }
       },
       "sangam.identity.domain": {
         "type": "Project",
         "dependencies": {
-          "Sangam.Shared": "[1.0.0-rc.13, )"
+          "Sangam.Shared": "[1.0.0-rc.14, )"
         }
       },
       "sangam.identity.infrastructure": {
@@ -378,9 +378,9 @@
           "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, )",
           "OpenIddict.EntityFrameworkCore": "[7.7.2, )",
           "QRCoder": "[1.8.1, )",
-          "Sangam.Identity.Application": "[1.0.0-rc.13, )",
-          "Sangam.Identity.Domain": "[1.0.0-rc.13, )",
-          "Sangam.Shared": "[1.0.0-rc.13, )"
+          "Sangam.Identity.Application": "[1.0.0-rc.14, )",
+          "Sangam.Identity.Domain": "[1.0.0-rc.14, )",
+          "Sangam.Shared": "[1.0.0-rc.14, )"
         }
       },
       "sangam.shared": {
@@ -390,7 +390,7 @@
         "type": "Project",
         "dependencies": {
           "LiPicons.Blazor": "[1.1.0, )",
-          "Sangam.Identity.Application": "[1.0.0-rc.13, )"
+          "Sangam.Identity.Application": "[1.0.0-rc.14, )"
         }
       },
       "EFCore.NamingConventions": {

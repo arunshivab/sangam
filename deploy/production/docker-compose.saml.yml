@@ -10,11 +10,8 @@ services:
     secrets:
       - source: saml_signing_current.pfx
       - source: Sangam__Saml__Certificates__0__Password
-      # The key behind each service provider's private NameID. Never change it: every service provider would see
-      # every person as someone new.
-      - source: Sangam__Saml__PairwiseKey
+      # rc.14 (ADR-0017): no pairwise key any more; a service provider's NameID is its application's own id for the person.
 
 secrets:
   saml_signing_current.pfx: { file: ./secrets/saml_signing_current.pfx }
   Sangam__Saml__Certificates__0__Password: { file: ./secrets/Sangam__Saml__Certificates__0__Password }
-  Sangam__Saml__PairwiseKey: { file: ./secrets/Sangam__Saml__PairwiseKey }

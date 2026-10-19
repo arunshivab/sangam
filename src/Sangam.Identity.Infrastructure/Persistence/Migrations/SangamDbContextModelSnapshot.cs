@@ -942,6 +942,37 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                     b.ToTable("app_grants", (string)null);
                 });
 
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.AppSubject", b =>
+                {
+                    b.Property<Guid>("AppId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("app_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("Subject")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subject");
+
+                    b.HasKey("AppId", "UserId")
+                        .HasName("pk_app_subjects");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("idx_app_subjects_user");
+
+                    b.HasIndex("AppId", "Subject")
+                        .IsUnique()
+                        .HasDatabaseName("ux_app_subjects_subject");
+
+                    b.ToTable("app_subjects", (string)null);
+                });
+
             modelBuilder.Entity("Sangam.Identity.Domain.Entities.AuditEvent", b =>
                 {
                     b.Property<long>("Id")
@@ -4550,6 +4581,23 @@ namespace Sangam.Identity.Infrastructure.Persistence.Migrations
                     b.Navigation("App");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Sangam.Identity.Domain.Entities.AppSubject", b =>
+                {
+                    b.HasOne("Sangam.Identity.Domain.Entities.App", null)
+                        .WithMany()
+                        .HasForeignKey("AppId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_app_subjects_apps_app_id");
+
+                    b.HasOne("Sangam.Identity.Domain.Entities.SangamUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_app_subjects_asp_net_users_user_id");
                 });
 
             modelBuilder.Entity("Sangam.Identity.Domain.Entities.ClientSecret", b =>

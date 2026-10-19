@@ -111,7 +111,7 @@ public sealed class ScimProvisioningTests : IAsyncLifetime
         await GrantAsync(_hospital, "nurse");
         await RunAsync();
 
-        JsonObject user = Assert.IsType<JsonObject>(_server.UserByExternalId(_nurse));
+        JsonObject user = Assert.IsType<JsonObject>(_server.UserByExternalId(await NurseSubjectAsync()));
         Assert.Equal("asha@lims.test", user["userName"]!.GetValue<string>());
         Assert.Equal("Asha", user["name"]!["givenName"]!.GetValue<string>());
         Assert.True(user["active"]!.GetValue<bool>());
@@ -131,7 +131,7 @@ public sealed class ScimProvisioningTests : IAsyncLifetime
         await SwitchOnAsync(mapping: "role_org");
         await GrantAsync(_hospital, "nurse");
         await RunAsync();
-        string remote = _server.UserByExternalId(_nurse)!["id"]!.GetValue<string>();
+        string remote = _server.UserByExternalId(await NurseSubjectAsync())!["id"]!.GetValue<string>();
 
         // A second role elsewhere, a profile change, and the first role taken away — handed over together.
         await GrantAsync(_branch, "lab_tech");
@@ -196,7 +196,7 @@ public sealed class ScimProvisioningTests : IAsyncLifetime
         }
 
         await RunAsync();
-        Assert.NotNull(_server.UserByExternalId(_nurse));
+        Assert.NotNull(_server.UserByExternalId(await NurseSubjectAsync()));
         await using SangamDbContext after = _pg.CreateContext();
         Assert.Equal("ok", (await after.ScimTargets.SingleAsync()).Status);
     }
@@ -207,7 +207,7 @@ public sealed class ScimProvisioningTests : IAsyncLifetime
         await SwitchOnAsync();
         await GrantAsync(_hospital, "nurse");
         await RunAsync();
-        string first = _server.UserByExternalId(_nurse)!["id"]!.GetValue<string>();
+        string first = _server.UserByExternalId(await NurseSubjectAsync())!["id"]!.GetValue<string>();
 
         // Someone deletes the person on the application's side; the next change brings them back.
         _server.Users.TryRemove(first, out _);
@@ -219,7 +219,7 @@ public sealed class ScimProvisioningTests : IAsyncLifetime
         string summary = await Scoped<ScimProvisioner>().ReconcileAsync(_app);
         Assert.Contains("1 should be active, the server reports 0", summary, StringComparison.Ordinal);
         await Scoped<ScimProvisioner>().DeliverDueAsync();
-        JsonObject again = Assert.IsType<JsonObject>(_server.UserByExternalId(_nurse));
+        JsonObject again = Assert.IsType<JsonObject>(_server.UserByExternalId(await NurseSubjectAsync()));
         Assert.NotEqual(first, again["id"]!.GetValue<string>());
         Assert.Equal([again["id"]!.GetValue<string>()], _server.MembersOf("Nurse"));
     }
@@ -309,4 +309,7 @@ public sealed class ScimProvisioningTests : IAsyncLifetime
         _scopes.Add(scope);
         return scope.ServiceProvider.GetRequiredService<T>();
     }
+
+    /// <summary>rc.14: the server knows the nurse by the application's own id for her, never her Sangam id.</summary>
+    private Task<Guid> NurseSubjectAsync() => _pg.SubjectAsync(_app, _nurse);
 }

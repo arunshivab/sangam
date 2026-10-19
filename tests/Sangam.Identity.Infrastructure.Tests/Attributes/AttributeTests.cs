@@ -281,6 +281,36 @@ public sealed class AttributeTests : IAsyncLifetime
         Assert.True(await check.AuditEvents.AnyAsync(e => e.Action == AuditActions.OrgMembershipExpire && e.TargetId == _nurse));
     }
 
+    [PostgresFact]
+    public async Task AnActingAdmin_SetsOnlyTheValuesKeptWhereTheyAdminister()
+    {
+        // rc.14: the management API sets values for an acting admin. An application administrator sets any; a customer or
+        // branch admin only the values kept for the organisations they administer where the person works; anyone else none.
+        IAttributeService service = Scoped<IAttributeService>();
+        Assert.True((await service.DefineAsync(_owner, _app, Definition("badge", "Badge"))).Succeeded);
+        Assert.True((await service.DefineAsync(_owner, _app, Definition("apulki_locker", "Locker") with { OrgId = _hospital })).Succeeded);
+        Assert.True((await service.DefineAsync(_owner, _app, Definition("east_locker", "Locker") with { OrgId = _clinicWing })).Succeeded);
+        IManagementService management = Scoped<IManagementService>();
+        Assert.Equal(ManagementStatus.Ok, (await management.UpsertMembershipAsync(_app, _hospital, _nurse, new MembershipUpsert("nurse", false), ManagementActor.Api)).Status);
+        Assert.Equal(ManagementStatus.Ok, (await management.UpsertMembershipAsync(_app, _clinicWing, _nurse, new MembershipUpsert("nurse", false), ManagementActor.Api)).Status);
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            db.OrgAdmins.Add(new OrgAdmin { Id = Guid.NewGuid(), AppId = _app, OrgId = _hospital, UserId = _stranger, Right = OrgAdminRight.Admin, GrantedAt = DateTimeOffset.UtcNow });
+            await db.SaveChangesAsync();
+        }
+
+        (AttributeSetOutcome outcome, PartnerResult result) = await service.SetValuesForAdminAsync(_app, _stranger, _nurse, new Dictionary<string, string?> { ["apulki_locker"] = "17" });
+        Assert.Equal(AttributeSetOutcome.Done, outcome);
+        Assert.True(result.Succeeded, result.Message);
+        Assert.False((await service.SetValuesForAdminAsync(_app, _stranger, _nurse, new Dictionary<string, string?> { ["east_locker"] = "3" })).Result.Succeeded);
+        Assert.False((await service.SetValuesForAdminAsync(_app, _stranger, _nurse, new Dictionary<string, string?> { ["badge"] = "S-1" })).Result.Succeeded);
+        Assert.True((await service.SetValuesForAdminAsync(_app, _owner, _nurse, new Dictionary<string, string?> { ["east_locker"] = "3", ["badge"] = "S-1" })).Result.Succeeded);
+        Assert.Equal(AttributeSetOutcome.NotAdmin, (await service.SetValuesForAdminAsync(_app, _nurse, _nurse, new Dictionary<string, string?> { ["badge"] = "S-2" })).Outcome);
+
+        await using SangamDbContext check = _pg.CreateContext();
+        Assert.True(await check.AuditEvents.AnyAsync(e => e.Action == AuditActions.AttributeValuesSet && e.ActorUserId == _stranger && e.TargetId == _nurse));
+    }
+
     private static AttributeDefinitionInput Definition(string key, string label, string type = "text") => new(key, label, type, null, "admin", null, true);
 
     private async Task DefineAllAsync(IAttributeService service)

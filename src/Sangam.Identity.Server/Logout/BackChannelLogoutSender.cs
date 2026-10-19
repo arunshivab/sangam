@@ -68,7 +68,7 @@ public sealed partial class BackChannelLogoutSender : BackgroundService
             .Where(n => n.SentAt == null && n.Attempts < MaxAttempts && n.NextAttemptAt <= now)
             .OrderBy(n => n.CreatedAt)
             .Take(20)
-            .Join(db.Apps, n => n.AppId, a => a.Id, (n, a) => new { Notification = n, a.ClientId, a.BackChannelLogoutUri })
+            .Join(db.Apps, n => n.AppId, a => a.Id, (n, a) => new { Notification = n, a.ClientId, a.BackChannelLogoutUri, a.IsPlatform })
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
@@ -78,7 +78,9 @@ public sealed partial class BackChannelLogoutSender : BackgroundService
         {
             LogoutNotification n = item.Notification;
             n.Attempts++;
-            string? error = item.BackChannelLogoutUri is null ? "no back-channel address any more" : await PostAsync(client, item.BackChannelLogoutUri, Token(n, item.ClientId), cancellationToken).ConfigureAwait(false);
+            // rc.14: the logout token names the person by the application's own id for them.
+            Guid subject = await Sangam.Identity.Infrastructure.Apps.PairwiseSubjects.ForAsync(db, n.AppId, n.UserId, cancellationToken).ConfigureAwait(false);
+            string? error = item.BackChannelLogoutUri is null ? "no back-channel address any more" : await PostAsync(client, item.BackChannelLogoutUri, Token(n, subject, Application.Apps.AppSessionIds.For(n.SessionId, n.AppId, item.IsPlatform), item.ClientId), cancellationToken).ConfigureAwait(false);
             if (error is null)
             {
                 n.SentAt = DateTimeOffset.UtcNow;
@@ -123,7 +125,7 @@ public sealed partial class BackChannelLogoutSender : BackgroundService
         }
     }
 
-    private string Token(LogoutNotification n, string clientId)
+    private string Token(LogoutNotification n, Guid subject, Guid sid, string clientId)
     {
         SigningCredentials credentials = _server.CurrentValue.SigningCredentials.FirstOrDefault()
             ?? throw new InvalidOperationException("No token-signing credentials are configured.");
@@ -144,8 +146,8 @@ public sealed partial class BackChannelLogoutSender : BackgroundService
             Claims = new Dictionary<string, object>
             {
                 ["jti"] = n.Id.ToString("D"),
-                ["sub"] = n.UserId.ToString("D"),
-                ["sid"] = n.SessionId.ToString("D"),
+                ["sub"] = subject.ToString("D"),
+                ["sid"] = sid.ToString("D"),
                 ["events"] = new Dictionary<string, object> { [LogoutEvent] = new Dictionary<string, object>() },
             },
         });

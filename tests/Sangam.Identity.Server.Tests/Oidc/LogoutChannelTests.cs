@@ -101,7 +101,7 @@ public sealed partial class LogoutChannelTests
                 ValidTypes = ["logout+jwt"],
             });
             Assert.True(validated.IsValid, validated.Exception?.Message);
-            Assert.Equal(userId.ToString("D"), validated.Claims["sub"]);
+            Assert.Equal((await _factory.SubjectAsync(DevelopmentSeeder.SampleClientId, userId)).ToString("D"), validated.Claims["sub"]);
             Assert.Equal(sid, validated.Claims["sid"]);
             Assert.False(validated.Claims.ContainsKey("nonce"));
             Assert.Contains(BackChannelLogoutSender.LogoutEvent, JsonSerializer.Serialize(validated.Claims["events"]), StringComparison.Ordinal);

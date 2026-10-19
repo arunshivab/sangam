@@ -134,8 +134,12 @@ export class ManagementClient {
     return this.send<Record<string, string | null>>("GET", `users/${userId}/attributes`);
   }
 
-  setAttributes(userId: string, values: Record<string, string | null>) {
-    return this.send("PUT", `users/${userId}/attributes`, values);
+  /**
+   * Sets values your application keeps about a person; an empty value clears one. rc.14: done for one of your admins,
+   * who administers your application or an organisation where the person works in it.
+   */
+  setAttributes(userId: string, adminAccessToken: string, values: Record<string, string | null>) {
+    return this.send("PUT", `users/${userId}/attributes`, values, adminAccessToken);
   }
 }
 

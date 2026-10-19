@@ -67,7 +67,7 @@
         "type": "Project",
         "dependencies": {
           "Microsoft.AspNetCore.Authentication.OpenIdConnect": "[10.0.13, )",
-          "Sangam.Shared": "[1.0.0-rc.13, )"
+          "Sangam.Shared": "[1.0.0-rc.14, )"
         }
       },
       "sangam.shared": {

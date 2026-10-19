@@ -42,7 +42,7 @@ def home(user: SangamUser | None = Depends(sangam.current_user)) -> str:
     memberships = "".join(f"<li><b>{e(m.role)}</b> at {e(m.organisation_name)} <code>{e(m.path)}</code>{' (and below)' if m.applies_to_descendants else ''}: {e(', '.join(m.permissions))}</li>" for m in user.memberships)
     options = "".join(f'<option value="{e(m.path)}">{e(m.organisation_name)}</option>' for m in user.memberships)
     body = f"""
-<section><h1>Signed in as {e(user.name)}</h1><p class="muted">Sangam id <code>{e(user.id)}</code> · {e(user.acr or '')}</p></section>
+<section><h1>Signed in as {e(user.name)}</h1><p class="muted">Your id in this app <code>{e(user.id)}</code> · {e(user.acr or '')}</p></section>
 <section data-panel="organisations"><h2>Your organisations in this application</h2><ul>{memberships or '<li class="muted">No role yet.</li>'}</ul></section>
 <section data-panel="permission"><h2>Check a permission</h2>
   <div class="row"><select id="org" aria-label="Organisation">{options}<option value="/0192a6b0-0000-7000-8000-00000000ffff/">An organisation you have no role in</option></select>

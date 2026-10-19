@@ -284,12 +284,14 @@ public sealed partial class ScimProvisioner
             .ToListAsync(cancellationToken).ConfigureAwait(false);
         string scope = await _db.Consents.AsNoTracking().Where(c => c.AppId == target.AppId && c.UserId == userId && c.RevokedAt == null).OrderByDescending(c => c.GrantedAt).Select(c => c.Scope).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false) ?? string.Empty;
         bool phone = scope.Split(' ').Contains(SangamScopes.Phone) && !string.IsNullOrEmpty(user!.PhoneNumber);
-        JsonObject resource = UserResource(user!, phone, memberships.Select(m => m.OrgName).FirstOrDefault());
+        // rc.14: the application knows the person by its own id for them, never their Sangam id.
+        Guid subject = await Apps.PairwiseSubjects.ForAsync(_db, target.AppId, userId, cancellationToken).ConfigureAwait(false);
+        JsonObject resource = UserResource(user!, subject, phone, memberships.Select(m => m.OrgName).FirstOrDefault());
 
         if (link is null)
         {
-            // Adopt a person the server already has under Sangam's id (an earlier attempt, or a manual import).
-            ScimCall found = await client.GetAsync("/Users?filter=" + Uri.EscapeDataString("externalId eq " + ScimClient.Quote(userId.ToString("D"))), cancellationToken).ConfigureAwait(false);
+            // Adopt a person the server already has under the application's id for them (an earlier attempt, or a manual import).
+            ScimCall found = await client.GetAsync("/Users?filter=" + Uri.EscapeDataString("externalId eq " + ScimClient.Quote(subject.ToString("D"))), cancellationToken).ConfigureAwait(false);
             lines.Add(found.Line);
             if (!found.Ok)
             {
@@ -484,14 +486,15 @@ public sealed partial class ScimProvisioner
 
     /// <summary>The SCIM user Sangam sends: ids, name, e-mail, the mobile if consented, active, the organisation.</summary>
     /// <param name="user">The person.</param>
+    /// <param name="subject">rc.14: the application's own id for the person (<c>externalId</c>, the <c>sub</c> of its tokens).</param>
     /// <param name="phone">Whether the mobile is released.</param>
     /// <param name="organisation">Their first organisation in the application.</param>
-    internal static JsonObject UserResource(SangamUser user, bool phone, string? organisation)
+    internal static JsonObject UserResource(SangamUser user, Guid subject, bool phone, string? organisation)
     {
         JsonObject resource = new()
         {
             ["schemas"] = new JsonArray(ScimClient.UserSchema, ScimClient.EnterpriseSchema),
-            ["externalId"] = user.Id.ToString("D"),
+            ["externalId"] = subject.ToString("D"),
             ["userName"] = user.Email,
             ["name"] = new JsonObject { ["givenName"] = user.FirstName, ["familyName"] = user.LastName, ["formatted"] = (user.FirstName + " " + user.LastName).Trim() },
             ["displayName"] = (user.FirstName + " " + user.LastName).Trim(),

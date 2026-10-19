@@ -28,7 +28,7 @@ def test_the_management_client_caches_its_token_and_calls_api_v1():
 
 
 def test_changing_a_place_sends_the_admins_own_token():
-    # rc.13: as adding staff does.
+    # rc.13: as adding staff does; rc.14: setting a person's values too.
     seen = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -40,7 +40,12 @@ def test_changing_a_place_sends_the_admins_own_token():
     client = ManagementClient("https://id.example.in", "app", "s", client=httpx.Client(transport=httpx.MockTransport(handler)))
     client.set_roles("o1", "u1", "admin-token", ["doctor"])
     client.remove_member("o1", "u1", "admin-token")
-    assert seen == [("PUT", "/api/v1/orgs/o1/members/u1", "admin-token"), ("DELETE", "/api/v1/orgs/o1/members/u1", "admin-token")]
+    client.set_attributes("u1", "admin-token", {"badge": "S-77"})
+    assert seen == [
+        ("PUT", "/api/v1/orgs/o1/members/u1", "admin-token"),
+        ("DELETE", "/api/v1/orgs/o1/members/u1", "admin-token"),
+        ("PUT", "/api/v1/users/u1/attributes", "admin-token"),
+    ]
 
 
 def test_merged_into_gives_the_surviving_id_and_none_for_an_id_that_was_not_merged():

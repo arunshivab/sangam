@@ -153,7 +153,7 @@ public sealed class EfSessionService : ISessionService
         {
             return await db.SessionApps.AsNoTracking()
                 .Where(x => x.SessionId == sessionId)
-                .Join(db.Apps.Where(a => a.FrontChannelLogoutUri != null), x => x.AppId, a => a.Id, (x, a) => new FrontChannelLogout(a.DisplayName, a.FrontChannelLogoutUri!))
+                .Join(db.Apps.Where(a => a.FrontChannelLogoutUri != null), x => x.AppId, a => a.Id, (x, a) => new FrontChannelLogout(a.DisplayName, a.FrontChannelLogoutUri!, a.Id, a.IsPlatform))
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
         }

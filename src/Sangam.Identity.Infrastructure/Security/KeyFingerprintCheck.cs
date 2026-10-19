@@ -54,7 +54,6 @@ public sealed partial class KeyFingerprintCheck : IHostedLifecycleService
     [
         ("secret.pepper", Argon2idOptions.PepperKey),
         ("secret.digilocker_subject", "Sangam:DigiLocker:SubjectKey"),
-        ("secret.saml_pairwise", "Sangam:Saml:PairwiseKey"),
     ];
 
     private readonly IServiceScopeFactory _scopes;

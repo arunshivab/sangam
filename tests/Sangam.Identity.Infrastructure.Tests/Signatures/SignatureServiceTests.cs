@@ -93,7 +93,8 @@ public sealed class SignatureServiceTests : IAsyncLifetime
         Assert.False((await signatures.DeclineAsync(id, _signer, null)).Succeeded);
 
         SignatureView view = (await signatures.GetForAppAsync(_appId, id))!;
-        Assert.Equal(("signed", "token-1", _signer), (view.Status, view.Token, view.DecidedBy!.Value));
+        // rc.14: the application reads who signed by its own id for them.
+        Assert.Equal(("signed", "token-1", await _pg.SubjectAsync(_appId, _signer)), (view.Status, view.Token, view.DecidedBy!.Value));
         Assert.Null(await signatures.GetForAppAsync(_otherAppId, id));
 
         await using SangamDbContext db = _pg.CreateContext();
@@ -116,7 +117,9 @@ public sealed class SignatureServiceTests : IAsyncLifetime
     public async Task ARequest_Expires_AndANamedSignerIsTheOnlySigner()
     {
         ISignatureService signatures = Service();
-        (SignatureRequestCreated? named, _) = await signatures.CreateAsync(_appId, Input() with { Signer = _signer });
+        // rc.14: the application names the signer by its own id for them; their Sangam id names nobody it knows.
+        Assert.NotNull((await signatures.CreateAsync(_appId, Input() with { Signer = _signer })).Error);
+        (SignatureRequestCreated? named, _) = await signatures.CreateAsync(_appId, Input() with { Signer = await _pg.SubjectAsync(_appId, _signer) });
         Assert.False((await signatures.SignAsync(named!.RequestId, _someoneElse, "B", "https://id.sangam.test/", AuthenticationAssurance.Acr2, TwoFactors, _clock.UtcNow, null)).Succeeded);
 
         _clock.Advance(TimeSpan.FromMinutes(16));

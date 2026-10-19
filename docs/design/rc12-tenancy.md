@@ -61,7 +61,7 @@ admin's own name either way.
   admin's own trees is ever shown.
 - **Through the API**, each call adds one person to one organisation, with that organisation's roles. An application with
   a multi-select sends one call per organisation. The first call identifies or creates the person (with the check in 4.3)
-  and returns their Sangam id; later calls send that id, not the details again, so there is one check, one code and one
+  and returns their id (from rc.14 the application's own id for them, ADR-0017); later calls send that id, not the details again, so there is one check, one code and one
   e-mail. Calls are independent (one failing leaves the others) and repeating a call changes nothing.
 
 ### Adding people needs DigiLocker (decision 2)

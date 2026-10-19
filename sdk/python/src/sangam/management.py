@@ -137,5 +137,9 @@ class ManagementClient:
     def get_attributes(self, user_id: str) -> dict[str, str | None]:
         return self.send("GET", f"users/{user_id}/attributes")
 
-    def set_attributes(self, user_id: str, values: dict[str, str | None]) -> Any:
-        return self.send("PUT", f"users/{user_id}/attributes", values)
+    def set_attributes(self, user_id: str, admin_access_token: str, values: dict[str, str | None]) -> Any:
+        """Sets values your application keeps about a person; an empty value clears one.
+
+        rc.14: done for one of your admins, who administers your application or an organisation where the person works.
+        """
+        return self.send("PUT", f"users/{user_id}/attributes", values, admin_access_token)

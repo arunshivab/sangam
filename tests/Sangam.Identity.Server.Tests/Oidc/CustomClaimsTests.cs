@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Web;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Entities;
 using Sangam.Identity.Infrastructure.Persistence;
 using Sangam.Identity.Infrastructure.Seeding;
@@ -70,30 +71,79 @@ public sealed class CustomClaimsTests
         string key = "staff_" + suffix;
         Guid person = await SeedAsync(email, key, claim: null, value: null);
 
+        // rc.14: the application names the person by its own id for them, and changes values for one of its admins.
+        Guid subject = await _factory.SubjectAsync(DevelopmentSeeder.SampleClientId, person);
+        using BrowserSession adminSession = new(_factory);
+        string adminEmail = await RegisterAndVerifyAsync(adminSession);
+        (string verifier, string challenge) = Pkce();
+        (_, string consentPath, _) = await adminSession.FollowAsync(Authorize(challenge, "openid profile"));
+        string adminToken = (await ExchangeAsync(adminSession, consentPath, verifier)).GetProperty("access_token").GetString()!;
+        await MakeApplicationAdminAsync(adminEmail);
+
         using HttpClient client = _factory.CreateClient();
         string token = await ClientTokenAsync(client);
 
         // Not linked yet: the application learns nothing.
-        using (HttpResponseMessage before = await SendAsync(client, token, HttpMethod.Get, $"/api/v1/users/{person:D}/attributes", null))
+        using (HttpResponseMessage before = await SendAsync(client, token, HttpMethod.Get, $"/api/v1/users/{subject:D}/attributes", null))
         {
             Assert.Equal(HttpStatusCode.NotFound, before.StatusCode);
         }
 
         await LinkAsync(person);
-        using (HttpResponseMessage refused = await SendAsync(client, token, HttpMethod.Put, $"/api/v1/users/{person:D}/attributes", new Dictionary<string, string?> { ["nothing_" + suffix] = "x" }))
+        Dictionary<string, string?> badge = new() { [key] = "S-77" };
+
+        // No admin named, or the person's Sangam id instead of the application's id for them: nothing changes.
+        using (HttpResponseMessage noAdmin = await SendAsync(client, token, HttpMethod.Put, $"/api/v1/users/{subject:D}/attributes", badge))
+        {
+            Assert.Equal(HttpStatusCode.Unauthorized, noAdmin.StatusCode);
+        }
+
+        using (HttpResponseMessage bySangamId = await SendAsync(client, token, HttpMethod.Put, $"/api/v1/users/{person:D}/attributes", badge, adminToken))
+        {
+            Assert.Equal(HttpStatusCode.NotFound, bySangamId.StatusCode);
+        }
+
+        using (HttpResponseMessage refused = await SendAsync(client, token, HttpMethod.Put, $"/api/v1/users/{subject:D}/attributes", new Dictionary<string, string?> { ["nothing_" + suffix] = "x" }, adminToken))
         {
             Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
         }
 
-        using (HttpResponseMessage put = await SendAsync(client, token, HttpMethod.Put, $"/api/v1/users/{person:D}/attributes", new Dictionary<string, string?> { [key] = "S-77" }))
+        using (HttpResponseMessage put = await SendAsync(client, token, HttpMethod.Put, $"/api/v1/users/{subject:D}/attributes", badge, adminToken))
         {
             Assert.Equal(HttpStatusCode.OK, put.StatusCode);
         }
 
-        using HttpResponseMessage get = await SendAsync(client, token, HttpMethod.Get, $"/api/v1/users/{person:D}/attributes", null);
+        using HttpResponseMessage get = await SendAsync(client, token, HttpMethod.Get, $"/api/v1/users/{subject:D}/attributes", null);
         Assert.Equal(HttpStatusCode.OK, get.StatusCode);
         JsonElement values = await get.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("S-77", values.GetProperty(key).GetString());
+
+        // The audit trail names the admin who asked.
+        using IServiceScope scope = _factory.Services.CreateScope();
+        SangamDbContext db = scope.ServiceProvider.GetRequiredService<SangamDbContext>();
+        Guid adminId = await db.Users.Where(u => u.Email == adminEmail).Select(u => u.Id).SingleAsync();
+        Assert.True(await db.AuditEvents.AnyAsync(e => e.Action == AuditActions.AttributeValuesSet && e.ActorUserId == adminId && e.TargetId == person));
+    }
+
+    [PostgresFact]
+    public async Task SomeoneWhoIsNotAnAdmin_CannotHaveValuesChanged_ForThem()
+    {
+        using BrowserSession s = new(_factory);
+        string email = await RegisterAndVerifyAsync(s);
+        string key = "badge_" + Guid.NewGuid().ToString("N")[..8];
+        Guid person = await SeedAsync(email, key, claim: null, value: null);
+        await LinkAsync(person);
+        Guid subject = await _factory.SubjectAsync(DevelopmentSeeder.SampleClientId, person);
+
+        // The person's own token: they are no admin of the application or of anywhere they work.
+        (string verifier, string challenge) = Pkce();
+        (_, string consentPath, _) = await s.FollowAsync(Authorize(challenge, "openid profile"));
+        string ownToken = (await ExchangeAsync(s, consentPath, verifier)).GetProperty("access_token").GetString()!;
+
+        using HttpClient client = _factory.CreateClient();
+        string token = await ClientTokenAsync(client);
+        using HttpResponseMessage refused = await SendAsync(client, token, HttpMethod.Put, $"/api/v1/users/{subject:D}/attributes", new Dictionary<string, string?> { [key] = "S-1" }, ownToken);
+        Assert.Equal(HttpStatusCode.NotFound, refused.StatusCode);
     }
 
     private async Task<Guid> SeedAsync(string email, string key, string? claim, string? value)
@@ -125,6 +175,16 @@ public sealed class CustomClaimsTests
 
         await db.SaveChangesAsync();
         return person;
+    }
+
+    private async Task MakeApplicationAdminAsync(string email)
+    {
+        using IServiceScope scope = _factory.Services.CreateScope();
+        SangamDbContext db = scope.ServiceProvider.GetRequiredService<SangamDbContext>();
+        Guid app = await db.Apps.Where(a => a.ClientId == DevelopmentSeeder.SampleClientId).Select(a => a.Id).SingleAsync();
+        Guid user = await db.Users.Where(u => u.Email == email).Select(u => u.Id).SingleAsync();
+        db.AppAdmins.Add(new AppAdmin { Id = Guid.NewGuid(), AppId = app, UserId = user, Role = Domain.Enums.AppAdminRole.Admin, GrantedAt = DateTimeOffset.UtcNow });
+        await db.SaveChangesAsync();
     }
 
     private async Task LinkAsync(Guid person)
@@ -215,10 +275,15 @@ public sealed class CustomClaimsTests
         return JsonDocument.Parse(body).RootElement.GetProperty("access_token").GetString()!;
     }
 
-    private static async Task<HttpResponseMessage> SendAsync(HttpClient client, string token, HttpMethod method, string path, object? body)
+    private static async Task<HttpResponseMessage> SendAsync(HttpClient client, string token, HttpMethod method, string path, object? body, string? actingAdmin = null)
     {
         using HttpRequestMessage request = new(method, path);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        if (actingAdmin is not null)
+        {
+            request.Headers.Add("Sangam-Acting-Admin", actingAdmin);
+        }
+
         if (body is not null)
         {
             request.Content = JsonContent.Create(body);

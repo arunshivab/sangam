@@ -54,8 +54,10 @@ webhook-signature: v1,<base64 HMAC-SHA256, see below>
  "data":{"org_id":"…","role":"nurse","applies_to_descendants":true}}
 ```
 
-`subject.sub` is the person's Sangam id (the `sub` of their tokens). `tenant` is present when the event is about an
-organisation.
+`subject.sub` is your application's own id for the person: the `sub` of the tokens it receives. Since 1.0.0-rc.14 every
+application has its own ids, unrelated to any other application's (ADR-0017); the same goes for `merged_into` and
+`merged_from` in an account merge, and a `sid` in `data` is your application's own `sid` for the session, as in its
+tokens. `tenant` is present when the event is about an organisation.
 
 ## Checking the signature (do it on every message)
 

@@ -309,6 +309,12 @@ public sealed class EfEvidencePackService : IEvidencePackService
         files.Insert(0, ("README.md", Utf8.GetBytes(Readme(app, from, to, now, effective, admins.Count(a => a.RevokedAt == null), admins.Count(a => a.RevokedAt == null && !a.TwoFactorEnabled),
             memberships.Count(m => m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > now)), changes.Count, events.Count, broken)), "What the pack holds and which controls are Sangam's.")); // i18n-ignore: the pack is an English document for auditors
 
+        // rc.14 (decision record 0017): the pack goes to the application's administrators and auditors, so every person in
+        // it is named by the application's own id for them, never their Sangam id: in the CSV columns, the audit events
+        // (actor, target and details) and the manifest alike.
+        Guid generatedBy = await Apps.PairwiseSubjects.ForAsync(_db, app.Id, userId, cancellationToken).ConfigureAwait(false);
+        files = await ToApplicationIdsAsync(files, app.Id, cancellationToken).ConfigureAwait(false);
+
         // ---- the manifest, then the zip
         List<EvidenceFile> listed = [.. files.Select(f => new EvidenceFile(f.Name, f.Bytes.LongLength, Convert.ToHexStringLower(SHA256.HashData(f.Bytes)), f.Description))];
         JsonObject manifest = new()
@@ -317,7 +323,7 @@ public sealed class EfEvidencePackService : IEvidencePackService
             ["application"] = new JsonObject { ["app_id"] = app.Id.ToString(), ["client_id"] = app.ClientId, ["name"] = app.DisplayName },
             ["period"] = new JsonObject { ["from"] = from.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), ["to"] = to.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), ["time_zone"] = "Asia/Kolkata" },
             ["generated_at"] = Stamp(now),
-            ["generated_by_user_id"] = userId.ToString(),
+            ["generated_by_user_id"] = generatedBy.ToString(),
             ["sangam_version"] = SiemFormat.Version,
             ["files"] = new JsonArray([.. listed.Select(f => (JsonNode)new JsonObject { ["name"] = f.Name, ["bytes"] = f.Bytes, ["sha256"] = f.Sha256, ["description"] = f.Description })]),
         };
@@ -361,6 +367,32 @@ public sealed class EfEvidencePackService : IEvidencePackService
             cancellationToken).ConfigureAwait(false);
         return new EvidencePack(fileName, zip, sha, [.. listed, new EvidenceFile("manifest.json", manifestBytes.LongLength, Convert.ToHexStringLower(SHA256.HashData(manifestBytes)), "The list of files with their SHA-256.")]); // i18n-ignore: the pack is an English document for auditors
     }
+
+    /// <summary>rc.14: every Sangam id of a person in the files, replaced by the application's own id for them.</summary>
+    private async Task<List<(string Name, byte[] Bytes, string Description)>> ToApplicationIdsAsync(List<(string Name, byte[] Bytes, string Description)> files, Guid appId, CancellationToken cancellationToken)
+    {
+        HashSet<Guid> found = [];
+        foreach ((_, byte[] bytes, _) in files)
+        {
+            foreach (System.Text.RegularExpressions.Match match in GuidPattern.Matches(Utf8.GetString(bytes)))
+            {
+                found.Add(Guid.Parse(match.Value));
+            }
+        }
+
+        List<Guid> people = await _db.Users.AsNoTracking().Where(u => found.Contains(u.Id)).Select(u => u.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
+        if (people.Count == 0)
+        {
+            return files;
+        }
+
+        IReadOnlyDictionary<Guid, Guid> ids = await Apps.PairwiseSubjects.ForManyAsync(_db, appId, people, cancellationToken).ConfigureAwait(false);
+        return [.. files.Select(f => (f.Name, Utf8.GetBytes(GuidPattern.Replace(Utf8.GetString(f.Bytes), m => ids.TryGetValue(Guid.Parse(m.Value), out Guid subject) ? subject.ToString("D") : m.Value)), f.Description))];
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex GuidPattern = new(
+        "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+        System.Text.RegularExpressions.RegexOptions.CultureInvariant, TimeSpan.FromSeconds(5));
 
     /// <summary>A CSV file: RFC 4180 quoting, and no cell that a spreadsheet would read as a formula.</summary>
     /// <param name="header">Column names.</param>
@@ -417,6 +449,8 @@ public sealed class EfEvidencePackService : IEvidencePackService
             .Append("- `roles.csv`, `organisations.csv`: the application's roles and permissions, and its organisations.\n")
             .Append("- `access-list.csv`: everyone with a role now — the starting point of an access review.\n")
             .Append("- `access-changes.csv`: joiners, movers and leavers in the period.\n")
+            .Append("- People are named by this application's own id for them (the `sub` of its tokens), never by their Sangam id. The audit\n")
+            .Append("  hashes were computed over Sangam's own records, so the chain is checked by Sangam (`audit-chain.txt`), not from the pack.\n")
             .Append("- `audit-events.jsonl`, `audit-summary.csv`: the audit trail for the application, in the shared audit schema.\n")
             .Append("- `audit-chain.txt`: the audit log's hash chain, checked.\n")
             .Append("- `integrations.json`: SCIM, webhooks, attributes and claims (no secrets).\n\n")

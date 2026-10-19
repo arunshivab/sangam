@@ -23,7 +23,8 @@ application, and the sign-in screens are the same (`/saml/continue` passes throu
 `/connect/authorize`).
 
 **What a service provider is told.** A NameID private to that service provider (HMAC of the person's id and its
-entity id under `Sangam:Saml:PairwiseKey`), unless it is registered for the e-mail address. Attributes only from a
+entity id under `Sangam:Saml:PairwiseKey`; since rc.14, ADR-0017, its application's own random id for the person, the
+same as in its SCIM and webhooks, and the key is gone), unless it is registered for the e-mail address. Attributes only from a
 fixed list (name, given and family name, e-mail, roles, organisations), each chosen at registration and shown to the
 person on the consent screen as the matching OpenID Connect scopes. The authentication context says what the sign-in
 achieved: PasswordProtectedTransport, or REFEDS MFA for a two-step or passkey sign-in; a request for more than the

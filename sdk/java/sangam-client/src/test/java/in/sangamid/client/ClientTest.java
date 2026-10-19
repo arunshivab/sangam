@@ -96,17 +96,20 @@ class ClientTest {
 
     @Test
     void changingAPlaceSendsTheAdminsOwnToken() throws Exception {
-        // rc.13: as adding staff does.
+        // rc.13: as adding staff does; rc.14: setting a person's values too.
         List<String> seen = new ArrayList<>();
         HttpServer server = serve(Map.of("/connect/token", "{\"access_token\":\"t1\",\"expires_in\":3600}"), seen);
         try {
             ManagementClient client = new ManagementClient("http://127.0.0.1:" + server.getAddress().getPort() + "/", "app", "s", null);
             client.setRoles("o1", "u1", "admin-token", List.of("doctor"), null);
             client.removeMember("o1", "u1", "admin-token");
+            client.setAttributes("u1", "admin-token", Map.of("badge", "S-77"));
             assertTrue(seen.get(1).startsWith("PUT /api/v1/orgs/o1/members/u1 Bearer t1"));
             assertTrue(seen.get(1).endsWith(" admin=admin-token"));
             assertTrue(seen.get(2).startsWith("DELETE /api/v1/orgs/o1/members/u1 Bearer t1"));
             assertTrue(seen.get(2).endsWith(" admin=admin-token"));
+            assertTrue(seen.get(3).startsWith("PUT /api/v1/users/u1/attributes Bearer t1"));
+            assertTrue(seen.get(3).endsWith(" admin=admin-token"));
         } finally {
             server.stop(0);
         }

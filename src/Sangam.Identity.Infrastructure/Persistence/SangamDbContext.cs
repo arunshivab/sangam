@@ -38,6 +38,9 @@ public sealed class SangamDbContext : IdentityUserContext<SangamUser, Guid>, IDa
     /// <summary>App grants.</summary>
     public DbSet<AppGrant> AppGrants => Set<AppGrant>();
 
+    /// <summary>rc.14: the id each application knows each person by (pairwise subject ids).</summary>
+    public DbSet<AppSubject> AppSubjects => Set<AppSubject>();
+
     /// <summary>Consents.</summary>
     public DbSet<Consent> Consents => Set<Consent>();
 

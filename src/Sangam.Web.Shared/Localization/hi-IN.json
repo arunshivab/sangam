@@ -1563,7 +1563,7 @@
   "The message is back to the one above it.": "संदेश फिर से ऊपर के स्तर वाला हो गया है।",
   "The message must contain the variable “{0}”.": "संदेश में वेरिएबल “{0}” होना चाहिए।",
   "The metadata has no HTTP-POST assertion consumer address.": "मेटाडेटा में कोई HTTP-POST assertion consumer पता नहीं है।",
-  "The named signer is not an active Sangam account.": "नामित हस्ताक्षरकर्ता का Sangam खाता सक्रिय नहीं है।",
+  "The named signer is not an active Sangam account that has used your application.": "नामित हस्ताक्षरकर्ता का ऐसा सक्रिय Sangam खाता नहीं है जिसने आपके एप्लिकेशन का उपयोग किया हो।",
   "The names of their organisations": "उनके संगठनों के नाम",
   "The organisation does not exist, or you are not an admin there.": "संगठन मौजूद नहीं है, या आप वहाँ व्यवस्थापक नहीं हैं।",
   "The organisation does not exist.": "यह संगठन मौजूद नहीं है।",

@@ -42,6 +42,18 @@ exist, so there is no production database to act on yet.
 - [ ] rc.13: **Testers may join themselves** is on only for made-up demo organisations (check with
       `select name from organisations where testers_may_join_themselves;` — it should list only Demo Hospital (made up),
       or nothing in production).
+- [ ] rc.14: migration `Rc14PairwiseSubjects` adds the table `app_subjects` (empty; each application's ids for people are
+      given out as it meets them).
+- [ ] rc.14: tell each application's developers that every application now knows a person by its own id (ADR-0017): the
+      `sub` of its tokens, and the id in the management API, webhooks and SCIM. An id from another application, or a
+      Sangam id, is answered *not found*. Two applications that must agree on a member of staff use the hospital's own
+      employee code or the doctor's registration number. Also: `PUT /api/v1/users/{id}/attributes` now needs the acting
+      admin in `Sangam-Acting-Admin`, like the members calls (the SDKs' `setAttributes` take it).
+- [ ] rc.14 (ADR-0017, open): before allowing any pair of applications to exchange tokens (`ExchangeAudiences`), decide
+      whether the caller may see the target's id for the person in the exchanged token, or tokens only the target reads.
+- [ ] rc.14: the imagiQa demo's records made before rc.14 name staff by their old ids. They still show (the names are
+      kept and patients are found by hospital); to start clean, empty them:
+      `docker compose exec postgres psql -U postgres -d imagiqa_demo -c "TRUNCATE notes, vitals, patients;"`.
 - [ ] `Sangam:Seed:DevelopmentSample` is **false**. The seeder creates the sample partner app and
       development redirect URIs; none of that belongs in production.
 - [ ] `Sangam:Email:UseOutbox` is **false**, and Anjal's API (D-B) is configured with production
@@ -179,7 +191,7 @@ Checks:
       never to record identity-document numbers.
 - [ ] PR-21: each native or device application registered with its kind and exact redirect addresses; token exchange
       audiences (`ExchangeAudiences`) granted only where one application must call another for the same person.
-- [ ] PR-22 (only if a SAML application is connected): SAML signing key and pairwise key made and kept offline as well
+- [ ] PR-22 (only if a SAML application is connected): SAML signing key made and kept offline as well (no pairwise key since rc.14)
       (`docker-compose.saml.yml`, production README); each service provider registered on the operator console and one
       sign-in and one logout seen to work; SAML included in the penetration test (OI-045).
 
@@ -221,7 +233,7 @@ Security (docs/security/, SGM-503):
         before the public launch (see "Added by rc.5").
   - [x] Antivirus on logo uploads, with Anjal's ClamAV (V12.4.2). Built in rc.5.
   - [x] `__Host-` cookie names, now rather than at the cut-over (V3.4.4). Built in rc.5.
-  - [x] Linking people through the management API: consent first (V4.2.1). Built in rc.5. Pairwise ids: still to discuss.
+  - [x] Linking people through the management API: consent first (V4.2.1). Built in rc.5. Pairwise ids: built in rc.14 (ADR-0017).
 - [ ] Confirm volume encryption on the E2E VM, and NTP on it (V6.1.1, V7.3.4).
 - [ ] Confirm the reverse proxy sends `X-Forwarded-Proto: https` (Caddy does, unchanged). Since R7, cookies are always
       Secure, so a page with a form reached over plain HTTP answers 500 instead of setting a cookie (OI-057).
@@ -339,8 +351,8 @@ The founder's ASVS decisions A1 to A6 (10 October 2026), built in rc.5:
       monitoring page shows the service *answering* after the first password is set.
 - [ ] **Keys (A6):** before the public launch, review whether the signing, encryption and key-ring keys and the pepper
       stay as files on the VM or move to a managed key vault in an India region (V6.4.1, V6.4.2; SGM-908).
-- [ ] **Pairwise subject ids (A4):** discuss before the first outside partner connects. Today every application sees
-      the same Sangam id for a person; consent first (rc.5) stops an application linking someone by that id alone.
+- [x] **Pairwise subject ids (A4):** done in rc.14 (ADR-0017): every application knows a person by its own id, in its
+      tokens, the management API, webhooks, SCIM, logout and signature tokens and evidence packs.
 - [ ] Tell partners: the management API now adds only people who already use their application; anyone else is
       invited with `POST /api/v1/orgs/{org}/invitations` (every SDK has an `invite` call).
 - [ ] `security.txt` is served by every host at `/.well-known/security.txt` (contact security@sangamid.in). Make sure
@@ -380,7 +392,7 @@ Account merging (SGM-914 section 9) and the two rc.6 gaps the founder's procedur
       role are on the kept account, the other application owner is e-mailed, and the old e-mail can register again.
 - [ ] **Tell partners:** the `account.merged` webhook (tick it on endpoints added before rc.7) and
       `GET /api/v1/users/{id}/merged` (every SDK has a `mergedInto` call). An application that keeps its own records
-      under the Sangam id should move them to the surviving id.
+      under its id for the person should move them to the surviving id (from rc.14, its own id for the survivor).
 - [ ] **Incident register (SGM-802):** an emergency override now opens a security incident by itself
       (`security.incident.open` in the audit, alert subject *INCIDENT*). Read the register from the operator console's
       audit, filtered on that action, at each review.

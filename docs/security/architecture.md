@@ -82,8 +82,8 @@ user), unable to gain privileges, and with memory and process limits. The Kubern
 | # | Flow | From → to | Carries | Protection |
 |---|---|---|---|---|
 | F1 | Sign-in and account screens | Browser → Caddy → identity server, portal | Passwords, codes, passkey assertions, profile | TLS 1.2+ at Caddy; antiforgery; rate limits; HSTS |
-| F2 | OpenID Connect | Application ↔ identity server | Authorization codes (PKCE), tokens, userinfo | TLS; registered redirect addresses only; PKCE; signed and encrypted tokens; refresh-token rotation |
-| F3 | Management API | Application → identity server | Roles, organisations, memberships, attributes | Client-credentials token with `sangam.manage`; scoped to the calling application; JSON only; every refusal and every read of people audited |
+| F2 | OpenID Connect | Application ↔ identity server | Authorization codes (PKCE), tokens, userinfo; the person by the application's own id (rc.14) | TLS; registered redirect addresses only; PKCE; signed and encrypted tokens; refresh-token rotation |
+| F3 | Management API | Application → identity server | Roles, organisations, memberships, attributes; people by the application's own ids (rc.14) | Client-credentials token with `sangam.manage`; scoped to the calling application; JSON only; every refusal and every read of people audited |
 | F4 | SAML | Service provider ↔ identity server | Assertions with a pairwise id | Signed assertions; registered service providers only |
 | F5 | Consoles | Browser → consoles (Blazor Server) | Operator and partner actions | OIDC sign-in with an authenticator; rank checks in the services; every refusal audited |
 | F6 | Database | Hosts → PostgreSQL | All data | Private Docker network; a separate application role that cannot alter the audit table; plain TCP inside the VM (decision 2) |

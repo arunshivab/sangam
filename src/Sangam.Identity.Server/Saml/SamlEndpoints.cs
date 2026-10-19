@@ -204,10 +204,11 @@ public static class SamlEndpoints
         IReadOnlyList<OrgClaim> orgs = await tenancy.GetOrgClaimsAsync(user.Id, app.Id, cancellationToken).ConfigureAwait(false);
         Guid? sid = SangamAuthentication.SessionId(session!);
         SamlSubjectContent subject = new(
-            provider.NameIdFormat == "email" ? user.Email : options.PairwiseNameId(user.Id, provider.EntityId),
+            // rc.14 (ADR-0017): the service provider's NameID is its application's own id for the person.
+            provider.NameIdFormat == "email" ? user.Email : (await http.RequestServices.GetRequiredService<Sangam.Identity.Application.Apps.ISubjectIds>().SubjectAsync(app.Id, user.Id, cancellationToken).ConfigureAwait(false)).ToString("D"),
             provider.NameIdFormat == "email" ? SamlProtocol.EmailNameId : SamlProtocol.PersistentNameId,
             proof.AuthenticatedAt ?? DateTimeOffset.UtcNow,
-            "_" + (sid?.ToString("N") ?? Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(16))),
+            "_" + (sid is Guid browser ? Sangam.Identity.Application.Apps.AppSessionIds.For(browser, app.Id, app.IsPlatform).ToString("N") : Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(16))),
             SamlProtocol.ClassFor(level),
             [.. SamlRelease.Release(provider, user, orgs).Select(a => a.Claim)]);
         if (sid is Guid sessionId)

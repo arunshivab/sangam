@@ -291,7 +291,7 @@ public sealed class AuthorizationCodeFlowTests
         Assert.Equal(Sangam.Web.Shared.Hosting.SecurityHeaders.FormPostScriptSource, source);
     }
 
-    private static async Task<(Guid UserId, string RefreshToken)> RefreshTokenAsync(BrowserSession s, HttpClient api)
+    private async Task<(Guid UserId, string RefreshToken)> RefreshTokenAsync(BrowserSession s, HttpClient api)
     {
         (string verifier, string challenge) = Pkce();
         (_, string location, _) = await s.FollowAsync(Authorize(challenge));
@@ -311,7 +311,10 @@ public sealed class AuthorizationCodeFlowTests
             ["client_secret"] = DevelopmentSeeder.SampleClientSecret,
             ["code_verifier"] = verifier,
         });
-        Guid userId = Guid.Parse(Payload(tokens.GetProperty("id_token").GetString()!).GetProperty("sub").GetString()!);
+        // rc.14: the token names the person by the application's own id; the test needs their Sangam id.
+        Guid subject = Guid.Parse(Payload(tokens.GetProperty("id_token").GetString()!).GetProperty("sub").GetString()!);
+        Guid userId = await _factory.UserOfAsync(DevelopmentSeeder.SampleClientId, subject);
+        Assert.NotEqual(subject, userId);
         return (userId, tokens.GetProperty("refresh_token").GetString()!);
     }
 

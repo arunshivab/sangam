@@ -25,7 +25,7 @@ an application that wants to move its records from the closed person to the surv
 ```json
 {
   "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User", "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"],
-  "externalId": "<the person's Sangam id — the sub claim>",
+  "externalId": "<your application's own id for the person — the sub claim>",
   "userName": "asha@example.in",
   "name": { "givenName": "Asha", "familyName": "Nair", "formatted": "Asha Nair" },
   "displayName": "Asha Nair",
@@ -37,7 +37,8 @@ an application that wants to move its records from the closed person to the surv
 ```
 
 `phoneNumbers` only when the person consented to the `phone` scope for the application. `externalId` is the stable key:
-match on it, never on the e-mail address, which can change.
+match on it, never on the e-mail address, which can change. Since 1.0.0-rc.14 it is the application's own id for the person, the same
+as the `sub` of the tokens it receives, and unrelated to any other application's (ADR-0017).
 
 **Groups:** one per role (`Nurse`), or one per role at each organisation (`Nurse — Apulki Hospital`), as chosen. Their
 `externalId` is the role code, or `role@organisation-id`. A renamed role renames its group.

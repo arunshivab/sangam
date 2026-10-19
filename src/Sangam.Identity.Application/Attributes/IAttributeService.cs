@@ -58,6 +58,19 @@ public interface IAttributeService
     /// <param name="cancellationToken">Cancellation token.</param>
     Task<PartnerResult> SetValuesAsync(Guid? userId, Guid appId, Guid personId, IReadOnlyDictionary<string, string?> values, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// rc.14 (decision of 14 Oct 2026): the management API sets a linked person's values for one of the application's admins,
+    /// who is named in the audit. An application administrator sets any of its values; a customer or branch admin only the
+    /// values kept for the organisations they administer (at it or above it) where the person holds a place; anyone else is
+    /// <see cref="AttributeSetOutcome.NotAdmin"/>.
+    /// </summary>
+    /// <param name="appId">The application.</param>
+    /// <param name="adminUserId">The acting admin.</param>
+    /// <param name="personId">The person.</param>
+    /// <param name="values">Key to value.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<(AttributeSetOutcome Outcome, PartnerResult Result)> SetValuesForAdminAsync(Guid appId, Guid adminUserId, Guid personId, IReadOnlyDictionary<string, string?> values, CancellationToken cancellationToken = default);
+
     /// <summary>What each application the person has linked keeps about them, for the account portal; rows marked <c>person</c> are theirs to change.</summary>
     /// <param name="personId">The person.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
@@ -132,3 +145,13 @@ public sealed record AttributeValueRow(string Key, string Label, string Type, st
 /// <param name="AppName">Its name.</param>
 /// <param name="Values">The attributes they may change, with values.</param>
 public sealed record PersonAttributeGroup(Guid AppId, string AppName, IReadOnlyList<AttributeValueRow> Values);
+
+/// <summary>rc.14: how setting values for an acting admin went.</summary>
+public enum AttributeSetOutcome
+{
+    /// <summary>Saved, or refused for the values themselves (see the result).</summary>
+    Done,
+
+    /// <summary>The acting admin does not administer the application or anywhere the person works in it.</summary>
+    NotAdmin,
+}

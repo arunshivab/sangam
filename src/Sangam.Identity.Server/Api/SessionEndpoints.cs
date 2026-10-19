@@ -5,7 +5,6 @@ using OpenIddict.Validation.AspNetCore;
 using Sangam.Identity.Application.Apps;
 using Sangam.Identity.Application.Devices;
 using Sangam.Identity.Application.Tenancy;
-using Sangam.Identity.Domain.Enums;
 using Sangam.Identity.Server.Authentication;
 using Sangam.Shared.Constants;
 using static OpenIddict.Abstractions.OpenIddictConstants;
@@ -33,9 +32,9 @@ public static class SessionEndpoints
 
         // T1: the application's idle timer ran out. The session is locked on every application; on an enrolled shared device
         // the person comes back with their PIN, anywhere else with a full sign-in.
-        api.MapPost("/lock", async (ClaimsPrincipal caller, IAppDirectory apps, ISharedDeviceService devices, CancellationToken ct) =>
+        api.MapPost("/lock", async (ClaimsPrincipal caller, IAppDirectory apps, ISubjectIds subjects, ISharedDeviceService devices, CancellationToken ct) =>
         {
-            (AppSummary? app, Guid? userId, Guid? sessionId) = await PersonAsync(caller, apps, ct).ConfigureAwait(false);
+            (AppSummary? app, Guid? userId, Guid? sessionId) = await PersonAsync(caller, apps, subjects, ct).ConfigureAwait(false);
             if (app is null || userId is null || sessionId is null)
             {
                 return Results.Json(new { error = "Send the person's own Sangam access token, issued to your application, from a sign-in (it carries sid)." }, statusCode: StatusCodes.Status401Unauthorized);
@@ -48,9 +47,9 @@ public static class SessionEndpoints
 
         // M12: the application ends emergency access early, with a reason (the patient left the ward, care handed over, the
         // emergency is over). Tokens refreshed after this no longer carry it.
-        api.MapPost("/emergency/end", async (EmergencyEndRequest input, ClaimsPrincipal caller, IAppDirectory apps, IEmergencyAccessService emergencies, CancellationToken ct) =>
+        api.MapPost("/emergency/end", async (EmergencyEndRequest input, ClaimsPrincipal caller, IAppDirectory apps, ISubjectIds subjects, IEmergencyAccessService emergencies, CancellationToken ct) =>
         {
-            (AppSummary? app, Guid? userId, Guid? sessionId) = await PersonAsync(caller, apps, ct).ConfigureAwait(false);
+            (AppSummary? app, Guid? userId, Guid? sessionId) = await PersonAsync(caller, apps, subjects, ct).ConfigureAwait(false);
             if (app is null || userId is null || sessionId is null)
             {
                 return Results.Json(new { error = "Send the person's own Sangam access token, issued to your application, from a sign-in (it carries sid)." }, statusCode: StatusCodes.Status401Unauthorized);
@@ -72,14 +71,15 @@ public static class SessionEndpoints
     /// <summary>The application, person and session behind a person's access token.</summary>
     /// <param name="caller">The validated token.</param>
     /// <param name="apps">App directory.</param>
+    /// <param name="subjects">rc.14: the token names the person by its application's own id.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The parts, or nulls.</returns>
-    internal static async Task<(AppSummary? App, Guid? UserId, Guid? SessionId)> PersonAsync(ClaimsPrincipal caller, IAppDirectory apps, CancellationToken ct)
+    internal static async Task<(AppSummary? App, Guid? UserId, Guid? SessionId)> PersonAsync(ClaimsPrincipal caller, IAppDirectory apps, ISubjectIds subjects, CancellationToken ct)
     {
-        string? clientId = caller.GetClaim(Claims.ClientId) ?? caller.GetPresenters().FirstOrDefault();
-        AppSummary? app = clientId is null ? null : await apps.FindByClientIdAsync(clientId, ct).ConfigureAwait(false);
-        Guid? userId = Guid.TryParse(caller.GetClaim(Claims.Subject), out Guid u) ? u : null;
-        Guid? sessionId = Guid.TryParse(caller.GetClaim(SangamClaims.SessionId), out Guid s) ? s : null;
-        return (app is { Status: AppStatus.Active } ? app : null, userId, sessionId);
+        AppSummary? app = await Endpoints.ConnectEndpoints.SubjectAppAsync(caller, apps, ct).ConfigureAwait(false);
+        Guid? userId = app is not null && Guid.TryParse(caller.GetClaim(Claims.Subject), out Guid u) ? await subjects.UserAsync(app.Id, u, ct).ConfigureAwait(false) : null;
+        // rc.14: the token's sid is the application's own for the session.
+        Guid? sessionId = app is not null && userId is Guid person && Guid.TryParse(caller.GetClaim(SangamClaims.SessionId), out Guid s) ? await subjects.SessionAsync(app.Id, person, s, ct).ConfigureAwait(false) : null;
+        return (app, userId, sessionId);
     }
 }
