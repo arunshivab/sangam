@@ -14,6 +14,12 @@ All notable changes to Sangam are recorded here. The format follows
 - **Dependabot lock files** (OI-060): a workflow regenerates every lock file on Dependabot's NuGet pull requests and
   pushes them back (deploy key `LOCKFILE_DEPLOY_KEY`), so those pull requests restore and run CI. It runs only `dotnet
   restore`, only for Dependabot's own branches, and pushes only lock files.
+- **Dependabot's Docker pull requests move `global.json` too**: on them the same workflow reads the SDK version from the
+  new build image (from the registry; nothing from the image is run), moves `global.json` to it and regenerates the
+  lock files with it, so the pull request builds. Only forward and within the same feature band (10.0.4xx); a new band
+  or major stops the job for a person. Checked by replaying #46 (the image that needed 10.0.402): the workflow's
+  changes came out identical to #50. After such a pull request is merged, developers install the new SDK.
+- Java SDK: Tomcat embed 11.0.27 (was 11.0.26) (#44). JS SDK: React and React DOM 19.3.1, Express 5.3.0 (#45).
 
 ## [1.0.0-rc.13] - thirteenth release candidate
 
