@@ -7,6 +7,10 @@ All notable changes to Sangam are recorded here. The format follows
 ## [Unreleased]
 
 ### Dependencies
+- **.NET SDK 10.0.402** (`global.json`, was 10.0.401) with the SDK build image it comes in (runtime 10.0.13), and the
+  newer `caddy:2` image (Dockerfile and production compose). Dependabot's Docker pull requests moved the image alone,
+  which cannot build: `global.json` pins the SDK exactly. The new SDK brings the 10.0.13 Blazor framework assets, so the
+  lock files of the four Blazor projects are regenerated. Developers install SDK 10.0.402.
 - **Dependabot lock files** (OI-060): a workflow regenerates every lock file on Dependabot's NuGet pull requests and
   pushes them back (deploy key `LOCKFILE_DEPLOY_KEY`), so those pull requests restore and run CI. It runs only `dotnet
   restore`, only for Dependabot's own branches, and pushes only lock files.
