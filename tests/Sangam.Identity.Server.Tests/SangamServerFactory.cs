@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using Sangam.Identity.Infrastructure.Apps;
 using Sangam.Identity.Infrastructure.Persistence;
 
 namespace Sangam.Identity.Server.Tests;
@@ -101,6 +104,28 @@ public sealed class SangamServerFactory : WebApplicationFactory<Program>
 
     /// <summary>PR-21 test application that must use pushed authorization requests.</summary>
     public const string ParOnlyClientId = "test-par-only";
+
+    /// <summary>rc.14: the id the application <paramref name="clientId"/> knows the person by (given out now if it has none).</summary>
+    /// <param name="clientId">The application's client id.</param>
+    /// <param name="userId">The person's Sangam id.</param>
+    public async Task<Guid> SubjectAsync(string clientId, Guid userId)
+    {
+        using IServiceScope scope = Services.CreateScope();
+        SangamDbContext db = scope.ServiceProvider.GetRequiredService<SangamDbContext>();
+        Guid appId = await db.Apps.Where(a => a.ClientId == clientId).Select(a => a.Id).SingleAsync();
+        return await PairwiseSubjects.ForAsync(db, appId, userId);
+    }
+
+    /// <summary>rc.14: the person an application's id names (its tokens' <c>sub</c>).</summary>
+    /// <param name="clientId">The application's client id.</param>
+    /// <param name="subject">The application's id for the person.</param>
+    public async Task<Guid> UserOfAsync(string clientId, Guid subject)
+    {
+        using IServiceScope scope = Services.CreateScope();
+        SangamDbContext db = scope.ServiceProvider.GetRequiredService<SangamDbContext>();
+        Guid appId = await db.Apps.Where(a => a.ClientId == clientId).Select(a => a.Id).SingleAsync();
+        return await PairwiseSubjects.UserOfAsync(db, appId, subject) ?? throw new InvalidOperationException("The application has no such id.");
+    }
 }
 
 /// <summary>Serialises the server test classes on one shared host.</summary>

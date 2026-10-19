@@ -34,7 +34,7 @@ Any page that needs a signed-in person now sends the visitor to Sangam and bring
 ```csharp
 SangamUser? user = httpContext.User.GetSangamUser();
 
-user.Id                                   // stable Sangam id: store against this, not the email
+user.Id                                   // this application's own id for the person: store against this, not the email
 user.Organisations                        // where they hold a role
 user.HasRole("doctor", hospital.Path)     // includes roles inherited from a parent organisation
 user.HasPermission("patients:write", ward.Path)
@@ -138,7 +138,8 @@ Ask the Sangam team to register either or both addresses for your application (o
 - **Back-channel** (OpenID Connect Back-Channel Logout 1.0): Sangam POSTs `logout_token=<JWT>` to your address
   when a session in which your application was used ends — the person signs out, or ends the session from their
   account portal. The token has `typ` `logout+jwt`, your client id as `aud`, `sub`, `sid` and the logout `events`
-  claim. Verify it with Sangam's keys, end every local session with that `sid` (or `sub`), and answer `200`.
+  claim. Verify it with Sangam's keys, end every local session with that `sid` (or `sub`), and answer `200`. (Since
+  rc.14 the `sub` and `sid` are your application's own: the same as in its tokens, and unlike any other application's.)
   Failed deliveries are retried for a while; this is the dependable channel.
 - **Front-channel** (Front-Channel Logout 1.0): Sangam loads your page in a hidden frame with `iss` and `sid` on
   the query string as the person signs out. Your page must allow being framed by Sangam's origin
@@ -171,6 +172,9 @@ JsonNode? check = await sangam.CheckStaffAsync(wardId, adminAccessToken, new San
 await sangam.AddStaffAsync(wardId, adminAccessToken, new SangamStaffAddition(Person: new SangamStaffPerson("Asha", "Nair", "asha@example.in", null, new DateOnly(1994, 3, 2)), Roles: ["nurse"]));
 // Several roles at one organisation, or none (staff): SetRolesAsync(wardId, personId, adminAccessToken, ["nurse", "charge-nurse"]);
 // ending a place now: RemoveMemberAsync(wardId, personId, adminAccessToken).
+// rc.14: values your application keeps about a person are set for one of your admins too:
+// SetAttributesAsync(personId, adminAccessToken, values). personId is always your application's own id for the person
+// (the sub of its tokens): every application has its own, and an id that is not yours is answered "not found" (ADR-0017).
 // rc.7: on account.merged (or for an id that stopped signing in), find the account the person kept.
 Guid? survivor = await sangam.GetMergedIntoAsync(personId);
 

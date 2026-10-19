@@ -186,12 +186,19 @@ public sealed class SangamManagementClient : IDisposable
     public Task<JsonNode?> GetAttributesAsync(Guid userId, CancellationToken cancellationToken = default)
         => SendAsync(HttpMethod.Get, $"users/{userId:D}/attributes", null, cancellationToken);
 
-    /// <summary>Sets values your application keeps about a person; an empty value clears one.</summary>
-    /// <param name="userId">The person.</param>
+    /// <summary>
+    /// Sets values your application keeps about a person; an empty value clears one. rc.14: done for one of your admins,
+    /// who administers your application or an organisation where the person works in it.
+    /// </summary>
+    /// <param name="userId">The person (their <c>sub</c>).</param>
+    /// <param name="adminAccessToken">The admin's own access token, issued to your application.</param>
     /// <param name="values">Keys and values.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    public Task<JsonNode?> SetAttributesAsync(Guid userId, IReadOnlyDictionary<string, string?> values, CancellationToken cancellationToken = default)
-        => SendAsync(HttpMethod.Put, $"users/{userId:D}/attributes", values, cancellationToken);
+    public Task<JsonNode?> SetAttributesAsync(Guid userId, string adminAccessToken, IReadOnlyDictionary<string, string?> values, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(adminAccessToken);
+        return SendForAdminAsync(HttpMethod.Put, $"users/{userId:D}/attributes", values, adminAccessToken, cancellationToken);
+    }
 
     /// <summary>Any management API call: <paramref name="path"/> is relative to <c>/api/v1/</c>.</summary>
     /// <param name="method">The method.</param>

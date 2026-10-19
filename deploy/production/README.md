@@ -110,20 +110,19 @@ by invitation only (pilot), invite testers first. To give someone a role at a de
   monitoring page shows the archive. The archive directory is inside the encrypted backups (D-E). To read a file:
   `audit-archive read --file <file> --key audit-archive.key.pem --password '<passphrase>' --out events.jsonl`.
 - **PostgreSQL:** 18 everywhere (D-F).
-- **SAML (PR-22):** off until it is needed. To switch it on, create a SAML-only signing key (RSA 3072, two years)
-  and a pairwise key, then start with the SAML file as well:
+- **SAML (PR-22):** off until it is needed. To switch it on, create a SAML-only signing key (RSA 3072, two years),
+  then start with the SAML file as well:
 
       openssl req -x509 -newkey rsa:3072 -sha256 -days 730 -nodes -subj "/CN=Sangam SAML signing" \
         -keyout saml.key -out saml.crt
       openssl pkcs12 -export -inkey saml.key -in saml.crt -out secrets/saml_signing_current.pfx \
         -passout file:secrets/Sangam__Saml__Certificates__0__Password && shred -u saml.key
-      openssl rand -base64 48 | tr -d '\n' > secrets/Sangam__Saml__PairwiseKey
       docker compose -f docker-compose.yml -f docker-compose.saml.yml up -d
 
   (Write a long random password into `secrets/Sangam__Saml__Certificates__0__Password` first.) Sangam's metadata is
   then at `https://id.sangamid.in/saml/metadata`; register each service provider on the operator console's
-  *Applications → SAML service providers* page. Keep the pairwise key in the founder's offline copies: if it changes,
-  every service provider sees every person as someone new. A missing or short pairwise key refuses the start.
+  *Applications → SAML service providers* page. Since rc.14 there is no pairwise key: a service provider's NameID for a
+  person is its application's own id for them (ADR-0017), kept in the database and in its backups.
 
 - **DigiLocker (PR-26; required from rc.6, SGM-914):** since rc.6 a person who loses their authenticator and recovery
   codes recovers their account only with DigiLocker — there is no support-assisted recovery — and an application may
@@ -145,7 +144,7 @@ by invitation only (pilot), invite testers first. To give someone a role at a de
   set an inactivity limit, 30 days after telling them, and deletes accounts that use no partner application and have
   not signed in for 3 years, 30 days after telling them (operators and application administrators excepted).
 - **Key fingerprints (rc.8, SGM-911):** nothing to install. Each time the identity server starts it compares every key
-  file and secret (token, key-ring and SAML certificates; pepper; DigiLocker subject key; SAML pairwise key) with the
+  file and secret (token, key-ring and SAML certificates; pepper; DigiLocker subject key) with the
   fingerprint it recorded at the last start, in the database. A changed key stops the start, is written to the audit
   log and alerts the founder. After a planned change (rotation, SGM-911) start once with
   `Sangam__Keys__AcceptChanged: "true"` in the identity service's environment, then remove it. If you did not change a

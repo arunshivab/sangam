@@ -93,7 +93,8 @@ public sealed partial class NativeAndDeviceTests
         JsonElement tokens = await PostAsync(device, "/connect/token", poll);
         Assert.True(tokens.TryGetProperty("access_token", out _));
         Assert.True(tokens.TryGetProperty("refresh_token", out _));
-        Assert.Equal(userId.ToString("D"), Claims(tokens.GetProperty("id_token").GetString()!).GetProperty("sub").GetString());
+        // rc.14: the device application knows the person by its own id for them.
+        Assert.Equal((await _factory.SubjectAsync(SangamServerFactory.DeviceClientId, userId)).ToString("D"), Claims(tokens.GetProperty("id_token").GetString()!).GetProperty("sub").GetString());
 
         // The code is spent; the approval is audited.
         Assert.Equal("invalid_grant", (await PostAsync(device, "/connect/token", poll, expectError: true)).GetProperty("error").GetString());
@@ -272,7 +273,10 @@ public sealed partial class NativeAndDeviceTests
         Assert.False(exchanged.TryGetProperty("refresh_token", out _));
         Assert.InRange(exchanged.GetProperty("expires_in").GetInt32(), 1, 600);
         JsonElement claims = Claims(exchanged.GetProperty("access_token").GetString()!);
-        Assert.Equal(userId.ToString("D"), claims.GetProperty("sub").GetString());
+
+        // rc.14: the exchanged token is for imagiQa, so it names the person by imagiQa's id for them, not the caller's.
+        Assert.Equal((await _factory.SubjectAsync(DevelopmentSeeder.ImagiqaClientId, userId)).ToString("D"), claims.GetProperty("sub").GetString());
+        Assert.NotEqual(Claims(access).GetProperty("sub").GetString(), claims.GetProperty("sub").GetString());
         Assert.Contains(DevelopmentSeeder.ImagiqaClientId, claims.GetProperty("aud").ToString(), StringComparison.Ordinal);
         Assert.Equal(SangamServerFactory.ExchangerClientId, claims.GetProperty("act").GetProperty("sub").GetString());
 
@@ -285,6 +289,72 @@ public sealed partial class NativeAndDeviceTests
 
         using IServiceScope after = _factory.Services.CreateScope();
         Assert.True(await after.ServiceProvider.GetRequiredService<SangamDbContext>().AuditEvents.AnyAsync(e => e.Action == AuditActions.TokenExchange && e.ActorUserId == userId));
+    }
+
+    [PostgresFact]
+    public async Task TwoApplications_KnowThePersonByUnrelatedIds_InEveryTokenAndAnswer()
+    {
+        // rc.14 (decision record 0017): pairwise subject ids.
+        using BrowserSession s = new(_factory);
+        (Guid userId, _) = await RegisterAsync(s);
+        using HttpClient api = _factory.CreateClient();
+        JsonElement sample = await AuthorizeAsync(s, api, DevelopmentSeeder.SampleClientId, DevelopmentSeeder.SampleRedirectUri, DevelopmentSeeder.SampleClientSecret, "openid profile email offline_access");
+        JsonElement exchanger = await AuthorizeAsync(s, api, SangamServerFactory.ExchangerClientId, "https://exchanger.example.in/signin-sangam", SangamServerFactory.ExchangerSecret, "openid profile");
+
+        string sampleSub = Claims(sample.GetProperty("id_token").GetString()!).GetProperty("sub").GetString()!;
+        string exchangerSub = Claims(exchanger.GetProperty("id_token").GetString()!).GetProperty("sub").GetString()!;
+        Assert.NotEqual(sampleSub, exchangerSub);
+        Assert.NotEqual(userId.ToString("D"), sampleSub);
+        Assert.NotEqual(userId.ToString("D"), exchangerSub);
+
+        // One browser session, but each application has its own sid for it, so the two cannot match up through it.
+        string? sampleSid = Claims(sample.GetProperty("id_token").GetString()!).GetProperty("sid").GetString();
+        string? exchangerSid = Claims(exchanger.GetProperty("id_token").GetString()!).GetProperty("sid").GetString();
+        Assert.False(string.IsNullOrEmpty(sampleSid));
+        Assert.NotEqual(sampleSid, exchangerSid);
+        Assert.Equal(sampleSid, Claims(sample.GetProperty("access_token").GetString()!).GetProperty("sid").GetString());
+        Assert.False(Claims(sample.GetProperty("access_token").GetString()!).TryGetProperty("sangam_session", out _));
+        Assert.False(Claims(sample.GetProperty("id_token").GetString()!).TryGetProperty("sangam_session", out _));
+
+        // The access token, userinfo and a refreshed token all carry the application's own id.
+        string access = sample.GetProperty("access_token").GetString()!;
+        Assert.Equal(sampleSub, Claims(access).GetProperty("sub").GetString());
+        using (HttpRequestMessage me = new(HttpMethod.Get, "/connect/userinfo"))
+        {
+            me.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", access);
+            using HttpResponseMessage info = await api.SendAsync(me);
+            string body = await info.Content.ReadAsStringAsync();
+            Assert.True(info.IsSuccessStatusCode, body);
+            Assert.Equal(sampleSub, JsonDocument.Parse(body).RootElement.GetProperty("sub").GetString());
+            Assert.DoesNotContain(userId.ToString("D"), body, StringComparison.Ordinal);
+        }
+
+        JsonElement refreshed = await PostAsync(api, "/connect/token", new Dictionary<string, string>
+        {
+            ["grant_type"] = "refresh_token",
+            ["refresh_token"] = sample.GetProperty("refresh_token").GetString()!,
+            ["client_id"] = DevelopmentSeeder.SampleClientId,
+            ["client_secret"] = DevelopmentSeeder.SampleClientSecret,
+        });
+        Assert.Equal(sampleSub, Claims(refreshed.GetProperty("id_token").GetString()!).GetProperty("sub").GetString());
+        Assert.Equal(sampleSid, Claims(refreshed.GetProperty("id_token").GetString()!).GetProperty("sid").GetString());
+
+        // The management API knows the person by the calling application's id only: another application's id, or the
+        // Sangam id, is not found.
+        string manage = (await PostAsync(api, "/connect/token", new Dictionary<string, string>
+        {
+            ["grant_type"] = "client_credentials",
+            ["client_id"] = DevelopmentSeeder.SampleClientId,
+            ["client_secret"] = DevelopmentSeeder.SampleClientSecret,
+            ["scope"] = "sangam.manage",
+        })).GetProperty("access_token").GetString()!;
+        foreach ((string id, HttpStatusCode expected) in new[] { (sampleSub, HttpStatusCode.OK), (exchangerSub, HttpStatusCode.NotFound), (userId.ToString("D"), HttpStatusCode.NotFound) })
+        {
+            using HttpRequestMessage read = new(HttpMethod.Get, "/api/v1/users/" + id + "/attributes");
+            read.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", manage);
+            using HttpResponseMessage answer = await api.SendAsync(read);
+            Assert.Equal(expected, answer.StatusCode);
+        }
     }
 
     private static async Task<JsonElement> AuthorizeAsync(BrowserSession s, HttpClient api, string clientId, string redirectUri, string? secret, string scope)

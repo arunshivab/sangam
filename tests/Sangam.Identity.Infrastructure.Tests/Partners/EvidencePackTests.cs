@@ -153,11 +153,16 @@ public sealed class EvidencePackTests : IAsyncLifetime
         string access = Encoding.UTF8.GetString(files["access-list.csv"]);
         string changes = Encoding.UTF8.GetString(files["access-changes.csv"]);
 
-        Assert.Contains(_nurse.ToString(), access, StringComparison.Ordinal);
+        // rc.14: people are named by the application's own id for them, never their Sangam id.
+        Guid nurse = await _pg.SubjectAsync(_app, _nurse);
+        Guid leaver = await _pg.SubjectAsync(_app, _leaver);
+        Assert.Contains(nurse.ToString(), access, StringComparison.Ordinal);
+        Assert.DoesNotContain(_nurse.ToString(), access, StringComparison.Ordinal);
         Assert.Contains("City Hospital", access, StringComparison.Ordinal);
-        Assert.DoesNotContain(_leaver.ToString(), access, StringComparison.Ordinal);
-        Assert.Contains(",granted," + _leaver, changes, StringComparison.Ordinal);
-        Assert.Contains(",revoked," + _leaver, changes, StringComparison.Ordinal);
+        Assert.DoesNotContain(leaver.ToString(), access, StringComparison.Ordinal);
+        Assert.Contains(",granted," + leaver, changes, StringComparison.Ordinal);
+        Assert.Contains(",revoked," + leaver, changes, StringComparison.Ordinal);
+        Assert.DoesNotContain(_leaver.ToString(), changes, StringComparison.Ordinal);
         Assert.Contains("owner@lims.test", Encoding.UTF8.GetString(files["administrators.csv"]), StringComparison.Ordinal);
         Assert.Contains("results:read", Encoding.UTF8.GetString(files["roles.csv"]), StringComparison.Ordinal);
         Assert.Contains("INTACT", Encoding.UTF8.GetString(files["audit-chain.txt"]), StringComparison.Ordinal);
@@ -221,7 +226,8 @@ public sealed class EvidencePackTests : IAsyncLifetime
         EvidencePack pack = (await BuildAsync(_owner))!;
         string trail = Encoding.UTF8.GetString(Unzip(pack.Content)["audit-events.jsonl"]);
         Assert.Contains("\"identity.app.admin.grant\"", trail, StringComparison.Ordinal);
-        Assert.Contains(operatorId.ToString("D"), trail, StringComparison.Ordinal);
+        Assert.Contains((await _pg.SubjectAsync(_app, operatorId)).ToString("D"), trail, StringComparison.Ordinal);
+        Assert.DoesNotContain(operatorId.ToString("D"), trail, StringComparison.Ordinal);
     }
 
     [PostgresFact]

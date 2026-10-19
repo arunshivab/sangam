@@ -36,7 +36,8 @@ was rejected: that is the clinic's network topology, it belongs to the app, and 
 moment DHCP changes.
 
 The token's standard OIDC `sid` claim carries the session id to clients, so the portal can mark
-"This device" in its own list.
+"This device" in its own list. (Since rc.14, ADR-0017, only Sangam's own applications are given the session id itself;
+every other application gets its own `sid` for the session.)
 
 Revoked rows are kept 90 days for the audit trail, then deleted by the maintenance sweep.
 

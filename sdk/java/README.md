@@ -50,5 +50,10 @@ rc.13: `upsertMembership`, `setRoles` and the new `removeMember` take the acting
 (`setRoles(orgId, userId, adminAccessToken, roles, expiresAt)`), as `addStaff` does; Sangam checks they are an admin of
 that organisation and records who asked.
 
+rc.14: `setAttributes(userId, adminAccessToken, values)` takes the acting admin too, who must administer your application
+or an organisation where the person works. Every application knows a person by its own id (the `sub` of its tokens, and the id the management API, webhooks and
+SCIM use); another application's id for the same person is unrelated, and the API answers *not found* to an id that is
+not yours (ADR-0017).
+
 `mvn test` runs the shared vectors and the adapter's tests; `mvn package` builds the sample
 (`samples/spring-boot`, port 5930).

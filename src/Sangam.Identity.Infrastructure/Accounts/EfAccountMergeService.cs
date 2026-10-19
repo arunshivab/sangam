@@ -19,6 +19,7 @@ using Sangam.Identity.Infrastructure.Maintenance;
 using Sangam.Identity.Infrastructure.Persistence;
 using Sangam.Identity.Infrastructure.Provisioning;
 using Sangam.Identity.Infrastructure.Services;
+using Sangam.Identity.Infrastructure.Tenancy;
 using Sangam.Identity.Infrastructure.Verification;
 
 namespace Sangam.Identity.Infrastructure.Accounts;
@@ -457,14 +458,37 @@ public sealed class EfAccountMergeService : IAccountMergeService
             consent.RevokedAt = now;
         }
 
+        // A DigiLocker identity on the closed account moves to the survivor (both verified is the same identity or refused).
+        // rc.14: before the places move, so a place at an organisation that takes only verified people moves only to a
+        // verified survivor; and after the connections above are saved, so every application the survivor now holds is
+        // told it is verified.
+        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        IdentityVerification? closedIdentity = await _db.IdentityVerifications.AsNoTracking().FirstOrDefaultAsync(v => v.UserId == closed, cancellationToken).ConfigureAwait(false);
+        bool identityMoved = false;
+        if (closedIdentity is not null)
+        {
+            await _db.IdentityVerifications.Where(v => v.UserId == closed).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+            if (survivorUser.IdentityVerifiedAt is null)
+            {
+                VerificationResult moved = await _verification.ApplyHashedAsync(survivor, new VerifiedIdentity(closedIdentity.Method, closedIdentity.SubjectHash, closedIdentity.Name, closedIdentity.DateOfBirth, closedIdentity.Gender), null, cancellationToken).ConfigureAwait(false);
+                identityMoved = moved.Succeeded;
+            }
+        }
+
         // Roles at organisations: the survivor's own wins at an organisation where both are members.
         List<OrgMembership> closedMemberships = await _db.OrgMemberships.Where(m => m.UserId == closed && m.RevokedAt == null).ToListAsync(cancellationToken).ConfigureAwait(false);
         HashSet<(Guid AppId, Guid OrgId)> survivorOrgs = [.. (await _db.OrgMemberships.Where(m => m.UserId == survivor && m.RevokedAt == null).Select(m => new { m.AppId, m.OrgId }).ToListAsync(cancellationToken).ConfigureAwait(false))
             .Select(m => (m.AppId, m.OrgId))];
         int membershipsMoved = 0;
+        bool survivorVerified = await VerifiedStaff.IsVerifiedAsync(_db, survivor, cancellationToken).ConfigureAwait(false);
         foreach (OrgMembership membership in closedMemberships)
         {
-            if (!survivorOrgs.Contains((membership.AppId, membership.OrgId)) && (membership.ExpiresAt == null || membership.ExpiresAt > now))
+            // rc.14 (rc.13 known gap): a place is new to the survivor, so an organisation that takes only people verified
+            // with DigiLocker keeps it from an unverified survivor; it is counted as not moved, and they can be added again
+            // once verified.
+            bool mayMove = survivorVerified
+                || !await VerifiedStaff.OnAtAsync(_db, await _db.Organisations.AsNoTracking().Where(o => o.Id == membership.OrgId).Select(o => o.Path).FirstAsync(cancellationToken).ConfigureAwait(false), cancellationToken).ConfigureAwait(false);
+            if (mayMove && !survivorOrgs.Contains((membership.AppId, membership.OrgId)) && (membership.ExpiresAt == null || membership.ExpiresAt > now))
             {
                 _db.OrgMemberships.Add(new OrgMembership
                 {
@@ -542,19 +566,6 @@ public sealed class EfAccountMergeService : IAccountMergeService
             .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
         int attributesMoved = await _db.UserAttributeValues.Where(v => v.UserId == closed)
             .ExecuteUpdateAsync(s => s.SetProperty(v => v.UserId, survivor), cancellationToken).ConfigureAwait(false);
-
-        // A DigiLocker identity on the closed account moves to the survivor (both verified is the same identity or refused).
-        IdentityVerification? closedIdentity = await _db.IdentityVerifications.AsNoTracking().FirstOrDefaultAsync(v => v.UserId == closed, cancellationToken).ConfigureAwait(false);
-        bool identityMoved = false;
-        if (closedIdentity is not null)
-        {
-            await _db.IdentityVerifications.Where(v => v.UserId == closed).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
-            if (survivorUser.IdentityVerifiedAt is null)
-            {
-                VerificationResult moved = await _verification.ApplyHashedAsync(survivor, new VerifiedIdentity(closedIdentity.Method, closedIdentity.SubjectHash, closedIdentity.Name, closedIdentity.DateOfBirth, closedIdentity.Gender), null, cancellationToken).ConfigureAwait(false);
-                identityMoved = moved.Succeeded;
-            }
-        }
 
         // The closed account: its e-mail and mobile are released, its personal data destroyed; the row stays for the links.
         AccountPurgeService.Pseudonymise(closedUser, now);

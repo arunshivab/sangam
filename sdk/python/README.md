@@ -45,6 +45,11 @@ rc.13: `upsert_membership`, `set_roles` and the new `remove_member` take the act
 (`set_roles(org_id, user_id, admin_access_token, roles)`), as `add_staff` does; Sangam checks they are an
 admin of that organisation and records who asked.
 
+rc.14: `set_attributes(user_id, admin_access_token, values)` takes the acting admin too, who must administer your
+application or an organisation where the person works. Every application knows a person by its own id (the `sub` of its tokens, and the id the management API, webhooks and
+SCIM use); another application's id for the same person is unrelated, and the API answers *not found* to an id that is
+not yours (ADR-0017).
+
 - **Tokens stay on the server**: the code is exchanged with PKCE on the server; the browser holds only a signed session
   id. Sessions are in memory by default; give `store=` (get, set, delete) to share them between processes.
 - **Without a framework**: `has_permission`, `satisfies`, `step_up_challenge`, `verify_webhook`, `TokenVerifier`,

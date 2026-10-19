@@ -56,7 +56,7 @@ class SampleController {
         String memberships = user.memberships().stream().map(m -> "<li><b>" + e(m.role()) + "</b> at " + e(m.organisationName()) + " <code>" + e(m.path()) + "</code>"
                 + (m.appliesToDescendants() ? " (and below)" : "") + ": " + e(String.join(", ", m.permissions())) + "</li>").collect(Collectors.joining());
         String options = user.memberships().stream().map(m -> "<option value=\"" + e(m.path()) + "\">" + e(m.organisationName()) + "</option>").collect(Collectors.joining());
-        String body = "<section><h1>Signed in as " + e(user.name()) + "</h1><p class=\"muted\">Sangam id <code>" + e(user.id()) + "</code> · " + e(user.acr()) + "</p></section>"
+        String body = "<section><h1>Signed in as " + e(user.name()) + "</h1><p class=\"muted\">Your id in this app <code>" + e(user.id()) + "</code> · " + e(user.acr()) + "</p></section>"
                 + "<section data-panel=\"organisations\"><h2>Your organisations in this application</h2><ul>" + (memberships.isEmpty() ? "<li class=\"muted\">No role yet.</li>" : memberships) + "</ul></section>"
                 + "<section data-panel=\"permission\"><h2>Check a permission</h2><div class=\"row\"><select id=\"org\" aria-label=\"Organisation\">" + options
                 + "<option value=\"/0192a6b0-0000-7000-8000-00000000ffff/\">An organisation you have no role in</option></select>"

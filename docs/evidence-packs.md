@@ -30,7 +30,10 @@ own platform applications have no pack.
 | `manifest.json` | Every file with its size and SHA-256 |
 
 CSV cells that a spreadsheet would read as a formula are prefixed so they are shown as text. People are identified by
-name, e-mail and Sangam id only where the application already holds them through sign-in.
+name, e-mail and the application's own id for them (the `sub` of its tokens, ADR-0017) — never their Sangam id — only
+where the application already holds them through sign-in. The audit events' hashes were computed over Sangam's own
+records (with Sangam ids), so the chain is checked by Sangam when the pack is made (`audit-chain.txt`), not recomputed
+from the pack.
 
 ## How an auditor checks it
 

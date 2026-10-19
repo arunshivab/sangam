@@ -89,6 +89,10 @@
   catalogue is the same idea in a form translators can review without tools). Branding and message templates by
   level — organisation, application, platform, built-in — with partner branding never changing structure
   (PR-19). Back- and front-channel logout, introspection and revocation (PR-20).
+- **Pairwise subject ids (rc.14).** Every application knows a person by its own random id, unrelated to their Sangam id
+  and to every other application's: in its tokens, userinfo, the management API, webhooks, SCIM, logout and signature
+  tokens and evidence packs. An id that is not the application's own is answered *not found*; there is no translation
+  between applications. See [`decisions/0017-pairwise-subject-ids.md`](decisions/0017-pairwise-subject-ids.md).
 - **SDK family and the shared audit event (R6).** JavaScript/TypeScript (`@sangam/client`, `@sangam/node`,
   `@sangam/react`), Python (`sangam-client`, FastAPI and Flask) and Java (`sangam-client`, `sangam-spring`) SDKs next to
   .NET's `Sangam.Client`, with one sample each; the shared audit event schema 1.0 and its helper in every SDK; shared

@@ -6,6 +6,7 @@ using Sangam.Identity.Application.Signatures;
 using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Entities;
 using Sangam.Identity.Domain.Enums;
+using Sangam.Identity.Infrastructure.Apps;
 using Sangam.Identity.Infrastructure.Persistence;
 
 namespace Sangam.Identity.Infrastructure.Signatures;
@@ -48,9 +49,11 @@ public sealed partial class EfSignatureService : ISignatureService
             return (null, problem);
         }
 
-        if (input.Signer is Guid signer && !await _db.Users.AnyAsync(u => u.Id == signer && u.Status == UserStatus.Active, cancellationToken).ConfigureAwait(false))
+        // rc.14: the application names the signer by its own id for them.
+        Guid? named = input.Signer is Guid signerSubject ? await PairwiseSubjects.UserOfAsync(_db, appId, signerSubject, cancellationToken).ConfigureAwait(false) : null;
+        if (input.Signer is not null && (named is not Guid signer || !await _db.Users.AnyAsync(u => u.Id == signer && u.Status == UserStatus.Active, cancellationToken).ConfigureAwait(false)))
         {
-            return (null, "The named signer is not an active Sangam account.");
+            return (null, "The named signer is not an active Sangam account that has used your application.");
         }
 
         DateTimeOffset now = _clock.UtcNow;
@@ -62,7 +65,7 @@ public sealed partial class EfSignatureService : ISignatureService
             RecordHash = input.RecordHash.Trim(),
             Meaning = input.Meaning.Trim(),
             DisplayText = input.DisplayText.Trim(),
-            SignerUserId = input.Signer,
+            SignerUserId = named,
             ReturnUrl = input.ReturnUrl,
             Status = SignatureStatus.Pending,
             CreatedAt = now,
@@ -112,7 +115,9 @@ public sealed partial class EfSignatureService : ISignatureService
         }
 
         string clientId = await _db.Apps.Where(a => a.Id == request!.AppId).Select(a => a.ClientId).SingleAsync(cancellationToken).ConfigureAwait(false);
-        string token = _issuer.Issue(new SignatureClaims(issuer, clientId, request!.Id, signer, signerName, request.RecordId, request.RecordHash, request.Meaning, now, AuthenticationAssurance.AcrSign, methods, authenticatedAt));
+        // rc.14: the token names the signer by the application's own id for them.
+        Guid subject = await PairwiseSubjects.ForAsync(_db, request!.AppId, signer, cancellationToken).ConfigureAwait(false);
+        string token = _issuer.Issue(new SignatureClaims(issuer, clientId, request.Id, subject, signerName, request.RecordId, request.RecordHash, request.Meaning, now, AuthenticationAssurance.AcrSign, methods, authenticatedAt));
 
         // Only one decision ever: a second tab or a replayed post finds the request no longer pending.
         int updated = await _db.SignatureRequests
@@ -178,7 +183,9 @@ public sealed partial class EfSignatureService : ISignatureService
             SignatureStatus.Declined => "declined",
             _ => r.ExpiresAt <= _clock.UtcNow ? "expired" : "pending",
         };
-        return new SignatureView(r.Id, status, r.Token, r.DecidedAt, r.DecidedByUserId);
+        // rc.14: who decided, by the application's own id for them.
+        Guid? decidedBy = r.DecidedByUserId is Guid person ? await PairwiseSubjects.ForAsync(_db, appId, person, cancellationToken).ConfigureAwait(false) : null;
+        return new SignatureView(r.Id, status, r.Token, r.DecidedAt, decidedBy);
     }
 
     private static string? Validate(SignatureRequestInput input)

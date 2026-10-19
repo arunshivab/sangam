@@ -22,6 +22,7 @@ public static class SangamClaimsBuilder
 
     /// <summary>Creates the identity for a user-facing token.</summary>
     /// <param name="user">The user.</param>
+    /// <param name="subject">rc.14: the id the receiving application knows the person by (<see cref="Application.Apps.ISubjectIds"/>), the <c>sub</c>.</param>
     /// <param name="scopes">Granted scopes.</param>
     /// <param name="orgs">The user's memberships in the requesting app (may be empty).</param>
     /// <param name="authenticationScheme">Identity authentication type.</param>
@@ -30,14 +31,16 @@ public static class SangamClaimsBuilder
     /// <param name="custom">PR-25: the application's custom claims, released under the <c>attributes</c> scope.</param>
     /// <param name="current">rc.12 (A6): the organisation the person chose to work at for this sign-in, if any.</param>
     /// <param name="emergency">rc.12 (M12): emergency access in progress, if any.</param>
-    public static ClaimsIdentity Build(UserSummary user, IReadOnlyCollection<string> scopes, IReadOnlyList<OrgClaim> orgs, string authenticationScheme, string? sessionId = null, AuthenticationProof? proof = null, IReadOnlyDictionary<string, object>? custom = null, OrgClaim? current = null, EmergencyGrant? emergency = null)
+    /// <param name="internalSessionId">rc.14: the Sangam session itself, kept only in codes and refresh tokens (never sent to
+    /// the application), while <paramref name="sessionId"/> is the application's own <c>sid</c> for it (<see cref="Application.Apps.AppSessionIds"/>).</param>
+    public static ClaimsIdentity Build(UserSummary user, Guid subject, IReadOnlyCollection<string> scopes, IReadOnlyList<OrgClaim> orgs, string authenticationScheme, string? sessionId = null, AuthenticationProof? proof = null, IReadOnlyDictionary<string, object>? custom = null, OrgClaim? current = null, EmergencyGrant? emergency = null, string? internalSessionId = null)
     {
         ArgumentNullException.ThrowIfNull(user);
         ArgumentNullException.ThrowIfNull(scopes);
         ArgumentNullException.ThrowIfNull(orgs);
 
         ClaimsIdentity identity = new(authenticationScheme, Claims.Name, Claims.Role);
-        identity.SetClaim(Claims.Subject, user.Id.ToString("D"));
+        identity.SetClaim(Claims.Subject, subject.ToString("D"));
 
         if (scopes.Contains(SangamScopes.Profile))
         {
@@ -113,6 +116,11 @@ public static class SangamClaimsBuilder
             identity.SetClaim(SangamClaims.SessionId, sessionId);
         }
 
+        if (!string.IsNullOrEmpty(internalSessionId))
+        {
+            identity.SetClaim(SessionKeyClaim, internalSessionId);
+        }
+
         if (!string.IsNullOrEmpty(user.SecurityStamp))
         {
             identity.SetClaim(SangamClaims.SecurityStamp, user.SecurityStamp);
@@ -135,6 +143,20 @@ public static class SangamClaimsBuilder
         return identity;
     }
 
+    /// <summary>
+    /// rc.14: the Sangam session behind a code or refresh token. No destination, so it is never in an ID or access token;
+    /// OpenIddict keeps it in codes and refresh tokens, which only Sangam reads.
+    /// </summary>
+    public const string SessionKeyClaim = "sangam_session";
+
+    /// <summary>The Sangam session a code or refresh token came from (its private claim).</summary>
+    /// <param name="principal">The stored principal.</param>
+    public static Guid? InternalSessionOf(ClaimsPrincipal principal)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        return Guid.TryParse(principal.GetClaim(SessionKeyClaim), out Guid key) ? key : null;
+    }
+
     /// <summary>Which tokens a claim goes into.</summary>
     /// <param name="claim">The claim.</param>
     public static IEnumerable<string> GetDestinations(Claim claim)
@@ -145,7 +167,7 @@ public static class SangamClaimsBuilder
             Claims.Subject or Claims.Name or Claims.Email or Claims.EmailVerified or SangamClaims.SessionId or SangamClaims.Orgs or SangamClaims.Org or SangamClaims.Emergency
                 or Claims.AuthenticationContextReference or Claims.AuthenticationMethodReference or Claims.AuthenticationTime
                 => [Destinations.AccessToken, Destinations.IdentityToken],
-            "AspNet.Identity.SecurityStamp" or SangamClaims.SecurityStamp => [],
+            "AspNet.Identity.SecurityStamp" or SangamClaims.SecurityStamp or SessionKeyClaim => [],
             _ => [Destinations.AccessToken],
         };
     }

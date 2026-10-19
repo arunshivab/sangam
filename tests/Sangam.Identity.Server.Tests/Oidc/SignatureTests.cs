@@ -96,7 +96,9 @@ public sealed partial class SignatureTests
             RequireExpirationTime = false,
         });
         Assert.True(validated.IsValid, validated.Exception?.Message);
-        Assert.Equal(userId.ToString("D"), validated.Claims["sub"]);
+        // rc.14: the token names the signer by the application's own id for them, as its sign-in tokens do.
+        Assert.Equal((await _factory.SubjectAsync(DevelopmentSeeder.SampleClientId, userId)).ToString("D"), validated.Claims["sub"]);
+        Assert.Equal(validated.Claims["sub"], result.GetProperty("decidedBy").GetString());
         Assert.Equal(hash, validated.Claims["sig_record_hash"]);
         Assert.Equal("Approved", validated.Claims["sig_meaning"]);
         Assert.Equal(AuthenticationAssurance.AcrSign, validated.Claims["acr"]);
@@ -138,9 +140,23 @@ public sealed partial class SignatureTests
             meaning = "Ordered",
             displayText = "Chemotherapy order",
             returnUrl = DevelopmentSeeder.SampleRedirectUri,
-            signer = namedId,
+            signer = await _factory.SubjectAsync(DevelopmentSeeder.SampleClientId, namedId),
         });
         string ceremony = JsonDocument.Parse(await created.Content.ReadAsStringAsync()).RootElement.GetProperty("ceremonyPath").GetString()!;
+
+        // rc.14: the signer's Sangam id names nobody the application knows.
+        using (HttpResponseMessage bySangamId = await SendAsync(api, appToken, HttpMethod.Post, "/api/v1/signatures", new
+        {
+            recordId = "ORDER-78",
+            recordHash = "sha256:" + new string('b', 64),
+            meaning = "Ordered",
+            displayText = "Chemotherapy order",
+            returnUrl = DevelopmentSeeder.SampleRedirectUri,
+            signer = namedId,
+        }))
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, bySangamId.StatusCode);
+        }
 
         using BrowserSession other = new(_factory);
         (_, string otherEmail) = await RegisterAsync(other);

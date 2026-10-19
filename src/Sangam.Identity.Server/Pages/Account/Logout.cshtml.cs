@@ -138,7 +138,8 @@ public sealed class LogoutModel : AuthPageModel
             User = null;
             SignedOut = true;
             string issuer = Issuer();
-            Frames = [.. frames.Select(f => f with { Uri = WithLogoutParameters(f.Uri, issuer, sid) })];
+            // rc.14: each application is given its own sid for the session.
+            Frames = [.. frames.Select(f => f with { Uri = WithLogoutParameters(f.Uri, issuer, AppSessionIds.For(sid, f.AppId, f.IsPlatform)) })];
             if (IsEndSessionRequest)
             {
                 Dictionary<string, string> fields = new(EndSessionFields, StringComparer.Ordinal) { ["frames_done"] = "1" };

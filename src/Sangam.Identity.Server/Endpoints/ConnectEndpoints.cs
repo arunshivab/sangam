@@ -314,8 +314,12 @@ public static class ConnectEndpoints
         string applicationId = (await applications.GetIdAsync(application, cancellationToken).ConfigureAwait(false))!;
 
         // Standard OIDC `sid`: lets a client (the portal, for one) tell which session is its own.
+        // rc.14: the application gets its own sid for the session; the session itself stays in the code and refresh token.
         string? browserSession = SangamAuthentication.SessionId(session.Principal!)?.ToString("D");
-        ClaimsIdentity identity = SangamClaimsBuilder.Build(user, requested, orgs, TokenValidationParameters.DefaultAuthenticationType, browserSession, proof, await CustomClaimsAsync(httpContext, requested, user.Id, app.Id, cancellationToken).ConfigureAwait(false), current, emergency);
+        string? appSession = SangamAuthentication.SessionId(session.Principal!) is Guid browser ? AppSessionIds.For(browser, app.Id, app.IsPlatform).ToString("D") : null;
+        // rc.14 (decision record 0017): the application knows the person by its own id, never their Sangam id.
+        Guid subject = await httpContext.RequestServices.GetRequiredService<ISubjectIds>().SubjectAsync(app.Id, user.Id, cancellationToken).ConfigureAwait(false);
+        ClaimsIdentity identity = SangamClaimsBuilder.Build(user, subject, requested, orgs, TokenValidationParameters.DefaultAuthenticationType, appSession, proof, await CustomClaimsAsync(httpContext, requested, user.Id, app.Id, cancellationToken).ConfigureAwait(false), current, emergency, browserSession);
         if (SangamAuthentication.SessionId(session.Principal!) is Guid sid)
         {
             // PR-20: this application now takes part in the session and is told when it ends.
@@ -387,7 +391,16 @@ public static class ConnectEndpoints
             // The principal validated by OpenIddict from the code / refresh token.
             AuthenticateResult result = await httpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme).ConfigureAwait(false);
             ClaimsPrincipal? stored = result.Principal;
-            Guid? userId = stored is null ? null : (Guid.TryParse(stored.GetClaim(Claims.Subject), out Guid id) ? id : null);
+            AppSummary? app = request.ClientId is null ? null : await apps.FindByClientIdAsync(request.ClientId, cancellationToken).ConfigureAwait(false);
+            if (app is null || app.Status != AppStatus.Active)
+            {
+                return Forbid(Errors.InvalidClient, "This application is not registered with Sangam or has been disabled.");
+            }
+
+            // rc.14: the code or refresh token names the person by this application's own id.
+            ISubjectIds subjects = httpContext.RequestServices.GetRequiredService<ISubjectIds>();
+            Guid? subject = stored is null ? null : (Guid.TryParse(stored.GetClaim(Claims.Subject), out Guid id) ? id : null);
+            Guid? userId = subject is null ? null : await subjects.UserAsync(app.Id, subject.Value, cancellationToken).ConfigureAwait(false);
             UserSummary? user = userId is null ? null : await accounts.FindByIdAsync(userId.Value, cancellationToken).ConfigureAwait(false);
             if (user is null || !user.EmailVerified || user.Status != UserStatus.Active)
             {
@@ -405,17 +418,11 @@ public static class ConnectEndpoints
                     return Forbid(Errors.InvalidGrant, "The person's password, e-mail or two-step sign-in changed, or they signed out everywhere; they must sign in again.");
                 }
 
-                if (Guid.TryParse(stored!.GetClaim(SangamClaims.SessionId), out Guid sessionId)
+                if (SangamClaimsBuilder.InternalSessionOf(stored!) is Guid sessionId
                     && !await sessions.TouchAsync(sessionId, user.Id, cancellationToken).ConfigureAwait(false))
                 {
                     return Forbid(Errors.InvalidGrant, "The sign-in this refresh token came from has ended; the user must sign in again.");
                 }
-            }
-
-            AppSummary? app = request.ClientId is null ? null : await apps.FindByClientIdAsync(request.ClientId, cancellationToken).ConfigureAwait(false);
-            if (app is null || app.Status != AppStatus.Active)
-            {
-                return Forbid(Errors.InvalidClient, "This application is not registered with Sangam or has been disabled.");
             }
 
             // rc.6 (SGM-910 section 7): a code redeemed or tokens refreshed count as using the application.
@@ -444,7 +451,8 @@ public static class ConnectEndpoints
             EmergencyGrant? emergency = SangamClaimsBuilder.EmergencyIdOf(principal.GetClaim(SangamClaims.Emergency)) is Guid useId
                 ? await emergencies.ActiveByIdAsync(useId, user.Id, cancellationToken).ConfigureAwait(false)
                 : null;
-            ClaimsIdentity identity = SangamClaimsBuilder.Build(user, [.. principal.GetScopes()], orgs, TokenValidationParameters.DefaultAuthenticationType, principal.GetClaim(SangamClaims.SessionId), AuthenticationProof.FromToken(principal), await CustomClaimsAsync(httpContext, principal.GetScopes(), user.Id, app.Id, cancellationToken).ConfigureAwait(false), current, emergency);
+            Guid? internalSession = SangamClaimsBuilder.InternalSessionOf(principal);
+            ClaimsIdentity identity = SangamClaimsBuilder.Build(user, subject!.Value, [.. principal.GetScopes()], orgs, TokenValidationParameters.DefaultAuthenticationType, internalSession is Guid kept ? AppSessionIds.For(kept, app.Id, app.IsPlatform).ToString("D") : null, AuthenticationProof.FromToken(principal), await CustomClaimsAsync(httpContext, principal.GetScopes(), user.Id, app.Id, cancellationToken).ConfigureAwait(false), current, emergency, internalSession?.ToString("D"));
             identity.SetAuthorizationId(authorizationId);
 
             List<string> resources = [];
@@ -542,7 +550,9 @@ public static class ConnectEndpoints
             return Forbid(Errors.InvalidGrant, "Only a token issued to the calling application can be exchanged.");
         }
 
-        Guid? userId = Guid.TryParse(subject.GetClaim(Claims.Subject), out Guid id) ? id : null;
+        // rc.14: the subject token names the person by the caller's id; the new token names them by the target's.
+        ISubjectIds subjects = httpContext.RequestServices.GetRequiredService<ISubjectIds>();
+        Guid? userId = Guid.TryParse(subject.GetClaim(Claims.Subject), out Guid id) ? await subjects.UserAsync(caller.Id, id, cancellationToken).ConfigureAwait(false) : null;
         UserSummary? user = userId is null ? null : await accounts.FindByIdAsync(userId.Value, cancellationToken).ConfigureAwait(false);
         if (user is null || !user.EmailVerified)
         {
@@ -562,7 +572,9 @@ public static class ConnectEndpoints
         }
 
         IReadOnlyList<OrgClaim> orgs = await tenancy.GetOrgClaimsAsync(user.Id, target.Id, cancellationToken).ConfigureAwait(false);
-        ClaimsIdentity identity = SangamClaimsBuilder.Build(user, granted, orgs, TokenValidationParameters.DefaultAuthenticationType, subject.GetClaim(SangamClaims.SessionId), AuthenticationProof.FromToken(subject), await CustomClaimsAsync(httpContext, granted, user.Id, target.Id, cancellationToken).ConfigureAwait(false));
+        // rc.14: the session, found from the caller's sid for it, is given to the target under the target's own sid.
+        Guid? exchangedSession = Guid.TryParse(subject.GetClaim(SangamClaims.SessionId), out Guid callerSid) ? await subjects.SessionAsync(caller.Id, user.Id, callerSid, cancellationToken).ConfigureAwait(false) : null;
+        ClaimsIdentity identity = SangamClaimsBuilder.Build(user, await subjects.SubjectAsync(target.Id, user.Id, cancellationToken).ConfigureAwait(false), granted, orgs, TokenValidationParameters.DefaultAuthenticationType, exchangedSession is Guid shared ? AppSessionIds.For(shared, target.Id, target.IsPlatform).ToString("D") : null, AuthenticationProof.FromToken(subject), await CustomClaimsAsync(httpContext, granted, user.Id, target.Id, cancellationToken).ConfigureAwait(false));
         identity.SetAudiences(target.ClientId);
         identity.SetResources(target.ClientId);
         identity.SetAccessTokenLifetime(ExchangedTokenLifetime);
@@ -613,7 +625,11 @@ public static class ConnectEndpoints
     private static async Task<IResult> UserInfoAsync(HttpContext httpContext, IAccountService accounts, IAppDirectory apps, ITenancyQuery tenancy, IEmergencyAccessService emergencies, CancellationToken cancellationToken)
     {
         ClaimsPrincipal principal = httpContext.User;
-        Guid? userId = Guid.TryParse(principal.GetClaim(Claims.Subject), out Guid id) ? id : null;
+
+        // rc.14: the token names the person by its application's own id (the target's, for an exchanged token).
+        AppSummary? tokenApp = await SubjectAppAsync(principal, apps, cancellationToken).ConfigureAwait(false);
+        Guid? subject = Guid.TryParse(principal.GetClaim(Claims.Subject), out Guid id) ? id : null;
+        Guid? userId = tokenApp is null || subject is null ? null : await httpContext.RequestServices.GetRequiredService<ISubjectIds>().UserAsync(tokenApp.Id, subject.Value, cancellationToken).ConfigureAwait(false);
         UserSummary? user = userId is null ? null : await accounts.FindByIdAsync(userId.Value, cancellationToken).ConfigureAwait(false);
         if (user is null)
         {
@@ -627,7 +643,7 @@ public static class ConnectEndpoints
         }
 
         HashSet<string> granted = [.. principal.GetScopes()];
-        Dictionary<string, object> claims = new(StringComparer.Ordinal) { [Claims.Subject] = user.Id.ToString("D") };
+        Dictionary<string, object> claims = new(StringComparer.Ordinal) { [Claims.Subject] = subject!.Value.ToString("D") };
 
         if (granted.Contains(SangamScopes.Profile))
         {
@@ -655,8 +671,7 @@ public static class ConnectEndpoints
 
         if (granted.Contains(SangamScopes.OrgsRead) || granted.Contains(SangamScopes.OrgCurrent))
         {
-            string? clientId = principal.GetClaim(Claims.Audience) ?? principal.GetClaim(Claims.ClientId);
-            AppSummary? app = clientId is null ? null : await apps.FindByClientIdAsync(clientId, cancellationToken).ConfigureAwait(false);
+            AppSummary? app = tokenApp;
             IReadOnlyList<OrgClaim> orgs = app is null ? [] : await tenancy.GetOrgClaimsAsync(user.Id, app.Id, cancellationToken).ConfigureAwait(false);
             if (granted.Contains(SangamScopes.OrgsRead))
             {
@@ -680,9 +695,7 @@ public static class ConnectEndpoints
 
         if (granted.Contains(SangamScopes.Attributes))
         {
-            string? clientId = principal.GetClaim(Claims.Audience) ?? principal.GetClaim(Claims.ClientId);
-            AppSummary? app = clientId is null ? null : await apps.FindByClientIdAsync(clientId, cancellationToken).ConfigureAwait(false);
-            if (app is not null)
+            if (tokenApp is AppSummary app)
             {
                 foreach ((string name, object value) in await CustomClaimsAsync(httpContext, granted, user.Id, app.Id, cancellationToken).ConfigureAwait(false) ?? new Dictionary<string, object>())
                 {
@@ -695,6 +708,22 @@ public static class ConnectEndpoints
     }
 
     // ------------------------------------------------------------------ helpers
+
+    /// <summary>
+    /// rc.14: the application whose id a person's access token carries: for an exchanged token (RFC 8693, with
+    /// <c>act</c>) the application it is addressed to, otherwise the application it was issued to.
+    /// </summary>
+    /// <param name="principal">The validated access token.</param>
+    /// <param name="apps">App directory.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    internal static async Task<AppSummary?> SubjectAppAsync(ClaimsPrincipal principal, IAppDirectory apps, CancellationToken cancellationToken)
+    {
+        string? clientId = principal.HasClaim(c => c.Type == "act")
+            ? principal.GetAudiences().FirstOrDefault()
+            : principal.GetClaim(Claims.ClientId) ?? principal.GetPresenters().FirstOrDefault();
+        AppSummary? app = clientId is null ? null : await apps.FindByClientIdAsync(clientId, cancellationToken).ConfigureAwait(false);
+        return app is { Status: AppStatus.Active } ? app : null;
+    }
 
     /// <summary>PR-25: the application's custom claims for the person, when the <c>attributes</c> scope is granted.</summary>
     private static async Task<IReadOnlyDictionary<string, object>?> CustomClaimsAsync(HttpContext httpContext, IEnumerable<string> scopes, Guid userId, Guid appId, CancellationToken cancellationToken)

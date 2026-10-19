@@ -136,7 +136,9 @@ public sealed class WebhookTests : IAsyncLifetime
         Assert.Equal(message.Id, body.GetProperty("id").GetString());
         Assert.Equal("membership.granted", body.GetProperty("type").GetString());
         Assert.Equal("lipi-his", body.GetProperty("app_id").GetString());
-        Assert.Equal(_nurse.ToString("D"), body.GetProperty("subject").GetProperty("sub").GetString());
+        // rc.14: the application is told about the nurse by its own id for her.
+        Assert.Equal((await _pg.SubjectAsync(_app, _nurse)).ToString("D"), body.GetProperty("subject").GetProperty("sub").GetString());
+        Assert.DoesNotContain(_nurse.ToString("D"), message.Body, StringComparison.Ordinal);
         Assert.Equal(_hospital.ToString("D"), body.GetProperty("tenant").GetProperty("org_id").GetString());
         Assert.Equal("nurse", body.GetProperty("data").GetProperty("role").GetString());
         Assert.False(body.GetProperty("data").GetProperty("applies_to_descendants").GetBoolean());

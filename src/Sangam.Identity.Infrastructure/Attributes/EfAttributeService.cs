@@ -309,6 +309,51 @@ public sealed partial class EfAttributeService : IAttributeService
     }
 
     /// <inheritdoc />
+    public async Task<(AttributeSetOutcome Outcome, PartnerResult Result)> SetValuesForAdminAsync(Guid appId, Guid adminUserId, Guid personId, IReadOnlyDictionary<string, string?> values, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        (bool appAdmin, IReadOnlyList<Guid> covered) = await AdministersPersonAsync(appId, adminUserId, personId, cancellationToken).ConfigureAwait(false);
+        if (!appAdmin && covered.Count == 0)
+        {
+            return (AttributeSetOutcome.NotAdmin, NotYours);
+        }
+
+        if (!await LinkedAsync(appId, personId, cancellationToken).ConfigureAwait(false))
+        {
+            return (AttributeSetOutcome.Done, PartnerResult.Refused("That person has not linked the application."));
+        }
+
+        // An application administrator sets any of the application's values; a customer or branch admin only the values
+        // kept for the organisations they administer where the person works (not application-wide ones, nor another
+        // customer's).
+        return (AttributeSetOutcome.Done, await SaveAsync(adminUserId, appId, personId, values, mineOnly: false, cancellationToken, viaApi: true, onlyOrgs: appAdmin ? null : covered).ConfigureAwait(false));
+    }
+
+    /// <summary>
+    /// rc.14: whether the admin administers the application, and otherwise the organisations where the person holds a live
+    /// place in it that the admin administers (their right is at that organisation or one above it).
+    /// </summary>
+    private async Task<(bool AppAdmin, IReadOnlyList<Guid> Covered)> AdministersPersonAsync(Guid appId, Guid adminUserId, Guid personId, CancellationToken cancellationToken)
+    {
+        if (await _db.AppAdmins.AsNoTracking().AnyAsync(a => a.AppId == appId && a.UserId == adminUserId && a.RevokedAt == null, cancellationToken).ConfigureAwait(false))
+        {
+            return (true, []);
+        }
+
+        DateTimeOffset now = _clock.UtcNow;
+        var places = await _db.OrgMemberships.AsNoTracking()
+            .Where(m => m.AppId == appId && m.UserId == personId && m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > now))
+            .Select(m => new { m.OrgId, m.Org!.Path })
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        List<Guid> above = [.. places.SelectMany(p => OrganisationPath.Ids(p.Path)).Distinct()];
+        HashSet<Guid> rights = [.. await _db.OrgAdmins.AsNoTracking()
+            .Where(a => a.AppId == appId && a.UserId == adminUserId && a.RevokedAt == null && a.Right == OrgAdminRight.Admin && above.Contains(a.OrgId))
+            .Select(a => a.OrgId)
+            .ToListAsync(cancellationToken).ConfigureAwait(false)];
+        return (false, [.. places.Where(p => OrganisationPath.Ids(p.Path).Any(rights.Contains)).Select(p => p.OrgId).Distinct()]);
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<PersonAttributeGroup>> GetMineAsync(Guid personId, CancellationToken cancellationToken = default)
     {
         var apps = await _db.AppGrants.AsNoTracking().Where(g => g.UserId == personId && g.RevokedAt == null)
@@ -391,13 +436,19 @@ public sealed partial class EfAttributeService : IAttributeService
         return [.. rows.Select(r => new AttributeValueRow(r.Key, r.Label, r.Type, r.Choices, r.EditableBy, r.Value))];
     }
 
-    private async Task<PartnerResult> SaveAsync(Guid? actor, Guid appId, Guid personId, IReadOnlyDictionary<string, string?> values, bool mineOnly, CancellationToken cancellationToken)
+    private async Task<PartnerResult> SaveAsync(Guid? actor, Guid appId, Guid personId, IReadOnlyDictionary<string, string?> values, bool mineOnly, CancellationToken cancellationToken, bool viaApi = false, IReadOnlyList<Guid>? onlyOrgs = null)
     {
         DateTimeOffset now = _clock.UtcNow;
         List<Guid> orgs = await _db.OrgMemberships.AsNoTracking().Where(m => m.AppId == appId && m.UserId == personId && m.RevokedAt == null && (m.ExpiresAt == null || m.ExpiresAt > now)).Select(m => m.OrgId).ToListAsync(cancellationToken).ConfigureAwait(false);
         List<UserAttributeDefinition> definitions = await _db.UserAttributeDefinitions.AsNoTracking()
             .Where(d => d.AppId == appId && d.RetiredAt == null && (d.OrgId == null || orgs.Contains(d.OrgId.Value)) && (!mineOnly || d.EditableBy == "person"))
             .ToListAsync(cancellationToken).ConfigureAwait(false);
+        if (onlyOrgs is not null)
+        {
+            // rc.14: a customer or branch admin: only values kept for organisations they administer.
+            definitions = [.. definitions.Where(d => d.OrgId is Guid org && onlyOrgs.Contains(org))];
+        }
+
         List<string> changed = [];
         foreach ((string key, string? raw) in values)
         {
@@ -447,8 +498,8 @@ public sealed partial class EfAttributeService : IAttributeService
 
         await AppEventLog.AddAsync(_db, AppEventTypes.UserUpdated, appId, personId, null, new Dictionary<string, object?> { ["attributes"] = changed }, now, cancellationToken).ConfigureAwait(false);
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        await _audit.WriteAsync(new AuditEntry(AuditActions.AttributeValuesSet, actor is null ? AuditActorType.Api : AuditActorType.User, actor, appId, "user", personId,
-            Metadata: JsonSerializer.Serialize(new { keys = changed, by = mineOnly ? "person" : actor is null ? "application" : "administrator" })), cancellationToken).ConfigureAwait(false);
+        await _audit.WriteAsync(new AuditEntry(AuditActions.AttributeValuesSet, actor is null || viaApi ? AuditActorType.Api : AuditActorType.User, actor, appId, "user", personId,
+            Metadata: JsonSerializer.Serialize(new { keys = changed, by = mineOnly ? "person" : viaApi ? "application_for_admin" : actor is null ? "application" : "administrator" })), cancellationToken).ConfigureAwait(false);
         return PartnerResult.Ok("Saved.");
     }
 

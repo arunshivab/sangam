@@ -157,7 +157,9 @@ public sealed class DeviceModel : AuthPageModel
         IReadOnlyDictionary<string, object>? custom = requested.Contains(Sangam.Shared.Constants.SangamScopes.Attributes)
             ? await HttpContext.RequestServices.GetRequiredService<Sangam.Identity.Application.Attributes.IAttributeService>().ClaimsAsync(User.Id, App.Id, cancellationToken)
             : null;
-        ClaimsIdentity identity = SangamClaimsBuilder.Build(User, requested, orgs, TokenValidationParameters.DefaultAuthenticationType, SangamAuthentication.SessionId(_session!)?.ToString("D"), AuthenticationProof.FromSession(_session!), custom, current);
+        // rc.14: the device knows the person by the application's own id.
+        Guid subject = await HttpContext.RequestServices.GetRequiredService<Sangam.Identity.Application.Apps.ISubjectIds>().SubjectAsync(App.Id, User.Id, cancellationToken);
+        ClaimsIdentity identity = SangamClaimsBuilder.Build(User, subject, requested, orgs, TokenValidationParameters.DefaultAuthenticationType, SangamAuthentication.SessionId(_session!) is Guid browser ? AppSessionIds.For(browser, App.Id, App.IsPlatform).ToString("D") : null, AuthenticationProof.FromSession(_session!), custom, current, internalSessionId: SangamAuthentication.SessionId(_session!)?.ToString("D"));
         List<string> resources = [];
         await foreach (string resource in _scopes.ListResourcesAsync(identity.GetScopes(), cancellationToken))
         {
@@ -165,6 +167,23 @@ public sealed class DeviceModel : AuthPageModel
         }
 
         identity.SetResources(resources);
+
+        // rc.14: the authorization is kept under the person's Sangam id (as a browser sign-in's is), so leaving the
+        // application, inactivity and account merge find and revoke it; the tokens carry the application's own id.
+        IOpenIddictApplicationManager applications = HttpContext.RequestServices.GetRequiredService<IOpenIddictApplicationManager>();
+        IOpenIddictAuthorizationManager authorizations = HttpContext.RequestServices.GetRequiredService<IOpenIddictAuthorizationManager>();
+        object client = await applications.FindByClientIdAsync(App.ClientId, cancellationToken) ?? throw new InvalidOperationException("The OpenIddict client is missing.");
+        string applicationId = (await applications.GetIdAsync(client, cancellationToken))!;
+        object? authorization = null;
+        await foreach (object candidate in authorizations.FindAsync(User.Id.ToString("D"), applicationId, Statuses.Valid, AuthorizationTypes.Permanent, requested, cancellationToken))
+        {
+            authorization = candidate;
+            break;
+        }
+
+        authorization ??= await authorizations.CreateAsync(identity, User.Id.ToString("D"), applicationId, AuthorizationTypes.Permanent, requested, cancellationToken);
+        identity.SetAuthorizationId(await authorizations.GetIdAsync(authorization, cancellationToken));
+
         await _audit.WriteAsync(
             new AuditEntry(AuditActions.DeviceApprove, AuditActorType.User, User.Id, App.Id, "app", App.Id, IpAddress: ClientIp, UserAgent: ClientUserAgent),
             cancellationToken);

@@ -61,5 +61,7 @@ public interface ISessionService
 /// <summary>An application's front-channel logout page (PR-20).</summary>
 /// <param name="AppName">The application's name.</param>
 /// <param name="Uri">Its front-channel logout address.</param>
-public sealed record FrontChannelLogout(string AppName, string Uri);
+/// <param name="AppId">rc.14: the application, whose own <c>sid</c> for the session is sent.</param>
+/// <param name="IsPlatform">rc.14: whether it is one of Sangam's own applications.</param>
+public sealed record FrontChannelLogout(string AppName, string Uri, Guid AppId = default, bool IsPlatform = false);
 

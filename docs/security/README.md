@@ -93,7 +93,7 @@ The founder decided the six requirements that were Not met on 10 October 2026 (A
 | A1: 12 characters, no character-type rules (organisations may opt in); breached-password check online by k-anonymity with a built-in 10,000-password fallback | V2.1.1, V2.1.9, V2.1.7 | Met |
 | A2: a pepper, as Argon2id's secret input, in a secret file; one offline copy with the founder | V2.4.5 | Met |
 | A3: `__Host-` session and anti-forgery cookies, now | V3.4.4 | Met |
-| A4: consent first — the API adds only existing users; others are invited | V4.2.1 | Met (pairwise ids still to discuss) |
+| A4: consent first — the API adds only existing users; others are invited; every application has its own ids for people (rc.14, ADR-0017) | V4.2.1 | Met |
 | A5: logos scanned by Anjal's ClamAV; refused while it does not answer | V12.4.2 | Met |
 | A6: keys as files on the VM for the pilot and controlled launch, compensating controls in SGM-908 | V6.4.2, V6.4.1 | Accepted; review before the public launch |
 

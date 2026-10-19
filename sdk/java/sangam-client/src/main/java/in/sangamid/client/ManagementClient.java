@@ -227,7 +227,11 @@ public final class ManagementClient {
         return send("GET", "users/" + userId + "/attributes", null);
     }
 
-    public JsonNode setAttributes(String userId, Map<String, String> values) throws IOException, InterruptedException {
-        return send("PUT", "users/" + userId + "/attributes", values);
+    /**
+     * Sets values your application keeps about a person; an empty value clears one. rc.14: done for one of your admins,
+     * who administers your application or an organisation where the person works in it.
+     */
+    public JsonNode setAttributes(String userId, String adminAccessToken, Map<String, String> values) throws IOException, InterruptedException {
+        return send("PUT", "users/" + userId + "/attributes", values, adminAccessToken);
     }
 }

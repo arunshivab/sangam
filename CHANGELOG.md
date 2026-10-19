@@ -6,6 +6,51 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0-rc.14] - fourteenth release candidate
+
+Sangam 1.0.0-rc.14 gives every application its own id for each person (the founder's decisions of 19 and 20 October
+2026, ADR-0017), and closes the two gaps rc.13 left.
+
+### Pairwise subject ids
+- **Every application knows a person by its own id**: a random UUID, unrelated to their Sangam id and to every other
+  application's, imagiQa's own applications included. It never changes for that application (not when the connection
+  lapses and is made again, not with a key rotation) and goes with the account. New table `app_subjects` (migration
+  `Rc14PairwiseSubjects`).
+- **Everything an application is given carries its id**: the `sub` of ID, access and refresh tokens, userinfo and
+  introspection (an exchanged token carries the target application's id); the management API's members, staff results,
+  merged-into answer and signature requests (signer, decider and the signature token); webhooks (`subject.sub`, and
+  `merged_into` / `merged_from` in a merge); SCIM `externalId`; back-channel logout tokens; evidence packs (every person
+  in every file).
+- **Everything it sends back is its own id**: one it does not know, another application's or a Sangam id, is answered
+  *not found*, never *forbidden*; that includes adding someone already in the customer by `userId`. The acting admin's
+  token names the admin by the application's id too, and the admin's account must still be active.
+- **The sign-in session is per application too**: each application's `sid` (tokens, logout tokens, front-channel logout,
+  webhooks) and SAML `SessionIndex` is its own, so two applications used in one session cannot match up through it.
+- **SAML**: a service provider's NameID is now its application's own id, the same as in its SCIM and webhooks; the SAML
+  pairwise key (`Sangam__Saml__PairwiseKey`) is no longer used or needed.
+- **No translation between applications.** Two applications that must agree on a member of staff use the hospital's
+  employee code or the doctor's registration number. Patients are not in Sangam, so patient matching is unaffected.
+- Sangam's own applications (portal and consoles) keep the Sangam id. The hospital admin console and the partner
+  console never show the Sangam id. Accepted: an application given the e-mail or mobile can still match a person by it.
+- Open: before any pair of applications is allowed to exchange tokens, decide whether the caller may see the target's id
+  in the exchanged token (go-live checklist).
+- Nothing was live, so there is no changeover. The demo's records made before rc.14 name staff by their old ids; they
+  still show, and the go-live checklist says how to empty them.
+
+### Gaps from rc.13
+- **An account merge keeps the DigiLocker-only rule**: a place at an organisation that takes only verified people moves
+  to the surviving account only if it is verified. The DigiLocker identity now moves first, so a verified closed account
+  brings its places with it.
+- **`PUT /api/v1/users/{id}/attributes` names the acting admin** (`Sangam-Acting-Admin`, 401 without), who must
+  administer the application or an organisation where the person works (404 otherwise); the audit names them. A
+  customer or branch admin sets only the values kept for the organisations they administer, never application-wide
+  ones or another customer's.
+- A device sign-in reuses the person's standing authorization for the application, as a browser sign-in does.
+
+### SDKs (C#, JS, Python, Java)
+- **Breaking:** `setAttributes` (`SetAttributesAsync`, `set_attributes`) takes the acting admin's token second. Every
+  SDK's documentation says the id is the application's own. Python and Java move to 1.0.0-rc.14.
+
 ### Dependencies
 - **.NET SDK 10.0.402** (`global.json`, was 10.0.401) with the SDK build image it comes in (runtime 10.0.13), and the
   newer `caddy:2` image (Dockerfile and production compose). Dependabot's Docker pull requests moved the image alone,

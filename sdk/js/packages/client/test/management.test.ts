@@ -22,7 +22,7 @@ test("the management client caches its token and calls /api/v1", async () => {
   await assert.rejects(client.send("GET", "forbidden"), (e: unknown) => e instanceof SangamApiError && e.status === 403);
 });
 
-test("changing a place sends the admin's own token, as adding staff does (rc.13)", async () => {
+test("changing a place or a person's values sends the admin's own token, as adding staff does (rc.13, rc.14)", async () => {
   const seen: { method: string; url: string; admin?: string }[] = [];
   const fake: typeof fetch = async (input, init) => {
     const url = String(input);
@@ -33,9 +33,11 @@ test("changing a place sends the admin's own token, as adding staff does (rc.13)
   const client = new ManagementClient({ authority: "https://id.example.in", clientId: "app", clientSecret: "s", fetch: fake });
   await client.setRoles("o1", "u1", "admin-token", ["doctor", "administrator"]);
   await client.removeMember("o1", "u1", "admin-token");
+  await client.setAttributes("u1", "admin-token", { badge: "S-77" });
   assert.deepEqual(seen, [
     { method: "PUT", url: "https://id.example.in/api/v1/orgs/o1/members/u1", admin: "admin-token" },
     { method: "DELETE", url: "https://id.example.in/api/v1/orgs/o1/members/u1", admin: "admin-token" },
+    { method: "PUT", url: "https://id.example.in/api/v1/users/u1/attributes", admin: "admin-token" },
   ]);
 });
 

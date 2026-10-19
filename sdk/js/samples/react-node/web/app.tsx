@@ -83,7 +83,7 @@ function App() {
           </section>
         </SignedOut>
         <SignedIn>
-          <section><h1>Signed in as {user?.name}</h1><p className="muted">Sangam id <code>{user?.id}</code> · {user?.acr}</p></section>
+          <section><h1>Signed in as {user?.name}</h1><p className="muted">Your id in this app <code>{user?.id}</code> · {user?.acr}</p></section>
           <Organisations />
           <PermissionCheck />
           <Signature />

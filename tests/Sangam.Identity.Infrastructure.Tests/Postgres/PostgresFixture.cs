@@ -57,6 +57,7 @@ public sealed class PostgresFixture : IAsyncLifetime
         "emergency_accesses",
         "org_admins",
         "org_memberships",
+        "app_subjects",
         "app_grants",
         "consents",
         "client_secrets",
@@ -86,6 +87,15 @@ public sealed class PostgresFixture : IAsyncLifetime
         DbContextOptionsBuilder<SangamDbContext> builder = new();
         SangamDbContextOptions.Configure(builder, ConnectionString);
         return new SangamDbContext(builder.Options);
+    }
+
+    /// <summary>rc.14: the id the application knows the person by (given out now if it has none).</summary>
+    /// <param name="appId">The application.</param>
+    /// <param name="userId">The person's Sangam id.</param>
+    public async Task<Guid> SubjectAsync(Guid appId, Guid userId)
+    {
+        await using SangamDbContext db = CreateContext();
+        return await Sangam.Identity.Infrastructure.Apps.PairwiseSubjects.ForAsync(db, appId, userId);
     }
 
     public async Task InitializeAsync()

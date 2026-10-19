@@ -5,7 +5,8 @@ namespace Sangam.Client;
 /// they hold where. Read it with <see cref="SangamClaimsPrincipalExtensions.GetSangamUser"/>.
 /// Roles are as of sign-in; a role granted later arrives the next time the person signs in.
 /// </summary>
-/// <param name="Id">Their Sangam user id — stable, and the key to store against them.</param>
+/// <param name="Id">This application's own id for them (the <c>sub</c>; since 1.0.0-rc.14 every application has its own, unrelated to
+/// other applications') — stable, and the key to store against them.</param>
 /// <param name="Name">Their name.</param>
 /// <param name="Email">Their email address, if this application asked for it.</param>
 /// <param name="Memberships">Every role they hold in this application's organisations.</param>

@@ -95,9 +95,17 @@ public sealed partial class SamlTests
         Assert.Contains(email, assertion.OuterXml, StringComparison.Ordinal);
         Assert.Equal(SamlProtocol.PasswordProtectedTransport, Text(assertion, "AuthnContextClassRef"));
         Assert.DoesNotContain(userId.ToString("D"), nameId, StringComparison.Ordinal);
-        SamlOptions options = _factory.Services.GetRequiredService<SamlOptions>();
-        Assert.Equal(options.PairwiseNameId(userId, sp.EntityId), nameId);
-        Assert.NotEqual(nameId, options.PairwiseNameId(userId, "https://other.example.in/sp"));
+        // rc.14 (ADR-0017): the NameID is the service provider's application's own id for the person, as in its SCIM and
+        // webhooks.
+        string spClientId;
+        using (IServiceScope lookup = _factory.Services.CreateScope())
+        {
+            SangamDbContext db = lookup.ServiceProvider.GetRequiredService<SangamDbContext>();
+            Guid spAppId = await db.SamlServiceProviders.Where(p => p.EntityId == sp.EntityId).Select(p => p.AppId).SingleAsync();
+            spClientId = await db.Apps.Where(a => a.Id == spAppId).Select(a => a.ClientId).SingleAsync();
+        }
+
+        Assert.Equal((await _factory.SubjectAsync(spClientId, userId)).ToString("D"), nameId);
 
         // The same request again is a replay.
         (HttpStatusCode replay, _, string replayPage) = await s.FollowAsync("/saml/sso?" + RedirectQuery(AuthnRequest(sp.EntityId, requestId, sp.Acs), null));

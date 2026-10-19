@@ -20,7 +20,7 @@ internal static class Pages
         static string E(string? s) => WebUtility.HtmlEncode(s ?? string.Empty);
         string memberships = string.Concat(user.Memberships.Select(m => $"<li><b>{E(m.Role)}</b> at {E(m.OrganisationName)} <code>{E(m.Path)}</code>{(m.AppliesToDescendants ? " (and below)" : string.Empty)}: {E(string.Join(", ", m.Permissions))}</li>"));
         string options = string.Concat(user.Memberships.Select(m => $"<option value=\"{E(m.Path)}\">{E(m.OrganisationName)}</option>"));
-        string body = $"<section><h1>Signed in as {E(user.Name)}</h1><p class=\"muted\">Sangam id <code>{E(user.Id.ToString())}</code> · {E(principal.GetAuthenticationLevel())}</p></section>"
+        string body = $"<section><h1>Signed in as {E(user.Name)}</h1><p class=\"muted\">Your id in this app <code>{E(user.Id.ToString())}</code> · {E(principal.GetAuthenticationLevel())}</p></section>"
             + $"<section data-panel=\"organisations\"><h2>Your organisations in this application</h2><ul>{(memberships.Length == 0 ? "<li class=\"muted\">No role yet.</li>" : memberships)}</ul></section>"
             + $"<section data-panel=\"permission\"><h2>Check a permission</h2><div class=\"row\"><select id=\"org\" aria-label=\"Organisation\">{options}<option value=\"/0192a6b0-0000-7000-8000-00000000ffff/\">An organisation you have no role in</option></select>"
             + "<input id=\"permission\" value=\"vitals:read\" aria-label=\"Permission\"><button class=\"ghost\" id=\"ask\">Ask the server</button></div><p id=\"answer\"></p></section>"
