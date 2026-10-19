@@ -6,6 +6,11 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+### Dependencies
+- **Dependabot lock files** (OI-060): a workflow regenerates every lock file on Dependabot's NuGet pull requests and
+  pushes them back (deploy key `LOCKFILE_DEPLOY_KEY`), so those pull requests restore and run CI. It runs only `dotnet
+  restore`, only for Dependabot's own branches, and pushes only lock files.
+
 ## [1.0.0-rc.13] - thirteenth release candidate
 
 Sangam 1.0.0-rc.13 answers what hospitals asked for after rc.12 (decisions of 14 Oct 2026): organisations that take only

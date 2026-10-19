@@ -1,0 +1,85 @@
+name: Dependabot lock files
+
+# OI-060 (decision of 19 Oct 2026): Dependabot's NuGet pull requests change Directory.Packages.props and the lock files
+# of the projects that reference a package directly, but not of the projects that get it through another project, so
+# locked restore fails with NU1004 (as #47 did). This job regenerates every lock file on Dependabot's own NuGet branches
+# and pushes them back to the pull request; CI then runs again on that commit.
+#
+# Safety: it runs only for pull requests Dependabot opened, from a branch in this repository whose name starts
+# dependabot/nuget/, and only when Dependabot itself pushed (so its own push does not start it again). It runs
+# `dotnet restore` and nothing else: no build, no tests. It pushes with a deploy key that can write to this repository
+# only (secret LOCKFILE_DEPLOY_KEY; a push with the built-in token would not start CI again), and only to that branch.
+# Lock files are the only thing it may change; anything else and it stops without pushing.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependabot-lockfiles-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  lockfiles:
+    name: regenerate lock files
+    if: >-
+      github.actor == 'dependabot[bot]'
+      && github.event.pull_request.user.login == 'dependabot[bot]'
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && startsWith(github.event.pull_request.head.ref, 'dependabot/nuget/')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out Dependabot's branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          ssh-key: ${{ secrets.LOCKFILE_DEPLOY_KEY }}
+
+      - name: Set up .NET (from global.json)
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Regenerate every lock file
+        run: dotnet restore Sangam.sln --force-evaluate
+
+      - name: Check that only lock files changed
+        id: changes
+        run: |
+          changed="$(git status --porcelain)"
+          if [ -z "$changed" ]; then
+            echo "Lock files already match; nothing to push."
+            echo "push=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "$changed"
+          if git status --porcelain | awk '{print $2}' | grep -v 'packages\.lock\.json$'; then
+            echo "::error::Something other than a lock file changed; not pushing."
+            exit 1
+          fi
+          echo "push=true" >> "$GITHUB_OUTPUT"
+
+      - name: Locked restore passes now
+        if: steps.changes.outputs.push == 'true'
+        run: dotnet restore Sangam.sln --locked-mode
+
+      - name: Push the lock files to the pull request
+        if: steps.changes.outputs.push == 'true'
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git config user.name "sangam-lockfiles"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- '*packages.lock.json'
+          git commit -m "Regenerate lock files for Dependabot's NuGet update"
+          git push origin "HEAD:${HEAD_REF}"
