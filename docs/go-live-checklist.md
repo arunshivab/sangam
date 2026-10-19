@@ -30,7 +30,8 @@ exist, so there is no production database to act on yet.
       on shared devices.
 - [ ] After rc.13 (OI-060): the deploy key "Dependabot lock files" exists with write access, and its private key is saved as
       the `LOCKFILE_DEPLOY_KEY` secret for both Actions and Dependabot. Check that the next Dependabot NuGet pull
-      request gets a "Regenerate lock files" commit and passes CI.
+      request gets a "Regenerate lock files" commit and passes CI, and that the next Docker pull request with a newer
+      SDK image gets a "Move global.json to the image's SDK" commit and passes CI.
 - [ ] rc.13: migration `Rc13Tenancy` adds two columns (both off for every organisation).
 - [ ] rc.13: tell each application's developers that `PUT` and `DELETE /api/v1/orgs/{id}/members/{user}` now need the
       acting admin's own access token in `Sangam-Acting-Admin` (the SDKs' `setRoles`, `upsertMembership` and the new

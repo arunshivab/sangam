@@ -20,6 +20,20 @@ regenerates every lock file on Dependabot's NuGet branches and pushes them back,
 `LOCKFILE_DEPLOY_KEY` secret (write access to this repository only); CI then runs on that commit. It runs `dotnet
 restore` and nothing else, only for pull requests Dependabot opened, and pushes only lock files.
 
+Its Docker pull requests move the SDK build image in the `Dockerfile`, but `global.json` pins the SDK exactly, so the
+image alone cannot build. On Dependabot's Docker branches the same workflow reads the SDK version from the new image's
+configuration in the registry (it runs nothing from the image), moves `global.json` to it, and regenerates the lock
+files with that SDK. It moves only forward and only within the feature band `global.json` already names (10.0.4xx,
+say); a new feature band or major version fails the job and is moved by hand. There it pushes only `global.json` and
+lock files.
+
+Two habits follow:
+- Merge Dependabot's pull requests one at a time. The repository's rules need a pull request to be up to date with
+  `main`, so after each merge the next one needs `@dependabot recreate` (once the workflow has pushed to a pull request,
+  Dependabot no longer rebases it) and its checks again.
+- After a Docker pull request that moved `global.json` is merged, every developer installs that SDK
+  (`winget upgrade --id Microsoft.DotNet.SDK.10 -e` on Windows), or local builds stop.
+
 Run them yourself:
 
 ```sh
