@@ -21,7 +21,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <spring-boot.version>4.1.1</spring-boot.version>
     <!-- R7 security pass: newer than Spring Boot 4.1.1 manages, for fixed CVEs (see docs/security/dependency-scan.md). -->
-    <tomcat.version>11.0.26</tomcat.version>
+    <tomcat.version>11.0.27</tomcat.version>
     <jackson3.version>3.2.3</jackson3.version>
     <nimbus.version>10.10</nimbus.version>
     <jackson.version>2.22.3</jackson.version>
