@@ -34,6 +34,7 @@ public sealed class DeviceModel : AuthPageModel
     private readonly ISecurityPolicyService _policies;
     private readonly IOpenIddictScopeManager _scopes;
     private readonly IAuditWriter _audit;
+    private readonly IOrgChoiceStore _orgChoices;
     private ClaimsPrincipal? _session;
 
     /// <summary>Initialises the page.</summary>
@@ -44,8 +45,10 @@ public sealed class DeviceModel : AuthPageModel
     /// <param name="policies">Sign-in policies.</param>
     /// <param name="scopes">OpenIddict scopes.</param>
     /// <param name="audit">Audit writer.</param>
-    public DeviceModel(IAccountService accounts, IAppDirectory apps, IConsentService consents, ITenancyQuery tenancy, ISecurityPolicyService policies, IOpenIddictScopeManager scopes, IAuditWriter audit)
+    /// <param name="orgChoices">rc.13: the branch the person last chose in the application.</param>
+    public DeviceModel(IAccountService accounts, IAppDirectory apps, IConsentService consents, ITenancyQuery tenancy, ISecurityPolicyService policies, IOpenIddictScopeManager scopes, IAuditWriter audit, IOrgChoiceStore orgChoices)
     {
+        _orgChoices = orgChoices ?? throw new ArgumentNullException(nameof(orgChoices));
         _accounts = accounts ?? throw new ArgumentNullException(nameof(accounts));
         _apps = apps ?? throw new ArgumentNullException(nameof(apps));
         _consents = consents ?? throw new ArgumentNullException(nameof(consents));
@@ -71,6 +74,19 @@ public sealed class DeviceModel : AuthPageModel
 
     /// <summary>The signed-in person.</summary>
     public new UserSummary? User { get; private set; }
+
+    /// <summary>
+    /// rc.13: the organisations the person may be working at, when the application asked for them and there is more than one
+    /// (the same question as "Working at which branch?" in an ordinary sign-in).
+    /// </summary>
+    public IReadOnlyList<OrgClaim> Branches { get; private set; } = [];
+
+    /// <summary>rc.13: the branch chosen (or, on first showing, the one last used).</summary>
+    [BindProperty]
+    public Guid? OrgId { get; set; }
+
+    /// <summary>rc.13: whether the person tried to allow without choosing a branch.</summary>
+    public bool ChooseBranch { get; private set; }
 
     /// <summary>What will be shared, with the real values.</summary>
     public IReadOnlyList<(string Label, string Value)> Shared { get; private set; } = [];
@@ -117,12 +133,31 @@ public sealed class DeviceModel : AuthPageModel
         }
 
         System.Collections.Immutable.ImmutableArray<string> requested = request.GetScopes();
-        await _consents.GrantAsync(User.Id, App.Id, requested, ClientIp, ClientUserAgent, cancellationToken: cancellationToken);
         IReadOnlyList<OrgClaim> orgs = await _tenancy.GetOrgClaimsAsync(User.Id, App.Id, cancellationToken);
+
+        // rc.13: the device's token says where the person is working, as an ordinary sign-in's does.
+        OrgClaim? current = null;
+        if (requested.Contains(Sangam.Shared.Constants.SangamScopes.OrgsRead) || requested.Contains(Sangam.Shared.Constants.SangamScopes.OrgCurrent))
+        {
+            current = orgs.Count == 1 ? orgs[0] : orgs.FirstOrDefault(o => o.Id == OrgId);
+            if (current is null && orgs.Count > 1)
+            {
+                ChooseBranch = true;
+                Step = DeviceStep.Approve;
+                return Page();
+            }
+
+            if (current is not null && orgs.Count > 1)
+            {
+                await _orgChoices.RememberAsync(User.Id, App.Id, current.Id, cancellationToken);
+            }
+        }
+
+        await _consents.GrantAsync(User.Id, App.Id, requested, ClientIp, ClientUserAgent, cancellationToken: cancellationToken);
         IReadOnlyDictionary<string, object>? custom = requested.Contains(Sangam.Shared.Constants.SangamScopes.Attributes)
             ? await HttpContext.RequestServices.GetRequiredService<Sangam.Identity.Application.Attributes.IAttributeService>().ClaimsAsync(User.Id, App.Id, cancellationToken)
             : null;
-        ClaimsIdentity identity = SangamClaimsBuilder.Build(User, requested, orgs, TokenValidationParameters.DefaultAuthenticationType, SangamAuthentication.SessionId(_session!)?.ToString("D"), AuthenticationProof.FromSession(_session!), custom);
+        ClaimsIdentity identity = SangamClaimsBuilder.Build(User, requested, orgs, TokenValidationParameters.DefaultAuthenticationType, SangamAuthentication.SessionId(_session!)?.ToString("D"), AuthenticationProof.FromSession(_session!), custom, current);
         List<string> resources = [];
         await foreach (string resource in _scopes.ListResourcesAsync(identity.GetScopes(), cancellationToken))
         {
@@ -183,6 +218,16 @@ public sealed class DeviceModel : AuthPageModel
             ? await HttpContext.RequestServices.GetRequiredService<Sangam.Identity.Application.Attributes.IAttributeService>().ClaimsAsync(User.Id, App.Id, cancellationToken)
             : null;
         Shared = await ConsentModel.DescribeAsync(L, User, App, asked, _tenancy, cancellationToken, custom);
+        if (asked.Contains(Sangam.Shared.Constants.SangamScopes.OrgsRead) || asked.Contains(Sangam.Shared.Constants.SangamScopes.OrgCurrent))
+        {
+            IReadOnlyList<OrgClaim> orgs = await _tenancy.GetOrgClaimsAsync(User.Id, App.Id, cancellationToken);
+            Branches = orgs.Count > 1 ? orgs : [];
+            if (Branches.Count > 0 && OrgId is null && await _orgChoices.LastAsync(User.Id, App.Id, cancellationToken) is Guid last && orgs.Any(o => o.Id == last))
+            {
+                OrgId = last;
+            }
+        }
+
         return (null, request);
     }
 }

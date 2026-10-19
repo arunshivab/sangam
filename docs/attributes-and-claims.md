@@ -53,8 +53,11 @@ future and at most five years away) with the membership:
 
 ```http
 PUT /api/v1/orgs/{orgId}/members/{userId}
+Sangam-Acting-Admin: <the admin's own access token>
 {"role": "auditor", "appliesToDescendants": false, "expiresAt": "2026-12-31T23:59:59+05:30"}
 ```
+
+rc.13: the `Sangam-Acting-Admin` header names the admin who asked; they must be an admin of that organisation.
 
 From that moment the role no longer counts anywhere — tokens, consoles, policies. Within a minute Sangam revokes it for
 good, audits `org_membership.expire`, and tells SCIM and webhooks (`membership.revoked` with `"reason": "expired"`, and

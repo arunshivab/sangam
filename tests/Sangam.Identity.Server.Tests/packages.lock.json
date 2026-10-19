@@ -21,12 +21,12 @@
       },
       "Microsoft.NET.Test.Sdk": {
         "type": "Direct",
-        "requested": "[18.10.1, )",
-        "resolved": "18.10.1",
-        "contentHash": "SxCFvJE/2ltUQgCgv6+Ixagohw4sZc9hM7Wid2foaNM7paBscktoHLoRDz91fW8wbHG87Rg9Ku59/8PXumqUrA==",
+        "requested": "[18.11.0, )",
+        "resolved": "18.11.0",
+        "contentHash": "xf/bR0LNkhK0SnadDRlZIQmC4sac5Wk0e1WAdiQjRN3MSo6gQ9M2c4c1XRNnVGjfOvckh704W5CJ19AL0/Xsdg==",
         "dependencies": {
-          "Microsoft.CodeCoverage": "18.10.1",
-          "Microsoft.TestPlatform.TestHost": "18.10.1"
+          "Microsoft.CodeCoverage": "18.11.0",
+          "Microsoft.TestPlatform.TestHost": "18.11.0"
         }
       },
       "xunit": {
@@ -134,8 +134,8 @@
       },
       "Microsoft.CodeCoverage": {
         "type": "Transitive",
-        "resolved": "18.10.1",
-        "contentHash": "tV7tCyp/t+DuwQugLkCeUN7NBFFB4fEGRPr0gkMQ2nQgAvQQjmGlZZi1dsLzbyoe/A0mbnKybmkIh8qhT9p4Zw=="
+        "resolved": "18.11.0",
+        "contentHash": "MhN9wpvL1Es4hfIYslrsVgIsUdDFxuOBTbAl9mGIMvFo8PP5CLf4DrGdNrfwWSyn0lqi6sssm+I/qkkLL3MU+g=="
       },
       "Microsoft.EntityFrameworkCore.Abstractions": {
         "type": "Transitive",
@@ -630,15 +630,15 @@
       },
       "Microsoft.TestPlatform.ObjectModel": {
         "type": "Transitive",
-        "resolved": "18.10.1",
-        "contentHash": "o+PuLDRVp1iwiVAPBADZItXgm9Ck23XtPhE4kZtZVi0uYnMiiz1Dx9Cjh75kJ+ijfqnORL3VOTOaQVKi0f/ixg=="
+        "resolved": "18.11.0",
+        "contentHash": "BXBHYnwSOljKute8UYCMXOLAdB7awxEMppPSpqOF1ZxLD/W/OH+vTBgFaXA7q0aditJTVXSMVenel+wOkEIyNg=="
       },
       "Microsoft.TestPlatform.TestHost": {
         "type": "Transitive",
-        "resolved": "18.10.1",
-        "contentHash": "KYz2omqkoz9E2mWa4fdgT+Ycie1wi5968EmyJlusjlp87RxxtA2FvDm8tcBEYIDzLnkWGnsKjE4d13Z7/rxkQA==",
+        "resolved": "18.11.0",
+        "contentHash": "AKjwKpyRBwoQFQmpcchtoYlfJEBlaY/40uxBRi+qXP4NR7xT8t+XTJtOyEyumfvfJcH5pASs75LwNdXYRr4XNA==",
         "dependencies": {
-          "Microsoft.TestPlatform.ObjectModel": "18.10.1"
+          "Microsoft.TestPlatform.ObjectModel": "18.11.0"
         }
       },
       "Microsoft.Win32.SystemEvents": {
@@ -932,15 +932,15 @@
         "type": "Project",
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.13, )",
-          "Sangam.Identity.Domain": "[1.0.0-rc.12, )",
-          "Sangam.Shared": "[1.0.0-rc.12, )"
+          "Sangam.Identity.Domain": "[1.0.0-rc.13, )",
+          "Sangam.Shared": "[1.0.0-rc.13, )"
         }
       },
       "sangam.identity.domain": {
         "type": "Project",
         "dependencies": {
           "Microsoft.Extensions.Identity.Stores": "[10.0.13, )",
-          "Sangam.Shared": "[1.0.0-rc.12, )"
+          "Sangam.Shared": "[1.0.0-rc.13, )"
         }
       },
       "sangam.identity.infrastructure": {
@@ -952,20 +952,20 @@
           "Microsoft.AspNetCore.Identity.EntityFrameworkCore": "[10.0.13, )",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, )",
           "OpenIddict.EntityFrameworkCore": "[7.7.2, )",
-          "QRCoder": "[1.8.0, )",
-          "Sangam.Identity.Application": "[1.0.0-rc.12, )",
-          "Sangam.Identity.Domain": "[1.0.0-rc.12, )",
-          "Sangam.Shared": "[1.0.0-rc.12, )"
+          "QRCoder": "[1.8.1, )",
+          "Sangam.Identity.Application": "[1.0.0-rc.13, )",
+          "Sangam.Identity.Domain": "[1.0.0-rc.13, )",
+          "Sangam.Shared": "[1.0.0-rc.13, )"
         }
       },
       "sangam.identity.server": {
         "type": "Project",
         "dependencies": {
           "OpenIddict.AspNetCore": "[7.7.2, )",
-          "Sangam.Identity.Application": "[1.0.0-rc.12, )",
-          "Sangam.Identity.Infrastructure": "[1.0.0-rc.12, )",
-          "Sangam.Shared": "[1.0.0-rc.12, )",
-          "Sangam.Web.Shared": "[1.0.0-rc.12, )"
+          "Sangam.Identity.Application": "[1.0.0-rc.13, )",
+          "Sangam.Identity.Infrastructure": "[1.0.0-rc.13, )",
+          "Sangam.Shared": "[1.0.0-rc.13, )",
+          "Sangam.Web.Shared": "[1.0.0-rc.13, )"
         }
       },
       "sangam.shared": {
@@ -975,7 +975,7 @@
         "type": "Project",
         "dependencies": {
           "LiPicons.Blazor": "[1.1.0, )",
-          "Sangam.Identity.Application": "[1.0.0-rc.12, )"
+          "Sangam.Identity.Application": "[1.0.0-rc.13, )"
         }
       },
       "EFCore.NamingConventions": {
@@ -1131,9 +1131,9 @@
       },
       "QRCoder": {
         "type": "CentralTransitive",
-        "requested": "[1.8.0, )",
-        "resolved": "1.8.0",
-        "contentHash": "RuvX3PEXU6pbY/I5ItAk800jm62r+YnoPLgyS2WTgwxkOnGkOfU9ORiipHUF0LkLyqM8rlroUCA319JjRYfRFQ==",
+        "requested": "[1.8.1, )",
+        "resolved": "1.8.1",
+        "contentHash": "aGfRFpU/IPexAtEOEXCNxC3fMCAqgn6kqALRvXt6LxVAW0VolSDGHiyrY+o2CJgTITOsMpsrsDi7svMJaJ9Vfg==",
         "dependencies": {
           "System.Drawing.Common": "6.0.0"
         }

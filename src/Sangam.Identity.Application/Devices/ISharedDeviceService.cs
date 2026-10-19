@@ -11,12 +11,18 @@ namespace Sangam.Identity.Application.Devices;
 /// <param name="Rules">The rules for getting back in, after the customer's stricter choices.</param>
 public sealed record SharedDeviceInfo(Guid Id, Guid AppId, Guid OrgId, string Label, string OrgName, DeviceRules Rules);
 
+/// <summary>rc.13: one organisation's device rules, as its admin sees them.</summary>
+/// <param name="Rules">What holds there.</param>
+/// <param name="Limit">The most it may be: what holds just above it (Sangam's own at a customer).</param>
+/// <param name="SetHere">Whether this organisation set either rule itself (otherwise it follows the ones above).</param>
+public sealed record DeviceRulesHere(DeviceRules Rules, DeviceRules Limit, bool SetHere);
+
 /// <summary>rc.12 (T1): how a person gets back in on a shared device.</summary>
 /// <param name="PinMinutes">How long after a lock a PIN works (at most 120).</param>
 /// <param name="FullSignInHours">How often a full sign-in is needed (at most 12).</param>
 public sealed record DeviceRules(int PinMinutes, int FullSignInHours)
 {
-    /// <summary>Sangam's rules, which a customer may only make stricter.</summary>
+    /// <summary>Sangam's rules, which an organisation may only make stricter.</summary>
     public static DeviceRules Sangam { get; } = new(120, 12);
 }
 
@@ -165,20 +171,34 @@ public interface ISharedDeviceService
     /// <returns><see langword="true"/> when removed.</returns>
     Task<bool> RemoveAsync(Guid appId, Guid adminUserId, Guid deviceId, CancellationToken cancellationToken = default);
 
-    /// <summary>A customer's rules (after its stricter choices).</summary>
-    /// <param name="customerId">The customer.</param>
+    /// <summary>
+    /// The rules that hold at an organisation: the shortest set there or above it (rc.13; rc.12 had them per customer only),
+    /// never longer than Sangam's.
+    /// </summary>
+    /// <param name="orgId">The organisation (a customer, branch, department or ward).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The rules.</returns>
-    Task<DeviceRules> RulesAsync(Guid customerId, CancellationToken cancellationToken = default);
+    Task<DeviceRules> RulesAsync(Guid orgId, CancellationToken cancellationToken = default);
 
-    /// <summary>Sets a customer's rules; only stricter than Sangam's are kept.</summary>
+    /// <summary>rc.13: an organisation's rules as its admin sees them: what holds, the limit from above, and whether set here.</summary>
     /// <param name="appId">The application.</param>
-    /// <param name="adminUserId">A customer admin.</param>
-    /// <param name="customerId">The customer.</param>
+    /// <param name="adminUserId">An admin of the organisation (or above it, or of the application).</param>
+    /// <param name="orgId">The organisation.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The rules, or <see langword="null"/> when the person is not an admin there.</returns>
+    Task<DeviceRulesHere?> RulesHereAsync(Guid appId, Guid adminUserId, Guid orgId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sets an organisation's rules (rc.13: any organisation, not only a customer). Only stricter than the organisations above
+    /// it are kept; the same as above means it follows them.
+    /// </summary>
+    /// <param name="appId">The application.</param>
+    /// <param name="adminUserId">An admin of the organisation (or above it, or of the application).</param>
+    /// <param name="orgId">The organisation.</param>
     /// <param name="rules">The rules.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns><see langword="false"/> when the person is not an admin of the customer.</returns>
-    Task<bool> SetRulesAsync(Guid appId, Guid adminUserId, Guid customerId, DeviceRules rules, CancellationToken cancellationToken = default);
+    /// <returns><see langword="false"/> when the person is not an admin there.</returns>
+    Task<bool> SetRulesAsync(Guid appId, Guid adminUserId, Guid orgId, DeviceRules rules, CancellationToken cancellationToken = default);
 
     /// <summary>The last six people on the device who still work at its hospital, most recent first.</summary>
     /// <param name="deviceId">The device.</param>

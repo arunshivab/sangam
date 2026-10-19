@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Sangam.Identity.Application.Apps;
 using Sangam.Identity.Application.Consents;
 using Sangam.Identity.Domain;
+using Sangam.Identity.Domain.Entities;
 using Sangam.Identity.Infrastructure.Persistence;
 using Sangam.Identity.Infrastructure.Seeding;
 using Sangam.Identity.Infrastructure.Services;
@@ -98,6 +99,63 @@ public sealed partial class NativeAndDeviceTests
         Assert.Equal("invalid_grant", (await PostAsync(device, "/connect/token", poll, expectError: true)).GetProperty("error").GetString());
         using IServiceScope scope = _factory.Services.CreateScope();
         Assert.True(await scope.ServiceProvider.GetRequiredService<SangamDbContext>().AuditEvents.AnyAsync(e => e.Action == AuditActions.DeviceApprove && e.ActorUserId == userId));
+    }
+
+    [PostgresFact]
+    public async Task ADevice_ForSomeoneAtTwoBranches_AsksWhichOne_AndItsTokenAndUserinfoSaySo()
+    {
+        // rc.13: the device flow says where the person is working, like an ordinary sign-in; userinfo says so too.
+        using BrowserSession s = new(_factory);
+        (Guid userId, _) = await RegisterAsync(s);
+        Guid pune = Guid.NewGuid();
+        Guid mumbai = Guid.NewGuid();
+        using (IServiceScope scope = _factory.Services.CreateScope())
+        {
+            SangamDbContext db = scope.ServiceProvider.GetRequiredService<SangamDbContext>();
+            Guid app = await db.Apps.Where(a => a.ClientId == SangamServerFactory.DeviceClientId).Select(a => a.Id).SingleAsync();
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            Guid rootId = Guid.NewGuid();
+            Organisation root = new() { Id = rootId, Name = "Kiosk group", OrgTypeCode = "hospital", Path = OrganisationPath.ForRoot(rootId), RegisteredViaAppId = app, CreatedAt = now, UpdatedAt = now };
+            db.Organisations.AddRange(
+                root,
+                new Organisation { Id = pune, Name = "Kiosk Pune", OrgTypeCode = "hospital", ParentOrgId = rootId, Path = OrganisationPath.ForChild(root.Path, pune), Depth = 1, RegisteredViaAppId = app, CreatedAt = now, UpdatedAt = now },
+                new Organisation { Id = mumbai, Name = "Kiosk Mumbai", OrgTypeCode = "hospital", ParentOrgId = rootId, Path = OrganisationPath.ForChild(root.Path, mumbai), Depth = 1, RegisteredViaAppId = app, CreatedAt = now, UpdatedAt = now });
+            db.OrgMemberships.AddRange(
+                new OrgMembership { Id = Guid.NewGuid(), AppId = app, OrgId = pune, UserId = userId, GrantedAt = now },
+                new OrgMembership { Id = Guid.NewGuid(), AppId = app, OrgId = mumbai, UserId = userId, GrantedAt = now });
+            await db.SaveChangesAsync();
+        }
+
+        using HttpClient device = _factory.CreateClient();
+        JsonElement started = await PostAsync(device, "/connect/device", new() { ["client_id"] = SangamServerFactory.DeviceClientId, ["scope"] = "openid profile orgs.read" });
+        string userCode = started.GetProperty("user_code").GetString()!;
+        Dictionary<string, string> poll = new() { ["grant_type"] = "urn:ietf:params:oauth:grant-type:device_code", ["device_code"] = started.GetProperty("device_code").GetString()!, ["client_id"] = SangamServerFactory.DeviceClientId };
+
+        (_, _, string approve) = await s.FollowAsync("/device?user_code=" + Uri.EscapeDataString(userCode));
+        Assert.Contains("data-panel=\"device-branch\"", approve, StringComparison.Ordinal);
+        Assert.Contains("Kiosk Pune", approve, StringComparison.Ordinal);
+
+        // Allowing without choosing asks again; nothing is signed in.
+        (HttpStatusCode unchosen, _, string again) = await s.SubmitAsync("/device?handler=Allow", approve, new() { ["user_code"] = userCode });
+        Assert.Equal(HttpStatusCode.OK, unchosen);
+        Assert.Contains("Choose where you are working before you allow.", WebUtility.HtmlDecode(again), StringComparison.Ordinal);
+        Assert.Equal("authorization_pending", (await PostAsync(device, "/connect/token", poll, expectError: true)).GetProperty("error").GetString());
+
+        (HttpStatusCode status, string? location, _) = await s.SubmitAsync("/device?handler=Allow", again, new() { ["user_code"] = userCode, ["OrgId"] = pune.ToString("D") });
+        Assert.True(status is HttpStatusCode.Found or HttpStatusCode.SeeOther, $"got {(int)status}");
+        Assert.Contains("result=approved", location, StringComparison.Ordinal);
+
+        JsonElement tokens = await PostAsync(device, "/connect/token", poll);
+        Assert.Equal(pune.ToString("D"), Claims(tokens.GetProperty("id_token").GetString()!).GetProperty("sangam_org").GetProperty("id").GetString());
+        Assert.Equal(pune.ToString("D"), Claims(tokens.GetProperty("access_token").GetString()!).GetProperty("sangam_org").GetProperty("id").GetString());
+
+        using HttpRequestMessage info = new(HttpMethod.Get, "/connect/userinfo");
+        info.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokens.GetProperty("access_token").GetString());
+        using HttpResponseMessage answered = await device.SendAsync(info);
+        JsonElement claims = JsonDocument.Parse(await answered.Content.ReadAsStringAsync()).RootElement;
+        Assert.Equal(pune.ToString("D"), claims.GetProperty("sangam_org").GetProperty("id").GetString());
+        Assert.Equal(2, claims.GetProperty("sangam_orgs").GetArrayLength());
+        Assert.False(claims.TryGetProperty("sangam_emergency", out _));
     }
 
     [PostgresFact]

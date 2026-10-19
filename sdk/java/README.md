@@ -46,5 +46,9 @@ rc.12: `SangamUser.currentOrganisation(claims)` reads `sangam_org`; `SangamUser.
 `setRoles` (the invitation call is gone), `lockSession(personToken)` and `endEmergency(personToken, reason)`. To ask for
 emergency access, add `sangam_emergency=<your case number>` to the authorization request.
 
+rc.13: `upsertMembership`, `setRoles` and the new `removeMember` take the acting admin's own access token third
+(`setRoles(orgId, userId, adminAccessToken, roles, expiresAt)`), as `addStaff` does; Sangam checks they are an admin of
+that organisation and records who asked.
+
 `mvn test` runs the shared vectors and the adapter's tests; `mvn package` builds the sample
 (`samples/spring-boot`, port 5930).

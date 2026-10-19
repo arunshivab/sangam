@@ -41,6 +41,10 @@ for emergency access to one of your cases, then `user.emergency` (`case_referenc
 with `management.end_emergency(token, reason)`. Staff: `check_staff`, `add_staff`, `set_roles` (the invitation call is
 gone).
 
+rc.13: `upsert_membership`, `set_roles` and the new `remove_member` take the acting admin's own access token third
+(`set_roles(org_id, user_id, admin_access_token, roles)`), as `add_staff` does; Sangam checks they are an
+admin of that organisation and records who asked.
+
 - **Tokens stay on the server**: the code is exchanged with PKCE on the server; the browser holds only a signed session
   id. Sessions are in memory by default; give `store=` (get, set, delete) to share them between processes.
 - **Without a framework**: `has_permission`, `satisfies`, `step_up_challenge`, `verify_webhook`, `TokenVerifier`,

@@ -610,7 +610,7 @@ public static class ConnectEndpoints
 
     // ------------------------------------------------------------------ userinfo
 
-    private static async Task<IResult> UserInfoAsync(HttpContext httpContext, IAccountService accounts, IAppDirectory apps, ITenancyQuery tenancy, CancellationToken cancellationToken)
+    private static async Task<IResult> UserInfoAsync(HttpContext httpContext, IAccountService accounts, IAppDirectory apps, ITenancyQuery tenancy, IEmergencyAccessService emergencies, CancellationToken cancellationToken)
     {
         ClaimsPrincipal principal = httpContext.User;
         Guid? userId = Guid.TryParse(principal.GetClaim(Claims.Subject), out Guid id) ? id : null;
@@ -653,12 +653,29 @@ public static class ConnectEndpoints
             claims[Claims.PhoneNumberVerified] = user.MobileVerified;
         }
 
-        if (granted.Contains(SangamScopes.OrgsRead))
+        if (granted.Contains(SangamScopes.OrgsRead) || granted.Contains(SangamScopes.OrgCurrent))
         {
             string? clientId = principal.GetClaim(Claims.Audience) ?? principal.GetClaim(Claims.ClientId);
             AppSummary? app = clientId is null ? null : await apps.FindByClientIdAsync(clientId, cancellationToken).ConfigureAwait(false);
             IReadOnlyList<OrgClaim> orgs = app is null ? [] : await tenancy.GetOrgClaimsAsync(user.Id, app.Id, cancellationToken).ConfigureAwait(false);
-            claims[SangamClaims.Orgs] = orgs.Select(SangamClaimsBuilder.ToJson).ToArray();
+            if (granted.Contains(SangamScopes.OrgsRead))
+            {
+                claims[SangamClaims.Orgs] = orgs.Select(SangamClaimsBuilder.ToJson).ToArray();
+            }
+
+            // rc.13: the organisation chosen at sign-in, as in the token, while the person still works there.
+            Guid? chosen = OrgIdOf(principal.GetClaim(SangamClaims.Org));
+            if (orgs.FirstOrDefault(o => o.Id == chosen) is OrgClaim current)
+            {
+                claims[SangamClaims.Org] = SangamClaimsBuilder.ToJson(current);
+            }
+        }
+
+        // rc.13: emergency access in progress, as in the token, only while it lasts.
+        if (SangamClaimsBuilder.EmergencyIdOf(principal.GetClaim(SangamClaims.Emergency)) is Guid useId
+            && await emergencies.ActiveByIdAsync(useId, user.Id, cancellationToken).ConfigureAwait(false) is EmergencyGrant emergency)
+        {
+            claims[SangamClaims.Emergency] = SangamClaimsBuilder.EmergencyJson(emergency);
         }
 
         if (granted.Contains(SangamScopes.Attributes))

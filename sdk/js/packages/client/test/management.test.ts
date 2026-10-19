@@ -13,13 +13,30 @@ test("the management client caches its token and calls /api/v1", async () => {
   };
   const client = new ManagementClient({ authority: "https://id.example.in/", clientId: "app", clientSecret: "s", fetch: fake });
   await client.upsertRole("nurse", "Nurse", ["vitals:read"]);
-  await client.upsertMembership("o1", "u1", "nurse", true, "2026-12-31T23:59:59+05:30");
+  await client.upsertMembership("o1", "u1", "admin-token", "nurse", true, "2026-12-31T23:59:59+05:30");
   assert.equal(calls.filter((c) => c.url.endsWith("/connect/token")).length, 1);
   assert.equal(calls[1]!.url, "https://id.example.in/api/v1/roles/nurse");
   assert.equal(calls[1]!.auth, "Bearer t1");
   assert.equal(JSON.parse(calls[2]!.body!).expiresAt, "2026-12-31T23:59:59+05:30");
   assert.match(calls[0]!.body!, /grant_type=client_credentials/);
   await assert.rejects(client.send("GET", "forbidden"), (e: unknown) => e instanceof SangamApiError && e.status === 403);
+});
+
+test("changing a place sends the admin's own token, as adding staff does (rc.13)", async () => {
+  const seen: { method: string; url: string; admin?: string }[] = [];
+  const fake: typeof fetch = async (input, init) => {
+    const url = String(input);
+    if (url.endsWith("/connect/token")) return new Response(JSON.stringify({ access_token: "t1", expires_in: 3600 }));
+    seen.push({ method: init?.method ?? "GET", url, admin: (init?.headers as Record<string, string>)["sangam-acting-admin"] });
+    return new Response(init?.method === "DELETE" ? "" : JSON.stringify({ ok: true }));
+  };
+  const client = new ManagementClient({ authority: "https://id.example.in", clientId: "app", clientSecret: "s", fetch: fake });
+  await client.setRoles("o1", "u1", "admin-token", ["doctor", "administrator"]);
+  await client.removeMember("o1", "u1", "admin-token");
+  assert.deepEqual(seen, [
+    { method: "PUT", url: "https://id.example.in/api/v1/orgs/o1/members/u1", admin: "admin-token" },
+    { method: "DELETE", url: "https://id.example.in/api/v1/orgs/o1/members/u1", admin: "admin-token" },
+  ]);
 });
 
 test("mergedInto gives the surviving id, and null for an id that was not merged (rc.7)", async () => {

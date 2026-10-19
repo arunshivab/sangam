@@ -80,15 +80,24 @@ export class ManagementClient {
   /**
    * Gives a person a role at an organisation; `expiresAt` makes it time-limited. rc.5: only someone who already uses
    * your application; anyone else answers 404 — add them with `addStaff` instead. rc.12: a role holds only where it is
-   * given, so `appliesToDescendants` must be false.
+   * given, so `appliesToDescendants` must be false. rc.13: done for one of your admins (an admin of that organisation):
+   * `adminAccessToken` is the token Sangam gave your application when they signed in.
    */
-  upsertMembership(orgId: string, userId: string, role: string, appliesToDescendants = false, expiresAt?: string) {
-    return this.send("PUT", `orgs/${orgId}/members/${userId}`, expiresAt ? { role, appliesToDescendants, expiresAt } : { role, appliesToDescendants });
+  upsertMembership(orgId: string, userId: string, adminAccessToken: string, role: string, appliesToDescendants = false, expiresAt?: string) {
+    return this.send("PUT", `orgs/${orgId}/members/${userId}`, expiresAt ? { role, appliesToDescendants, expiresAt } : { role, appliesToDescendants }, adminAccessToken);
   }
 
-  /** rc.12: every role a person holds at an organisation; an empty list keeps them there as staff. */
-  setRoles(orgId: string, userId: string, roles: string[], expiresAt?: string) {
-    return this.send("PUT", `orgs/${orgId}/members/${userId}`, expiresAt ? { roles, expiresAt } : { roles });
+  /**
+   * rc.12: every role a person holds at an organisation; an empty list keeps them there as staff. rc.13: for one of your
+   * admins (`adminAccessToken`), like `addStaff`.
+   */
+  setRoles(orgId: string, userId: string, adminAccessToken: string, roles: string[], expiresAt?: string) {
+    return this.send("PUT", `orgs/${orgId}/members/${userId}`, expiresAt ? { roles, expiresAt } : { roles }, adminAccessToken);
+  }
+
+  /** rc.13: ends a person's place at an organisation now, for one of your admins (`adminAccessToken`). */
+  removeMember(orgId: string, userId: string, adminAccessToken: string) {
+    return this.send("DELETE", `orgs/${orgId}/members/${userId}`, undefined, adminAccessToken);
   }
 
   /**
@@ -169,4 +178,6 @@ export interface SangamStaffResult {
   activationCode: string | null;
   check: SangamStaffCheck | null;
   addedBeforeDigiLocker: boolean;
+  /** rc.13: it waits for the person to verify with DigiLocker (the organisation takes only verified people). */
+  waitsForDigiLocker?: boolean;
 }

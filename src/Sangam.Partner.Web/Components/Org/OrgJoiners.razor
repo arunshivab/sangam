@@ -144,7 +144,7 @@
       <ul class="sg-results" data-panel="joiner-results">
         @foreach ((string where, StaffAddResult r) in _results)
         {
-          <li class="@(r.Status is StaffAddStatus.Added or StaffAddStatus.Waiting ? "sg-ok" : "sg-warn")"><strong>@where</strong>: @(r.Status == StaffAddStatus.Waiting && r.ActivationCode is not null ? L["Added. It starts when the person activates with your code."] : L[r.Message])</li>
+          <li class="@(r.Status is StaffAddStatus.Added or StaffAddStatus.Waiting ? "sg-ok" : "sg-warn")"><strong>@where</strong>: @(r.Status == StaffAddStatus.Waiting && r.ActivationCode is not null ? L["Added. It starts when the person activates with your code."] : r.WaitsForDigiLocker ? L["Added. This organisation takes only people verified with DigiLocker, so it starts when they verify. We have e-mailed them how."] : L[r.Message])</li>
         }
       </ul>
     }

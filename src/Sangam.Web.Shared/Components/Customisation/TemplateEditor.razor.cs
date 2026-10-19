@@ -132,6 +132,7 @@ public partial class TemplateEditor : ComponentBase
         MessageTemplateKinds.OrganisationMemberLeft => L["E-mail: someone left your organisation"],
         MessageTemplateKinds.OrganisationClosed => L["E-mail: an organisation stopped using an application"],
         MessageTemplateKinds.EmergencyAccessUsed => L["E-mail: someone used emergency access (to reviewers)"],
+        MessageTemplateKinds.StaffVerifyRequired => L["E-mail: an organisation asks a new joiner to verify with DigiLocker"],
         MessageTemplateKinds.OperatorAlert => L["E-mail: alert to the platform owner"],
         MessageTemplateKinds.GrievanceAcknowledgement => L["E-mail: acknowledgement of a grievance"],
         MessageTemplateKinds.GrievanceResolution => L["E-mail: the answer to a grievance"],

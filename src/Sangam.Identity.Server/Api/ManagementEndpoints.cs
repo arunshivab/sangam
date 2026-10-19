@@ -108,10 +108,22 @@ public static class ManagementEndpoints
             return Results.Ok(members);
         }).WithName("ListMembers");
 
-        api.MapPut("/orgs/{orgId:guid}/members/{userId:guid}", async (Guid orgId, Guid userId, MembershipUpsert input, ClaimsPrincipal caller, IAppDirectory apps, IManagementService mgmt, CancellationToken ct) =>
+        // rc.13 (decision of 14 Oct 2026): changing a person's place says which admin asked, and that admin must be one.
+        api.MapPut("/orgs/{orgId:guid}/members/{userId:guid}", async (Guid orgId, Guid userId, MembershipUpsert input, HttpContext http, ClaimsPrincipal caller, IAppDirectory apps, IManagementService mgmt, IStaffService staff, OpenIddict.Validation.OpenIddictValidationService validation, CancellationToken ct) =>
         {
             AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
-            return app is null ? Results.Forbid() : ToResult(await mgmt.UpsertMembershipAsync(app.Id, orgId, userId, input, ManagementActor.Api, ct).ConfigureAwait(false));
+            Guid? admin = app is null ? null : await ActingAdminAsync(http, app, validation, ct).ConfigureAwait(false);
+            if (app is null || admin is null)
+            {
+                return app is null ? Results.Forbid() : MissingAdmin();
+            }
+
+            return await staff.ActingAdminAsync(new StaffActor(app.Id, admin.Value, ViaApi: true), orgId, userId, ct).ConfigureAwait(false) switch
+            {
+                StaffActingAdmin.NotAdmin => NotAnAdminThere(),
+                StaffActingAdmin.MustBeVerified => Results.Json(new { error = "Only an admin verified with DigiLocker can add people." }, statusCode: StatusCodes.Status403Forbidden),
+                _ => ToResult(await mgmt.UpsertMembershipAsync(app.Id, orgId, userId, input, ManagementActor.ApiFor(admin.Value), ct).ConfigureAwait(false)),
+            };
         }).WithName("UpsertMembership");
 
         // rc.12: invitations by e-mail alone are replaced by adding staff under an admin's own identity (below).
@@ -156,6 +168,7 @@ public static class ManagementEndpoints
                 activationCode = result.ActivationCode,
                 check = result.Check is null ? null : CheckJson(result.Check),
                 addedBeforeDigiLocker = result.AddedBeforeDigiLocker,
+                waitsForDigiLocker = result.WaitsForDigiLocker,
             };
             return result.Status switch
             {
@@ -193,10 +206,18 @@ public static class ManagementEndpoints
                 : Results.NotFound(new { error = "No waiting addition with that id that this admin may cancel." });
         }).WithName("CancelWaitingStaff");
 
-        api.MapDelete("/orgs/{orgId:guid}/members/{userId:guid}", async (Guid orgId, Guid userId, ClaimsPrincipal caller, IAppDirectory apps, IManagementService mgmt, CancellationToken ct) =>
+        api.MapDelete("/orgs/{orgId:guid}/members/{userId:guid}", async (Guid orgId, Guid userId, HttpContext http, ClaimsPrincipal caller, IAppDirectory apps, IManagementService mgmt, IStaffService staff, OpenIddict.Validation.OpenIddictValidationService validation, CancellationToken ct) =>
         {
             AppSummary? app = await CallerAppAsync(caller, apps, ct).ConfigureAwait(false);
-            return app is null ? Results.Forbid() : ToResult(await mgmt.RevokeMembershipAsync(app.Id, orgId, userId, ManagementActor.Api, ct).ConfigureAwait(false));
+            Guid? admin = app is null ? null : await ActingAdminAsync(http, app, validation, ct).ConfigureAwait(false);
+            if (app is null || admin is null)
+            {
+                return app is null ? Results.Forbid() : MissingAdmin();
+            }
+
+            return await staff.ActingAdminAsync(new StaffActor(app.Id, admin.Value, ViaApi: true), orgId, userId, ct).ConfigureAwait(false) == StaffActingAdmin.NotAdmin
+                ? NotAnAdminThere()
+                : ToResult(await mgmt.RevokeMembershipAsync(app.Id, orgId, userId, ManagementActor.ApiFor(admin.Value), ct).ConfigureAwait(false));
         }).WithName("RevokeMembership");
 
         // PR-25: custom attribute values, for people who have linked the calling application.
@@ -312,8 +333,10 @@ public static class ManagementEndpoints
     }
 
     private static IResult MissingAdmin() => Results.Json(
-        new { error = "Adding staff is done for one of your admins: send their own Sangam access token, issued to your application, in the " + ActingAdminHeader + " header." },
+        new { error = "Changing staff is done for one of your admins: send their own Sangam access token, issued to your application, in the " + ActingAdminHeader + " header." },
         statusCode: StatusCodes.Status401Unauthorized);
+
+    private static IResult NotAnAdminThere() => Results.NotFound(new { error = "The organisation does not exist, or that person is not an admin there." });
 
     private static object CheckJson(StaffCheckResult check) => new
     {

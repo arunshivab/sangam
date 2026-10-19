@@ -26,13 +26,26 @@
       <partial name="_Banner" model="@((Model.Tone, Model.Message))" />
     }
 
-    @if (Model.Joined)
+    @if (Model.Joined || Model.View.State == StaffInviteState.Accepted)
     {
-      <p class="sg-card-body">@L["Open the application and choose Sign in with Sangam."]</p>
-    }
-    else if (Model.View.State == StaffInviteState.Accepted)
-    {
-      <p class="sg-card-body">@L["You have already joined with this link."]</p>
+      @if (!Model.Joined)
+      {
+        <p class="sg-card-body">@L["You have already joined with this link."]</p>
+      }
+
+      @if (Model.MustVerify)
+      {
+        @* rc.13: joined; the place at the organisation that takes only verified people starts once they verify. *@
+        <div data-panel="verify-to-join">
+          <p class="sg-card-body"><strong>@L["This organisation wants you to verify with DigiLocker to join."]</strong></p>
+          <p class="sg-card-body">@L["Your place there starts within a minute of verifying. Sangam reads only the name, date of birth and gender on your DigiLocker record, never a document or an Aadhaar number."]</p>
+          <a class="sg-btn sg-btn--primary sg-btn--block" href="@Model.VerifyUrl">@L["Verify with DigiLocker"]</a>
+        </div>
+      }
+      else if (Model.Joined)
+      {
+        <p class="sg-card-body">@L["Open the application and choose Sign in with Sangam."]</p>
+      }
     }
     else if (Model.View.State == StaffInviteState.Expired)
     {
@@ -44,6 +57,10 @@
     }
     else if (!Model.CodeAccepted)
     {
+      @if (Model.View.VerifiedOnly)
+      {
+        <p class="sg-card-body sg-hint" data-panel="verified-only-note">@L["This organisation takes only people verified with DigiLocker. You will be asked to verify before you join."]</p>
+      }
       <p class="sg-card-body">@L["Enter the activation code {0} gave you in person. We never send it by e-mail or text message.", Model.View.AddedBy]</p>
       <form method="post" asp-page-handler="Code" novalidate>
         <input type="hidden" asp-for="Token" />
@@ -68,6 +85,21 @@
         <a class="sg-btn sg-btn--primary sg-btn--block" href="/register?returnUrl=@Uri.EscapeDataString(Model.BackHere)">@L["Create your account"]</a>
         <a class="sg-btn sg-btn--secondary sg-btn--block" href="/login?returnUrl=@Uri.EscapeDataString(Model.BackHere)">@L["Sign in"]</a>
       }
+    }
+    else if (Model.MustVerify)
+    {
+      @* rc.13: the organisation takes only people verified with DigiLocker. Joining now keeps everything else; the place
+         there waits for DigiLocker, so the link running out never loses it. *@
+      <div data-panel="verify-to-join">
+        <p class="sg-card-body"><strong>@L["This organisation wants you to verify with DigiLocker to join."]</strong></p>
+        <p class="sg-card-body">@L["Verify, then come back to this link to join. Sangam reads only the name, date of birth and gender on your DigiLocker record, never a document or an Aadhaar number."]</p>
+        <a class="sg-btn sg-btn--primary sg-btn--block" href="@Model.VerifyUrl">@L["Verify with DigiLocker"]</a>
+        <form method="post" asp-page-handler="Join">
+          <input type="hidden" asp-for="Token" />
+          <input type="hidden" asp-for="Ticket" />
+          <button type="submit" class="sg-btn sg-btn--secondary sg-btn--block">@L["Join now, verify later"]</button>
+        </form>
+      </div>
     }
     else
     {

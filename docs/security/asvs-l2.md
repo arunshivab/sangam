@@ -47,6 +47,13 @@ After rc.9 (for rc.10): V13.1.1 is Met (OI-058): the production Caddy image forw
 
 rc.11 strengthens V1.6.3 (already Met) and V2.10.x for applications' own secrets: an application's owner replaces its client secret on the partner console with no break in sign-in (two live secrets, each owner-made one ending after 12 months), hashed by OpenIddict and audited without the secret (`src/Sangam.Identity.Infrastructure/Apps/SangamApplicationManager.cs`, `tests/Sangam.Identity.Infrastructure.Tests/Partners/ClientSecretServiceTests.cs`, `tests/Sangam.Identity.Server.Tests/Oidc/ManagementApiTests.cs`). Access reviews (V1.4.x, least privilege over time) list roles ending soon or unused for 90 days for a recorded decision. No status changes.
 
+rc.13 strengthens V4.1.x/V4.2.1 and V7.1.x: every management-API change to a person's place names the admin who asked
+and checks their right on the organisation's path (`src/Sangam.Identity.Server/Api/ManagementEndpoints.cs`,
+`EfStaffService.ActingAdminAsync`, `tests/Sangam.Identity.Server.Tests/Oidc/StaffApiTests.cs`), so the audit trail says
+who, not only which application. An organisation may take only people verified with DigiLocker (`VerifiedStaff.cs`). The
+device flow and userinfo now carry the branch chosen and emergency access, as tokens from an ordinary sign-in do. No status
+changes.
+
 rc.12 strengthens V4.1.x/V4.2.1 (access control on every organisation's path, for customer and branch admins and emergency
 access reviewers; `src/Sangam.Identity.Infrastructure/Tenancy/StaffRights.cs`, `EfOrgConsoleService.cs`), V2.1.x and
 V3.3.x for shared ward devices (a hashed 6-digit PIN only on an enrolled device, within 2 hours of a lock and 12 hours of

@@ -99,6 +99,8 @@ public enum StaffAddStatus
 /// <param name="ActivationCode">The code to hand to the person, shown once; only when this call made it.</param>
 /// <param name="Check">The check's answer, when it was run.</param>
 /// <param name="AddedBeforeDigiLocker">Whether the admin added under the application's temporary DigiLocker exception.</param>
+/// <param name="WaitsForDigiLocker">rc.13: whether it waits for the person to verify with DigiLocker, because the organisation
+/// takes only verified people.</param>
 public sealed record StaffAddResult(
     StaffAddStatus Status,
     string Message,
@@ -106,7 +108,8 @@ public sealed record StaffAddResult(
     Guid? UserId = null,
     string? ActivationCode = null,
     StaffCheckResult? Check = null,
-    bool AddedBeforeDigiLocker = false);
+    bool AddedBeforeDigiLocker = false,
+    bool WaitsForDigiLocker = false);
 
 /// <summary>Where an activation link stands.</summary>
 public enum StaffInviteState
@@ -131,7 +134,8 @@ public enum StaffInviteState
 /// <param name="ForExistingAccount">Whether the person joins with an account they already have.</param>
 /// <param name="Places">Each application and the organisations the person is being added to there.</param>
 /// <param name="AddedBy">The admin's name.</param>
-public sealed record StaffInviteView(StaffInviteState State, string FirstName, string MaskedEmail, bool ForExistingAccount, IReadOnlyList<StaffInvitePlace> Places, string AddedBy);
+/// <param name="VerifiedOnly">rc.13: whether an organisation on the link takes only people verified with DigiLocker.</param>
+public sealed record StaffInviteView(StaffInviteState State, string FirstName, string MaskedEmail, bool ForExistingAccount, IReadOnlyList<StaffInvitePlace> Places, string AddedBy, bool VerifiedOnly = false);
 
 /// <summary>One application and its organisations, on the activation page.</summary>
 /// <param name="Application">The application.</param>
@@ -171,12 +175,37 @@ public enum StaffJoinStatus
 
     /// <summary>Not this account, or the link is no longer open.</summary>
     Refused,
+
+    /// <summary>
+    /// rc.13: joined, but an organisation on the link takes only people verified with DigiLocker and this account is not:
+    /// the place there starts once they verify (the others have started).
+    /// </summary>
+    NeedsVerification,
 }
 
 /// <summary>The result of joining.</summary>
 /// <param name="Status">How it went.</param>
 /// <param name="Message">What to tell the person.</param>
 public sealed record StaffJoinResult(StaffJoinStatus Status, string Message);
+
+/// <summary>rc.13: whether the admin an application names may change a place through the management API.</summary>
+public enum StaffActingAdmin
+{
+    /// <summary>They may.</summary>
+    May,
+
+    /// <summary>They are not an admin of the organisation, or it does not exist.</summary>
+    NotAdmin,
+
+    /// <summary>A new place needs an admin verified with DigiLocker.</summary>
+    MustBeVerified,
+
+    /// <summary>
+    /// The person is acting for themselves at an organisation whose application administrators let testers join it
+    /// themselves (a demo); they may.
+    /// </summary>
+    Themselves,
+}
 
 /// <summary>An addition still waiting, as an admin sees it.</summary>
 /// <param name="Id">The waiting addition.</param>
@@ -187,7 +216,8 @@ public sealed record StaffJoinResult(StaffJoinStatus Status, string Message);
 /// <param name="Activated">Whether the person has activated (then it waits only for the date).</param>
 /// <param name="ExpiresAt">When the activation link stops working.</param>
 /// <param name="AddedBeforeDigiLocker">Whether it was added under the temporary exception.</param>
-public sealed record StaffWaiting(Guid Id, Guid? StaffRef, string Name, IReadOnlyList<string> Roles, DateOnly? StartsOn, bool Activated, DateTimeOffset? ExpiresAt, bool AddedBeforeDigiLocker);
+/// <param name="WaitsForDigiLocker">rc.13: whether it waits for the person to verify with DigiLocker.</param>
+public sealed record StaffWaiting(Guid Id, Guid? StaffRef, string Name, IReadOnlyList<string> Roles, DateOnly? StartsOn, bool Activated, DateTimeOffset? ExpiresAt, bool AddedBeforeDigiLocker, bool WaitsForDigiLocker = false);
 
 /// <summary>
 /// rc.12 (founder decisions, 14 Oct 2026): adding a person to an organisation safely. Only a DigiLocker-verified admin may add
@@ -218,6 +248,18 @@ public interface IStaffService
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The waiting additions, or <see langword="null"/> when the admin may not see them.</returns>
     Task<IReadOnlyList<StaffWaiting>?> WaitingAsync(StaffActor actor, Guid orgId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// rc.13 (decision of 14 Oct 2026): whether the admin an application names may change this person's place at the
+    /// organisation through the management API: an admin there (or above, or of the application), and, for a new place,
+    /// verified with DigiLocker (or under the application's temporary exception).
+    /// </summary>
+    /// <param name="actor">The admin the application acts for.</param>
+    /// <param name="orgId">The organisation.</param>
+    /// <param name="personId">The person whose place changes.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Whether they may.</returns>
+    Task<StaffActingAdmin> ActingAdminAsync(StaffActor actor, Guid orgId, Guid personId, CancellationToken cancellationToken = default);
 
     /// <summary>Cancels one waiting addition (and the activation link, when nothing else waits on it).</summary>
     /// <param name="actor">The admin.</param>

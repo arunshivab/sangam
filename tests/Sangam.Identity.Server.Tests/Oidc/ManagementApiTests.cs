@@ -169,8 +169,9 @@ public sealed class ManagementApiTests
         });
         Assert.Equal(HttpStatusCode.BadRequest, rootDept.StatusCode);
 
+        // rc.13: changing a place names the admin who asked (StaffApiTests); without one nothing is looked up.
         using HttpResponseMessage ghost = await SendAsync(client, token, HttpMethod.Put, $"/api/v1/orgs/{orgId:D}/members/{Guid.NewGuid():D}", new { role = "nurse", appliesToDescendants = false });
-        Assert.Equal(HttpStatusCode.NotFound, ghost.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, ghost.StatusCode);
 
         using HttpRequestMessage list = new(HttpMethod.Get, "/api/v1/roles");
         list.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -184,38 +185,6 @@ public sealed class ManagementApiTests
 
         using HttpResponseMessage retired = await SendAsync(client, token, HttpMethod.Delete, "/api/v1/roles/nurse", null);
         Assert.Equal(HttpStatusCode.OK, retired.StatusCode);
-    }
-
-    [PostgresFact]
-    public async Task TheDemo_CanPlaceATesterAtItsMadeUpHospital_AsAnyApplicationWould()
-    {
-        // V-15: the same calls imagiQa's DemoHospital makes, with imagiQa's own development client.
-        using HttpClient client = _factory.CreateClient();
-        string token = await ClientTokenAsync(client, scope: "sangam.manage", DevelopmentSeeder.ImagiqaClientId, DevelopmentSeeder.ImagiqaClientSecret);
-        Guid hospital = Guid.NewGuid();
-        Guid tester;
-        using (IServiceScope scope = _factory.Services.CreateScope())
-        {
-            Infrastructure.Persistence.SangamDbContext db = scope.ServiceProvider.GetRequiredService<Infrastructure.Persistence.SangamDbContext>();
-            tester = await db.Users.OrderBy(u => u.CreatedAt).Select(u => u.Id).FirstAsync();
-
-            // rc.5 (consent first): the tester has signed in to the demo, as DemoHospital's caller always has.
-            Guid demo = await db.Apps.Where(a => a.ClientId == DevelopmentSeeder.ImagiqaClientId).Select(a => a.Id).SingleAsync();
-            if (!await db.AppGrants.AnyAsync(g => g.AppId == demo && g.UserId == tester && g.RevokedAt == null))
-            {
-                db.AppGrants.Add(new Domain.Entities.AppGrant { Id = Guid.NewGuid(), AppId = demo, UserId = tester, GrantedAt = DateTimeOffset.UtcNow });
-                await db.SaveChangesAsync();
-            }
-        }
-
-        using HttpResponseMessage role = await SendAsync(client, token, HttpMethod.Put, "/api/v1/roles/doctor", new { displayName = "Doctor", description = "Demo", permissions = NursePermissions, orgId = (Guid?)null });
-        Assert.Equal(HttpStatusCode.OK, role.StatusCode);
-        using HttpResponseMessage org = await SendAsync(client, token, HttpMethod.Put, $"/api/v1/orgs/{hospital:D}", new { name = "Demo Hospital (made up)", type = "hospital", parentId = (Guid?)null, metadata = "{\"demo\":true}" });
-        Assert.Equal(HttpStatusCode.OK, org.StatusCode);
-        using HttpResponseMessage member = await SendAsync(client, token, HttpMethod.Put, $"/api/v1/orgs/{hospital:D}/members/{tester:D}", new { role = "doctor", appliesToDescendants = false });
-        Assert.Equal(HttpStatusCode.OK, member.StatusCode);
-        using HttpResponseMessage again = await SendAsync(client, token, HttpMethod.Put, $"/api/v1/orgs/{hospital:D}/members/{tester:D}", new { role = "doctor", appliesToDescendants = false });
-        Assert.Equal(HttpStatusCode.OK, again.StatusCode);
     }
 
     [PostgresFact]
@@ -239,9 +208,9 @@ public sealed class ManagementApiTests
         using HttpResponseMessage org = await SendAsync(client, token, HttpMethod.Put, $"/api/v1/orgs/{orgId:D}", new { name = "Invitation Clinic", type = "hospital", parentId = (Guid?)null, metadata = (string?)null });
         Assert.Equal(HttpStatusCode.OK, org.StatusCode);
 
+        // rc.13: with no admin named, nothing is added at all (the consent-first rule itself is in ManagementServiceTests).
         using HttpResponseMessage added = await SendAsync(client, token, HttpMethod.Put, $"/api/v1/orgs/{orgId:D}/members/{stranger:D}", new { role = "invitee", appliesToDescendants = false });
-        Assert.Equal(HttpStatusCode.NotFound, added.StatusCode);
-        Assert.Contains("Add them as staff instead", await added.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.Unauthorized, added.StatusCode);
 
         // rc.12: an invitation by e-mail alone is refused; staff are added under an admin's own identity (StaffApiTests).
         using HttpResponseMessage invited = await SendAsync(client, token, HttpMethod.Post, $"/api/v1/orgs/{orgId:D}/invitations", new { email = $"invitee-{Guid.NewGuid():N}@example.in", role = "invitee", appliesToDescendants = false });

@@ -21,10 +21,30 @@
           <li><span class="sg-share-tick" aria-hidden="true">✓</span><span><span class="sg-share-claim">@item.Label</span><span class="sg-share-value">@item.Value</span></span></li>
         }
       </ul>
-      <form method="post" class="sg-consent-actions">
+      <form method="post">
+      @if (Model.Branches.Count > 0)
+      {
+        @* rc.13: the device's token says where the person is working, as in an ordinary sign-in. *@
+        <fieldset class="sg-device-branch" data-panel="device-branch">
+          <legend class="sg-consent-head">@L["Working at which branch?"]</legend>
+          @if (Model.ChooseBranch)
+          {
+            <p class="sg-banner" role="alert">@L["Choose where you are working before you allow."]</p>
+          }
+          @foreach (Sangam.Identity.Application.Tenancy.OrgClaim org in Model.Branches)
+          {
+            <label class="sg-check">
+              <input type="radio" name="OrgId" value="@org.Id" checked="@(org.Id == Model.OrgId)" />
+              <span>@org.Name</span>
+            </label>
+          }
+        </fieldset>
+      }
+      <div class="sg-consent-actions">
         <input type="hidden" name="user_code" value="@Model.UserCode" />
         <button type="submit" class="sg-btn sg-btn--secondary sg-btn--consent" asp-page-handler="Deny">@L["Refuse"]</button>
         <button type="submit" class="sg-btn sg-btn--primary sg-btn--consent sg-btn--consent-allow" asp-page-handler="Allow">@L["Allow"]</button>
+      </div>
       </form>
       break;
     case DeviceStep.Approved:

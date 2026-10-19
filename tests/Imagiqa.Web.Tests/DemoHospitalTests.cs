@@ -26,7 +26,7 @@ public sealed class DemoHospitalTests : IClassFixture<ImagiqaFactory>
         DemoHospital demo = new(http, Settings(demo: true));
         Guid person = Guid.NewGuid();
 
-        Assert.Null(await demo.JoinAsync(person, "doctor"));
+        Assert.Null(await demo.JoinAsync(person, "doctor", "tester-token"));
 
         Assert.Equal("POST https://id.example.in/connect/token", recorder.Calls[0].Line);
         Assert.Contains("grant_type=client_credentials", recorder.Calls[0].Body, StringComparison.Ordinal);
@@ -45,6 +45,10 @@ public sealed class DemoHospitalTests : IClassFixture<ImagiqaFactory>
         Assert.Equal("hospital", hospital.RootElement.GetProperty("type").GetString());
         using JsonDocument membership = JsonDocument.Parse(recorder.Calls[4].Body);
         Assert.Equal("doctor", membership.RootElement.GetProperty("role").GetString());
+
+        // rc.13: only the membership is asked for by the tester, with their own token.
+        Assert.Equal("tester-token", recorder.Calls[4].ActingAdmin);
+        Assert.All(recorder.Calls.Skip(1).Take(3), c => Assert.Null(c.ActingAdmin));
     }
 
     [Fact]
@@ -52,8 +56,9 @@ public sealed class DemoHospitalTests : IClassFixture<ImagiqaFactory>
     {
         using Recorder recorder = new();
         using HttpClient http = new(recorder, disposeHandler: false);
-        Assert.NotNull(await new DemoHospital(http, Settings(demo: false)).JoinAsync(Guid.NewGuid(), "doctor"));
-        Assert.NotNull(await new DemoHospital(http, Settings(demo: true)).JoinAsync(Guid.NewGuid(), "administrator"));
+        Assert.NotNull(await new DemoHospital(http, Settings(demo: false)).JoinAsync(Guid.NewGuid(), "doctor", "tester-token"));
+        Assert.NotNull(await new DemoHospital(http, Settings(demo: true)).JoinAsync(Guid.NewGuid(), "administrator", "tester-token"));
+        Assert.NotNull(await new DemoHospital(http, Settings(demo: true)).JoinAsync(Guid.NewGuid(), "doctor", null));
         Assert.Empty(recorder.Calls);
     }
 
@@ -62,7 +67,7 @@ public sealed class DemoHospitalTests : IClassFixture<ImagiqaFactory>
     {
         using Recorder recorder = new() { Refuse = "/members/" };
         using HttpClient http = new(recorder, disposeHandler: false);
-        string? problem = await new DemoHospital(http, Settings(demo: true)).JoinAsync(Guid.NewGuid(), "nurse");
+        string? problem = await new DemoHospital(http, Settings(demo: true)).JoinAsync(Guid.NewGuid(), "nurse", "tester-token");
         Assert.NotNull(problem);
         Assert.Contains("/members/", problem, StringComparison.Ordinal);
     }
@@ -102,14 +107,15 @@ public sealed class DemoHospitalTests : IClassFixture<ImagiqaFactory>
 
     private sealed class Recorder : HttpMessageHandler
     {
-        public List<(string Line, string Body, string? Authorization)> Calls { get; } = [];
+        public List<(string Line, string Body, string? Authorization, string? ActingAdmin)> Calls { get; } = [];
 
         public string? Refuse { get; init; }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             string body = request.Content is null ? string.Empty : await request.Content.ReadAsStringAsync(cancellationToken);
-            Calls.Add(($"{request.Method} {request.RequestUri}", body, request.Headers.Authorization?.ToString()));
+            string? actingAdmin = request.Headers.TryGetValues("Sangam-Acting-Admin", out IEnumerable<string>? values) ? values.Single() : null;
+            Calls.Add(($"{request.Method} {request.RequestUri}", body, request.Headers.Authorization?.ToString(), actingAdmin));
             if (Refuse is not null && request.RequestUri!.AbsolutePath.Contains(Refuse, StringComparison.Ordinal))
             {
                 return new HttpResponseMessage(HttpStatusCode.NotFound);

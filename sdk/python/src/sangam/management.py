@@ -84,18 +84,26 @@ class ManagementClient:
     def upsert_organisation(self, org_id: str, name: str, type: str, parent_id: str | None = None) -> Any:
         return self.send("PUT", f"orgs/{org_id}", {"name": name, "type": type, "parentId": parent_id, "metadata": None})
 
-    def upsert_membership(self, org_id: str, user_id: str, role: str, applies_to_descendants: bool = False, expires_at: str | None = None) -> Any:
+    def upsert_membership(self, org_id: str, user_id: str, admin_access_token: str, role: str, applies_to_descendants: bool = False, expires_at: str | None = None) -> Any:
+        """Gives a person a role at an organisation. rc.13: for one of your admins (an admin of that organisation)."""
         body: dict[str, Any] = {"role": role, "appliesToDescendants": applies_to_descendants}
         if expires_at:
             body["expiresAt"] = expires_at
-        return self.send("PUT", f"orgs/{org_id}/members/{user_id}", body)
+        return self.send("PUT", f"orgs/{org_id}/members/{user_id}", body, admin_access_token)
 
-    def set_roles(self, org_id: str, user_id: str, roles: list[str], expires_at: str | None = None) -> Any:
-        """rc.12: every role a person holds at an organisation; an empty list keeps them there as staff."""
+    def set_roles(self, org_id: str, user_id: str, admin_access_token: str, roles: list[str], expires_at: str | None = None) -> Any:
+        """rc.12: every role a person holds at an organisation; an empty list keeps them there as staff.
+
+        rc.13: for one of your admins: ``admin_access_token`` is the token Sangam gave your application when they signed in.
+        """
         body: dict[str, Any] = {"roles": roles}
         if expires_at:
             body["expiresAt"] = expires_at
-        return self.send("PUT", f"orgs/{org_id}/members/{user_id}", body)
+        return self.send("PUT", f"orgs/{org_id}/members/{user_id}", body, admin_access_token)
+
+    def remove_member(self, org_id: str, user_id: str, admin_access_token: str) -> Any:
+        """rc.13: ends a person's place at an organisation now, for one of your admins."""
+        return self.send("DELETE", f"orgs/{org_id}/members/{user_id}", None, admin_access_token)
 
     def check_staff(self, org_id: str, admin_access_token: str, person: dict[str, Any]) -> Any:
         """rc.12: the check before adding a person (which details match, never what Sangam holds), for one of your admins.

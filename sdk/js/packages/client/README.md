@@ -19,7 +19,7 @@ const verify = createTokenVerifier({ issuer: "https://id.sangamid.in/", audience
 const { user: caller, scopes } = await verify(bearerToken);           // signature, issuer, expiry, audience
 
 const sangam = new ManagementClient({ authority, clientId, clientSecret });   // back end only
-await sangam.upsertMembership(orgId, sub, "nurse", true, "2026-12-31T23:59:59+05:30");
+await sangam.upsertMembership(orgId, sub, adminAccessToken, "nurse", false, "2026-12-31T23:59:59+05:30");
 
 const event = buildAuditEvent({ appId: "lims", appVersion: "1.2.0", environment: "production" }, user,
   { ip, userAgent }, { action: "lims.result.sign", category: "sign", target: { type: "result", id: "R-1" },
@@ -33,11 +33,19 @@ rc.12:
 user.currentOrganisation;                 // sangam_org: where they are working for this sign-in
 await sangam.checkStaff(orgId, adminAccessToken, person);           // which fields match an existing account
 await sangam.addStaff(orgId, adminAccessToken, { person, roles: ["nurse"] });
-await sangam.setRoles(orgId, sub, ["nurse", "charge-nurse"]);       // or [] for staff with no role
+await sangam.setRoles(orgId, sub, adminAccessToken, ["nurse", "charge-nurse"]);   // or [] for staff with no role
 await lockSession(authority, personAccessToken);                    // shared ward devices
 const stop = startIdleTimer({ minutes: 10, onIdle: () => location.assign("/auth/lock") });   // in the browser
 if (emergencyActive(user.emergency)) showBanner(user.emergency!.caseReference);
 await endEmergency(authority, personAccessToken, "Care handed over");
+```
+
+rc.13: every change to a person's place names the admin who asked (`adminAccessToken`, the token Sangam gave your
+application when that admin signed in), and Sangam checks they are an admin of that organisation:
+
+```ts
+await sangam.setRoles(orgId, sub, adminAccessToken, ["doctor"]);
+await sangam.removeMember(orgId, sub, adminAccessToken);
 ```
 
 `npm test` runs the shared vectors and unit tests.

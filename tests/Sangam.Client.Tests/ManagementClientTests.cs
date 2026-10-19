@@ -40,6 +40,23 @@ public sealed class ManagementClientTests
     }
 
     [Fact]
+    public async Task ChangingAPlace_SendsTheAdminsOwnToken()
+    {
+        // rc.13: setting roles and ending a place name the admin, as adding staff does.
+        using Answering handler = new();
+        using SangamManagementClient client = new(new Factory(handler), new SangamOptions { Authority = "https://id.example.in/", ClientId = "app", ClientSecret = "s" });
+        Guid org = Guid.Parse("0192a6b0-0000-7000-8000-0000000000c3");
+
+        await client.SetRolesAsync(org, Old, "admin-token", ["doctor"]);
+        Assert.Contains(handler.Seen, s => s == $"PUT https://id.example.in/api/v1/orgs/{org:D}/members/{Old:D} Bearer t1");
+        Assert.Equal("admin-token", handler.ActingAdmin);
+        await client.RemoveMemberAsync(org, Old, "admin-token");
+        Assert.Contains(handler.Seen, s => s == $"DELETE https://id.example.in/api/v1/orgs/{org:D}/members/{Old:D} Bearer t1");
+        Assert.Equal("admin-token", handler.ActingAdmin);
+        await Assert.ThrowsAsync<ArgumentException>(() => client.SetRolesAsync(org, Old, string.Empty, ["doctor"]));
+    }
+
+    [Fact]
     public async Task Locking_SendsThePersonsOwnToken_NotClientCredentials()
     {
         using Answering handler = new();
@@ -89,7 +106,7 @@ public sealed class ManagementClientTests
                 return new HttpResponseMessage(HttpStatusCode.NoContent);
             }
 
-            if (path.EndsWith("/staff", StringComparison.Ordinal))
+            if (path.EndsWith("/staff", StringComparison.Ordinal) || path.Contains("/members/", StringComparison.Ordinal))
             {
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{\"status\":\"waiting\"}") };
             }

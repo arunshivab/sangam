@@ -47,8 +47,8 @@ See ADR-0006.
 |---|:--:|:--:|:--:|
 | Create or retire the application's roles | ✓ | ✓ | ✓ `PUT /api/v1/roles/{code}` |
 | Register organisations and build the tree | ✓ | ✓ | ✓ `PUT /api/v1/orgs/{id}` |
-| Grant and revoke memberships — linked people only | ✓ | ✓ | ✓ `PUT` / `DELETE /api/v1/orgs/{id}/members/{user}` (rc.5: linked people only here too) |
-| Invite someone who does not use the application yet | ✓ | ✓ | ✓ `POST /api/v1/orgs/{id}/invitations` (rc.5; linked when they accept) |
+| Grant and revoke memberships — linked people only | ✓ | ✓ | ✓ `PUT` / `DELETE /api/v1/orgs/{id}/members/{user}` (rc.5: linked people only here too; rc.13: for an admin of that organisation, named in `Sangam-Acting-Admin`) |
+| Add someone who does not use the application yet | ✓ | ✓ | ✓ `POST /api/v1/orgs/{id}/staff` (rc.12, for an admin named in `Sangam-Acting-Admin`; the e-mail invitation answers 410) |
 | Find people — only those who linked this application | ✓ | ✓ | — |
 | Edit description, brand colour, tile letter | ✓ | ✓ | — |
 | Sign-in policy: each person's choice, or always two-step | ✓ | ✓ | — |

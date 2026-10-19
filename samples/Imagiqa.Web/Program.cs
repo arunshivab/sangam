@@ -138,7 +138,8 @@ app.MapPost("/demo/join", async (HttpContext context, Microsoft.AspNetCore.Antif
     IFormCollection form = await context.Request.ReadFormAsync(cancellationToken).ConfigureAwait(false);
     string role = form["role"].ToString();
     Guid? userId = context.User.GetSangamUser()?.Id;
-    string? problem = userId is null ? "Not signed in." : await demo.JoinAsync(userId.Value, role, cancellationToken).ConfigureAwait(false);
+    string? testerToken = await context.GetTokenAsync(SangamDefaults.CookieScheme, "access_token").ConfigureAwait(false);
+    string? problem = userId is null ? "Not signed in." : await demo.JoinAsync(userId.Value, role, testerToken, cancellationToken).ConfigureAwait(false);
     if (problem is not null)
     {
         return Results.Redirect("/?demo=failed");

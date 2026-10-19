@@ -35,7 +35,12 @@ The same in every SDK:
 - **"Working at which branch?"**: `sangam_org` is the one organisation chosen for this sign-in (scope `org.current`, or
   `orgs.read` with the whole list). Choose again with `prompt=select_org`; name one with `sangam_org=<id>`.
 - **Adding staff** is done for one of your admins (their own access token, `Sangam-Acting-Admin`): `checkStaff`,
-  `addStaff`, `setRoles`. The old invitation call is gone.
+  `addStaff`, `setRoles`. The old invitation call is gone. rc.13: so is every other change to a person's place —
+  `upsertMembership`, `setRoles` and `removeMember` take the admin's token too, and Sangam checks they are an admin of
+  that organisation.
+- **DigiLocker-only organisations** (rc.13): an organisation may take only people verified with DigiLocker. An addition
+  for someone who is not verified answers `waiting` (with `waitsForDigiLocker`); the person is asked to verify and the
+  place starts within a minute of it. `PUT …/members/…` for a new place answers 400 instead.
 - **Lock** (shared ward devices): your idle timer calls `lockSession` with the person's own access token, or sends them to
   the lock route; Sangam tells their other applications (`session.locked`) and decides how they get back in.
 - **Emergency access**: send the person to Sangam with `sangam_emergency=<your case number>`; the token then carries
