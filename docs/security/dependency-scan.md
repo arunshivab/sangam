@@ -13,6 +13,13 @@ by the `security` CI job. It fails on anything high or critical.
 | The `caddy:2` and `postgres:18` images | Trivy `image --ignore-unfixed` | reported, not failing (upstream's fixes) |
 | The Kubernetes manifests (`deploy/kubernetes`) | `kubectl kustomize` and kubeconform (schemas); Trivy `misconfig` (above) | invalid manifests; high, critical |
 
+Dependabot opens the weekly update pull requests (`.github/dependabot.yml`). Its NuGet pull requests update only the
+lock files of projects that reference a package directly, so restore fails with NU1004 in the projects that get it
+through another project. The **Dependabot lock files** workflow (`.github/workflows/dependabot-lockfiles.yml`, OI-060)
+regenerates every lock file on Dependabot's NuGet branches and pushes them back, with the deploy key in the
+`LOCKFILE_DEPLOY_KEY` secret (write access to this repository only); CI then runs on that commit. It runs `dotnet
+restore` and nothing else, only for pull requests Dependabot opened, and pushes only lock files.
+
 Run them yourself:
 
 ```sh
