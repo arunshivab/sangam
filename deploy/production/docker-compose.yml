@@ -190,7 +190,7 @@ services:
   # volumes to that user before it starts (volumes made by an earlier release belong to root), with only the rights
   # chown needs.
   caddy-volumes:
-    image: caddy:2@sha256:f2a1290d0463aad60660d4ec134943f183ee2a5f6c3eb7bf32dd984f2f020772
+    image: caddy:2@sha256:685ae3d7c34d9b5f8caeddc5d14051db7bbd88ff1f5a2fa0c16bd8ca328fb7af
     user: "0:0"
     entrypoint: ["chown", "-R", "1000:1000", "/data", "/config"]
     network_mode: none

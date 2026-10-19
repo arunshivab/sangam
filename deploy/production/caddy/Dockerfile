@@ -3,7 +3,7 @@
 # a kernel refuses to run such a binary once privileges may not be gained. A plain copy drops the capability; the
 # compose file opens the low ports to unprivileged users inside Caddy's own network namespace instead.
 # Pinned by digest (V10.3.2); Dependabot proposes new digests.
-FROM caddy:2@sha256:f2a1290d0463aad60660d4ec134943f183ee2a5f6c3eb7bf32dd984f2f020772
+FROM caddy:2@sha256:685ae3d7c34d9b5f8caeddc5d14051db7bbd88ff1f5a2fa0c16bd8ca328fb7af
 RUN cp /usr/bin/caddy /usr/bin/caddy.plain \
     && mv /usr/bin/caddy.plain /usr/bin/caddy \
     && chown -R 1000:1000 /data /config
