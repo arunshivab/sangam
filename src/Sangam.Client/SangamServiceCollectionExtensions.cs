@@ -27,6 +27,16 @@ public static class SangamServiceCollectionExtensions
         configure(sangam);
         sangam.Validate();
 
+        // rc.15: an application that signs in with a key sends a fresh assertion instead of a secret. A key that cannot be
+        // read stops the application at start-up, not at its first sign-in.
+#pragma warning disable CA2000 // It lives as long as the application, as a singleton.
+        SangamClientAssertion? assertion = SangamClientAssertion.From(sangam);
+#pragma warning restore CA2000
+        if (assertion is not null)
+        {
+            services.TryAddSingleton(assertion);
+        }
+
         // R6: the management client (and the audit forwarder's tokens) use the same settings.
         services.TryAddSingleton(sangam);
         services.AddHttpClient(SangamManagementClient.HttpClientName);
@@ -58,7 +68,7 @@ public static class SangamServiceCollectionExtensions
                 o.SignInScheme = SangamDefaults.CookieScheme;
                 o.Authority = sangam.Authority;
                 o.ClientId = sangam.ClientId;
-                o.ClientSecret = sangam.ClientSecret;
+                o.ClientSecret = assertion is null ? sangam.ClientSecret : null;
                 o.ResponseType = OpenIdConnectResponseType.Code;
                 o.UsePkce = true;
                 o.SaveTokens = sangam.SaveTokens;
@@ -107,6 +117,18 @@ public static class SangamServiceCollectionExtensions
 
                     return Task.CompletedTask;
                 };
+
+                // rc.15: the code is redeemed with a key-signed assertion instead of a secret.
+                if (assertion is not null)
+                {
+                    o.Events.OnAuthorizationCodeReceived = context =>
+                    {
+                        context.TokenEndpointRequest!.ClientSecret = null;
+                        context.TokenEndpointRequest.ClientAssertionType = SangamClientAssertion.AssertionType;
+                        context.TokenEndpointRequest.ClientAssertion = assertion.Create();
+                        return Task.CompletedTask;
+                    };
+                }
             });
     }
 

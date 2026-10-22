@@ -8,6 +8,8 @@ from urllib.parse import quote
 
 import httpx
 
+from .client_key import ClientKey
+
 
 class SangamApiError(Exception):
     def __init__(self, status: int, body: str, message: str) -> None:
@@ -17,10 +19,14 @@ class SangamApiError(Exception):
 
 
 class ManagementClient:
-    def __init__(self, authority: str, client_id: str, client_secret: str, client: httpx.Client | None = None) -> None:
+    def __init__(self, authority: str, client_id: str, client_secret: str | None = None, client: httpx.Client | None = None, private_key: str | ClientKey | None = None) -> None:
+        """``client_secret``, or rc.15 ``private_key`` (PEM or private JWK, or a ClientKey) to sign in with a key instead."""
+        if not client_secret and not private_key:
+            raise ValueError("Sangam: give client_secret or private_key.")
         self.authority = authority.rstrip("/")
         self.client_id = client_id
         self._secret = client_secret
+        self._key = private_key if isinstance(private_key, ClientKey) or private_key is None else ClientKey(private_key)
         self._http = client or httpx.Client(timeout=15)
         self._tokens: dict[str, tuple[str, float]] = {}
         self._lock = threading.Lock()
@@ -31,7 +37,10 @@ class ManagementClient:
             cached = self._tokens.get(scope)
             if cached and cached[1] > time.time() + 60:
                 return cached[0]
-            r = self._http.post(f"{self.authority}/connect/token", data={"grant_type": "client_credentials", "client_id": self.client_id, "client_secret": self._secret, "scope": scope})
+            form = {"grant_type": "client_credentials", "client_id": self.client_id, "scope": scope}
+            # rc.15: a fresh key-signed assertion, for Sangam's issuer, instead of the secret.
+            form.update(self._key.form(self.client_id, self.authority + "/") if self._key else {"client_secret": self._secret or ""})
+            r = self._http.post(f"{self.authority}/connect/token", data=form)
             if r.status_code >= 300:
                 raise SangamApiError(r.status_code, r.text, f"Sangam refused a token for {scope} ({r.status_code})")
             body = r.json()

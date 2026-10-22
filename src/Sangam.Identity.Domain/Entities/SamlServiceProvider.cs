@@ -28,6 +28,13 @@ public class SamlServiceProvider
     /// <summary>The SP's encryption certificate (PEM): when set, assertions are encrypted for it.</summary>
     public string? EncryptionCertificate { get; set; }
 
+    /// <summary>
+    /// rc.15 (ASVS V6.2.5): whether the assertion's key is wrapped with RSA-OAEP using SHA-256 (xmlenc 1.1,
+    /// <c>xmlenc11#rsa-oaep</c> with MGF1-SHA-256) rather than SHA-1 (<c>rsa-oaep-mgf1p</c>), which only older SPs need.
+    /// On for SPs registered from rc.15.
+    /// </summary>
+    public bool OaepSha256 { get; set; }
+
     /// <summary><c>persistent</c> (pairwise per SP, the default) or <c>email</c>.</summary>
     public string NameIdFormat { get; set; } = "persistent";
 

@@ -46,6 +46,14 @@ The same in every SDK:
 - **Emergency access**: send the person to Sangam with `sangam_emergency=<your case number>`; the token then carries
   `sangam_emergency` (`id`, `case`, `org`, `until`). End it early with `endEmergency(reason)`.
 
+## rc.15: signing in with a key
+
+Every SDK can sign the application in with a private key instead of a client secret (`private_key_jwt`, ADR-0018): .NET
+`PrivateKeyPem`/`PrivateKeyPath`, JavaScript `privateKey`, Python `private_key`, Java `ClientKey` and
+`sangam.private-key`. Each request gets a fresh assertion: `iss` = `sub` = the client id, `aud` = Sangam's issuer,
+a random `jti`, two minutes, `typ: client-authentication+jwt`, and `kid` = the key's RFC 7638 thumbprint (the key id the
+partner console shows). Sangam accepts each assertion once. Access tokens last 15 minutes from rc.15.
+
 ## Conformance
 
 - `conformance/vectors.json`: permissions, step-up, the challenge header, webhook signatures, audit validation and

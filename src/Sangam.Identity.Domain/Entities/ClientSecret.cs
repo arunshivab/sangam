@@ -47,6 +47,9 @@ public sealed class ClientSecret
     /// <summary>When an application last used it to get a token (to the hour).</summary>
     public DateTimeOffset? LastUsedAt { get; set; }
 
+    /// <summary>rc.15 (ASVS V2.10.1): when its owners were told it ends soon, so they are told once.</summary>
+    public DateTimeOffset? ReminderSentAt { get; set; }
+
     /// <summary>Whether it works at <paramref name="now"/>.</summary>
     /// <param name="now">The time.</param>
     public bool IsLive(DateTimeOffset now) => RevokedAt is null && ExpiresAt > now;

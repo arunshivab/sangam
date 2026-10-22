@@ -123,6 +123,15 @@ public static class AuditActions
     /// <summary>rc.11 (R5): an application's owner revoked a client secret (theirs, or the one Sangam issued). Metadata: which.</summary>
     public const string AppSecretRevoke = "app.secret.revoke";
 
+    /// <summary>rc.15 (ASVS V2.10.1): an application's owner added a public key for signing in with <c>private_key_jwt</c>. Metadata: its id, kind and name.</summary>
+    public const string AppKeyAdd = "app.key.add";
+
+    /// <summary>rc.15 (ASVS V2.10.1): an application's owner removed one of its public keys. Metadata: its id and name.</summary>
+    public const string AppKeyRemove = "app.key.remove";
+
+    /// <summary>rc.15 (ASVS V2.10.1): the owners were told a client secret is old or ends soon. Metadata: which secret, and when.</summary>
+    public const string AppSecretReminder = "app.secret.reminder";
+
     /// <summary>rc.11 (R6): an application administrator decided about a role in an access review. Metadata: the outcome, the person, the list it was on.</summary>
     public const string AppAccessReview = "app.access_review.decide";
 

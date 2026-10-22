@@ -15,7 +15,8 @@ namespace Sangam.Identity.Infrastructure.Maintenance;
 /// <summary>
 /// Hourly housekeeping: hard-deletes accounts whose 30-day grace period has passed, prunes
 /// session rows that have been revoked for more than 90 days, deletes short-lived records past their retention
-/// (rc.6, <see cref="RetentionSweep"/>), and runs the audit archive (D-A).
+/// (rc.6, <see cref="RetentionSweep"/>), reminds applications' owners about old client secrets (rc.15,
+/// <see cref="ClientSecretReminders"/>), and runs the audit archive (D-A).
 /// <para>
 /// A hard delete pseudonymises the user row — name, email, mobile and password hash are
 /// destroyed and the email is replaced with an unusable placeholder — but the row and the audit
@@ -96,6 +97,7 @@ public sealed partial class AccountPurgeService : BackgroundService
         SangamDbContext db = scope.ServiceProvider.GetRequiredService<SangamDbContext>();
         IAuditWriter audit = scope.ServiceProvider.GetRequiredService<IAuditWriter>();
         InactivityService inactivity = scope.ServiceProvider.GetRequiredService<InactivityService>();
+        ClientSecretReminders secrets = scope.ServiceProvider.GetRequiredService<ClientSecretReminders>();
         (int Accounts, int Sessions) result = (0, 0);
 
         // R7 (PR-33, OI-047): every host runs this service; one at a time sweeps, so no account is purged twice.
@@ -106,6 +108,19 @@ public sealed partial class AccountPurgeService : BackgroundService
             async ct =>
             {
                 await inactivity.RunAsync(ct).ConfigureAwait(false);
+
+                // rc.15 (ASVS V2.10.1): owners are told when a client secret is old or ends soon. A failure here never
+                // stops the purge.
+                try
+                {
+                    await secrets.RunAsync(ct).ConfigureAwait(false);
+                }
+#pragma warning disable CA1031 // Reminders must never hold up the purge.
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    LogRemindersFailed(exception);
+                }
+#pragma warning restore CA1031
                 result = await SweepAsync(db, audit, ct).ConfigureAwait(false);
             },
             cancellationToken).ConfigureAwait(false);
@@ -220,4 +235,7 @@ public sealed partial class AccountPurgeService : BackgroundService
 
     [LoggerMessage(EventId = 1202, Level = LogLevel.Error, Message = "The maintenance sweep failed; it will run again at the next interval.")]
     private partial void LogFailed(Exception exception);
+
+    [LoggerMessage(EventId = 1203, Level = LogLevel.Error, Message = "Client secret reminders failed; they will run again at the next sweep.")]
+    private partial void LogRemindersFailed(Exception exception);
 }

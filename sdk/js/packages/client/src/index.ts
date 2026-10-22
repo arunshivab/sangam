@@ -4,4 +4,5 @@ export * from "./webhooks.js";
 export * from "./audit.js";
 export * from "./tokens.js";
 export * from "./management.js";
+export * from "./clientkey.js";
 export * from "./lock.js";

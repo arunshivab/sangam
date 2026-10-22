@@ -1,8 +1,13 @@
+import { CLIENT_ASSERTION_TYPE, createClientAssertion, loadClientKey, type ClientKey } from "./clientkey.js";
+
 export interface ManagementClientOptions {
   /** Sangam's address, for example "https://id.sangamid.in". */
   authority: string;
   clientId: string;
-  clientSecret: string;
+  /** The client secret; not needed when `privateKey` is set. */
+  clientSecret?: string;
+  /** rc.15: a private key (PKCS#8 PEM or private JWK) to sign in with instead of a secret (`private_key_jwt`). */
+  privateKey?: string;
   /** A fetch to use instead of the global one. */
   fetch?: typeof fetch;
 }
@@ -33,16 +38,29 @@ export class ManagementClient {
   readonly #tokens = new Map<string, { token: string; expires: number }>();
   readonly #fetch: typeof fetch;
 
+  #key: Promise<ClientKey> | undefined;
+
   constructor(options: ManagementClientOptions) {
+    if (!options.clientSecret && !options.privateKey) throw new Error("Sangam: set clientSecret or privateKey.");
     this.#options = { ...options, authority: trimTrailingSlashes(options.authority) };
     this.#fetch = options.fetch ?? fetch;
+    this.#key = options.privateKey ? loadClientKey(options.privateKey) : undefined;
+    // A key that cannot be read is reported on the first call; this stops an unhandled rejection before then.
+    this.#key?.catch(() => undefined);
   }
 
   /** A client-credentials token for the scope, reused until a minute before it expires. */
   async token(scope = "sangam.manage"): Promise<string> {
     const cached = this.#tokens.get(scope);
     if (cached && cached.expires > Date.now() + 60_000) return cached.token;
-    const body = new URLSearchParams({ grant_type: "client_credentials", client_id: this.#options.clientId, client_secret: this.#options.clientSecret, scope });
+    const body = new URLSearchParams({ grant_type: "client_credentials", client_id: this.#options.clientId, scope });
+    if (this.#key) {
+      // rc.15: a fresh key-signed assertion, for Sangam's issuer, instead of the secret.
+      body.set("client_assertion_type", CLIENT_ASSERTION_TYPE);
+      body.set("client_assertion", await createClientAssertion(await this.#key, this.#options.clientId, this.#options.authority + "/"));
+    } else {
+      body.set("client_secret", this.#options.clientSecret ?? "");
+    }
     const response = await this.#fetch(`${this.#options.authority}/connect/token`, { method: "POST", body, headers: { "content-type": "application/x-www-form-urlencoded" } });
     const text = await response.text();
     if (!response.ok) throw new SangamApiError(response.status, text, `Sangam refused a token for ${scope} (${response.status})`);

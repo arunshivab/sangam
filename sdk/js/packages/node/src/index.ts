@@ -1,9 +1,11 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import * as oidc from "openid-client";
 import {
+  CLIENT_ASSERTION_TOKEN_TYPE,
   can,
   createTokenVerifier,
   ManagementClient,
+  loadClientKey,
   lockSession,
   satisfies,
   stepUpChallenge,
@@ -33,7 +35,13 @@ export interface SangamNodeOptions {
   /** Sangam's address, for example "https://id.sangamid.in". */
   authority: string;
   clientId: string;
-  clientSecret: string;
+  /** The client secret; not needed when `privateKey` is set. */
+  clientSecret?: string;
+  /**
+   * rc.15: a private key (PKCS#8 PEM or private JWK) to sign in with instead of a secret (`private_key_jwt`). Add the
+   * matching public key on the partner console (Credentials, Keys).
+   */
+  privateKey?: string;
   /** Your application's own address, for example "https://lims.example.in": the callback is {baseUrl}{basePath}/callback. */
   baseUrl: string;
   /** Where the sign-in routes live. */
@@ -103,6 +111,7 @@ function trimTrailingSlashes(value: string): string {
 
 export function createSangam(options: SangamNodeOptions) {
   if (options.cookieSecret.length < 32) throw new Error("cookieSecret must be at least 32 characters.");
+  if (!options.clientSecret && !options.privateKey) throw new Error("Sangam: set clientSecret or privateKey.");
   const basePath = trimTrailingSlashes(options.basePath ?? "/auth");
   const baseUrl = trimTrailingSlashes(options.baseUrl);
   const redirectUri = `${baseUrl}${basePath}/callback`;
@@ -114,9 +123,19 @@ export function createSangam(options: SangamNodeOptions) {
   const authority = trimTrailingSlashes(options.authority);
   let configuration: Promise<oidc.Configuration> | undefined = options.configuration ? Promise.resolve(options.configuration) : undefined;
 
+  /** rc.15: with a key, each code is redeemed with a fresh assertion (typed, for Sangam's issuer) instead of the secret. */
+  async function clientAuthentication(): Promise<{ metadata: string | undefined; auth: oidc.ClientAuth }> {
+    if (!options.privateKey) return { metadata: options.clientSecret, auth: oidc.ClientSecretPost(options.clientSecret) };
+    const key = await loadClientKey(options.privateKey);
+    return {
+      metadata: undefined,
+      auth: oidc.PrivateKeyJwt({ key: key.key, kid: key.kid }, { [oidc.modifyAssertion]: (header) => { header.typ = CLIENT_ASSERTION_TOKEN_TYPE; } }),
+    };
+  }
+
   function config(): Promise<oidc.Configuration> {
-    configuration ??= oidc
-      .discovery(new URL(authority + "/"), options.clientId, options.clientSecret, oidc.ClientSecretPost(options.clientSecret), options.allowInsecureRequests ? { execute: [oidc.allowInsecureRequests] } : undefined)
+    configuration ??= clientAuthentication()
+      .then(({ metadata, auth }) => oidc.discovery(new URL(authority + "/"), options.clientId, metadata, auth, options.allowInsecureRequests ? { execute: [oidc.allowInsecureRequests] } : undefined))
       .catch((error: unknown) => {
         configuration = undefined;
         throw error;
@@ -358,7 +377,7 @@ export function createSangam(options: SangamNodeOptions) {
     };
   }
 
-  const management = new ManagementClient({ authority, clientId: options.clientId, clientSecret: options.clientSecret });
+  const management = new ManagementClient({ authority, clientId: options.clientId, clientSecret: options.clientSecret, privateKey: options.privateKey });
   const recorder = options.audit ? new AuditRecorder(options.audit, options.trustProxy ?? false) : undefined;
 
   const audit = {

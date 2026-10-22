@@ -102,6 +102,10 @@ else
         <label class="sg-label" for="s-encryption">@L["Its encryption certificate (PEM; assertions are encrypted when there is one)"]</label>
         <textarea id="s-encryption" class="sg-input sg-mono" rows="3" @bind="_encryption" @bind:event="oninput"></textarea>
       </div>
+      @if (!string.IsNullOrWhiteSpace(_encryption))
+      {
+        <label class="sg-check"><input type="checkbox" @bind="_oaepSha256" /> @L["Wrap the key with RSA-OAEP and SHA-256 (xmlenc 1.1); turn off only for a service provider that needs SHA-1"]</label>
+      }
       <div class="sg-form-row">
         <label class="sg-label" for="s-nameid">@L["How the person is named to it"]</label>
         <select id="s-nameid" class="sg-input" @bind="_nameId">
@@ -164,6 +168,7 @@ else
     private HashSet<string> _attributes = ["name", "email"];
     private bool _requireSigned;
     private bool _idpInitiated;
+    private bool _oaepSha256 = true;
     private string _relay = string.Empty;
 
     protected override Task OnInitializedAsync()
@@ -242,6 +247,7 @@ else
         _requireSigned = input.RequireSignedRequests;
         _idpInitiated = input.AllowIdpInitiated;
         _relay = input.DefaultRelayState ?? string.Empty;
+        _oaepSha256 = input.OaepSha256;
     }
 
     private void Clear()
@@ -256,7 +262,7 @@ else
         _busy = true;
         SamlSpInput input = new(
             _editing, _name, _owner, _entity, _acs, Blank(_slo), Blank(_signing), Blank(_encryption), _nameId,
-            [.. SamlAttributes.All.Where(_attributes.Contains)], _requireSigned, _idpInitiated, _idpInitiated ? Blank(_relay) : null);
+            [.. SamlAttributes.All.Where(_attributes.Contains)], _requireSigned, _idpInitiated, _idpInitiated ? Blank(_relay) : null, _oaepSha256);
         AdminResult result = await Saml.SaveAsync(Context!.UserId, input, null);
         _busy = false;
         _ok = result.Succeeded;

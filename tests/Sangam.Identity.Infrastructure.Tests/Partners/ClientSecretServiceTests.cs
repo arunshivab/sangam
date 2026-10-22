@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -214,6 +215,158 @@ public sealed class ClientSecretServiceTests : IAsyncLifetime
 
         Assert.True(await AcceptsAsync(IssuedSecret));
         Assert.True(await AcceptsAsync(made.Secret!));
+    }
+
+    [PostgresFact]
+    public async Task TheOwner_MovesToAKey_ThenDropsEverySecret_ButNotTheLastWayIn()
+    {
+        // rc.15 (ASVS V2.10.1): a public key, then the issued secret revoked; the key is now the only way in.
+        using RSA rsa = RSA.Create(3072);
+        PartnerResult added = await Secrets().AddKeyAsync(_owner, _app, rsa.ExportSubjectPublicKeyInfoPem(), "  HIS servers  ");
+        Assert.True(added.Succeeded, added.Message);
+        ClientSecretsView view = (await Secrets().GetAsync(_admin, _app))!;
+        ClientKeyRow key = Assert.Single(view.Keys);
+        Assert.Equal("HIS servers", key.Name);
+        Assert.Equal("RSA 3072", key.Kind);
+        Assert.Equal(2, view.CredentialCount);
+
+        // The token endpoint asks OpenIddict for the application's keys.
+        Assert.Equal(key.KeyId, Assert.Single(await KeysAsync()));
+
+        // Not until Sangam has seen the application sign in with the key.
+        PartnerResult tooSoon = await Secrets().RevokeAsync(_owner, _app, null);
+        Assert.False(tooSoon.Succeeded);
+        Assert.Contains("not yet seen", tooSoon.Message, StringComparison.Ordinal);
+        await MarkUsedAsync(key.Id);
+        Assert.True((await Secrets().RevokeAsync(_owner, _app, null)).Succeeded);
+        Assert.False(await AcceptsAsync(IssuedSecret));
+        Assert.False((await Secrets().RemoveKeyAsync(_owner, _app, key.Id)).Succeeded);
+
+        // A second key, then the first removed once the servers use the second: a key rotation with no break.
+        using ECDsa ec = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        Assert.True((await Secrets().AddKeyAsync(_owner, _app, ec.ExportSubjectPublicKeyInfoPem(), null)).Succeeded);
+        Assert.False((await Secrets().AddKeyAsync(_owner, _app, ec.ExportSubjectPublicKeyInfoPem(), null)).Succeeded);
+        Assert.False((await Secrets().RemoveKeyAsync(_owner, _app, key.Id)).Succeeded);
+        await MarkUsedAsync((await Secrets().GetAsync(_owner, _app))!.Keys.Single(k => k.Id != key.Id).Id);
+        Assert.True((await Secrets().RemoveKeyAsync(_owner, _app, key.Id)).Succeeded);
+        ClientKeyRow second = Assert.Single((await Secrets().GetAsync(_owner, _app))!.Keys);
+        Assert.Equal("EC P-256", second.Name);
+        Assert.Equal(second.KeyId, Assert.Single(await KeysAsync()));
+
+        await using SangamDbContext audit = _pg.CreateContext();
+        Assert.Equal(2, await audit.AuditEvents.CountAsync(e => e.Action == AuditActions.AppKeyAdd && e.ActorUserId == _owner));
+        Assert.Equal(1, await audit.AuditEvents.CountAsync(e => e.Action == AuditActions.AppKeyRemove && e.ActorUserId == _owner));
+    }
+
+    [PostgresFact]
+    public async Task OnlyTheOwner_AddsKeys_AtMostTwo_AndNeverAPrivateKey()
+    {
+        using RSA rsa = RSA.Create(2048);
+        Assert.False((await Secrets().AddKeyAsync(_admin, _app, rsa.ExportSubjectPublicKeyInfoPem(), null)).Succeeded);
+
+        PartnerResult privateKey = await Secrets().AddKeyAsync(_owner, _app, rsa.ExportPkcs8PrivateKeyPem(), null);
+        Assert.False(privateKey.Succeeded);
+        Assert.Contains("private key", privateKey.Message, StringComparison.Ordinal);
+
+        using RSA weak = RSA.Create(1024);
+        Assert.False((await Secrets().AddKeyAsync(_owner, _app, weak.ExportSubjectPublicKeyInfoPem(), null)).Succeeded);
+
+        using RSA second = RSA.Create(2048);
+        using RSA third = RSA.Create(2048);
+        Assert.True((await Secrets().AddKeyAsync(_owner, _app, rsa.ExportSubjectPublicKeyInfoPem(), null)).Succeeded);
+        Assert.True((await Secrets().AddKeyAsync(_owner, _app, second.ExportSubjectPublicKeyInfoPem(), null)).Succeeded);
+        Assert.False((await Secrets().AddKeyAsync(_owner, _app, third.ExportSubjectPublicKeyInfoPem(), null)).Succeeded);
+
+        // A disabled application has no keys.
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            (await db.Apps.SingleAsync(a => a.Id == _app)).Status = AppStatus.Disabled;
+            await db.SaveChangesAsync();
+        }
+
+        Assert.Empty(await KeysAsync());
+    }
+
+    [PostgresFact]
+    public async Task Owners_AreToldToReplace_AnOldIssuedSecret_Monthly_AndAnEndingSecret_Once()
+    {
+        // rc.15 (ASVS V2.10.1): the issued secret is over twelve months old.
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            App app = await db.Apps.SingleAsync(a => a.Id == _app);
+            app.SecretSetAt = DateTimeOffset.UtcNow.AddDays(-400);
+            await db.SaveChangesAsync();
+        }
+
+        Assert.Equal(1, await RemindAsync());
+        Assert.Equal(1, Reminders("owner@lipi.test"));
+        Assert.Equal(0, Reminders("admin@lipi.test"));
+        Assert.Contains("over twelve months old", Outbox().LatestFor("owner@lipi.test")!.Message.TextBody, StringComparison.Ordinal);
+        Assert.Contains($"/apps/{_app:D}/credentials", Outbox().LatestFor("owner@lipi.test")!.Message.TextBody, StringComparison.Ordinal);
+
+        // Not again the same month; again a month later.
+        Assert.Equal(0, await RemindAsync());
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            (await db.Apps.SingleAsync(a => a.Id == _app)).IssuedSecretReminderAt = DateTimeOffset.UtcNow.AddDays(-31);
+            await db.SaveChangesAsync();
+        }
+
+        Assert.Equal(1, await RemindAsync());
+        Assert.Equal(2, Reminders("owner@lipi.test"));
+
+        // Replaced: a secret of the owner's own, the issued one retired. Nothing until the new one nears its end.
+        NewClientSecret made = await Secrets().CreateAsync(_owner, _app);
+        Assert.True((await Secrets().RevokeAsync(_owner, _app, null)).Succeeded);
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            (await db.Apps.SingleAsync(a => a.Id == _app)).IssuedSecretReminderAt = DateTimeOffset.UtcNow.AddDays(-31);
+            await db.SaveChangesAsync();
+        }
+
+        Assert.Equal(0, await RemindAsync());
+
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            (await db.ClientSecrets.SingleAsync()).ExpiresAt = DateTimeOffset.UtcNow.AddDays(10);
+            await db.SaveChangesAsync();
+        }
+
+        Assert.Equal(1, await RemindAsync());
+        Assert.Equal(0, await RemindAsync());
+        Assert.Equal(3, Reminders("owner@lipi.test"));
+        string body = Outbox().LatestFor("owner@lipi.test")!.Message.TextBody;
+        Assert.Contains(made.Secret![..8], body, StringComparison.Ordinal);
+        Assert.DoesNotContain(made.Secret, body, StringComparison.Ordinal);
+
+        await using SangamDbContext audit = _pg.CreateContext();
+        Assert.Equal(3, await audit.AuditEvents.CountAsync(e => e.Action == AuditActions.AppSecretReminder && e.TargetId == _app));
+    }
+
+    private async Task<int> RemindAsync()
+    {
+        using IServiceScope scope = _provider.CreateScope();
+        return await scope.ServiceProvider.GetRequiredService<Sangam.Identity.Infrastructure.Maintenance.ClientSecretReminders>().RunAsync();
+    }
+
+    private InMemoryEmailOutbox Outbox() => _provider.GetRequiredService<InMemoryEmailOutbox>();
+
+    private int Reminders(string email)
+        => Outbox().Recent.Count(m => m.Message.ToEmail.Equals(email, StringComparison.OrdinalIgnoreCase) && m.Message.Subject.Contains("replace its client secret", StringComparison.Ordinal));
+
+    private async Task MarkUsedAsync(Guid keyId)
+    {
+        await using SangamDbContext db = _pg.CreateContext();
+        await db.ClientKeys.Where(k => k.Id == keyId).ExecuteUpdateAsync(u => u.SetProperty(k => k.LastUsedAt, DateTimeOffset.UtcNow));
+    }
+
+    private async Task<List<string>> KeysAsync()
+    {
+        using IServiceScope scope = _provider.CreateScope();
+        IOpenIddictApplicationManager clients = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+        object app = (await clients.FindByClientIdAsync(ClientId))!;
+        Microsoft.IdentityModel.Tokens.JsonWebKeySet? set = await clients.GetJsonWebKeySetAsync(app);
+        return [.. (set?.Keys ?? []).Select(k => k.Kid)];
     }
 
     private IClientSecretService Secrets()

@@ -193,6 +193,9 @@ builder.Services.AddOpenIddict()
         // R7 (ASVS V7.2.1): refused clients and grants are audited.
         o.AddTokenRefusalAudit();
 
+        // rc.15 (ASVS V2.10.1): applications may sign in with a key (private_key_jwt); each assertion is for Sangam, short-lived and used once.
+        o.AddClientAssertionChecks();
+
         // PR-17: advertise the assurance levels an application may ask for with acr_values (SGM-207 §3).
         o.AddEventHandler<OpenIddict.Server.OpenIddictServerEvents.HandleConfigurationRequestContext>(handler => handler.UseInlineHandler(context =>
         {
@@ -206,8 +209,10 @@ builder.Services.AddOpenIddict()
             return default;
         }));
 
+        // rc.15 (ASVS V3.3.1): access tokens last 15 minutes (was an hour), so an application's server stops being able to
+        // use one against Sangam soon after the person signs out; refresh tokens already die with the sign-in session.
         o.SetAuthorizationCodeLifetime(TimeSpan.FromMinutes(5))
-         .SetAccessTokenLifetime(TimeSpan.FromHours(1))
+         .SetAccessTokenLifetime(TimeSpan.FromMinutes(15))
          .SetIdentityTokenLifetime(TimeSpan.FromHours(1))
          .SetRefreshTokenLifetime(TimeSpan.FromDays(14));
 

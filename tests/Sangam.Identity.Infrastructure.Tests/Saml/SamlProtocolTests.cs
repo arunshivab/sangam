@@ -113,6 +113,64 @@ public sealed class SamlProtocolTests : IDisposable
         Assert.ThrowsAny<CryptographicException>(() => SamlProtocol.DecryptAssertion(encrypted, stranger));
     }
 
+    [Theory]
+    [InlineData(true, "http://www.w3.org/2009/xmlenc11#rsa-oaep")]
+    [InlineData(false, "http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p")]
+    public void TheKey_IsWrappedWithSha256OaepByDefault_OrSha1ForAnOlderServiceProvider(bool sha256, string algorithm)
+    {
+        // rc.15 (ASVS V6.2.5).
+        using X509Certificate2 spCertificate = new CertificateRequest("CN=SP encryption", _spKey, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1).CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
+        using X509Certificate2 spPublic = X509CertificateLoader.LoadCertificate(spCertificate.Export(X509ContentType.Cert));
+        XmlDocument response = SamlProtocol.Load(SamlProtocol.BuildResponse(Content(spPublic) with { OaepSha256 = sha256 }, _signing));
+        XmlNamespaceManager ns = new(response.NameTable);
+        ns.AddNamespace("xenc", SamlProtocol.XencNs);
+        ns.AddNamespace("ds", SamlProtocol.DsigNs);
+        XmlElement method = (XmlElement)response.SelectSingleNode("//xenc:EncryptedKey/xenc:EncryptionMethod", ns)!;
+        Assert.Equal(algorithm, method.GetAttribute("Algorithm"));
+        Assert.Equal(sha256 ? "http://www.w3.org/2001/04/xmlenc#sha256" : "http://www.w3.org/2000/09/xmldsig#sha1", ((XmlElement)method.SelectSingleNode("ds:DigestMethod", ns)!).GetAttribute("Algorithm"));
+        Assert.Equal(sha256, method.InnerXml.Contains("mgf1sha256", StringComparison.Ordinal));
+
+        XmlElement encrypted = (XmlElement)response.GetElementsByTagName("EncryptedAssertion", SamlProtocol.AssertionNs)[0]!;
+        Assert.Contains("pairwise-subject", SamlProtocol.DecryptAssertion(encrypted, _spKey), StringComparison.Ordinal);
+
+        // A raw RSA-OAEP-SHA256 unwrap of the key works only when Sangam used SHA-256 (so the label is honest).
+        byte[] wrapped = Convert.FromBase64String(response.SelectSingleNode("//xenc:EncryptedKey/xenc:CipherData/xenc:CipherValue", ns)!.InnerText);
+        if (sha256)
+        {
+            Assert.Equal(32, _spKey.Decrypt(wrapped, RSAEncryptionPadding.OaepSHA256).Length);
+        }
+        else
+        {
+            Assert.ThrowsAny<CryptographicException>(() => _spKey.Decrypt(wrapped, RSAEncryptionPadding.OaepSHA256));
+        }
+    }
+
+    [Fact]
+    public void InboundMessages_MustFollowTheSamlSchema()
+    {
+        // rc.15 (ASVS V13.3.1).
+        const string Good = "<samlp:AuthnRequest xmlns:samlp=\"urn:oasis:names:tc:SAML:2.0:protocol\" xmlns:saml=\"urn:oasis:names:tc:SAML:2.0:assertion\" ID=\"_a1\" Version=\"2.0\" IssueInstant=\"2026-10-22T05:00:00Z\" AssertionConsumerServiceURL=\"https://crm.example.in/saml/acs\"><saml:Issuer>https://crm.example.in/saml</saml:Issuer><samlp:NameIDPolicy AllowCreate=\"true\" Format=\"urn:oasis:names:tc:SAML:2.0:nameid-format:persistent\"/></samlp:AuthnRequest>";
+        Assert.Equal("_a1", SamlProtocol.LoadMessage(Good).DocumentElement!.GetAttribute("ID"));
+        const string Logout = "<samlp:LogoutRequest xmlns:samlp=\"urn:oasis:names:tc:SAML:2.0:protocol\" xmlns:saml=\"urn:oasis:names:tc:SAML:2.0:assertion\" ID=\"_l1\" Version=\"2.0\" IssueInstant=\"2026-10-22T05:00:00Z\"><saml:Issuer>https://crm.example.in/saml</saml:Issuer><saml:NameID>abc</saml:NameID><samlp:SessionIndex>_s1</samlp:SessionIndex></samlp:LogoutRequest>";
+        SamlProtocol.LoadMessage(Logout);
+
+        string[] bad =
+        [
+            Good.Replace(" Version=\"2.0\"", string.Empty, StringComparison.Ordinal),                       // a required attribute missing
+            Good.Replace("2026-10-22T05:00:00Z", "yesterday", StringComparison.Ordinal),                      // not a dateTime
+            Good.Replace("ID=\"_a1\"", "ID=\"1a\"", StringComparison.Ordinal),                                // not an XML ID
+            Good.Replace("AllowCreate=\"true\"", "AllowCreate=\"maybe\"", StringComparison.Ordinal),          // not a boolean
+            Good.Replace("<saml:Issuer>", "<samlp:Unknown/><saml:Issuer>", StringComparison.Ordinal),         // an element the schema does not have
+            Good.Replace("<saml:Issuer>https://crm.example.in/saml</saml:Issuer><samlp:NameIDPolicy", "<samlp:NameIDPolicy", StringComparison.Ordinal).Replace("</samlp:AuthnRequest>", "<saml:Issuer>x</saml:Issuer></samlp:AuthnRequest>", StringComparison.Ordinal), // out of order
+            "<samlp:Response xmlns:samlp=\"urn:oasis:names:tc:SAML:2.0:protocol\" ID=\"_r\" Version=\"2.0\"/>",  // incomplete
+            "<r/>",                                                                                          // not SAML at all
+        ];
+        foreach (string message in bad)
+        {
+            Assert.Throws<InvalidDataException>(() => SamlProtocol.LoadMessage(message));
+        }
+    }
+
     [Fact]
     public void RedirectBinding_RoundTrips_AndRefusesOversizedMessages()
     {
@@ -141,7 +199,12 @@ public sealed class SamlProtocolTests : IDisposable
         Assert.True(sp.WantsSignedRequests);
         Assert.StartsWith("-----BEGIN CERTIFICATE-----", sp.SigningCertificatePem, StringComparison.Ordinal);
         Assert.Null(sp.EncryptionCertificatePem);
+        Assert.True(sp.OaepSha256);
         Assert.Throws<InvalidDataException>(() => SamlProtocol.ReadSpMetadata("<x/>"));
+
+        // rc.15: an SP whose metadata lists only SHA-1 key transport gets SHA-1.
+        string older = metadata.Replace("</md:KeyDescriptor>", "<md:EncryptionMethod Algorithm=\"http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p\"/></md:KeyDescriptor>", StringComparison.Ordinal);
+        Assert.False(SamlProtocol.ReadSpMetadata(older).OaepSha256);
     }
 
     [Theory]

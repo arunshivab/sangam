@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using OpenIddict.Abstractions;
 using OpenIddict.Core;
 using Sangam.Identity.Application.Abstractions;
@@ -102,6 +103,55 @@ public class SangamApplicationManager<TApplication> : OpenIddictApplicationManag
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// rc.15 (ASVS V2.10.1): the public keys the application signs in with (<c>private_key_jwt</c>): any set in Sangam's own
+    /// registration and the live keys its owners added on the partner console. A disabled application has none, so it
+    /// cannot sign in with a key either.
+    /// </summary>
+    /// <param name="application">The application.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public override async ValueTask<JsonWebKeySet?> GetJsonWebKeySetAsync(TApplication application, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(application);
+        JsonWebKeySet? registered = await base.GetJsonWebKeySetAsync(application, cancellationToken).ConfigureAwait(false);
+        string? clientId = await GetClientIdAsync(application, cancellationToken).ConfigureAwait(false);
+        var app = clientId is null ? null : await _db.Apps.AsNoTracking()
+            .Where(a => a.ClientId == clientId)
+            .Select(a => new { a.Id, a.Status })
+            .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        if (app is null)
+        {
+            return registered;
+        }
+
+        if (app.Status != Domain.Enums.AppStatus.Active)
+        {
+            return null;
+        }
+
+        List<string> owned = await _db.ClientKeys.AsNoTracking()
+            .Where(k => k.AppId == app.Id && k.RevokedAt == null)
+            .Select(k => k.Jwk)
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        if (owned.Count == 0)
+        {
+            return registered;
+        }
+
+        JsonWebKeySet set = new();
+        foreach (JsonWebKey key in registered?.Keys ?? [])
+        {
+            set.Keys.Add(key);
+        }
+
+        foreach (string jwk in owned)
+        {
+            set.Keys.Add(new JsonWebKey(jwk));
+        }
+
+        return set;
     }
 
     /// <summary>Whether <paramref name="secret"/> is the secret Sangam issued from its configuration (OpenIddict's own column only).</summary>

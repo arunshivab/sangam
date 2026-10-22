@@ -141,6 +141,20 @@ public sealed class SecurityPolicyServiceTests : IAsyncLifetime
     }
 
     [PostgresFact]
+    public async Task AStaffMembersOwnCodeOnlyChoice_GivesWayToTheirOrganisationsRule()
+    {
+        // rc.15 (founder decision of 22 Oct 2026, ASVS V2.2.2): anyone may choose an e-mailed code alone; for an
+        // organisation's staff, the organisation's rule decides. The nurse's hospital requires password and code.
+        ISecurityPolicyService policies = Scope().GetRequiredService<ISecurityPolicyService>();
+        PersonPolicy nurse = await policies.ForPersonAsync(_nurse, _appId);
+        Assert.Equal(SignInMode.PasswordAndOtp, SignInModes.Resolve(nurse.Policy.SignIn, SignInMode.OtpOnly));
+
+        // Someone with no organisation keeps their own choice.
+        PersonPolicy outsider = await policies.ForPersonAsync(_outsider, _appId);
+        Assert.Equal(SignInMode.OtpOnly, SignInModes.Resolve(outsider.Policy.SignIn, SignInMode.OtpOnly));
+    }
+
+    [PostgresFact]
     public async Task ARevokedRole_NoLongerBindsThePerson()
     {
         IManagementService management = Scope().GetRequiredService<IManagementService>();

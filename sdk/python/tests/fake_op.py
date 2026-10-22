@@ -17,8 +17,10 @@ SUB = "0192a6b0-0000-7000-8000-000000000042"
 
 
 class FakeOP:
-    def __init__(self, client_id="app", client_secret="secret"):
+    def __init__(self, client_id="app", client_secret="secret", client_key=None):
         self.key = RSAKey.generate_key(2048, parameters={"kid": "k1", "use": "sig", "alg": "RS256"})
+        # rc.15: with client_key (the application's public key), the client authenticates with a typed assertion.
+        self.client_key = client_key
         self.codes = {}
         self.locks = []
         self.client_id, self.client_secret = client_id, client_secret
@@ -56,10 +58,11 @@ class FakeOP:
                 form = {k: v[0] for k, v in parse_qs(self.rfile.read(int(self.headers["content-length"])).decode()).items()}
                 grant = op.codes.pop(form.get("code"), None)
                 challenge = base64.urlsafe_b64encode(hashlib.sha256(form.get("code_verifier", "").encode()).digest()).rstrip(b"=").decode()
-                if form.get("grant_type") == "client_credentials" and form.get("client_secret") == op.client_secret:
+                authenticated = op.authenticated(form)
+                if form.get("grant_type") == "client_credentials" and authenticated:
                     self._json({"access_token": "cc-token", "expires_in": 3600, "token_type": "Bearer"})
                     return
-                if not grant or grant["challenge"] != challenge or form.get("client_secret") != op.client_secret or form.get("redirect_uri") != grant["redirect"]:
+                if not grant or grant["challenge"] != challenge or not authenticated or form.get("redirect_uri") != grant["redirect"]:
                     self._json({"error": "invalid_grant"}, 400)
                     return
                 self._json({"access_token": "at", "token_type": "Bearer", "expires_in": 300, "id_token": op.id_token(grant["nonce"], grant["acr"])})
@@ -67,6 +70,18 @@ class FakeOP:
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
         self.base = f"http://127.0.0.1:{self.server.server_address[1]}"
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
+
+    def authenticated(self, form):
+        if self.client_key is None:
+            return form.get("client_secret") == self.client_secret
+        if form.get("client_secret") or form.get("client_assertion_type") != "urn:ietf:params:oauth:client-assertion-type:jwt-bearer":
+            return False
+        try:
+            decoded = jwt.decode(form.get("client_assertion", ""), self.client_key, algorithms=["RS256", "ES256", "ES384", "ES512"])
+        except Exception:  # noqa: BLE001
+            return False
+        c = decoded.claims
+        return decoded.header.get("typ") == "client-authentication+jwt" and c.get("iss") == c.get("sub") == self.client_id and c.get("aud") == self.base + "/" and c.get("exp", 0) > time.time()
 
     def id_token(self, nonce, acr, aud=None, iss=None):
         now = int(time.time())

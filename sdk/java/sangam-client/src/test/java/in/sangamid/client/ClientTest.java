@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -192,6 +193,45 @@ class ClientTest {
         } finally {
             server.stop(0);
         }
+    }
+
+    @Test
+    void aKeySignsTheManagementClientIn_WithAFreshTypedAssertion_AndNoSecret() throws Exception {
+        // rc.15 (ASVS V2.10.1): private_key_jwt.
+        RSAKey generated = new RSAKeyGenerator(2048).generate();
+        String pem = "-----BEGIN PRIVATE KEY-----\n" + Base64.getMimeEncoder().encodeToString(generated.toRSAPrivateKey().getEncoded()) + "\n-----END PRIVATE KEY-----\n";
+        ClientKey key = ClientKey.fromPem(pem);
+        assertEquals(generated.computeThumbprint().toString(), key.keyId());
+
+        List<String> seen = new ArrayList<>();
+        HttpServer server = serve(Map.of("/connect/token", "{\"access_token\":\"t1\",\"expires_in\":900}"), seen);
+        try {
+            String base = "http://127.0.0.1:" + server.getAddress().getPort();
+            ManagementClient client = ManagementClient.withKey(base + "/", "lims", key, null);
+            assertEquals("t1", client.token("sangam.manage"));
+            String body = seen.get(0);
+            assertTrue(body.contains("client_assertion_type=urn%3Aietf%3Aparams%3Aoauth%3Aclient-assertion-type%3Ajwt-bearer"));
+            assertFalse(body.contains("client_secret"));
+            String assertion = java.net.URLDecoder.decode(body.replaceAll("^.*client_assertion=([^& ]+).*$", "$1"), StandardCharsets.UTF_8);
+            SignedJWT jwt = SignedJWT.parse(assertion);
+            assertTrue(jwt.verify(new com.nimbusds.jose.crypto.RSASSAVerifier(generated.toPublicJWK())));
+            assertEquals("client-authentication+jwt", jwt.getHeader().getType().getType());
+            assertEquals(key.keyId(), jwt.getHeader().getKeyID());
+            assertEquals("lims", jwt.getJWTClaimsSet().getIssuer());
+            assertEquals("lims", jwt.getJWTClaimsSet().getSubject());
+            assertEquals(List.of(base + "/"), jwt.getJWTClaimsSet().getAudience());
+            assertTrue(jwt.getJWTClaimsSet().getExpirationTime().getTime() - System.currentTimeMillis() <= 120_000);
+            assertFalse(SignedJWT.parse(key.assertion("lims", base)).getJWTClaimsSet().getJWTID().equals(jwt.getJWTClaimsSet().getJWTID()));
+        } finally {
+            server.stop(0);
+        }
+
+        // Elliptic curve keys come as a JSON Web Key; a public key or a weak one is refused.
+        ClientKey ec = ClientKey.fromJwk(new com.nimbusds.jose.jwk.gen.ECKeyGenerator(com.nimbusds.jose.jwk.Curve.P_256).generate().toJSONString());
+        assertEquals("ES256", SignedJWT.parse(ec.assertion("lims", "https://id.example.in")).getHeader().getAlgorithm().getName());
+        assertThrows(IllegalArgumentException.class, () -> ClientKey.fromJwk(generated.toPublicJWK().toJSONString()));
+        assertThrows(IllegalArgumentException.class, () -> ClientKey.fromJwk(new RSAKeyGenerator(1024, true).generate().toJSONString()));
+        assertThrows(IllegalArgumentException.class, () -> ClientKey.fromPem("-----BEGIN PUBLIC KEY-----\nAAAA\n-----END PUBLIC KEY-----"));
     }
 
     @Test

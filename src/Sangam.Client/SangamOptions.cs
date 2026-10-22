@@ -11,8 +11,21 @@ public sealed class SangamOptions
     /// <summary>This application's client id, as registered on Sangam. Required.</summary>
     public string ClientId { get; set; } = string.Empty;
 
-    /// <summary>This application's client secret. Keep it out of source control.</summary>
+    /// <summary>This application's client secret. Keep it out of source control. Not needed when it signs in with a key.</summary>
     public string? ClientSecret { get; set; }
+
+    /// <summary>
+    /// rc.15: this application's private key, in PEM, to sign in with a key instead of a secret (<c>private_key_jwt</c>).
+    /// Add the matching public key on the partner console (Credentials, Keys). RSA of 2048 bits or more, or elliptic curve
+    /// P-256, P-384 or P-521. Keep it out of source control; <see cref="PrivateKeyPath"/> reads it from a file instead.
+    /// </summary>
+    public string? PrivateKeyPem { get; set; }
+
+    /// <summary>rc.15: the path of a file holding <see cref="PrivateKeyPem"/>.</summary>
+    public string? PrivateKeyPath { get; set; }
+
+    /// <summary>rc.15: whether this application signs in with a key rather than a secret.</summary>
+    public bool UsesKey => !string.IsNullOrWhiteSpace(PrivateKeyPem) || !string.IsNullOrWhiteSpace(PrivateKeyPath);
 
     /// <summary>
     /// What to ask for. <c>openid</c> is always included. The default adds the person's name and
@@ -65,6 +78,16 @@ public sealed class SangamOptions
         if (string.IsNullOrWhiteSpace(ClientId))
         {
             throw new InvalidOperationException("Sangam: set ClientId to this application's client id as registered on Sangam.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(PrivateKeyPem) && !string.IsNullOrWhiteSpace(PrivateKeyPath))
+        {
+            throw new InvalidOperationException("Sangam: set PrivateKeyPem or PrivateKeyPath, not both.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(PrivateKeyPath) && !File.Exists(PrivateKeyPath))
+        {
+            throw new InvalidOperationException($"Sangam: the private key file {PrivateKeyPath} does not exist.");
         }
 
         if (!CallbackPath.StartsWith('/') || !SignedOutCallbackPath.StartsWith('/'))

@@ -137,6 +137,7 @@ public partial class TemplateEditor : ComponentBase
         MessageTemplateKinds.GrievanceAcknowledgement => L["E-mail: acknowledgement of a grievance"],
         MessageTemplateKinds.GrievanceResolution => L["E-mail: the answer to a grievance"],
         MessageTemplateKinds.IntegrationFailing => L["E-mail: an application's provisioning or webhook stopped working"],
+        MessageTemplateKinds.ClientSecretAgeing => L["E-mail: an application's client secret is old or ends soon"],
         MessageTemplateKinds.PasswordChangedNotice => L["E-mail: notice that the password changed"],
         MessageTemplateKinds.AuthenticatorAddedNotice => L["E-mail: notice that an authenticator app was added"],
         MessageTemplateKinds.AuthenticatorRemovedNotice => L["E-mail: notice that the authenticator app was removed"],

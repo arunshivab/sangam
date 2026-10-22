@@ -23,6 +23,7 @@ public final class ManagementClient {
     private final String authority;
     private final String clientId;
     private final String clientSecret;
+    private final ClientKey key;
     private final HttpClient http;
     private final Map<String, Map.Entry<String, Instant>> tokens = new HashMap<>();
 
@@ -42,9 +43,22 @@ public final class ManagementClient {
     }
 
     public ManagementClient(String authority, String clientId, String clientSecret, HttpClient http) {
+        this(authority, clientId, clientSecret, null, http);
+    }
+
+    /** rc.15: a client that signs in with {@code key} ({@code private_key_jwt}) instead of a secret. */
+    public static ManagementClient withKey(String authority, String clientId, ClientKey key, HttpClient http) {
+        if (key == null) {
+            throw new IllegalArgumentException("Sangam: give the key the application signs in with.");
+        }
+        return new ManagementClient(authority, clientId, null, key, http);
+    }
+
+    private ManagementClient(String authority, String clientId, String clientSecret, ClientKey key, HttpClient http) {
         this.authority = authority.replaceAll("/+$", "");
         this.clientId = clientId;
         this.clientSecret = clientSecret;
+        this.key = key;
         this.http = http != null ? http : HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     }
 
@@ -57,7 +71,12 @@ public final class ManagementClient {
         Map<String, String> form = new LinkedHashMap<>();
         form.put("grant_type", "client_credentials");
         form.put("client_id", clientId);
-        form.put("client_secret", clientSecret);
+        if (key != null) {
+            form.put("client_assertion_type", ClientKey.ASSERTION_TYPE);
+            form.put("client_assertion", key.assertion(clientId, authority + "/"));
+        } else {
+            form.put("client_secret", clientSecret == null ? "" : clientSecret);
+        }
         form.put("scope", scope);
         String body = form.entrySet().stream().map(e -> e.getKey() + "=" + URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8)).collect(Collectors.joining("&"));
         HttpResponse<String> r = http.send(HttpRequest.newBuilder(URI.create(authority + "/connect/token")).header("content-type", "application/x-www-form-urlencoded")

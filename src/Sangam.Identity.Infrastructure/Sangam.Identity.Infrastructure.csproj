@@ -45,4 +45,9 @@
     <EmbeddedResource Include="Customisation\DefaultTemplates.json" LogicalName="Sangam.Identity.Infrastructure.Customisation.DefaultTemplates.json" />
   </ItemGroup>
 
+  <!-- rc.15 (ASVS V13.3.1): the OASIS SAML 2.0 schemas inbound messages are checked against, built in so nothing is fetched. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Saml\Schemas\*.xsd" LogicalName="Sangam.Identity.Infrastructure.Saml.Schemas.%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

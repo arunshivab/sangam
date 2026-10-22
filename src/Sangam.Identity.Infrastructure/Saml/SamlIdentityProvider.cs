@@ -284,6 +284,7 @@ public sealed class SamlIdentityProvider : ISamlAdminService
         provider.SloUrl = Blank(input.SloUrl);
         provider.SigningCertificate = Blank(input.SigningCertificate);
         provider.EncryptionCertificate = Blank(input.EncryptionCertificate);
+        provider.OaepSha256 = input.OaepSha256;
         provider.NameIdFormat = input.NameIdFormat;
         provider.Attributes = string.Join(',', SamlAttributes.All.Where(input.Attributes.Contains));
         provider.RequireSignedRequests = input.RequireSignedRequests;
@@ -301,6 +302,7 @@ public sealed class SamlIdentityProvider : ISamlAdminService
                     ["attributes"] = provider.Attributes,
                     ["name_id"] = provider.NameIdFormat,
                     ["encrypted"] = provider.EncryptionCertificate is not null,
+                    ["key_transport"] = provider.OaepSha256 ? "rsa-oaep-sha256" : "rsa-oaep-sha1",
                     ["idp_initiated"] = provider.AllowIdpInitiated,
                 }),
                 IpAddress: ipAddress),
@@ -322,7 +324,7 @@ public sealed class SamlIdentityProvider : ISamlAdminService
 
             string name = Uri.TryCreate(metadata.EntityId, UriKind.Absolute, out Uri? entity) ? entity.Host : metadata.EntityId;
             return (new SamlSpInput(null, name, string.Empty, metadata.EntityId, string.Join('\n', metadata.AcsUrls), metadata.SloUrl, metadata.SigningCertificatePem, metadata.EncryptionCertificatePem,
-                "persistent", ["name", "email"], metadata.WantsSignedRequests, false, null), null);
+                "persistent", ["name", "email"], metadata.WantsSignedRequests, false, null, metadata.OaepSha256), null);
         }
         catch (Exception ex) when (ex is System.Xml.XmlException or InvalidDataException)
         {
@@ -396,7 +398,7 @@ public sealed class SamlIdentityProvider : ISamlAdminService
     private static string? Blank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static SamlSpInput ToInput(SamlServiceProvider p, App a) => new(p.Id, a.DisplayName, a.OwnerCompanyName, p.EntityId, p.AcsUrls, p.SloUrl, p.SigningCertificate, p.EncryptionCertificate, p.NameIdFormat,
-        p.Attributes.Split(',', StringSplitOptions.RemoveEmptyEntries), p.RequireSignedRequests, p.AllowIdpInitiated, p.DefaultRelayState);
+        p.Attributes.Split(',', StringSplitOptions.RemoveEmptyEntries), p.RequireSignedRequests, p.AllowIdpInitiated, p.DefaultRelayState, p.OaepSha256);
 
     private Task<PlatformRole?> RoleAsync(Guid operatorUserId, CancellationToken cancellationToken)
         => _db.PlatformOperators.AsNoTracking()

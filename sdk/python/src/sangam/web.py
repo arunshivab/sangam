@@ -16,6 +16,7 @@ from joserfc.jwk import KeySet
 from authlib.oauth2.rfc7636 import create_s256_code_challenge
 
 from .audit import AuditBuffer, AuditConfig, AuditEntry, build_audit_event
+from .client_key import ClientKey
 from .management import ManagementClient
 from .memberships import SangamCurrentOrganisation, SangamEmergency, SangamMembership, SangamUser, user_from_claims
 from .session import MemorySessionStore, SessionStore, cookie_name, new_id, sign_id, unsign_id
@@ -34,7 +35,8 @@ def safe_return(value: str | None) -> str:
 class SangamSettings:
     authority: str
     client_id: str
-    client_secret: str
+    client_secret: str | None
+    """The client secret; ``None`` when the application signs in with ``private_key``."""
     base_url: str
     """Your application's address; the callback is {base_url}{base_path}/callback."""
     cookie_secret: str
@@ -47,6 +49,9 @@ class SangamSettings:
     audit_endpoint: str | None = None
     trust_proxy: bool = False
     store: SessionStore = field(default_factory=MemorySessionStore)
+    private_key: str | None = None
+    """rc.15: a private key (PEM or private JWK) to sign in with instead of a secret (private_key_jwt). Add the matching
+    public key on the partner console (Credentials, Keys)."""
 
 
 def user_to_dict(user: SangamUser) -> dict[str, Any]:
@@ -83,7 +88,10 @@ class SangamCore:
         self._metadata: dict[str, Any] | None = None
         self._keys: Any = None
         self.tokens = TokenVerifier(self.authority + "/", client=self._http)
-        self.management = ManagementClient(self.authority, settings.client_id, settings.client_secret, client=self._http)
+        if not settings.client_secret and not settings.private_key:
+            raise ValueError("Sangam: give client_secret or private_key.")
+        self.client_key = ClientKey(settings.private_key) if settings.private_key else None
+        self.management = ManagementClient(self.authority, settings.client_id, settings.client_secret, client=self._http, private_key=self.client_key)
         self.audit_buffer = AuditBuffer(settings.audit_buffer)
 
     # ---------------------------------------------------------------- discovery
@@ -98,8 +106,10 @@ class SangamCore:
         return self._keys
 
     def _oauth(self) -> OAuth2Client:
-        return OAuth2Client(self.settings.client_id, self.settings.client_secret, scope=" ".join(self.settings.scopes), redirect_uri=self.redirect_uri,
-                            code_challenge_method="S256", token_endpoint_auth_method="client_secret_post", timeout=15)
+        # rc.15: with a key, the client authenticates in the form itself (see finish), so authlib adds only the client id.
+        method = "none" if self.client_key else "client_secret_post"
+        return OAuth2Client(self.settings.client_id, None if self.client_key else self.settings.client_secret, scope=" ".join(self.settings.scopes), redirect_uri=self.redirect_uri,
+                            code_challenge_method="S256", token_endpoint_auth_method=method, timeout=15)
 
     # ---------------------------------------------------------------- sessions
     def load(self, cookie: str | None) -> tuple[str | None, dict[str, Any]]:
@@ -166,7 +176,9 @@ class SangamCore:
             return pending["return_to"], self.save(sid, session)
         if not secrets.compare_digest(params.get("state", ""), pending["state"]):
             raise PermissionError("The sign-in state does not match.")
-        token = self._oauth().fetch_token(self.metadata()["token_endpoint"], grant_type="authorization_code", code=params.get("code", ""), code_verifier=pending["verifier"], redirect_uri=self.redirect_uri)
+        assertion = self.client_key.form(self.settings.client_id, self.metadata()["issuer"]) if self.client_key else {}
+        token = self._oauth().fetch_token(self.metadata()["token_endpoint"], grant_type="authorization_code", code=params.get("code", ""), code_verifier=pending["verifier"], redirect_uri=self.redirect_uri,
+                                          **assertion)
         id_token = token.get("id_token")
         if not id_token:
             raise PermissionError("Sangam returned no ID token.")

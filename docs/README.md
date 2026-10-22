@@ -93,6 +93,10 @@
   and to every other application's: in its tokens, userinfo, the management API, webhooks, SCIM, logout and signature
   tokens and evidence packs. An id that is not the application's own is answered *not found*; there is no translation
   between applications. See [`decisions/0017-pairwise-subject-ids.md`](decisions/0017-pairwise-subject-ids.md).
+- **Application keys (rc.15).** An application's back end may sign in with a key instead of a client secret
+  (`private_key_jwt`): the owner adds the public key on the partner console, the SDKs sign a fresh assertion for each
+  request, and Sangam accepts each once. Owners are reminded to replace old secrets. See
+  [`decisions/0018-application-keys-and-secret-reminders.md`](decisions/0018-application-keys-and-secret-reminders.md).
 - **SDK family and the shared audit event (R6).** JavaScript/TypeScript (`@sangam/client`, `@sangam/node`,
   `@sangam/react`), Python (`sangam-client`, FastAPI and Flask) and Java (`sangam-client`, `sangam-spring`) SDKs next to
   .NET's `Sangam.Client`, with one sample each; the shared audit event schema 1.0 and its helper in every SDK; shared

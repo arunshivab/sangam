@@ -6,7 +6,7 @@ import type { AddressInfo } from "node:net";
 import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { exportJWK, generateKeyPair, SignJWT } from "jose";
+import { exportJWK, exportPKCS8, generateKeyPair, jwtVerify, SignJWT, type CryptoKey } from "jose";
 import { createSangam, validateAuditEvent } from "../src/index.js";
 
 const ORG = "/0192a6b0-0000-7000-8000-000000000001/";
@@ -18,7 +18,7 @@ async function listen(server: Server): Promise<string> {
 }
 
 /** A small OpenID provider: discovery, keys, and a token endpoint that checks PKCE as Sangam does. */
-async function provider() {
+async function provider(clientKey?: CryptoKey) {
   const { publicKey, privateKey } = await generateKeyPair("RS256");
   const jwk = { ...(await exportJWK(publicKey)), kid: "k1", alg: "RS256", use: "sig" };
   const codes = new Map<string, { challenge: string; nonce: string; acr: string; redirect: string }>();
@@ -41,7 +41,12 @@ async function provider() {
       const form = new URLSearchParams(body);
       const grant = codes.get(form.get("code") ?? "");
       const challenge = createHash("sha256").update(form.get("code_verifier") ?? "").digest("base64url");
-      if (!grant || grant.challenge !== challenge || form.get("client_secret") !== "secret" || form.get("redirect_uri") !== grant.redirect) {
+      // rc.15: a client with a key sends a typed assertion for the issuer instead of the secret.
+      const authenticated = clientKey
+        ? form.get("client_secret") === null && form.get("client_assertion_type") === "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+          && await jwtVerify(form.get("client_assertion") ?? "", clientKey, { issuer: "app", subject: "app", audience: base + "/", typ: "client-authentication+jwt" }).then(() => true, () => false)
+        : form.get("client_secret") === "secret";
+      if (!grant || grant.challenge !== challenge || !authenticated || form.get("redirect_uri") !== grant.redirect) {
         res.statusCode = 400;
         res.end(JSON.stringify({ error: "invalid_grant" }));
         return;
@@ -182,4 +187,32 @@ test("a forged session cookie is ignored", async () => {
   const req = { headers: { cookie: "sangam.sid=abc.def" } } as unknown as IncomingMessage;
   assert.equal(await sangam.user(req), undefined);
   assert.throws(() => createSangam({ authority: "x", clientId: "a", clientSecret: "s", baseUrl: "http://l", cookieSecret: "short" }));
+});
+
+test("a back end with a key signs in with an assertion, not a secret (rc.15)", async () => {
+  const keys = await generateKeyPair("ES256", { extractable: true });
+  const op = await provider(keys.publicKey);
+  let sangam: ReturnType<typeof createSangam>;
+  const app = createServer((req: IncomingMessage, res: ServerResponse) => {
+    void sangam.router(req, res, () => void sangam.requireSignIn()(req, res, () => res.end("secure")));
+  });
+  const appBase = await listen(app);
+  sangam = createSangam({ authority: op.base, clientId: "app", privateKey: await exportPKCS8(keys.privateKey), baseUrl: appBase, cookieSecret: "c".repeat(32), allowInsecureRequests: true });
+  let cookie = "";
+  const get = async (path: string) => {
+    const r = await fetch(appBase + path, { redirect: "manual", headers: { cookie } });
+    const set = r.headers.getSetCookie().find((c) => c.startsWith("sangam.sid="));
+    if (set) cookie = set.split(";")[0]!;
+    return r;
+  };
+  try {
+    const start = await get("/auth/login?returnTo=/secure");
+    const { code, state } = op.approve(start.headers.get("location")!);
+    assert.equal((await get(`/auth/callback?code=${code}&state=${state}`)).headers.get("location"), "/secure");
+    assert.equal(await (await get("/secure")).text(), "secure");
+  } finally {
+    app.close();
+    op.server.close();
+  }
+  assert.throws(() => createSangam({ authority: op.base, clientId: "app", baseUrl: appBase, cookieSecret: "c".repeat(32) }), /clientSecret or privateKey/);
 });

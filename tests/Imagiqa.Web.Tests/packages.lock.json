@@ -500,14 +500,14 @@
           "Microsoft.EntityFrameworkCore": "[10.0.13, )",
           "Microsoft.EntityFrameworkCore.Relational": "[10.0.13, )",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, )",
-          "Sangam.Client": "[1.0.0-rc.14, )"
+          "Sangam.Client": "[1.0.0-rc.15, )"
         }
       },
       "sangam.client": {
         "type": "Project",
         "dependencies": {
           "Microsoft.AspNetCore.Authentication.OpenIdConnect": "[10.0.13, )",
-          "Sangam.Shared": "[1.0.0-rc.14, )"
+          "Sangam.Shared": "[1.0.0-rc.15, )"
         }
       },
       "sangam.shared": {
