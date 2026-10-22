@@ -53,3 +53,36 @@ def test_flask_sign_in_step_up_permission_and_audit(op, tmp_path):
     c.get(f"/auth/callback?code={code}&state={state}")
     event = c.post("/sign").json
     assert validate_audit_event(event) == [] and event["actor"]["sub"] == SUB
+
+
+def test_a_back_end_with_a_key_signs_in_with_an_assertion_not_a_secret():
+    # rc.15 (private_key_jwt): the code and the management token are both got with a typed assertion for the issuer.
+    from joserfc.jwk import ECKey
+
+    from sangam import ClientKey, ManagementClient
+
+    private = ECKey.generate_key("P-256", private=True)
+    o = FakeOP(client_key=ECKey.import_key(private.as_dict(private=False)))
+    try:
+        app = Flask(__name__)
+        pem = private.as_pem(private=True).decode()
+        sangam = SangamFlask(app, SangamSettings(authority=o.base, client_id="app", client_secret=None, private_key=pem, base_url="http://localhost", cookie_secret="b" * 32))
+
+        @app.get("/secure")
+        @sangam.login_required
+        def secure():
+            return jsonify(id=sangam.current_user().id)
+
+        c = app.test_client()
+        code, state = o.approve(c.get("/auth/login?returnTo=/secure").headers["Location"])
+        assert c.get(f"/auth/callback?code={code}&state={state}").headers["Location"] == "/secure"
+        assert c.get("/secure").json == {"id": SUB}
+        assert ManagementClient(o.base, "app", private_key=pem).token() == "cc-token"
+        assert ClientKey(pem).kid == private.thumbprint()
+    finally:
+        o.close()
+
+    with pytest.raises(ValueError, match="public key"):
+        ClientKey(private.as_pem(private=False).decode())
+    with pytest.raises(ValueError):
+        ManagementClient("https://id.example.in", "app")

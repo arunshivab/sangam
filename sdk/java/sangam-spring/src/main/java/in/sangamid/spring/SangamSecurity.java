@@ -46,11 +46,18 @@ public final class SangamSecurity {
             request.getSession().removeAttribute(SangamAuthorizationRequestResolver.RETURN_TO);
             response.sendRedirect(SangamAuthorizationRequestResolver.safeReturn(target instanceof String s ? s : "/"));
         };
+        // rc.15: with sangam.private-key, codes are redeemed with a key-signed assertion instead of a secret.
+        in.sangamid.client.ClientKey key = SangamClientKeys.from(properties);
         OidcClientInitiatedLogoutSuccessHandler logout = new OidcClientInitiatedLogoutSuccessHandler(registrations);
         logout.setPostLogoutRedirectUri("{baseUrl}/");
         http.oauth2Login(login -> login
                         .authorizationEndpoint(a -> a.baseUri(base + "/login").authorizationRequestResolver(new SangamAuthorizationRequestResolver(registrations, base + "/login")))
                         .redirectionEndpoint(r -> r.baseUri(base + "/callback"))
+                        .tokenEndpoint(t -> {
+                            if (key != null) {
+                                t.accessTokenResponseClient(SangamClientKeys.tokenResponseClient(key));
+                            }
+                        })
                         .successHandler(comeBack))
                 .logout(l -> l.logoutRequestMatcher(PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, base + "/logout")).logoutSuccessHandler(logout))
                 .exceptionHandling(e -> e.authenticationEntryPoint((request, response, ex) -> send(request, response, loginUrl(properties, pathOf(request), null, null), "sign_in_required")));

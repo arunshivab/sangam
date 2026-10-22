@@ -149,6 +149,12 @@ public static class MessageTemplateKinds
     /// </summary>
     public const string StaffVerifyRequired = "staff_verify_required";
 
+    /// <summary>
+    /// To an application's owners (rc.15, ASVS V2.10.1): a client secret is over twelve months old (the one Sangam issued)
+    /// or ends within 30 days (one they made). It says how to replace it, or to sign in with a key instead.
+    /// </summary>
+    public const string ClientSecretAgeing = "client_secret_ageing";
+
     /// <summary>Every kind, in the order the consoles list them.</summary>
     public static IReadOnlyList<MessageTemplateKind> All { get; } =
     [
@@ -187,6 +193,7 @@ public static class MessageTemplateKinds
         new(GrievanceAcknowledgement, false, false, ["name", "reference", "received", "resolve_by"], ["reference"]),
         new(GrievanceResolution, false, false, ["name", "reference", "resolution"], ["reference", "resolution"]),
         new(IntegrationFailing, false, false, ["name", "application", "integration", "error", "link"], ["integration", "link"]),
+        new(ClientSecretAgeing, false, false, ["name", "application", "secret", "date", "link"], ["application", "link"]),
         new(RegistrationAttemptNotice, false, false, [], []),
         new(MobileAttemptNotice, false, false, [], []),
         new(SmsSignIn, true, false, [], []),

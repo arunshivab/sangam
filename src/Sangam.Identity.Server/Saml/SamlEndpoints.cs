@@ -98,7 +98,7 @@ public static class SamlEndpoints
         try
         {
             string xml = post ? Encoding.UTF8.GetString(Convert.FromBase64String(message)) : SamlProtocol.InflateRedirect(message);
-            document = SamlProtocol.Load(xml);
+            document = SamlProtocol.LoadMessage(xml);
             request = SamlProtocol.ReadAuthnRequest(document);
         }
         catch (Exception ex) when (ex is FormatException or XmlException or InvalidDataException)
@@ -240,7 +240,7 @@ public static class SamlEndpoints
         LogoutRequestMessage request;
         try
         {
-            request = SamlProtocol.ReadLogoutRequest(SamlProtocol.Load(SamlProtocol.InflateRedirect(http.Request.Query["SAMLRequest"].ToString())));
+            request = SamlProtocol.ReadLogoutRequest(SamlProtocol.LoadMessage(SamlProtocol.InflateRedirect(http.Request.Query["SAMLRequest"].ToString())));
         }
         catch (Exception ex) when (ex is FormatException or XmlException or InvalidDataException)
         {
@@ -326,7 +326,7 @@ public static class SamlEndpoints
     {
         using X509Certificate2? encryptFor = subject is null ? null : SamlIdentityProvider.Certificate(provider.EncryptionCertificate);
         string xml = SamlProtocol.BuildResponse(
-            new SamlResponseContent(options.EntityIdFor(origin), acs, provider.EntityId, inResponseTo, DateTimeOffset.UtcNow, AssertionLifetime, status, subStatus, subject, encryptFor),
+            new SamlResponseContent(options.EntityIdFor(origin), acs, provider.EntityId, inResponseTo, DateTimeOffset.UtcNow, AssertionLifetime, status, subStatus, subject, encryptFor, provider.OaepSha256),
             options.Certificates[0]);
         HtmlEncoder html = HtmlEncoder.Default;
         string page = "<!doctype html><html><head><meta charset=\"utf-8\"><title>Sangam</title></head><body>"

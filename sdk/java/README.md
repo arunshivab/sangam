@@ -57,3 +57,19 @@ not yours (ADR-0017).
 
 `mvn test` runs the shared vectors and the adapter's tests; `mvn package` builds the sample
 (`samples/spring-boot`, port 5930).
+
+## Sign in with a key instead of a secret (rc.15)
+
+Add the public key on the partner console (Credentials & redirects, Keys), then:
+
+```properties
+spring.security.oauth2.client.registration.sangam.client-authentication-method=private_key_jwt
+# no client-secret
+sangam.private-key-path=/run/secrets/sangam-key.pem
+```
+
+`SangamSecurity.apply` then redeems codes with an assertion Sangam accepts: typed `client-authentication+jwt`, for
+Sangam's issuer, two minutes, used once. The management client: `ManagementClient.withKey(authority, clientId,
+ClientKey.fromPem(pem), null)`. `ClientKey.fromPem` takes an RSA key in PKCS#8 PEM (`openssl genpkey -algorithm RSA
+-pkeyopt rsa_keygen_bits:3072 -out sangam-key.pem`); for an elliptic-curve key use `ClientKey.fromJwk` with a private
+JSON Web Key, as Java cannot work out the public point from a PEM private key alone.

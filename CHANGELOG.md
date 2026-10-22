@@ -6,6 +6,53 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0-rc.15] - fifteenth release candidate
+
+Sangam 1.0.0-rc.15 is the first batch of the ASVS Level 2 follow-up, on the founder's decisions of 22 October 2026.
+
+### Applications sign in with a key (ADR-0018, ASVS V2.10.1)
+- **`private_key_jwt`**: an application's back end may prove who it is with a key instead of a client secret. The owner
+  adds a public key (PEM or JSON Web Key; RSA 2048+ or EC P-256/384/521) on the partner console (Credentials &
+  redirects, **Keys**); a private key pasted by mistake is refused and never kept. Two keys can be live, so keys change
+  without a break; once Sangam has seen the application sign in with a key the owner may revoke every secret, but what is
+  left must always be a secret or a used key. Only owners add or
+  remove keys; each change is audited (`app.key.add`, `app.key.remove`), and the console shows when each key was last used.
+- **Each assertion is checked**: signed with a live key of that application, typed `client-authentication+jwt`, `iss` =
+  `sub` = the client id, `aud` = Sangam's issuer exactly (not the token endpoint, per draft-ietf-oauth-rfc7523bis), at
+  most five minutes from `iat` to `exp`, not expired, with a `jti` — and **accepted once**: a replay is refused on every
+  host. A disabled
+  application has no keys. New tables `client_keys` and `client_assertion_uses` (migration `Rc15ClientKeys`).
+- **Secret reminders**: the hourly sweep e-mails an application's owners when the secret Sangam issued is twelve months
+  old (again monthly until it is replaced or retired), and 30 days before a secret they made ends, with how to replace
+  it or switch to a key (template `client_secret_ageing`, in English, Hindi and Malayalam; audited `app.secret.reminder`).
+
+### Tokens (ASVS V3.3.1)
+- **Access tokens last 15 minutes** (were an hour), so an application's server can use one against Sangam for at most
+  15 minutes after the person signs out. Refresh tokens already end with the sign-in session. Applications that keep an
+  access token longer refresh it.
+
+### Sign-in for members and staff (founder decision, ASVS V2.2.2, V1.2.4, V2.9.1)
+- Any member may still choose an e-mailed code alone; for an organisation's staff the organisation's rule decides and
+  overrides their choice (now tested). An organisation tightens only: password and code, passkey only, or two-step
+  required. Synced passkeys stay allowed without attestation; hardware keys are not required. Recorded as accepted.
+
+### SAML (ASVS V6.2.5, V13.3.1)
+- **RSA-OAEP with SHA-256** (xmlenc 1.1, MGF1-SHA-256) wraps an encrypted assertion's key for every service provider
+  registered from rc.15, and for one imported from metadata unless its metadata lists only SHA-1. SHA-1 key transport
+  stays as a per-SP setting (operator console, SAML applications) for older service providers; existing ones keep it
+  until it is switched.
+- **Every inbound SAML message is checked against the OASIS SAML 2.0 schema** (protocol, assertion, XML Signature and
+  Encryption, built in, nothing fetched) before any field is read; one that does not follow it is refused as unreadable.
+
+### SDKs (C#, JS, Python, Java)
+- Sign in with a key: .NET `SangamOptions.PrivateKeyPem` / `PrivateKeyPath` (and `SangamClientAssertion`), JavaScript
+  `privateKey` (`loadClientKey`, `createClientAssertion`), Python `private_key` (`ClientKey`), Java `ClientKey`,
+  `ManagementClient.withKey` and, for Spring Security, `sangam.private-key` / `sangam.private-key-path` with
+  `client-authentication-method=private_key_jwt`. The code redemption and management tokens then use a fresh
+  two-minute assertion; the .NET SDK is tested against the real token endpoint. A client secret is no longer required
+  when a key is set (JavaScript `clientSecret` and Python `client_secret` may be left out). Python and Java move to
+  1.0.0-rc.15.
+
 ## [1.0.0-rc.14] - fourteenth release candidate
 
 Sangam 1.0.0-rc.14 gives every application its own id for each person (the founder's decisions of 19 and 20 October

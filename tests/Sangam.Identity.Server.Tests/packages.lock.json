@@ -613,6 +613,15 @@
           "Microsoft.IdentityModel.Tokens": "8.19.2"
         }
       },
+      "Microsoft.IdentityModel.Protocols.OpenIdConnect": {
+        "type": "Transitive",
+        "resolved": "8.19.2",
+        "contentHash": "1XOcyY36cVymzE3qKdzKaUEZ4Pzt7ZpSa14JZoPPK1NLFUkQDs85TCqpV6XDo0YjFXj6nVK00AfOHppjghjhtw==",
+        "dependencies": {
+          "Microsoft.IdentityModel.Protocols": "8.19.2",
+          "System.IdentityModel.Tokens.Jwt": "8.19.2"
+        }
+      },
       "Microsoft.IdentityModel.Tokens": {
         "type": "Transitive",
         "resolved": "8.19.2",
@@ -870,6 +879,15 @@
           "Microsoft.Win32.SystemEvents": "6.0.0"
         }
       },
+      "System.IdentityModel.Tokens.Jwt": {
+        "type": "Transitive",
+        "resolved": "8.19.2",
+        "contentHash": "gqhDC/icByKEutygpr+OFgAmjwTVowyzFjWB8K0q1ww8uFj5a1BQNL+QvijUl9uhq4p8OdDwcAIrjVC+eC9FVA==",
+        "dependencies": {
+          "Microsoft.IdentityModel.JsonWebTokens": "8.19.2",
+          "Microsoft.IdentityModel.Tokens": "8.19.2"
+        }
+      },
       "System.Security.Cryptography.Pkcs": {
         "type": "Transitive",
         "resolved": "10.0.13",
@@ -928,19 +946,26 @@
           "xunit.extensibility.core": "[2.9.3]"
         }
       },
+      "sangam.client": {
+        "type": "Project",
+        "dependencies": {
+          "Microsoft.AspNetCore.Authentication.OpenIdConnect": "[10.0.13, )",
+          "Sangam.Shared": "[1.0.0-rc.15, )"
+        }
+      },
       "sangam.identity.application": {
         "type": "Project",
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.13, )",
-          "Sangam.Identity.Domain": "[1.0.0-rc.14, )",
-          "Sangam.Shared": "[1.0.0-rc.14, )"
+          "Sangam.Identity.Domain": "[1.0.0-rc.15, )",
+          "Sangam.Shared": "[1.0.0-rc.15, )"
         }
       },
       "sangam.identity.domain": {
         "type": "Project",
         "dependencies": {
           "Microsoft.Extensions.Identity.Stores": "[10.0.13, )",
-          "Sangam.Shared": "[1.0.0-rc.14, )"
+          "Sangam.Shared": "[1.0.0-rc.15, )"
         }
       },
       "sangam.identity.infrastructure": {
@@ -953,19 +978,19 @@
           "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, )",
           "OpenIddict.EntityFrameworkCore": "[7.7.2, )",
           "QRCoder": "[1.8.1, )",
-          "Sangam.Identity.Application": "[1.0.0-rc.14, )",
-          "Sangam.Identity.Domain": "[1.0.0-rc.14, )",
-          "Sangam.Shared": "[1.0.0-rc.14, )"
+          "Sangam.Identity.Application": "[1.0.0-rc.15, )",
+          "Sangam.Identity.Domain": "[1.0.0-rc.15, )",
+          "Sangam.Shared": "[1.0.0-rc.15, )"
         }
       },
       "sangam.identity.server": {
         "type": "Project",
         "dependencies": {
           "OpenIddict.AspNetCore": "[7.7.2, )",
-          "Sangam.Identity.Application": "[1.0.0-rc.14, )",
-          "Sangam.Identity.Infrastructure": "[1.0.0-rc.14, )",
-          "Sangam.Shared": "[1.0.0-rc.14, )",
-          "Sangam.Web.Shared": "[1.0.0-rc.14, )"
+          "Sangam.Identity.Application": "[1.0.0-rc.15, )",
+          "Sangam.Identity.Infrastructure": "[1.0.0-rc.15, )",
+          "Sangam.Shared": "[1.0.0-rc.15, )",
+          "Sangam.Web.Shared": "[1.0.0-rc.15, )"
         }
       },
       "sangam.shared": {
@@ -975,7 +1000,7 @@
         "type": "Project",
         "dependencies": {
           "LiPicons.Blazor": "[1.1.0, )",
-          "Sangam.Identity.Application": "[1.0.0-rc.14, )"
+          "Sangam.Identity.Application": "[1.0.0-rc.15, )"
         }
       },
       "EFCore.NamingConventions": {
@@ -1005,6 +1030,15 @@
         "contentHash": "ZOQwAcrfbpVkvnQYDlhSLm01ZngZo08z8C/1APEQLOK0T8VQwxnXnLAHiGktyfr2bl+celYHdIwzE3PWWDtH1Q==",
         "dependencies": {
           "Microsoft.AspNetCore.Components.Web": "10.0.0"
+        }
+      },
+      "Microsoft.AspNetCore.Authentication.OpenIdConnect": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.13, )",
+        "resolved": "10.0.13",
+        "contentHash": "dlyqhtVS6t6IeVvpxV8RuTQzrAFedkKbDoIbKbwjSmTimR4X/OxKvt+jwKLk8Qw/lqvoSQUl8iHLCO9CUCCH8A==",
+        "dependencies": {
+          "Microsoft.IdentityModel.Protocols.OpenIdConnect": "8.19.2"
         }
       },
       "Microsoft.AspNetCore.Components.Web": {

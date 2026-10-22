@@ -112,6 +112,12 @@ public sealed class App
     public DateTimeOffset? IssuedSecretRetiredAt { get; set; }
 
     /// <summary>
+    /// rc.15 (ASVS V2.10.1): when the owners were last told the secret Sangam issued is over twelve months old. They are
+    /// told again each month until it is replaced or retired.
+    /// </summary>
+    public DateTimeOffset? IssuedSecretReminderAt { get; set; }
+
+    /// <summary>
     /// rc.12 (decision of 14 Oct 2026): until DigiLocker is live, a Sangam operator may let this application's admins add
     /// staff without a DigiLocker-verified account of their own, until this moment. Each such addition is marked. When
     /// <see langword="null"/> or past, only DigiLocker-verified admins may add or link people.

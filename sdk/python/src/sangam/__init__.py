@@ -3,6 +3,7 @@
 The FastAPI and Flask adapters are in ``sangam.fastapi`` and ``sangam.flask`` (install the extra).
 """
 from .audit import AuditBuffer, AuditConfig, AuditEntry, MASKED, SCHEMA_VERSION, build_audit_event, uuid7, validate_audit_event
+from .client_key import ClientKey
 from .management import ManagementClient, SangamApiError
 from .memberships import SangamCurrentOrganisation, SangamEmergency, SangamMembership, SangamUser, has_permission, has_role, parse_current_organisation, parse_emergency, parse_memberships, roles_in, user_from_claims
 from .stepup import SIGNATURE_MAX_AGE_SECONDS, SangamAcr, satisfies, step_up_challenge
@@ -10,10 +11,10 @@ from .tokens import InvalidToken, TokenVerifier, VerifiedToken
 from .web import SangamCore, SangamSettings
 from .webhooks import verify_webhook
 
-__version__ = "1.0.0rc14"
+__version__ = "1.0.0rc15"
 __all__ = [
     "AuditBuffer", "AuditConfig", "AuditEntry", "MASKED", "SCHEMA_VERSION", "build_audit_event", "uuid7", "validate_audit_event",
-    "ManagementClient", "SangamApiError",
+    "ClientKey", "ManagementClient", "SangamApiError",
     "SangamCurrentOrganisation", "SangamEmergency", "SangamMembership", "SangamUser", "has_permission", "has_role", "parse_current_organisation", "parse_emergency", "parse_memberships", "roles_in", "user_from_claims",
     "SIGNATURE_MAX_AGE_SECONDS", "SangamAcr", "satisfies", "step_up_challenge",
     "InvalidToken", "TokenVerifier", "VerifiedToken",

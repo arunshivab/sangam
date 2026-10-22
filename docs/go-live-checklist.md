@@ -54,6 +54,14 @@ exist, so there is no production database to act on yet.
 - [ ] rc.14: the imagiQa demo's records made before rc.14 name staff by their old ids. They still show (the names are
       kept and patients are found by hospital); to start clean, empty them:
       `docker compose exec postgres psql -U postgres -d imagiqa_demo -c "TRUNCATE notes, vitals, patients;"`.
+- [ ] rc.15: migration `Rc15ClientKeys` adds `client_keys` and `client_assertion_uses` (both empty), and columns for
+      secret reminders and SAML key transport.
+- [ ] rc.15: tell each application's developers that access tokens now last **15 minutes** (were an hour): an
+      application that kept one for longer refreshes it, or asks again. And that they can sign in with a key instead of a
+      secret (`private_key_jwt`, ADR-0018): add the public key on the partner console, set the private key in the SDK
+      (`PrivateKeyPem`/`PrivateKeyPath`, `privateKey`, `private_key`, `sangam.private-key`), then revoke the secrets.
+- [ ] rc.15: a SAML service provider registered before rc.15 keeps SHA-1 key transport; open it in the operator console
+      (SAML applications) and tick RSA-OAEP with SHA-256 once it takes it. New ones get SHA-256.
 - [ ] `Sangam:Seed:DevelopmentSample` is **false**. The seeder creates the sample partner app and
       development redirect URIs; none of that belongs in production.
 - [ ] `Sangam:Email:UseOutbox` is **false**, and Anjal's API (D-B) is configured with production

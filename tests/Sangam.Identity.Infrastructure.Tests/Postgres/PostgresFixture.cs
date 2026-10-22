@@ -61,6 +61,8 @@ public sealed class PostgresFixture : IAsyncLifetime
         "app_grants",
         "consents",
         "client_secrets",
+        "client_keys",
+        "client_assertion_uses",
         "access_review_decisions",
         "app_admins",
         "platform_operators",

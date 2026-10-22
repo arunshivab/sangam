@@ -39,7 +39,8 @@ public interface ISamlAdminService
 /// <param name="RequireSignedRequests">Whether its requests must be signed.</param>
 /// <param name="AllowIdpInitiated">Whether sign-in may start at Sangam.</param>
 /// <param name="DefaultRelayState">Where an IdP-initiated sign-in lands.</param>
-public sealed record SamlSpInput(Guid? Id, string DisplayName, string OwnerCompanyName, string EntityId, string AcsUrls, string? SloUrl, string? SigningCertificate, string? EncryptionCertificate, string NameIdFormat, IReadOnlyList<string> Attributes, bool RequireSignedRequests, bool AllowIdpInitiated, string? DefaultRelayState);
+/// <param name="OaepSha256">rc.15: wrap the assertion's key with RSA-OAEP using SHA-256 (on unless the SP needs SHA-1).</param>
+public sealed record SamlSpInput(Guid? Id, string DisplayName, string OwnerCompanyName, string EntityId, string AcsUrls, string? SloUrl, string? SigningCertificate, string? EncryptionCertificate, string NameIdFormat, IReadOnlyList<string> Attributes, bool RequireSignedRequests, bool AllowIdpInitiated, string? DefaultRelayState, bool OaepSha256 = true);
 
 /// <summary>A service provider as listed.</summary>
 /// <param name="Id">Row id.</param>

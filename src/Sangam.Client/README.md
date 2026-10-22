@@ -29,6 +29,30 @@ app.MapSangamSignOut();          // GET /signout ends the session here and at Sa
 
 Any page that needs a signed-in person now sends the visitor to Sangam and brings them back.
 
+## Sign in with a key instead of a secret (rc.15)
+
+Stronger than a client secret: your servers keep a private key and sign a short-lived assertion with it
+(`private_key_jwt`); Sangam keeps only the public key. Make a key pair, add the **public** key on the partner console
+(Credentials & redirects, Keys), and give the SDK the private key instead of the secret:
+
+```sh
+openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -out sangam-key.pem   # or: -algorithm RSA -pkeyopt rsa_keygen_bits:3072
+openssl pkey -in sangam-key.pem -pubout                                               # paste this on the partner console
+```
+
+```csharp
+builder.Services.AddSangam(o =>
+{
+    o.Authority = "https://id.sangamid.in";
+    o.ClientId = builder.Configuration["Sangam:ClientId"]!;
+    o.PrivateKeyPath = "/run/secrets/sangam-key.pem";   // or PrivateKeyPem; no ClientSecret
+});
+```
+
+The sign-in and the management client then send a fresh assertion (two minutes, used once) with every request. Its key
+id is the one the console shows. Once it works, revoke your secrets on the console. To change keys, add the new one,
+move your servers to it, then remove the old one.
+
 ## Know who signed in, and what they may do
 
 ```csharp

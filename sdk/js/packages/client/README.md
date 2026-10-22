@@ -19,6 +19,7 @@ const verify = createTokenVerifier({ issuer: "https://id.sangamid.in/", audience
 const { user: caller, scopes } = await verify(bearerToken);           // signature, issuer, expiry, audience
 
 const sangam = new ManagementClient({ authority, clientId, clientSecret });   // back end only
+// rc.15: or sign in with a key instead of the secret: new ManagementClient({ authority, clientId, privateKey })
 await sangam.upsertMembership(orgId, sub, adminAccessToken, "nurse", false, "2026-12-31T23:59:59+05:30");
 
 const event = buildAuditEvent({ appId: "lims", appVersion: "1.2.0", environment: "production" }, user,

@@ -10,6 +10,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sangam.Identity.Server\Sangam.Identity.Server.csproj" />
+    <!-- rc.15: the .NET SDK's key-signed assertions are proved against the real token endpoint. -->
+    <ProjectReference Include="..\..\src\Sangam.Client\Sangam.Client.csproj" />
   </ItemGroup>
 
 </Project>

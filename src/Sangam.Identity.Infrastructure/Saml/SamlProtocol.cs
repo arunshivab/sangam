@@ -62,9 +62,13 @@ public static class SamlProtocol
     /// <summary>Authentication context: multi-factor (REFEDS MFA profile).</summary>
     public const string RefedsMfa = "https://refeds.org/profile/mfa";
 
-    private const int MaxMessageBytes = 64 * 1024;
+    /// <summary>The largest SAML message accepted, in bytes.</summary>
+    internal const int MaxMessageBytes = 64 * 1024;
     private const string AesGcm = "http://www.w3.org/2009/xmlenc11#aes256-gcm";
     private const string RsaOaep = "http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p";
+    private const string RsaOaep11 = "http://www.w3.org/2009/xmlenc11#rsa-oaep";
+    private const string Mgf1Sha256 = "http://www.w3.org/2009/xmlenc11#mgf1sha256";
+    private const string Xenc11Ns = "http://www.w3.org/2009/xmlenc11#";
 
     /// <summary>Decodes an HTTP-Redirect message (base64 of raw DEFLATE).</summary>
     /// <param name="value">The SAMLRequest or SAMLResponse value, already URL-decoded.</param>
@@ -117,6 +121,18 @@ public static class SamlProtocol
         using StringReader text = new(xml);
         using XmlReader reader = XmlReader.Create(text, new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null, MaxCharactersInDocument = MaxMessageBytes });
         document.Load(reader);
+        return document;
+    }
+
+    /// <summary>
+    /// rc.15 (ASVS V13.3.1): loads a SAML protocol message a service provider sent — safely, as <see cref="Load"/> does — after
+    /// checking it against the SAML 2.0 schema (<see cref="SamlSchema"/>).
+    /// </summary>
+    /// <param name="xml">The message.</param>
+    public static XmlDocument LoadMessage(string xml)
+    {
+        XmlDocument document = Load(xml);
+        SamlSchema.Validate(xml);
         return document;
     }
 
@@ -303,7 +319,7 @@ public static class SamlProtocol
             Sign(assertion, (XmlElement)assertion.FirstChild!, signing);
             if (response.EncryptFor is X509Certificate2 encryptFor)
             {
-                XmlElement encrypted = Encrypt(document, assertion, encryptFor);
+                XmlElement encrypted = Encrypt(document, assertion, encryptFor, response.OaepSha256);
                 root.ReplaceChild(encrypted, assertion);
             }
         }
@@ -400,7 +416,10 @@ public static class SamlProtocol
             .FirstOrDefault(c => !string.IsNullOrWhiteSpace(c)) is string b64
                 ? "-----BEGIN CERTIFICATE-----\n" + string.Join('\n', b64.Where(ch => !char.IsWhiteSpace(ch)).Chunk(64).Select(chunk => new string(chunk))) + "\n-----END CERTIFICATE-----"
                 : null;
-        return new SpMetadata(entity.GetAttribute("entityID"), acs, slo, Cert("signing"), Cert("encryption"), sp.GetAttribute("AuthnRequestsSigned") == "true");
+        // rc.15: SHA-256 key transport unless the SP's metadata lists key-transport methods and xmlenc 1.1's RSA-OAEP is not among them.
+        List<string> methods = [.. sp.SelectNodes("md:KeyDescriptor/md:EncryptionMethod", ns)!.Cast<XmlElement>().Select(m => m.GetAttribute("Algorithm")).Where(a => a.Contains("rsa-oaep", StringComparison.Ordinal))];
+        bool oaepSha256 = methods.Count == 0 || methods.Contains(RsaOaep11);
+        return new SpMetadata(entity.GetAttribute("entityID"), acs, slo, Cert("signing"), Cert("encryption"), sp.GetAttribute("AuthnRequestsSigned") == "true", oaepSha256);
     }
 
     /// <summary>The assurance level a SAML authentication context asks for: Sangam's own, REFEDS MFA, or password.</summary>
@@ -511,7 +530,12 @@ public static class SamlProtocol
         element.InsertAfter(element.OwnerDocument.ImportNode(signed.GetXml(), deep: true), after);
     }
 
-    private static XmlElement Encrypt(XmlDocument document, XmlElement assertion, X509Certificate2 recipient)
+    /// <summary>
+    /// Encrypts the assertion with AES-256-GCM under a fresh key, and wraps the key for the SP with RSA-OAEP: with SHA-256
+    /// for digest and mask (xmlenc 1.1, rc.15, ASVS V6.2.5) for an SP that takes it, otherwise with SHA-1 (xmlenc 1.0's
+    /// rsa-oaep-mgf1p), which older SPs need.
+    /// </summary>
+    private static XmlElement Encrypt(XmlDocument document, XmlElement assertion, X509Certificate2 recipient, bool oaepSha256)
     {
         byte[] plain = Encoding.UTF8.GetBytes(assertion.OuterXml);
         byte[] key = RandomNumberGenerator.GetBytes(32);
@@ -524,7 +548,7 @@ public static class SamlProtocol
         }
 
         using RSA rsa = recipient.GetRSAPublicKey() ?? throw new InvalidOperationException("The SP's encryption certificate has no RSA key.");
-        byte[] wrapped = rsa.Encrypt(key, RSAEncryptionPadding.OaepSHA1);
+        byte[] wrapped = rsa.Encrypt(key, oaepSha256 ? RSAEncryptionPadding.OaepSHA256 : RSAEncryptionPadding.OaepSHA1);
         CryptographicOperations.ZeroMemory(key);
 
         XmlElement encryptedAssertion = document.CreateElement("saml", "EncryptedAssertion", AssertionNs);
@@ -536,10 +560,17 @@ public static class SamlProtocol
         XmlElement keyInfo = document.CreateElement("ds", "KeyInfo", DsigNs);
         XmlElement encryptedKey = document.CreateElement("xenc", "EncryptedKey", XencNs);
         XmlElement keyMethod = document.CreateElement("xenc", "EncryptionMethod", XencNs);
-        keyMethod.SetAttribute("Algorithm", RsaOaep);
+        keyMethod.SetAttribute("Algorithm", oaepSha256 ? RsaOaep11 : RsaOaep);
         XmlElement digest = document.CreateElement("ds", "DigestMethod", DsigNs);
-        digest.SetAttribute("Algorithm", SignedXml.XmlDsigSHA1Url);
+        digest.SetAttribute("Algorithm", oaepSha256 ? SignedXml.XmlDsigSHA256Url : SignedXml.XmlDsigSHA1Url);
         keyMethod.AppendChild(digest);
+        if (oaepSha256)
+        {
+            XmlElement mgf = document.CreateElement("xenc11", "MGF", Xenc11Ns);
+            mgf.SetAttribute("Algorithm", Mgf1Sha256);
+            keyMethod.AppendChild(mgf);
+        }
+
         encryptedKey.AppendChild(keyMethod);
         encryptedKey.AppendChild(CipherData(document, wrapped));
         keyInfo.AppendChild(encryptedKey);
@@ -559,7 +590,8 @@ public static class SamlProtocol
         XmlNamespaceManager ns = Namespaces(encryptedAssertion.OwnerDocument);
         byte[] wrapped = Convert.FromBase64String(encryptedAssertion.SelectSingleNode("xenc:EncryptedData/ds:KeyInfo/xenc:EncryptedKey/xenc:CipherData/xenc:CipherValue", ns)!.InnerText);
         byte[] all = Convert.FromBase64String(encryptedAssertion.SelectSingleNode("xenc:EncryptedData/xenc:CipherData/xenc:CipherValue", ns)!.InnerText);
-        byte[] key = recipientKey.Decrypt(wrapped, RSAEncryptionPadding.OaepSHA1);
+        string method = (encryptedAssertion.SelectSingleNode("xenc:EncryptedData/ds:KeyInfo/xenc:EncryptedKey/xenc:EncryptionMethod", ns) as XmlElement)?.GetAttribute("Algorithm") ?? RsaOaep;
+        byte[] key = recipientKey.Decrypt(wrapped, method == RsaOaep11 ? RSAEncryptionPadding.OaepSHA256 : RSAEncryptionPadding.OaepSHA1);
         byte[] plain = new byte[all.Length - 28];
         using (System.Security.Cryptography.AesGcm aes = new(key, 16))
         {
@@ -647,10 +679,10 @@ public sealed record AuthnRequestMessage(string Id, string Issuer, DateTimeOffse
 public sealed record LogoutRequestMessage(string Id, string Issuer, DateTimeOffset IssueInstant, string? Destination, string? NameId, IReadOnlyList<string> SessionIndexes);
 
 /// <summary>An SP's metadata as read.</summary>
-public sealed record SpMetadata(string EntityId, IReadOnlyList<string> AcsUrls, string? SloUrl, string? SigningCertificatePem, string? EncryptionCertificatePem, bool WantsSignedRequests);
+public sealed record SpMetadata(string EntityId, IReadOnlyList<string> AcsUrls, string? SloUrl, string? SigningCertificatePem, string? EncryptionCertificatePem, bool WantsSignedRequests, bool OaepSha256 = true);
 
 /// <summary>What a response says.</summary>
-public sealed record SamlResponseContent(string IdpEntityId, string Destination, string Audience, string? InResponseTo, DateTimeOffset IssuedAt, TimeSpan Lifetime, string StatusCode, string? SubStatusCode, SamlSubjectContent? Subject, X509Certificate2? EncryptFor);
+public sealed record SamlResponseContent(string IdpEntityId, string Destination, string Audience, string? InResponseTo, DateTimeOffset IssuedAt, TimeSpan Lifetime, string StatusCode, string? SubStatusCode, SamlSubjectContent? Subject, X509Certificate2? EncryptFor, bool OaepSha256 = false);
 
 /// <summary>Who signed in, and what is released about them.</summary>
 public sealed record SamlSubjectContent(string NameId, string NameIdFormat, DateTimeOffset AuthnInstant, string SessionIndex, string AuthnContextClass, IReadOnlyList<SamlClaim> Attributes);

@@ -60,3 +60,18 @@ not yours (ADR-0017).
 
 `pip install -e ".[test]" && pytest` runs the shared vectors and the flow tests against a local OpenID provider.
 Sample: `samples/fastapi` (port 5920).
+
+## Sign in with a key instead of a secret (rc.15)
+
+Pass `private_key` (a PEM private key, or a private JSON Web Key) and `client_secret=None`, and add the matching public
+key on the partner console (Credentials & redirects, Keys). The code redemption and the management client then send a
+fresh assertion for Sangam's issuer (`private_key_jwt`), used once:
+
+```python
+SangamSettings(authority="https://id.sangamid.in", client_id="lims", client_secret=None,
+               private_key=open("/run/secrets/sangam-key.pem").read(), base_url=..., cookie_secret=...)
+ManagementClient("https://id.sangamid.in", "lims", private_key=open("/run/secrets/sangam-key.pem").read())
+```
+
+Make the key with `openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -out sangam-key.pem` and print the
+public key with `openssl pkey -in sangam-key.pem -pubout`.

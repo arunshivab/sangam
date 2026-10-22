@@ -18,6 +18,10 @@ public class SangamProperties {
     private String auditEndpoint = "";
     /** Trust X-Forwarded-For for audit client addresses (behind your own proxy only). */
     private boolean trustProxy;
+    /** rc.15: the private key to sign in with instead of a secret: a PKCS#8 RSA PEM, or a private JSON Web Key. */
+    private String privateKey = "";
+    /** rc.15: a file holding {@link #privateKey}. */
+    private String privateKeyPath = "";
 
     public String getRegistrationId() { return registrationId; }
     public void setRegistrationId(String value) { registrationId = value; }
@@ -35,6 +39,10 @@ public class SangamProperties {
     public void setAuditEndpoint(String value) { auditEndpoint = value; }
     public boolean isTrustProxy() { return trustProxy; }
     public void setTrustProxy(boolean value) { trustProxy = value; }
+    public String getPrivateKey() { return privateKey; }
+    public void setPrivateKey(String value) { privateKey = value; }
+    public String getPrivateKeyPath() { return privateKeyPath; }
+    public void setPrivateKeyPath(String value) { privateKeyPath = value; }
 
     /** Where to start a sign-in. */
     public String loginPath() {

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ManagementClient, SangamApiError, lockSession, startIdleTimer } from "../src/index.js";
+import { CLIENT_ASSERTION_TYPE, ManagementClient, SangamApiError, createClientAssertion, loadClientKey, lockSession, startIdleTimer } from "../src/index.js";
 
 test("the management client caches its token and calls /api/v1", async () => {
   const calls: { url: string; method: string; auth?: string; body?: string }[] = [];
@@ -74,4 +74,37 @@ test("startIdleTimer fires once after the quiet time, and activity restarts it (
   assert.equal(fired, 1);
   stop();
   assert.throws(() => startIdleTimer({ minutes: 0, onIdle: () => undefined, target }));
+});
+
+test("a key signs the management client in, with a fresh typed assertion for Sangam's issuer and no secret (rc.15)", async () => {
+  const { generateKeyPair, exportPKCS8, exportJWK, calculateJwkThumbprint, jwtVerify, decodeProtectedHeader } = await import("jose");
+  const { privateKey, publicKey } = await generateKeyPair("RS256", { extractable: true });
+  const pem = await exportPKCS8(privateKey);
+  const bodies: URLSearchParams[] = [];
+  const fake: typeof fetch = async (_input, init) => {
+    bodies.push(new URLSearchParams(String(init?.body)));
+    return new Response(JSON.stringify({ access_token: "t1", expires_in: 900 }));
+  };
+  const client = new ManagementClient({ authority: "https://id.example.in/", clientId: "lims", privateKey: pem, fetch: fake });
+  assert.equal(await client.token(), "t1");
+  assert.equal(await client.token("orgs.read"), "t1");
+  const [first, second] = bodies;
+  assert.equal(first!.get("client_assertion_type"), CLIENT_ASSERTION_TYPE);
+  assert.equal(first!.get("client_secret"), null);
+  const assertion = first!.get("client_assertion")!;
+  const { payload } = await jwtVerify(assertion, publicKey, { issuer: "lims", audience: "https://id.example.in/", typ: "client-authentication+jwt" });
+  assert.equal(payload.sub, "lims");
+  assert.ok(payload.exp! - payload.iat! <= 120);
+  assert.notEqual(payload.jti, (await jwtVerify(second!.get("client_assertion")!, publicKey)).payload.jti);
+  const pub = await exportJWK(publicKey);
+  assert.equal(decodeProtectedHeader(assertion).kid, await calculateJwkThumbprint({ kty: "RSA", n: pub.n!, e: pub.e! }));
+
+  // An elliptic-curve key as a JWK; a public key, or neither key nor secret, is refused.
+  const ec = await generateKeyPair("ES384", { extractable: true });
+  const ecKey = await loadClientKey(JSON.stringify(await exportJWK(ec.privateKey)));
+  assert.equal(ecKey.alg, "ES384");
+  assert.equal(decodeProtectedHeader(await createClientAssertion(ecKey, "lims", "https://id.example.in/")).alg, "ES384");
+  await assert.rejects(loadClientKey(JSON.stringify(await exportJWK(ec.publicKey))), /public key/);
+  await assert.rejects(loadClientKey("-----BEGIN PUBLIC KEY-----\nAAAA\n-----END PUBLIC KEY-----"), /PKCS#8/);
+  assert.throws(() => new ManagementClient({ authority: "https://id.example.in", clientId: "lims" }), /clientSecret or privateKey/);
 });

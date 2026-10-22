@@ -516,5 +516,19 @@
       "subject": "DigiLocker ഉപയോഗിച്ച് സ്ഥിരീകരിക്കാൻ {{organisations}} ആവശ്യപ്പെടുന്നു",
       "body": "നമസ്കാരം {{name}},\n\n{{admin}} നിങ്ങളെ {{application}}-ൽ {{organisations}}-ലേക്ക് ചേർത്തു. DigiLocker (സർക്കാരിന്റെ ഡോക്യുമെന്റ് വാലറ്റ്) ഉപയോഗിച്ച് സ്ഥിരീകരിച്ചവരെ മാത്രമേ {{organisations}} ചേർക്കുന്നുള്ളൂ, അതിനാൽ നിങ്ങൾ സ്ഥിരീകരിച്ചാൽ നിങ്ങളുടെ സ്ഥാനം ആരംഭിക്കും.\n\nഇവിടെ സ്ഥിരീകരിക്കുക (ആവശ്യപ്പെട്ടാൽ നിങ്ങളുടെ Sangam അക്കൗണ്ടിൽ സൈൻ ഇൻ ചെയ്യുക):\n\n{{link}}\n\nനിങ്ങളുടെ DigiLocker രേഖയിലെ പേര്, ജനനത്തീയതി, ലിംഗം എന്നിവ മാത്രമേ Sangam വായിക്കുന്നുള്ളൂ, ഒരിക്കലും ഒരു രേഖയോ ആധാർ നമ്പറോ അല്ല. സ്ഥിരീകരിച്ച് ഒരു മിനിറ്റിനുള്ളിൽ നിങ്ങളുടെ സ്ഥാനം ആരംഭിക്കും.\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
     }
+  },
+  "client_secret_ageing": {
+    "en-IN": {
+      "subject": "{{application}}: replace its client secret",
+      "body": "Hello {{name}},\n\n{{secret}} for {{application}} {{date}}.\n\nOn the partner console, make a new secret and move your servers to it, then revoke the old one. Better still, add a key and sign in with it instead of a secret: your servers keep the private key, and Sangam never sees it.\n\n{{link}}\n\nSangam - one identity, many homes\nid.sangamid.in"
+    },
+    "hi-IN": {
+      "subject": "{{application}}: इसका क्लाइंट सीक्रेट बदलें",
+      "body": "नमस्ते {{name}},\n\n{{application}} के लिए {{secret}} {{date}}।\n\nपार्टनर कंसोल पर एक नया सीक्रेट बनाएँ और अपने सर्वर उस पर ले जाएँ, फिर पुराना रद्द करें। इससे भी बेहतर, एक कुंजी जोड़ें और सीक्रेट के बजाय उससे साइन इन करें: निजी कुंजी आपके सर्वर पर रहती है, और Sangam उसे कभी नहीं देखता।\n\n{{link}}\n\nSangam - एक पहचान, कई घर\nid.sangamid.in"
+    },
+    "ml-IN": {
+      "subject": "{{application}}: ഇതിന്റെ ക്ലയന്റ് സീക്രട്ട് മാറ്റുക",
+      "body": "നമസ്കാരം {{name}},\n\n{{application}}-നുള്ള {{secret}} {{date}}.\n\nപാർട്ണർ കൺസോളിൽ ഒരു പുതിയ സീക്രട്ട് ഉണ്ടാക്കി നിങ്ങളുടെ സെർവറുകൾ അതിലേക്ക് മാറ്റുക, എന്നിട്ട് പഴയത് റദ്ദാക്കുക. അതിലും നല്ലത്, ഒരു കീ ചേർത്ത് സീക്രട്ടിന് പകരം അതുപയോഗിച്ച് സൈൻ ഇൻ ചെയ്യുക: സ്വകാര്യ കീ നിങ്ങളുടെ സെർവറുകളിൽ തന്നെ ഇരിക്കും, Sangam അത് ഒരിക്കലും കാണില്ല.\n\n{{link}}\n\nSangam - ഒരു ഐഡന്റിറ്റി, പല വീടുകൾ\nid.sangamid.in"
+    }
   }
 }

@@ -141,7 +141,7 @@
         "type": "Project",
         "dependencies": {
           "Microsoft.Extensions.Identity.Stores": "[10.0.13, )",
-          "Sangam.Shared": "[1.0.0-rc.14, )"
+          "Sangam.Shared": "[1.0.0-rc.15, )"
         }
       },
       "sangam.shared": {

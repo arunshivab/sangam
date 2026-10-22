@@ -278,6 +278,7 @@ public static class DependencyInjection
         services.AddSingleton(AuditArchiveOptions.From(configuration));
         services.AddSingleton<AuditArchiver>();
         services.AddScoped<InactivityService>();
+        services.AddScoped<ClientSecretReminders>();
         services.AddHostedService<AccountPurgeService>();
 
         // PR-32: the audit log streamed to a SIEM (off unless Sangam:Siem:Enabled; one host at a time).

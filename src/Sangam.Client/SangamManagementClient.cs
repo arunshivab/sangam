@@ -21,18 +21,24 @@ public sealed class SangamManagementClient : IDisposable
     private readonly SangamOptions _options;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly Dictionary<string, (string Token, DateTimeOffset Expires)> _cache = new(StringComparer.Ordinal);
+    private readonly SangamClientAssertion? _assertion;
 
     /// <summary>Initialises the client.</summary>
     /// <param name="http">HTTP clients.</param>
-    /// <param name="options">Sangam settings (authority, client id and secret).</param>
+    /// <param name="options">Sangam settings (authority, client id, and secret or private key).</param>
     public SangamManagementClient(IHttpClientFactory http, SangamOptions options)
     {
         _http = http ?? throw new ArgumentNullException(nameof(http));
         _options = options ?? throw new ArgumentNullException(nameof(options));
+        _assertion = SangamClientAssertion.From(options);
     }
 
     /// <inheritdoc />
-    public void Dispose() => _lock.Dispose();
+    public void Dispose()
+    {
+        _lock.Dispose();
+        _assertion?.Dispose();
+    }
 
     /// <summary>A client-credentials access token for the scope, reused until a minute before it expires.</summary>
     /// <param name="scope">The scope, for example <c>sangam.manage</c>.</param>
@@ -49,13 +55,25 @@ public sealed class SangamManagementClient : IDisposable
             }
 
             SangamOptions o = _options;
-            using FormUrlEncodedContent form = new(new Dictionary<string, string>
+            Dictionary<string, string> fields = new(StringComparer.Ordinal)
             {
                 ["grant_type"] = "client_credentials",
                 ["client_id"] = o.ClientId,
-                ["client_secret"] = o.ClientSecret ?? string.Empty,
                 ["scope"] = scope,
-            });
+            };
+
+            // rc.15: a key-signed assertion when the application signs in with a key, otherwise its secret.
+            if (_assertion is not null)
+            {
+                fields["client_assertion_type"] = SangamClientAssertion.AssertionType;
+                fields["client_assertion"] = _assertion.Create();
+            }
+            else
+            {
+                fields["client_secret"] = o.ClientSecret ?? string.Empty;
+            }
+
+            using FormUrlEncodedContent form = new(fields);
             using HttpResponseMessage response = await _http.CreateClient(HttpClientName).PostAsync(new Uri(o.Authority.TrimEnd('/') + "/connect/token"), form, cancellationToken).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
             using JsonDocument body = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false), cancellationToken: cancellationToken).ConfigureAwait(false);
