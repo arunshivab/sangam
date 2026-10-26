@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using OpenIddict.Abstractions;
+using OpenIddict.EntityFrameworkCore.Models;
 using Sangam.Identity.Application.Tenancy;
 using Sangam.Identity.Domain.Entities;
 using Sangam.Identity.Domain.Enums;
@@ -134,6 +136,104 @@ public sealed class RetentionSweepTests : IAsyncLifetime
             Assert.Equal(2, await db.GrievanceEntries.CountAsync());
         }
     }
+
+    [PostgresFact]
+    public async Task AChainOfMerges_IsForgotten_WhenTheLastSurvivorIsDeleted()
+    {
+        // rc.16: A was merged into B, and B later into C. Deleting C must not leave A answering "merged into" B, a closed
+        // account. A merge elsewhere (D into E) is untouched.
+        SangamUser a = TestUsers.New("a@chain.test", "+919876506011");
+        SangamUser b = TestUsers.New("b@chain.test", "+919876506012");
+        SangamUser c = TestUsers.New("c@chain.test", "+919876506013");
+        SangamUser d = TestUsers.New("d@chain.test", "+919876506014");
+        SangamUser e = TestUsers.New("e@chain.test", "+919876506015");
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            db.Users.AddRange(a, b, c, d, e);
+            db.AccountMergeRequests.AddRange(
+                Applied(b.Id, a.Id),
+                Applied(c.Id, b.Id),
+                Applied(e.Id, d.Id));
+            await db.SaveChangesAsync();
+        }
+
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            Assert.Equal(2, await AccountPurgeService.ForgetMergesAsync(db, [c.Id]));
+        }
+
+        await using SangamDbContext check = _pg.CreateContext();
+        AccountMergeRequest left = await check.AccountMergeRequests.SingleAsync();
+        Assert.Equal((e.Id, d.Id), (left.SurvivorUserId, left.ClosedUserId));
+    }
+
+    [PostgresFact]
+    public async Task FinishedSignInTokens_AreDeletedAfterThirtyDays_AndUsableOnesAreKept()
+    {
+        // rc.16 (decision of 26 Oct 2026): OpenIddict's rows were never deleted. Now a token that can no longer be used,
+        // and an authorization with nothing left attached, go once they are more than 30 days old.
+        DateTime now = DateTime.UtcNow;
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            OpenIddictEntityFrameworkCoreAuthorization ended = Authorization(OpenIddictConstants.Statuses.Revoked, now.AddDays(-40));
+            OpenIddictEntityFrameworkCoreAuthorization endedButRecentToken = Authorization(OpenIddictConstants.Statuses.Revoked, now.AddDays(-40));
+            OpenIddictEntityFrameworkCoreAuthorization valid = Authorization(OpenIddictConstants.Statuses.Valid, now.AddDays(-40));
+            db.AddRange(ended, endedButRecentToken, valid);
+            db.AddRange(
+                Token("revoked-old", OpenIddictConstants.Statuses.Revoked, now.AddDays(-31), now.AddDays(-17), valid),
+                Token("redeemed-old", OpenIddictConstants.Statuses.Redeemed, now.AddDays(-31), now.AddDays(-17), valid),
+                Token("expired-old", OpenIddictConstants.Statuses.Valid, now.AddDays(-31), now.AddDays(-17), valid),
+                Token("ended-authorization-old", OpenIddictConstants.Statuses.Valid, now.AddDays(-31), now.AddDays(10), ended),
+                Token("valid-old", OpenIddictConstants.Statuses.Valid, now.AddDays(-31), now.AddDays(10), valid),
+                Token("revoked-recent", OpenIddictConstants.Statuses.Revoked, now.AddDays(-29), now.AddDays(-15), endedButRecentToken));
+            await db.SaveChangesAsync();
+        }
+
+        using (IServiceScope scope = _provider.CreateScope())
+        {
+            (long tokens, long authorizations) = await AccountPurgeService.PruneTokensAsync(
+                scope.ServiceProvider.GetRequiredService<IOpenIddictTokenManager>(),
+                scope.ServiceProvider.GetRequiredService<IOpenIddictAuthorizationManager>(),
+                DateTimeOffset.UtcNow);
+            Assert.Equal((4L, 1L), (tokens, authorizations));
+        }
+
+        await using SangamDbContext check = _pg.CreateContext();
+        Assert.Equal(
+            ["revoked-recent", "valid-old"],
+            await check.Set<OpenIddictEntityFrameworkCoreToken>().OrderBy(t => t.ReferenceId).Select(t => t.ReferenceId!).ToListAsync());
+        Assert.Equal(2, await check.Set<OpenIddictEntityFrameworkCoreAuthorization>().CountAsync());
+    }
+
+    private static OpenIddictEntityFrameworkCoreAuthorization Authorization(string status, DateTime created) => new()
+    {
+        Status = status,
+        Subject = Guid.NewGuid().ToString("D"),
+        Type = OpenIddictConstants.AuthorizationTypes.Permanent,
+        CreationDate = created,
+    };
+
+    private static OpenIddictEntityFrameworkCoreToken Token(string name, string status, DateTime created, DateTime expires, OpenIddictEntityFrameworkCoreAuthorization authorization) => new()
+    {
+        ReferenceId = name,
+        Status = status,
+        Type = OpenIddictConstants.TokenTypeHints.RefreshToken,
+        Subject = authorization.Subject,
+        CreationDate = created,
+        ExpirationDate = expires,
+        Authorization = authorization,
+    };
+
+    private static AccountMergeRequest Applied(Guid survivor, Guid closed) => new()
+    {
+        Id = Guid.NewGuid(),
+        SurvivorUserId = survivor,
+        ClosedUserId = closed,
+        RequestedAt = Now.AddDays(-10),
+        EffectiveAt = Now.AddDays(-9),
+        CancelTokenHash = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N"),
+        AppliedAt = Now.AddDays(-9),
+    };
 
     private AccountMergeRequest Merge(Guid other, DateTimeOffset? cancelled = null, DateTimeOffset? applied = null) => new()
     {

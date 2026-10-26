@@ -18,8 +18,10 @@ FROM build AS bundle
 RUN dotnet tool restore
 RUN dotnet ef migrations bundle --project src/Sangam.Identity.Infrastructure --startup-project src/Sangam.Identity.Infrastructure -o /out/efbundle
 
-# Runs once per release with the schema owner's connection string, then exits:
-#   docker run --rm -e CONNECTION="..." sangam/migrator
+# Runs once per release with the schema owner's connection string, then exits. rc.16: scripts/deploy.sh passes it as
+# SANGAM_CONNECTION in an env file, which the migrations' design-time factory reads, so it never appears on a command
+# line (visible to every user in the server's process list); CONNECTION still works as before:
+#   docker run --rm --env-file <file with SANGAM_CONNECTION=...> sangam/migrator
 FROM mcr.microsoft.com/dotnet/aspnet:10.0@sha256:de0ee358cdd672f7017a003bed21e9ac9ed48a27c922a59b18175b6e82fa7fee AS runtime-base
 # Npgsql loads libgssapi_krb5 at start-up and logs an error when it is missing (V-03). R7: every build also takes the
 # Ubuntu security updates published since the base image (docs/security/dependency-scan.md).
@@ -31,7 +33,7 @@ RUN apt-get update \
 FROM runtime-base AS migrator
 COPY --from=bundle /out/efbundle /efbundle
 USER $APP_UID
-ENTRYPOINT ["sh", "-c", "exec /efbundle --connection \"$CONNECTION\""]
+ENTRYPOINT ["sh", "-c", "if [ -n \"$CONNECTION\" ]; then exec /efbundle --connection \"$CONNECTION\"; else exec /efbundle; fi"]
 
 FROM runtime-base AS app
 ARG PROJECT=Sangam.Identity.Server

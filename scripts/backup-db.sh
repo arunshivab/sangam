@@ -27,6 +27,8 @@ status() { printf '{"at":"%s","ok":%s,"detail":"%s"}\n' "$(date -u +%FT%TZ)" "$1
 trap 'status false "backup-db.sh failed at line $LINENO"' ERR
 KEEP_DAYS="${KEEP_DAYS:-14}"
 CONTAINER="${CONTAINER:-sangam-db-postgres-1}"
+# rc.16 (ASVS V2.10.2): the database administrator is sangam_dba, not "postgres".
+DB_ADMIN="${DB_ADMIN:-sangam_dba}"
 DATABASE="${DATABASE:-sangam_identity}"
 COMPOSE_DIR="${COMPOSE_DIR:-/opt/sangam/deploy/production}"
 AUDIT_ARCHIVE_DIR="${AUDIT_ARCHIVE_DIR:-/srv/sangam/audit-archive}"
@@ -38,7 +40,7 @@ stamp="$(date -u -d "$NOW" +%Y%m%dT%H%M%SZ)"
 
 # 1. The database.
 file="$BACKUP_DIR/${DATABASE}_${stamp}.dump"
-docker exec "$CONTAINER" pg_dump -U postgres -Fc "$DATABASE" > "$file"
+docker exec "$CONTAINER" pg_dump -U "$DB_ADMIN" -Fc "$DATABASE" > "$file"
 sha256sum "$file" > "$file.sha256"
 
 # 2. The day's logs from every Sangam container.
@@ -59,6 +61,7 @@ if compgen -G "$OFFSITE_TARGETS_DIR/*.env" > /dev/null; then
   until_date() { date -u -d "$NOW + $1" +%FT%TZ; }
   put() { # target-env key file lock-period
     local md5; md5="$(openssl dgst -md5 -binary "$3" | base64)"
+    # shellcheck source=/dev/null  # an off-site target's settings, written by the founder (see above)
     ( set -a; . "$1"; set +a
       aws s3api put-object --endpoint-url "$ENDPOINT" --region "${REGION:-auto}" --bucket "$BUCKET" --key "$2" --body "$3" \
         --content-md5 "$md5" --object-lock-mode COMPLIANCE --object-lock-retain-until-date "$(until_date "$4")" > /dev/null )

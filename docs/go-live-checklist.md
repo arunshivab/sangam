@@ -215,7 +215,8 @@ Checks:
       secret and a 32+ character subject key in `secrets/`, kept offline as well; the callback address registered; one
       real verification and one removal seen to work; `docker-compose.digilocker.yml` in the start command.
 - [ ] R5: the delivery worker (SCIM, webhooks, expiry) runs in the one identity container; do not scale the identity
-      service to two replicas until it is made to share the work (OI-047).
+      service to two replicas until it is made to share the work (OI-047). rc.16: a second identity server now refuses
+      to start (V1.11.2).
 
 ### Added by R6
 
@@ -413,7 +414,7 @@ ASVS Level 2 fixes, the vault-ready secret layer and the founder's decisions 1�
 - [ ] **Decision memo signed:** decisions 1–9 and the risk acceptance, signed copy kept offline; date written in the memo.
 - [ ] **Server hardening done** (`deploy/production/README.md` section 6): admin user, SSH keys only, no root or
       password sign-in, firewall (incoming 22/80/443; outgoing 443, 80 for revocation checks, DNS, Anjal's mail),
-      fail2ban, unattended security updates, secret files mode 600 in a root-only folder.
+      fail2ban, unattended security updates, secret files in a root-only folder (rc.16: files mode 644, folder 700).
 - [ ] **Key fingerprints:** the first production start records them (`security.key.recorded` in the audit); a
       planned rotation is started once with `Sangam__Keys__AcceptChanged=true`, then the setting removed.
 - [ ] **Host names:** each host's `AllowedHosts` lists its public name; a request carrying any other host name gets 400.
@@ -464,3 +465,36 @@ The founder's design review of 12 October 2026 (`docs/design/rc10-standards.md`)
       the last organisation administrator is kept, and both e-mails arrive (`OrganisationLeft`,
       `OrganisationMemberLeft`).
 - [ ] **Languages:** a native Hindi and Malayalam speaker reviews the new strings of the three reworked surfaces.
+
+## Added by rc.16 (v1.0.0-rc.16)
+
+Batches 2 and 3 of the ASVS round, with the founder's decisions of 26 October 2026:
+
+- [ ] **Database administrator (V2.10.2):** the database stack's superuser is `sangam_dba` (new volume), or on an older
+      volume `sangam_dba` was added and `postgres` set `NOLOGIN` (`deploy/production/README.md`, "Database").
+- [ ] **One role per host (V1.2.2):** `postgres/roles.sql` run once as `sangam_dba`; the five passwords set with
+      `\password`; the four files `secrets/ConnectionStrings__Sangam__identity`, `__portal`, `__admin` and `__partner`
+      each name their own role; `/etc/sangam/owner-connection` holds `sangam_owner`'s (root, mode 600). After the
+      migrator: `\dp client_assertion_uses` in `psql` shows rights for `sangam_identity_app` only.
+- [ ] **Sweeps on the identity server only:** portal, admin and partner have `Sangam__Maintenance__Enabled: "false"`
+      (in `docker-compose.yml`); their logs show no "Maintenance sweep" lines.
+- [ ] **Deploy with the script (V1.14.4, V14.1.1):** `sudo scripts/deploy.sh --check` passes, then
+      `sudo scripts/deploy.sh v1.0.0-rc.16` (with `--digilocker` and any other files in use);
+      `/srv/sangam/status/deploy.json` says `"ok":true`.
+- [ ] **Secret files (V2.10.3):** `secrets/` is root's with mode 700 and every secret root's with mode 644 (readable by
+      the containers' non-root user; the folder keeps other users out; the deploy script refuses otherwise); the VM's
+      disk is encrypted (V6.1.1, already listed).
+- [ ] **One identity server (V1.11.2):** the identity log says "This is the one identity server for its database".
+      Never start a second identity container against the same database.
+- [ ] **Error pages:** `https://id.sangamid.in/no-such-page`, and the same on the portal and partner console, show
+      Sangam's 404 page; with `?culture=hi-IN` and `?culture=ml-IN` it is in Hindi and Malayalam (Tamil shows English,
+      like the rest of Sangam until its catalogue is written). Native speakers review the new strings.
+- [ ] **Logos (V1.12.2):** logos are PNG only. Any application that uploaded an SVG before rc.16 shows Sangam's mark
+      until its owner uploads a PNG; tell those owners (none in production before go-live).
+- [ ] **Pull requests name a reason (V1.10.1):** in the branch ruleset, add `pr-description` to the required checks;
+      review who has access to the repository (Settings → Collaborators) and remove anyone who no longer needs it.
+- [ ] **Logs off the server (V1.7.2):** when a log receiver exists (syslog over TLS, port 6514), set it in
+      `docker-compose.logs.yml`, put its CA certificate in `secrets/log-receiver-ca.pem` and deploy with `--logs`.
+- [ ] **Old sign-in tokens:** after a day, the identity log's hourly sweep runs without error; tokens and
+      authorizations finished more than 30 days ago are gone (`select count(*) from openiddict_tokens where creation_date
+      < now() - interval '30 days' and status <> 'valid'` returns 0).

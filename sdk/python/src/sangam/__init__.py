@@ -11,7 +11,7 @@ from .tokens import InvalidToken, TokenVerifier, VerifiedToken
 from .web import SangamCore, SangamSettings
 from .webhooks import verify_webhook
 
-__version__ = "1.0.0rc15"
+__version__ = "1.0.0rc16"
 __all__ = [
     "AuditBuffer", "AuditConfig", "AuditEntry", "MASKED", "SCHEMA_VERSION", "build_audit_event", "uuid7", "validate_audit_event",
     "ClientKey", "ManagementClient", "SangamApiError",

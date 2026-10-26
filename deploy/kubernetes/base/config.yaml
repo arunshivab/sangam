@@ -33,6 +33,10 @@ metadata:
 data:
   Sangam__Issuer: https://id.sangamid.in
   Sangam__Monitoring__HostName: identity
+  # rc.16 (ASVS V1.11.2): the single-instance guard is off here because this layout runs two identity replicas. The
+  # sign-in rate limits are per replica, so each allows the full limit: two replicas allow twice as many attempts.
+  # Turn this on (or share the limits) before relying on the limits here (README, "Before production").
+  Sangam__SingleInstance__Enabled: "false"
   # Each replica evaluates; one at a time keeps the alert books (ClusterLock, R7).
   Sangam__Monitoring__Evaluate: "true"
   Sangam__Monitoring__ExpectedHosts: identity,portal,admin,partner

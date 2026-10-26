@@ -248,6 +248,15 @@ jobs:
       - name: Edge forwards paths unchanged (Caddy)
         run: bash tools/security/edge-path-check.sh caddy
 
+      # rc.16 (ASVS V1.14.4, V14.1.1): the production Compose files and Caddyfile are valid, and every secret they name
+      # is documented and none committed (scripts/deploy.sh runs the same files on the server).
+      - name: Production deployment files (Compose, Caddyfile, secrets)
+        run: bash tools/deploy/check-deploy-config.sh
+
+      # rc.16: the operations scripts the server runs.
+      - name: Shell scripts (shellcheck)
+        run: shellcheck --severity=warning scripts/deploy.sh scripts/backup-db.sh scripts/restore-drill.sh tools/deploy/check-deploy-config.sh
+
       # PR-33: the Kubernetes manifests render and match the Kubernetes schemas.
       - name: Kubernetes manifests (kustomize and kubeconform)
         run: |

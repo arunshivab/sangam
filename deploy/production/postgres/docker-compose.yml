@@ -17,19 +17,22 @@ services:
     shm_size: 256m
     pids_limit: 512
     environment:
-      POSTGRES_USER: postgres
+      # rc.16 (ASVS V2.10.2): the administrator is not the well-known "postgres". The name takes effect when the data
+      # volume is first created; on an existing volume, see README ("Database administrator").
+      POSTGRES_USER: sangam_dba
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
     secrets:
       - postgres_password
+    # rc.16: the development init script (a role with a known password and the test databases) is no longer mounted
+    # here. The database, its owner and one role per host are made once with roles.sql (README, "Database").
     volumes:
       - pgdata:/var/lib/postgresql
-      - ../../postgres/init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
     networks:
       - sangam-db
       # rc.9 (ASVS V1.14.1): the demo's separate network to the database.
       - sangam-demo-db
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U sangam_dba -d postgres"]
       interval: 10s
       timeout: 5s
       retries: 5

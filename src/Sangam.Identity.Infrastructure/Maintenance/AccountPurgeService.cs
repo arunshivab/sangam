@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using OpenIddict.Abstractions;
 using Sangam.Identity.Application.Abstractions;
 using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Entities;
@@ -15,7 +16,7 @@ namespace Sangam.Identity.Infrastructure.Maintenance;
 /// <summary>
 /// Hourly housekeeping: hard-deletes accounts whose 30-day grace period has passed, prunes
 /// session rows that have been revoked for more than 90 days, deletes short-lived records past their retention
-/// (rc.6, <see cref="RetentionSweep"/>), reminds applications' owners about old client secrets (rc.15,
+/// (rc.6, <see cref="RetentionSweep"/>), deletes finished sign-in tokens and authorizations (rc.16), reminds applications' owners about old client secrets (rc.15,
 /// <see cref="ClientSecretReminders"/>), and runs the audit archive (D-A).
 /// <para>
 /// A hard delete pseudonymises the user row — name, email, mobile and password hash are
@@ -27,6 +28,16 @@ public sealed partial class AccountPurgeService : BackgroundService
 {
     /// <summary>How long a revoked session row is kept before it is deleted.</summary>
     public static readonly TimeSpan SessionRetention = TimeSpan.FromDays(90);
+
+    /// <summary>
+    /// rc.16 (founder decision of 26 Oct 2026): a sign-in token or authorization that is no longer usable (revoked,
+    /// redeemed, expired, or whose authorization ended) is deleted once it was created this long ago. Refresh tokens last
+    /// 14 days, so a few weeks of finished tokens stay for looking into a problem; sign-ins themselves are in the audit log.
+    /// </summary>
+    public static readonly TimeSpan TokenRetention = TimeSpan.FromDays(30);
+
+    /// <summary>The longest chain of merges <see cref="ForgetMergesAsync"/> follows (as many as "merged into" follows).</summary>
+    private const int MaxMergeHops = 10;
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IClock _clock;
@@ -98,6 +109,8 @@ public sealed partial class AccountPurgeService : BackgroundService
         IAuditWriter audit = scope.ServiceProvider.GetRequiredService<IAuditWriter>();
         InactivityService inactivity = scope.ServiceProvider.GetRequiredService<InactivityService>();
         ClientSecretReminders secrets = scope.ServiceProvider.GetRequiredService<ClientSecretReminders>();
+        IOpenIddictTokenManager tokens = scope.ServiceProvider.GetRequiredService<IOpenIddictTokenManager>();
+        IOpenIddictAuthorizationManager authorizations = scope.ServiceProvider.GetRequiredService<IOpenIddictAuthorizationManager>();
         (int Accounts, int Sessions) result = (0, 0);
 
         // R7 (PR-33, OI-047): every host runs this service; one at a time sweeps, so no account is purged twice.
@@ -122,6 +135,7 @@ public sealed partial class AccountPurgeService : BackgroundService
                 }
 #pragma warning restore CA1031
                 result = await SweepAsync(db, audit, ct).ConfigureAwait(false);
+                await PruneTokensAsync(tokens, authorizations, _clock.UtcNow, ct).ConfigureAwait(false);
             },
             cancellationToken).ConfigureAwait(false);
         return result;
@@ -178,21 +192,59 @@ public sealed partial class AccountPurgeService : BackgroundService
     }
 
     /// <summary>
+    /// rc.16: deletes the sign-in tokens, then the authorizations, that can no longer be used and were created more than
+    /// <see cref="TokenRetention"/> ago. OpenIddict's own prune keeps anything still valid, whatever its age.
+    /// </summary>
+    /// <param name="tokens">OpenIddict's token manager.</param>
+    /// <param name="authorizations">OpenIddict's authorization manager.</param>
+    /// <param name="now">Current time.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    /// <returns>How many tokens and authorizations were deleted.</returns>
+    public static async Task<(long Tokens, long Authorizations)> PruneTokensAsync(IOpenIddictTokenManager tokens, IOpenIddictAuthorizationManager authorizations, DateTimeOffset now, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(tokens);
+        ArgumentNullException.ThrowIfNull(authorizations);
+        DateTimeOffset threshold = now - TokenRetention;
+
+        // Tokens first: an authorization with a token still attached is never pruned.
+        long removedTokens = await tokens.PruneAsync(threshold, cancellationToken).ConfigureAwait(false);
+        long removedAuthorizations = await authorizations.PruneAsync(threshold, cancellationToken).ConfigureAwait(false);
+        return (removedTokens, removedAuthorizations);
+    }
+
+    /// <summary>
     /// rc.8 (SGM-910): when an account that others were merged into is deleted, the applied merge records that point at it
     /// go too. They were kept only so a closed id could answer "merged into" this account; once it is deleted there is
     /// nothing to point to. Pending merges are left to the merge service, which cancels one whose account is gone.
+    /// <para>
+    /// rc.16: the whole chain goes. If A was merged into B and B later into C, deleting C removes B→C and then A→B, so A
+    /// no longer answers "merged into" the closed account B.
+    /// </para>
     /// </summary>
     /// <param name="db">Database.</param>
     /// <param name="deleted">The accounts being deleted.</param>
     /// <param name="cancellationToken">Cancellation.</param>
     /// <returns>How many records were deleted.</returns>
-    public static Task<int> ForgetMergesAsync(SangamDbContext db, IReadOnlyCollection<Guid> deleted, CancellationToken cancellationToken = default)
+    public static async Task<int> ForgetMergesAsync(SangamDbContext db, IReadOnlyCollection<Guid> deleted, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(db);
         ArgumentNullException.ThrowIfNull(deleted);
-        return db.AccountMergeRequests
-            .Where(r => r.AppliedAt != null && deleted.Contains(r.SurvivorUserId))
-            .ExecuteDeleteAsync(cancellationToken);
+        int removed = 0;
+        HashSet<Guid> seen = [.. deleted];
+        List<Guid> survivors = [.. seen];
+        for (int hop = 0; hop < MaxMergeHops && survivors.Count > 0; hop++)
+        {
+            List<Guid> closed = await db.AccountMergeRequests
+                .Where(r => r.AppliedAt != null && survivors.Contains(r.SurvivorUserId))
+                .Select(r => r.ClosedUserId)
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
+            removed += await db.AccountMergeRequests
+                .Where(r => r.AppliedAt != null && survivors.Contains(r.SurvivorUserId))
+                .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+            survivors = [.. closed.Where(seen.Add)];
+        }
+
+        return removed;
     }
 
     /// <summary>

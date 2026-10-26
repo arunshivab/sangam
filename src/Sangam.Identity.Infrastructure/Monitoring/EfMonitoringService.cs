@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Sangam.Identity.Application.Monitoring;
 using Sangam.Identity.Application.Security;
+using Sangam.Identity.Domain;
 using Sangam.Identity.Infrastructure.Customisation;
 using Sangam.Identity.Infrastructure.Messaging;
 using Sangam.Identity.Infrastructure.Persistence;
@@ -53,7 +54,7 @@ public sealed class EfMonitoringService : IMonitoringService
         SangamDbContext db = await _contexts.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         await using (db.ConfigureAwait(false))
         {
-            if (!await db.PlatformOperators.AnyAsync(o => o.UserId == operatorUserId && o.RevokedAt == null, cancellationToken).ConfigureAwait(false))
+            if (!OperatorRights.Allows(await Admin.OperatorAccess.RankAsync(db, operatorUserId, cancellationToken).ConfigureAwait(false), OperatorRight.ViewMonitoring))
             {
                 return null;
             }

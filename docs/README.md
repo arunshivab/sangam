@@ -97,6 +97,10 @@
   (`private_key_jwt`): the owner adds the public key on the partner console, the SDKs sign a fresh assertion for each
   request, and Sangam accepts each once. Owners are reminded to replace old secrets. See
   [`decisions/0018-application-keys-and-secret-reminders.md`](decisions/0018-application-keys-and-secret-reminders.md).
+- **Host roles, named rights, one identity server (rc.16).** Each host signs in to the database as its own role; every
+  operator action asks for a named right through one check; exactly one identity server runs per database; logos are
+  PNG only; a release is deployed with `scripts/deploy.sh`. See
+  [`decisions/0019-host-roles-operator-rights-one-identity-server.md`](decisions/0019-host-roles-operator-rights-one-identity-server.md).
 - **SDK family and the shared audit event (R6).** JavaScript/TypeScript (`@sangam/client`, `@sangam/node`,
   `@sangam/react`), Python (`sangam-client`, FastAPI and Flask) and Java (`sangam-client`, `sangam-spring`) SDKs next to
   .NET's `Sangam.Client`, with one sample each; the shared audit event schema 1.0 and its helper in every SDK; shared

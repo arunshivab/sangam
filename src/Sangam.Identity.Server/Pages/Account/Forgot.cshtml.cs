@@ -24,6 +24,10 @@ public sealed class ForgotModel : AuthPageModel
     [EmailAddress(ErrorMessage = "Enter a valid email address.")]
     public string Email { get; set; } = string.Empty;
 
+    /// <summary>rc.16: the reset page sent the person back because their reset had expired.</summary>
+    [BindProperty(SupportsGet = true, Name = "expired")]
+    public bool Expired { get; set; }
+
     /// <summary>Renders the form.</summary>
     public void OnGet()
     {

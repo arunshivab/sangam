@@ -7,6 +7,10 @@
 <section class="sg-card">
   <h1 class="sg-card-title">@L["Reset your password"]</h1>
   <p class="sg-card-body">@L["Enter the email you registered with. If an account exists, we will send a reset code."]</p>
+  @if (Model.Expired)
+  {
+    <partial name="_Banner" model="@(("info", L["That reset has expired. Ask for a new code below."].Value))" />
+  }
 
   <form method="post" novalidate>
     <partial name="_Antibot" />

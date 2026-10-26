@@ -8,6 +8,7 @@ using Sangam.Identity.Application.Grievances;
 using Sangam.Identity.Domain;
 using Sangam.Identity.Domain.Entities;
 using Sangam.Identity.Domain.Enums;
+using Sangam.Identity.Infrastructure.Admin;
 using Sangam.Identity.Infrastructure.Persistence;
 using Sangam.Shared;
 
@@ -43,7 +44,7 @@ public sealed class EfGrievanceService : IGrievanceService
     /// <inheritdoc />
     public async Task<IReadOnlyList<GrievanceRow>?> ListAsync(Guid operatorUserId, bool openOnly, CancellationToken cancellationToken = default)
     {
-        if (await RoleAsync(operatorUserId, cancellationToken).ConfigureAwait(false) is null)
+        if (!OperatorRights.Allows(await RoleAsync(operatorUserId, cancellationToken).ConfigureAwait(false), OperatorRight.ReadGrievances))
         {
             return null;
         }
@@ -67,7 +68,7 @@ public sealed class EfGrievanceService : IGrievanceService
     public async Task<GrievanceDetail?> GetAsync(Guid operatorUserId, Guid id, CancellationToken cancellationToken = default)
     {
         PlatformRole? role = await RoleAsync(operatorUserId, cancellationToken).ConfigureAwait(false);
-        if (role is null)
+        if (!OperatorRights.Allows(role, OperatorRight.ReadGrievances))
         {
             return null;
         }
@@ -93,7 +94,7 @@ public sealed class EfGrievanceService : IGrievanceService
             g.Summary,
             g.Resolution,
             [.. g.Entries.OrderBy(e => e.At).ThenBy(e => e.Id).Select(e => new GrievanceStep(e.At, names.GetValueOrDefault(e.OperatorUserId, "—"), e.Kind, e.Text))],
-            role >= PlatformRole.Support);
+            OperatorRights.Allows(role, OperatorRight.ActOnGrievances));
     }
 
     /// <inheritdoc />
@@ -313,14 +314,13 @@ public sealed class EfGrievanceService : IGrievanceService
         PlatformRole? role = await RoleAsync(operatorUserId, cancellationToken).ConfigureAwait(false);
         return role is null
             ? AdminResult.Refused("You do not have console access.")
-            : role < PlatformRole.Support ? AdminResult.Refused($"That needs {PlatformRanks.Label(PlatformRole.Support)} access.") : null;
+            : !OperatorRights.Allows(role, OperatorRight.ActOnGrievances)
+                ? AdminResult.Refused($"That needs {PlatformRanks.Label(OperatorRights.LowestRank(OperatorRight.ActOnGrievances))} access.")
+                : null;
     }
 
     private Task<PlatformRole?> RoleAsync(Guid operatorUserId, CancellationToken cancellationToken)
-        => _db.PlatformOperators.AsNoTracking()
-            .Where(o => o.UserId == operatorUserId && o.RevokedAt == null)
-            .Select(o => (PlatformRole?)o.Role)
-            .FirstOrDefaultAsync(cancellationToken);
+        => OperatorAccess.RankAsync(_db, operatorUserId, cancellationToken);
 
     private Task AuditAsync(string action, Guid operatorUserId, Grievance g, string? ipAddress, CancellationToken cancellationToken, params (string Key, string Value)[] extra)
     {

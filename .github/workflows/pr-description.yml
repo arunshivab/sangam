@@ -13,6 +13,9 @@ jobs:
   # rc.8 (decision 6, SGM-913): every pull request names its release, and the defects (DEF-nnn), policies (SGM-nnn) or
   # ASVS requirements it answers, on a line of the description starting "Release:". The body is passed through the
   # environment, never pasted into the script, so a description cannot run commands.
+  # rc.16 (ASVS V1.10.1, founder decision of 26 Oct 2026): "Answers: none" is no longer enough. Every change names at
+  # least one reason it was made: a GitHub issue (#nn), an open item (OI-nnn), a policy (SGM-nnn), a defect (DEF-nnn)
+  # or an ASVS requirement. "Release: none" (a change that ships in no release) stays allowed.
   pr-description:
     name: pr-description
     # Dependabot's own pull requests are skipped (a skipped check counts as passed); their description is generated.
@@ -28,8 +31,8 @@ jobs:
             echo "::error::The description needs a line such as 'Release: 1.0.0-rc.15 · Answers: DEF-023, SGM-913, ASVS V7.2.2' (see .github/PULL_REQUEST_TEMPLATE.md)."
             exit 1
           fi
-          if ! printf '%s' "$line" | grep -Eq '(DEF-[0-9]{3}|SGM-[0-9]{3}|V[0-9]+\.[0-9]+\.[0-9]+|none)'; then
-            echo "::error::The Release line must name at least one DEF-nnn, SGM-nnn or ASVS requirement, or say 'none'."
+          if ! printf '%s' "$line" | grep -Eq '(#[0-9]+|DEF-[0-9]{3}|SGM-[0-9]{3}|OI-[0-9]{3}|V[0-9]+\.[0-9]+\.[0-9]+)\b'; then
+            echo "::error::The Release line must name why the change was made: at least one issue (#nn), OI-nnn, SGM-nnn, DEF-nnn or ASVS requirement (V1.10.1)."
             exit 1
           fi
           echo "$line"

@@ -14,7 +14,7 @@ public sealed class BrandingAsset
     /// <summary>The application or organisation; null for the platform.</summary>
     public Guid? ScopeId { get; set; }
 
-    /// <summary><c>image/png</c> or <c>image/svg+xml</c>.</summary>
+    /// <summary><c>image/png</c> (rc.16; an SVG kept from before is no longer served).</summary>
     public string ContentType { get; set; } = string.Empty;
 
     /// <summary>The image.</summary>

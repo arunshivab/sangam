@@ -29,6 +29,24 @@ public sealed class PublicPagesTests
     }
 
     [Fact]
+    public async Task AnAddressThatDoesNotExist_ShowsTheNotFoundPage_ButAnApiAnswerStaysAsItIs()
+    {
+        // rc.16: a browser gets Sangam's 404 page; a machine asking the API gets no HTML.
+        using HttpClient client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        using HttpRequestMessage page = new(HttpMethod.Get, new Uri("/no-such-page", UriKind.Relative));
+        page.Headers.Accept.ParseAdd("text/html");
+        using HttpResponseMessage response = await client.SendAsync(page);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("text/html", response.Content.Headers.ContentType?.MediaType);
+        Assert.Contains("This page is not here", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+
+        using HttpRequestMessage api = new(HttpMethod.Get, new Uri("/api/v1/no-such-thing", UriKind.Relative));
+        api.Headers.Accept.ParseAdd("text/html");
+        using HttpResponseMessage answer = await client.SendAsync(api);
+        Assert.DoesNotContain("This page is not here", await answer.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Terms_SayTheyArePending_UntilAFileIsConfigured_ThenShowIt()
     {
         using HttpClient pending = _factory.CreateClient();

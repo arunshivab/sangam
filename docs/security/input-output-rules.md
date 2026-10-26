@@ -37,7 +37,7 @@ them.*
 | Application attributes | Key: lower-case identifier; label: refused when it looks like health data; value: by the definition's type and length | Only to the application that defined it, and to the person | SGM-910 section 4: no health data |
 | Organisation and role codes | Lower-case identifier, fixed length | Scoped to the calling application | — |
 | Redirect and webhook addresses | Absolute https URL, no user info or fragment; exact match for redirects; private networks refused for outbound | — | OAuth 2.0 security BCP |
-| Uploaded logos | PNG or SVG, checked by content, not name; an SVG must be only a picture (no script, event handlers, embedded HTML, external references or entities); size limit; virus scan | Served with a strict content policy | V12.1–V12.4 |
+| Uploaded logos | PNG only (rc.16), checked by content, not name (signature and header chunk); SVG refused; size limit; virus scan | Served with a strict content policy | V12.1–V12.4 |
 | SAML requests | Hardened XML reader; signature and issuer checked; identifiers checked before XPath | Signed assertions with a pairwise id | — |
 | DigiLocker answers | Only name, date of birth, gender kept; the id hashed at once | Never output; the id never shown | SGM-910 section 4: no document numbers |
 | Grievances | Text up to the length limit | To the grievance officer and the person | DPDP Act section 13 |

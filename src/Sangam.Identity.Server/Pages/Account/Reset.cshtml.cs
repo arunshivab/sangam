@@ -20,11 +20,11 @@ public sealed class ResetModel : AuthPageModel
         _accounts = accounts ?? throw new ArgumentNullException(nameof(accounts));
     }
 
-    /// <summary>Email the code went to (from the pending cookie, then the hidden field).</summary>
-    [BindProperty]
-    [Required]
-    [EmailAddress]
-    public string Email { get; set; } = string.Empty;
+    /// <summary>
+    /// Email the code went to. rc.16 (ASVS V8.1.3): always from the protected pending cookie, never from the form, so the
+    /// page carries no hidden field a browser could change.
+    /// </summary>
+    public string Email { get; private set; } = string.Empty;
 
     /// <summary>Reset code.</summary>
     [BindProperty]
@@ -63,6 +63,13 @@ public sealed class ResetModel : AuthPageModel
     /// <summary>Sets the new password when the code is valid.</summary>
     public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)
     {
+        PendingFlow? pending = await SangamAuthentication.ReadPendingAsync(HttpContext, SangamAuthentication.Pending.PasswordReset);
+        if (pending?.Email is null)
+        {
+            return RedirectToPage("/Account/Forgot", new { expired = true });
+        }
+
+        Email = pending.Email;
         Strength = PasswordStrength.Evaluate(NewPassword);
 
         if (!string.Equals(NewPassword, ConfirmPassword, StringComparison.Ordinal))

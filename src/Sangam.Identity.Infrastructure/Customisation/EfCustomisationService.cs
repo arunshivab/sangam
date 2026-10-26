@@ -83,12 +83,17 @@ public sealed class EfCustomisationService : ICustomisationService, IMessageTemp
             welcome ??= levels.Select(l => (string?)l["welcome"]?[lang]).FirstOrDefault(v => !string.IsNullOrWhiteSpace(v));
         }
 
-        string? logo = First("logo");
+        // rc.16 (ASVS V1.12.2): the nearest level's logo that can be served (a PNG); an SVG kept from before rc.16 is passed
+        // over, so the level above shows through instead of a broken image.
+        List<Guid> logoIds = [.. levels.Select(l => Guid.TryParse((string?)l["logo"], out Guid id) ? id : Guid.Empty).Where(id => id != Guid.Empty)];
         string? logoUrl = null;
-        if (Guid.TryParse(logo, out Guid assetId))
+        if (logoIds.Count > 0)
         {
-            string? hash = await _db.BrandingAssets.AsNoTracking().Where(a => a.Id == assetId).Select(a => a.Sha256).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
-            logoUrl = hash is null ? null : LogoUrl(assetId, hash);
+            Dictionary<Guid, string> served = await _db.BrandingAssets.AsNoTracking()
+                .Where(a => logoIds.Contains(a.Id) && a.ContentType == LogoCheck.ContentType)
+                .ToDictionaryAsync(a => a.Id, a => a.Sha256, cancellationToken).ConfigureAwait(false);
+            Guid nearest = logoIds.FirstOrDefault(served.ContainsKey);
+            logoUrl = nearest == Guid.Empty ? null : LogoUrl(nearest, served[nearest]);
         }
 
         if (levels.Count == 0 && logoUrl is null)
@@ -103,9 +108,14 @@ public sealed class EfCustomisationService : ICustomisationService, IMessageTemp
     public Task<BrandingLogo?> GetLogoAsync(Guid assetId, CancellationToken cancellationToken = default)
         => GatedAsync(() => GetLogoAsyncCore(assetId, cancellationToken), cancellationToken);
 
+    // rc.16 (ASVS V1.12.2): only a PNG is ever served. An SVG kept from before rc.16 is left in place but not served, so the
+    // page falls back to Sangam's mark until a PNG is uploaded.
     private async Task<BrandingLogo?> GetLogoAsyncCore(Guid assetId, CancellationToken cancellationToken)
-        => await _db.BrandingAssets.AsNoTracking().Where(a => a.Id == assetId)
+    {
+        BrandingLogo? logo = await _db.BrandingAssets.AsNoTracking().Where(a => a.Id == assetId)
             .Select(a => new BrandingLogo(a.ContentType, a.Content, a.Sha256)).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        return logo is not null && logo.ContentType == LogoCheck.ContentType && LogoCheck.IsPng(logo.Content) ? logo : null;
+    }
 
     /// <inheritdoc />
     public Task<BrandingSettings?> GetBrandingAsync(Guid userId, CustomisationScope scope, Guid? scopeId, CancellationToken cancellationToken = default)
@@ -135,7 +145,8 @@ public sealed class EfCustomisationService : ICustomisationService, IMessageTemp
         string? logoUrl = null;
         if (Guid.TryParse((string?)json["logo"], out Guid assetId))
         {
-            string? hash = await _db.BrandingAssets.AsNoTracking().Where(a => a.Id == assetId).Select(a => a.Sha256).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+            // rc.16: an SVG kept from before rc.16 is not served, so the editor shows no logo until a PNG is uploaded.
+            string? hash = await _db.BrandingAssets.AsNoTracking().Where(a => a.Id == assetId && a.ContentType == LogoCheck.ContentType).Select(a => a.Sha256).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
             logoUrl = hash is null ? null : LogoUrl(assetId, hash);
         }
 
@@ -247,7 +258,8 @@ public sealed class EfCustomisationService : ICustomisationService, IMessageTemp
             return CustomisationResult.Refused("The virus scanner is not available just now, so the logo was not saved. Try again in a few minutes.");
         }
 
-        string type = LogoCheck.IsPng(content) ? "image/png" : "image/svg+xml";
+        // rc.16: only a PNG passes LogoCheck, so every logo is stored as one.
+        string type = LogoCheck.ContentType;
         BrandingAsset asset = new()
         {
             Id = Guid.NewGuid(),
@@ -676,10 +688,8 @@ public sealed class EfCustomisationService : ICustomisationService, IMessageTemp
         switch (scope)
         {
             case CustomisationScope.Platform:
-                // Ranks are stored as text, so they are compared here rather than in SQL (where "viewer" > "app_manager").
-                PlatformRole? rank = await _db.PlatformOperators.AsNoTracking().Where(o => o.UserId == userId && o.RevokedAt == null)
-                    .Select(o => (PlatformRole?)o.Role).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
-                return scopeId is null && rank >= PlatformRole.AppManager;
+                // rc.16: by named permission, through the one operator check (ranks are compared in code, not SQL).
+                return scopeId is null && OperatorRights.Allows(await Admin.OperatorAccess.RankAsync(_db, userId, cancellationToken).ConfigureAwait(false), OperatorRight.EditPlatformBranding);
             case CustomisationScope.App when scopeId is Guid app:
                 return await IsAppAdminAsync(userId, app, cancellationToken).ConfigureAwait(false);
             case CustomisationScope.Organisation when scopeId is Guid org:

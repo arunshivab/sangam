@@ -6,6 +6,72 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0-rc.16] - sixteenth release candidate
+
+Sangam 1.0.0-rc.16 is the second and third batches of the ASVS Level 2 follow-up, on the founder's decisions of
+26 October 2026 (ADR-0019), and the last code before the pilot on the E2E server.
+
+### Database: one role per host (ADR-0019, ASVS V1.2.2, V2.10.2)
+- **Each host signs in to PostgreSQL as its own role** (`sangam_identity_app`, `sangam_portal_app`, `sangam_admin_app`,
+  `sangam_partner_app`), each with its own password, connection limit and `application_name`. No host may make tables or
+  write the migration history; only the identity server may delete archived audit events or use its own sign-in tables
+  (`client_assertion_uses`, `saml_requests`). `sangam_owner` owns the schema and only the migrator uses it. The roles are
+  made once with `deploy/production/postgres/roles.sql`; the rights come with migration `Rc16HostRoles` (no schema change;
+  nothing happens where the roles do not exist) and reach later tables by default privileges.
+- **Four connection strings** replace the one: `secrets/ConnectionStrings__Sangam__identity`, `__portal`, `__admin`,
+  `__partner`. The maintenance sweep, the audit archive and the reset applier run on the identity server only.
+- **The database administrator is `sangam_dba`**, not `postgres`; the backup and restore scripts use it
+  (`DB_ADMIN`). The development init script (a role with a known password) is no longer mounted in production.
+
+### Operator rights (ADR-0019, ASVS V1.4.4, V1.4.5)
+- Every operator action asks for a **named right** (`OperatorRight`, 21 of them) through **one check**,
+  `OperatorAccess`, which audits every refusal with the operation, the right and the rank it needs. Ranks give the
+  rights, so who may do what is unchanged; `docs/authority-model.md` lists every right. A test fails the build when a
+  public service method that acts for an operator does not go through `OperatorAccess`.
+
+### One identity server (ADR-0019, ASVS V1.11.2)
+- The identity server holds a PostgreSQL lock while it runs, on a connection of its own; **a second one against the same
+  database refuses to start**, and one that loses its lock to another stops itself. The sign-in rate limits are counted
+  in memory, so two would allow twice the attempts. Off in Development and Testing, and in the two-replica Kubernetes
+  layout (`Sangam:SingleInstance:Enabled`).
+
+### Logos are PNG only (ADR-0019, ASVS V1.12.2, V5.2.7)
+- An uploaded logo must be a PNG (its signature and header chunk are checked); an SVG is refused, however plain, and one
+  stored before rc.16 is no longer served (the page shows Sangam's mark until a PNG is uploaded).
+
+### Pages and requests
+- **404 and error pages on all four hosts**, in Sangam's look and the visitor's language (English, Hindi, Malayalam):
+  "This page is not here" for an address that does not exist, and "Something went wrong" with a **reference to quote**
+  for a failure (ASVS V7.4.1), never the error itself. API and protocol endpoints keep their own answers.
+- **Request parameters reviewed** (ASVS V8.1.3, `docs/security/request-parameters.md`): every cookie, hidden field and
+  custom header. The password-reset page now takes the address from its protected cookie instead of a hidden field.
+
+### Housekeeping
+- **Old sign-in tokens are deleted**: the hourly sweep removes OpenIddict tokens and authorizations that can no longer
+  be used, once they are 30 days old (refresh tokens last 14). Until now they were never deleted.
+- **Merges in a chain are forgotten together**: when the last account of a chain of merges (A into B, B into C) is
+  deleted, every applied merge record of the chain goes, so A no longer answers "merged into" a closed account.
+
+### Deployment (ASVS V1.14.4, V14.1.1, V2.10.3, V1.7.2)
+- **`scripts/deploy.sh <tag>`** deploys a release: it checks first (the secrets folder root's with mode 700 and every
+  secret root's and not writable by others, 644; none missing or empty; no `SET-` placeholder left; the owner's
+  connection file; a healthy database) and changes nothing if a check fails; then it backs up, builds from the tag,
+  migrates as the owner (its connection string never on a command line), checks each host role's rights, starts the
+  stack, waits for every host to be healthy and ready, and records the result for the monitoring page. `--check` runs
+  the checks alone.
+- **CI checks the deployment files** (`tools/deploy/check-deploy-config.sh`, in the `security` job): every Compose file
+  and overlay, the Caddyfile (by Caddy itself), and that every secret a stack uses is documented and none committed;
+  shellcheck for the server scripts.
+- **Logs off the server, ready**: `docker-compose.logs.yml` sends every container's log, as it is written, to a syslog
+  receiver over TLS (`deploy.sh --logs`); off until a receiver exists.
+
+### Pull requests (ASVS V1.10.1)
+- The `pr-description` check refuses "Answers: none": every pull request names at least one reason for the change, an
+  issue (#nn), OI, DEF, SGM or ASVS id.
+
+### Versions
+- Every package moves to 1.0.0-rc.16 (.NET, JavaScript, Python, Java); the SDKs themselves do not change.
+
 ## [1.0.0-rc.15] - fifteenth release candidate
 
 Sangam 1.0.0-rc.15 is the first batch of the ASVS Level 2 follow-up, on the founder's decisions of 22 October 2026.

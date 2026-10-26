@@ -15,6 +15,7 @@ penetration test: those are commissioned by the founder.
 | [input-output-rules.md](input-output-rules.md) | Input and output rules by kind of data, content and law (rc.8). |
 | [log-content-policy.md](log-content-policy.md) | What the logs hold and never hold (rc.8). |
 | [cache-and-parameters-review.md](cache-and-parameters-review.md) | Copies of personal data outside the database, and data in URLs (rc.8). |
+| [request-parameters.md](request-parameters.md) | Every cookie, hidden form field and custom header, and what checks each on the way back (rc.16, V8.1.3). |
 | [key-compromise.md](key-compromise.md) | Replacing each key and re-encrypting what it protected after a compromise (rc.8). |
 | [decision-memo-rc8.md](decision-memo-rc8.md) | The founder's decisions 1–9 and the risk acceptance, for signature (rc.8). |
 
@@ -23,7 +24,8 @@ penetration test: those are commissioned by the founder.
 | Check | When | Fails on | Required to merge |
 |---|---|---|---|
 | `security` (CI) | every pull request and push to main | a high or critical finding in a dependency, the repository or the identity image | yes |
-| `pr-description` (`pr-description.yml`, rc.8) | every pull request, and when its description is edited | a description without a `Release:` line naming a DEF, SGM or ASVS item (decision 6) | to be added to the ruleset by the founder |
+| `pr-description` (`pr-description.yml`, rc.8) | every pull request, and when its description is edited | a description without a `Release:` line naming a DEF, SGM or ASVS item (decision 6); rc.16 (V1.10.1): an issue (#nn) or OI id counts too, and "none" no longer does | to be added to the ruleset by the founder |
+| Deployment files (`tools/deploy/check-deploy-config.sh`, in `security`, rc.16) | every pull request and push to main | an invalid Compose file or Caddyfile, a secret a stack uses but `secrets/README.md` does not describe, or a committed secret; shellcheck warnings in the server scripts | yes (part of `security`) |
 | `migrations` (CI) | every pull request and push to main | an entity change without its migration, in Sangam's database or the imagiQa sample's | yes |
 | CodeQL (`codeql.yml`, `security-extended` since rc.4) | every pull request, push to main, and weekly | through the ruleset's "Require code scanning results": a high or critical security alert | yes |
 | Code-quality review (`tools/security/codeql-quality.sh`, rc.4) | once per release, by hand | nothing by itself: each finding is fixed or recorded below | before each release |

@@ -92,7 +92,7 @@ public sealed partial class EfAccountRecoveryService : IAccountRecoveryService
     /// <inheritdoc />
     public async Task<IReadOnlyList<RecoveryReview>> WaitingAsync(Guid operatorUserId, CancellationToken cancellationToken = default)
     {
-        if (await RoleAsync(operatorUserId, cancellationToken).ConfigureAwait(false) is not (PlatformRole.Support or PlatformRole.Owner))
+        if (!OperatorRights.Allows(await OperatorAccess.RankAsync(_db, operatorUserId, cancellationToken).ConfigureAwait(false), OperatorRight.ReviewRecoveries))
         {
             return [];
         }
@@ -133,8 +133,8 @@ public sealed partial class EfAccountRecoveryService : IAccountRecoveryService
     private async Task<AdminResult> DecideAsync(Guid operatorUserId, Guid requestId, string reason, string? ipAddress, bool approve, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(reason);
-        PlatformRole? role = await RoleAsync(operatorUserId, cancellationToken).ConfigureAwait(false);
-        if (role is not (PlatformRole.Support or PlatformRole.Owner))
+        PlatformRole? role = await OperatorAccess.RankAsync(_db, operatorUserId, cancellationToken).ConfigureAwait(false);
+        if (!OperatorRights.Allows(role, OperatorRight.ReviewRecoveries))
         {
             return AdminResult.Refused("Reviewing a recovery needs Support or Owner access.");
         }
@@ -151,7 +151,7 @@ public sealed partial class EfAccountRecoveryService : IAccountRecoveryService
             return AdminResult.Refused("You cannot review the recovery of your own account. Ask another owner.");
         }
 
-        if (request.Privileged && role != PlatformRole.Owner)
+        if (request.Privileged && !OperatorRights.Allows(role, OperatorRight.ReviewPrivilegedRecoveries))
         {
             return AdminResult.Refused("Only an Owner can review the recovery of a privileged account.");
         }
@@ -179,12 +179,6 @@ public sealed partial class EfAccountRecoveryService : IAccountRecoveryService
             ? AdminResult.Ok("Approved. The waiting period has started and the person has been told, with a link to cancel.")
             : AdminResult.Ok("Refused. The person has been told they may create a new account.");
     }
-
-    private async Task<PlatformRole?> RoleAsync(Guid operatorUserId, CancellationToken cancellationToken)
-        => await _db.PlatformOperators.AsNoTracking()
-            .Where(o => o.UserId == operatorUserId && o.RevokedAt == null)
-            .Select(o => (PlatformRole?)o.Role)
-            .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
 
     // Eight or more digits in a row look like an identity-document number, which must never be recorded.
     [GeneratedRegex("[0-9]{8,}")]

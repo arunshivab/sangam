@@ -226,7 +226,7 @@
         "type": "Project",
         "dependencies": {
           "Microsoft.Extensions.Identity.Stores": "[10.0.14, )",
-          "Sangam.Shared": "[1.0.0-rc.15, )"
+          "Sangam.Shared": "[1.0.0-rc.16, )"
         }
       },
       "sangam.shared": {

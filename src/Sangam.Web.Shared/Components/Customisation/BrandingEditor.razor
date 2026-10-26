@@ -24,8 +24,8 @@
         <p><img src="@(IdentityBaseUrl + logo)" alt="@L["Current logo"]" style="height:40px;max-width:200px;object-fit:contain;background:#fff;padding:4px;border-radius:4px" /></p>
         <button type="button" class="sg-btn sg-btn--ghost" @onclick="RemoveLogoAsync" disabled="@_busy">@L["Remove logo"]</button>
       }
-      <InputFile accept="image/png,image/svg+xml" OnChange="UploadAsync" disabled="@_busy" aria-label="@L["Upload a logo"]" />
-      <span class="sg-muted">@L["PNG or SVG, at most 200 KB. An SVG must be a plain picture: no scripts or outside links."]</span>
+      <InputFile accept="image/png" OnChange="UploadAsync" disabled="@_busy" aria-label="@L["Upload a logo"]" />
+      <span class="sg-muted">@L["A PNG image, at most 200 KB."]</span>
     </div>
 
     <div class="sg-form-row">

@@ -38,6 +38,38 @@ to it. They cannot reach inside that application's tenancy to change a role or a
 
 Every operator must have an authenticator app, whatever their rank. See ADR-0005.
 
+### Named rights (rc.16, ASVS V1.4.4 and V1.4.5)
+
+The console's code never compares ranks. Each action asks for one named right through a single check,
+`OperatorAccess` (Infrastructure/Admin), which writes every refusal to the audit log as `access.denied` with the
+operation, the right and the rank it needs. Ranks are how rights are given (`OperatorRights` in the domain); they stay
+cumulative, so who may do what is exactly the table above. A test (`OperatorAccessTests`) fails the build when a public
+service method that acts for an operator does not go through `OperatorAccess`, and when a right is missing here.
+
+| Right | What it allows | Viewer | AppManager | Support | Owner |
+|---|---|:--:|:--:|:--:|:--:|
+| `UseConsole` | Use the console: its pages, the work queue, the grievance list | ✓ | ✓ | ✓ | ✓ |
+| `SearchUsers` | Search and list people | ✓ | ✓ | ✓ | ✓ |
+| `OpenUserRecord` | Open a person's record (audited; the person sees it) | ✓ | ✓ | ✓ | ✓ |
+| `ListApplications` | List applications (and SAML service providers) | ✓ | ✓ | ✓ | ✓ |
+| `ReadGrievances` | Read the grievance log | ✓ | ✓ | ✓ | ✓ |
+| `ViewMonitoring` | See the monitoring page | ✓ | ✓ | ✓ | ✓ |
+| `ManageApplications` | Enable or disable a partner's application, its logout addresses and DigiLocker exception; give it an owner | — | ✓ | ✓ | ✓ |
+| `ManageSamlProviders` | Register and change SAML service providers | — | ✓ | ✓ | ✓ |
+| `EditPlatformBranding` | Change Sangam's own branding and messages | — | ✓ | ✓ | ✓ |
+| `SuspendAccounts` | Suspend or reinstate an account | — | — | ✓ | ✓ |
+| `SignOutEverywhere` | Sign a person out everywhere | — | — | ✓ | ✓ |
+| `HoldDeletion` | Place or clear a deletion hold | — | — | ✓ | ✓ |
+| `ReadAuditTrail` | Read a person's audit trail | — | — | ✓ | ✓ |
+| `ReviewRecoveries` | Review an account recovery waiting for a decision | — | — | ✓ | ✓ |
+| `ActOnGrievances` | Log, acknowledge, note and close grievances | — | — | ✓ | ✓ |
+| `WithdrawTwoStepReset` | Withdraw a two-step reset before it takes effect | — | — | ✓ | ✓ |
+| `SeeOverview` | See the platform overview | — | — | — | ✓ |
+| `DeleteAccounts` | Delete an account at once | — | — | — | ✓ |
+| `ManageOperators` | List, grant and revoke console access | — | — | — | ✓ |
+| `ApplyTwoStepResetNow` | Apply a two-step reset without its waiting period | — | — | — | ✓ |
+| `ReviewPrivilegedRecoveries` | Review the recovery of a privileged account | — | — | — | ✓ |
+
 ## Application plane
 
 On the partner console (`partners.sangamid.in`) for people, the management API for code.

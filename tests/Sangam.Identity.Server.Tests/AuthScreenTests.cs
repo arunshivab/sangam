@@ -237,6 +237,26 @@ public sealed partial class AuthScreenTests
         Assert.Equal("/account", lLoc);
     }
 
+    [Fact]
+    public async Task AResetPosted_AfterItsCookieExpired_GoesBackToForgot_AndSaysWhy()
+    {
+        // rc.16 (ASVS V8.1.3): the address comes only from the protected pending cookie; without it (expired), the post
+        // never reaches the reset and the person is told to ask for a new code.
+        using BrowserSession s = new(_factory);
+        (_, string forgot) = await s.GetAsync("/forgot");
+        (HttpStatusCode status, string? location, _) = await s.SubmitAsync("/reset", forgot, new Dictionary<string, string>
+        {
+            ["Email"] = "someone@example.in",
+            ["Code"] = "123456",
+            ["NewPassword"] = "Brand-New-Password-2026!",
+            ["ConfirmPassword"] = "Brand-New-Password-2026!",
+        });
+        Assert.Equal(HttpStatusCode.Found, status);
+        Assert.StartsWith("/forgot?expired=", location, StringComparison.OrdinalIgnoreCase);
+        (_, string notice) = await s.GetAsync(location!);
+        Assert.Contains("That reset has expired. Ask for a new code below.", System.Net.WebUtility.HtmlDecode(notice), StringComparison.Ordinal);
+    }
+
     [PostgresFact]
     public async Task ChangePassword_AsksForTheCurrentOne_KeepsThisDeviceSignedIn_AndTellsThePerson()
     {

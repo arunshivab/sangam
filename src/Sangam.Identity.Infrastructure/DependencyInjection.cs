@@ -158,6 +158,8 @@ public static class DependencyInjection
         services.AddScoped<Application.Customisation.ICustomisationService>(sp => sp.GetRequiredService<Customisation.EfCustomisationService>());
         services.AddScoped<Application.Customisation.IMessageTemplates>(sp => sp.GetRequiredService<Customisation.EfCustomisationService>());
         services.AddSingleton<ISignatureTokenIssuer, UnavailableSignatureTokenIssuer>();
+        // rc.16 (ASVS V1.4.4): the one check of an operator's rights, by named permission.
+        services.AddScoped<OperatorAccess>();
         services.AddScoped<IAdminService, EfAdminService>();
         services.AddScoped<IPartnerService, EfPartnerService>();
         services.AddScoped<IInvitationService, EfInvitationService>();
