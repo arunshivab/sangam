@@ -7,6 +7,11 @@ version: 2
 updates:
   - package-ecosystem: nuget
     directory: /
+    # 26 Oct 2026: direct dependencies only. Updating a transitive one made Dependabot add PackageReferences of its
+    # own (PR #60: one to the domain project, which must stay dependency-light, and a VersionOverride to 8.0.2 in a
+    # test project). Transitive packages move with the direct ones; vulnerable ones are caught by CI/security.
+    allow:
+      - dependency-type: direct
     schedule:
       interval: weekly
       day: monday
