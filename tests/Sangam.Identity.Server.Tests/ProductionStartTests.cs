@@ -81,6 +81,9 @@ public sealed class ProductionStartTests : IDisposable
             // rc.8: the key-fingerprint check needs the database and records each run's fresh certificates; it has its
             // own tests (KeyFingerprintCheckTests), and this test also runs where there is no database.
             b.UseSetting("Sangam:Keys:FingerprintCheck", "false");
+            // rc.16: the single-instance guard needs the database, which this start-up test may not have (Windows CI);
+            // SingleInstanceGuardTests covers it.
+            b.UseSetting("Sangam:SingleInstance:Enabled", "false");
         });
         using HttpClient client = production.CreateClient();
 
@@ -112,6 +115,9 @@ public sealed class ProductionStartTests : IDisposable
             b.UseSetting("Sangam:Sms:Enabled", "true");
             b.UseSetting("Sangam:Sms:Provider", "outbox");
             b.UseSetting("Sangam:Keys:FingerprintCheck", "false");
+            // rc.16: the single-instance guard needs the database, which this start-up test may not have (Windows CI);
+            // SingleInstanceGuardTests covers it.
+            b.UseSetting("Sangam:SingleInstance:Enabled", "false");
         });
 
         InvalidOperationException refused = Assert.Throws<InvalidOperationException>(() => production.CreateClient().Dispose());

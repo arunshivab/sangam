@@ -20,7 +20,7 @@ public sealed partial class EfAdminService
         ArgumentNullException.ThrowIfNull(query);
         int size = Math.Clamp(query.PageSize, 1, 100);
         int page = Math.Max(1, query.Page);
-        if (await RequireAsync(operatorUserId, PlatformRole.Viewer, cancellationToken).ConfigureAwait(false) is not null)
+        if (await _access.RequireAsync(operatorUserId, OperatorRight.SearchUsers, cancellationToken).ConfigureAwait(false) is not null)
         {
             return new AdminUserPage([], 0, page, size);
         }
@@ -106,15 +106,15 @@ public sealed partial class EfAdminService
     public async Task<IReadOnlyList<WorkItem>> WorkQueueAsync(Guid operatorUserId, CancellationToken cancellationToken = default)
     {
         // Read the rank without the refusal audit: every page's sidebar counts the queue, and a viewer simply sees less.
-        PlatformRole? role = await GetRoleAsync(operatorUserId, cancellationToken).ConfigureAwait(false);
-        if (role is null)
+        PlatformRole? role = await _access.RankAsync(operatorUserId, cancellationToken).ConfigureAwait(false);
+        if (!OperatorRights.Allows(role, OperatorRight.UseConsole))
         {
             return [];
         }
 
         DateTimeOffset now = _clock.UtcNow;
         List<WorkItem> items = [];
-        if (role >= PlatformRole.Support)
+        if (OperatorRights.Allows(role, OperatorRight.ReviewRecoveries))
         {
             var resets = await _db.MfaResetRequests.AsNoTracking()
                 .Where(r => r.CancelledAt == null && r.AppliedAt == null && r.ReviewStatus != MfaResetReview.Refused)
@@ -144,7 +144,7 @@ public sealed partial class EfAdminService
     /// <inheritdoc />
     public async Task<AdminOverview?> OverviewAsync(Guid operatorUserId, CancellationToken cancellationToken = default)
     {
-        if (await GetRoleAsync(operatorUserId, cancellationToken).ConfigureAwait(false) != PlatformRole.Owner)
+        if (!await _access.HasAsync(operatorUserId, OperatorRight.SeeOverview, cancellationToken).ConfigureAwait(false))
         {
             return null;
         }
@@ -215,7 +215,7 @@ public sealed partial class EfAdminService
         ArgumentNullException.ThrowIfNull(query);
         int size = Math.Clamp(query.PageSize, 10, 200);
         int page = Math.Max(1, query.Page);
-        if (await RequireAsync(operatorUserId, PlatformRole.Support, cancellationToken).ConfigureAwait(false) is not null)
+        if (await _access.RequireAsync(operatorUserId, OperatorRight.ReadAuditTrail, cancellationToken).ConfigureAwait(false) is not null)
         {
             return new AuditTrailPage([], false, page);
         }
@@ -333,7 +333,7 @@ public sealed partial class EfAdminService
     public async Task<AdminResult> ForceSignOutManyAsync(Guid operatorUserId, IReadOnlyCollection<Guid> userIds, string reason, string? ipAddress, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(userIds);
-        AdminResult? refusal = await RequireAsync(operatorUserId, PlatformRole.Support, cancellationToken).ConfigureAwait(false);
+        AdminResult? refusal = await _access.RequireAsync(operatorUserId, OperatorRight.SignOutEverywhere, cancellationToken).ConfigureAwait(false);
         if (refusal is not null)
         {
             return refusal;

@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Net;
-using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -22,6 +21,9 @@ public sealed partial class BrandingTests
     private const string Password = "Correct-Horse-2026!";
     private readonly SangamServerFactory _factory;
 
+    // rc.16: logos are PNG only.
+    private static readonly byte[] Logo = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, (byte)'I', (byte)'H', (byte)'D', (byte)'R', 0, 0, 0, 8, 0, 0, 0, 8, 8, 6, 0, 0, 0, 1];
+
     public BrandingTests(SangamServerFactory factory)
     {
         _factory = factory;
@@ -37,7 +39,7 @@ public sealed partial class BrandingTests
             using IServiceScope scope = _factory.Services.CreateScope();
             ICustomisationService c = scope.ServiceProvider.GetRequiredService<ICustomisationService>();
             Assert.True((await c.SaveBrandingAsync(partner, CustomisationScope.App, appId, new BrandingInput("#1D4E89", new Dictionary<string, string?> { ["en-IN"] = "Welcome to the sample", ["hi-IN"] = "नमूने में आपका स्वागत है" }, "https://help.example.in", null, null), null)).Succeeded);
-            Assert.True((await c.SaveLogoAsync(partner, CustomisationScope.App, appId, "image/svg+xml", Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"8\" height=\"8\"/></svg>"), null)).Succeeded);
+            Assert.True((await c.SaveLogoAsync(partner, CustomisationScope.App, appId, "image/png", Logo, null)).Succeeded);
             Assert.True((await c.SaveBrandingAsync(partner, CustomisationScope.Organisation, org, new BrandingInput(null, new Dictionary<string, string?> { ["en-IN"] = "Apollo Clinic staff" }, null, null, null), null)).Succeeded);
 
             using HttpClient client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
@@ -60,7 +62,7 @@ public sealed partial class BrandingTests
             // The logo is served as a picture only.
             using HttpResponseMessage image = await client.GetAsync(new Uri(logo, UriKind.Relative));
             Assert.Equal(HttpStatusCode.OK, image.StatusCode);
-            Assert.Equal("image/svg+xml", image.Content.Headers.ContentType!.MediaType);
+            Assert.Equal("image/png", image.Content.Headers.ContentType!.MediaType);
             Assert.Contains("sandbox", string.Join(' ', image.Headers.GetValues("Content-Security-Policy")), StringComparison.Ordinal);
             Assert.Equal("nosniff", string.Join(' ', image.Headers.GetValues("X-Content-Type-Options")));
             using HttpResponseMessage missing = await client.GetAsync(new Uri("/branding/logo/" + Guid.NewGuid().ToString("D"), UriKind.Relative));

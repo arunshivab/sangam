@@ -8,6 +8,8 @@
 set -euo pipefail
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/sangam}"
 CONTAINER="${CONTAINER:-sangam-db-postgres-1}"
+# rc.16 (ASVS V2.10.2): the database administrator is sangam_dba, not "postgres".
+DB_ADMIN="${DB_ADMIN:-sangam_dba}"
 OFFSITE_TARGETS_DIR="${OFFSITE_TARGETS_DIR:-/etc/sangam/backup-targets}"
 SCRATCH="sangam_restore_drill"
 # D-H: the result goes to the monitoring page.
@@ -21,9 +23,11 @@ trap 'rm -rf "$work"' EXIT
 if [ "${1:-}" = "--offsite" ]; then
   target="$OFFSITE_TARGETS_DIR/${2:?which off-site target}.env"
   [ -n "${AGE_IDENTITY:-}" ] && [ -s "$AGE_IDENTITY" ] || { echo "AGE_IDENTITY must point at the founder's age key for the drill."; false; }
+  # shellcheck source=/dev/null  # an off-site target's settings, written by the founder
   key="$( set -a; . "$target"; set +a
     aws s3api list-objects-v2 --endpoint-url "$ENDPOINT" --region "${REGION:-auto}" --bucket "$BUCKET" --prefix daily/ \
       --query 'sort_by(Contents, &LastModified)[-1].Key' --output text )"
+  # shellcheck source=/dev/null
   ( set -a; . "$target"; set +a
     aws s3api get-object --endpoint-url "$ENDPOINT" --region "${REGION:-auto}" --bucket "$BUCKET" --key "$key" "$work/backup.dump.age" > /dev/null )
   age --decrypt -i "$AGE_IDENTITY" -o "$work/backup.dump" "$work/backup.dump.age"
@@ -34,14 +38,14 @@ else
   sha256sum -c "$latest.sha256"
   source="$(basename "$latest")"
 fi
-docker exec "$CONTAINER" dropdb -U postgres --if-exists "$SCRATCH"
-docker exec "$CONTAINER" createdb -U postgres "$SCRATCH"
-docker exec -i "$CONTAINER" pg_restore -U postgres -d "$SCRATCH" --no-owner < "$latest"
+docker exec "$CONTAINER" dropdb -U "$DB_ADMIN" --if-exists "$SCRATCH"
+docker exec "$CONTAINER" createdb -U "$DB_ADMIN" "$SCRATCH"
+docker exec -i "$CONTAINER" pg_restore -U "$DB_ADMIN" -d "$SCRATCH" --no-owner < "$latest"
 counts=""
 for t in users audit_events org_memberships; do
-  n="$(docker exec "$CONTAINER" psql -U postgres -d "$SCRATCH" -tAc "select count(*) from $t")"
+  n="$(docker exec "$CONTAINER" psql -U "$DB_ADMIN" -d "$SCRATCH" -tAc "select count(*) from $t")"
   echo "$t: $n"; counts="$counts $t=$n"
 done
-docker exec "$CONTAINER" dropdb -U postgres "$SCRATCH"
+docker exec "$CONTAINER" dropdb -U "$DB_ADMIN" "$SCRATCH"
 echo "Restored $source in $(( $(date +%s) - start )) s. Record this in SGM-603."
 status true "$source restored in $(( $(date +%s) - start )) s;$counts"

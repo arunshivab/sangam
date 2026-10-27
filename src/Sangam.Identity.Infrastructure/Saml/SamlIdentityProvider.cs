@@ -211,7 +211,7 @@ public sealed class SamlIdentityProvider : ISamlAdminService
     /// <inheritdoc />
     public async Task<IReadOnlyList<SamlSpView>?> ListAsync(Guid operatorUserId, CancellationToken cancellationToken = default)
     {
-        if (await RoleAsync(operatorUserId, cancellationToken).ConfigureAwait(false) is null)
+        if (!OperatorRights.Allows(await RoleAsync(operatorUserId, cancellationToken).ConfigureAwait(false), OperatorRight.ListApplications))
         {
             return null;
         }
@@ -228,9 +228,9 @@ public sealed class SamlIdentityProvider : ISamlAdminService
     {
         ArgumentNullException.ThrowIfNull(input);
         PlatformRole? role = await RoleAsync(operatorUserId, cancellationToken).ConfigureAwait(false);
-        if (role is null || role < PlatformRole.AppManager)
+        if (!OperatorRights.Allows(role, OperatorRight.ManageSamlProviders))
         {
-            return AdminResult.Refused($"That needs {PlatformRanks.Label(PlatformRole.AppManager)} access.");
+            return AdminResult.Refused($"That needs {PlatformRanks.Label(OperatorRights.LowestRank(OperatorRight.ManageSamlProviders))} access.");
         }
 
         if (Check(input) is string problem)
@@ -401,10 +401,7 @@ public sealed class SamlIdentityProvider : ISamlAdminService
         p.Attributes.Split(',', StringSplitOptions.RemoveEmptyEntries), p.RequireSignedRequests, p.AllowIdpInitiated, p.DefaultRelayState, p.OaepSha256);
 
     private Task<PlatformRole?> RoleAsync(Guid operatorUserId, CancellationToken cancellationToken)
-        => _db.PlatformOperators.AsNoTracking()
-            .Where(o => o.UserId == operatorUserId && o.RevokedAt == null)
-            .Select(o => (PlatformRole?)o.Role)
-            .FirstOrDefaultAsync(cancellationToken);
+        => Admin.OperatorAccess.RankAsync(_db, operatorUserId, cancellationToken);
 }
 
 /// <summary>A request accepted for sign-in, or refused with the reason (and, when it can be told to the SP, the status).</summary>

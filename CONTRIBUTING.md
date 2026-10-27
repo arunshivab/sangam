@@ -54,7 +54,8 @@ Warnings are errors. The rules that most often bite:
 ## Pull requests
 
 - Branch from `main`; one pull request per unit of work (large, coherent PRs are fine).
-- Fill in the pull request template; link the issue.
+- Fill in the pull request template. Its `Release:` line must name at least one reason for the change — an issue
+  (#nn), OI-nnn, DEF-nnn, SGM-nnn or an ASVS requirement; the `pr-description` check refuses it otherwise (rc.16, ASVS V1.10.1).
 - Keep line endings LF and files UTF-8 without BOM (`.gitattributes` enforces this).
 - Commits should read as sentences: "Add consent screen rate limiting", not "fix stuff".
 - CI (build + test on Ubuntu and Windows, plus the format check) must be green before review.

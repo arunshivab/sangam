@@ -105,7 +105,8 @@ services:
       # D-I private pilot: registration by invitation only. Remove at the controlled launch.
       Sangam__Registration__InvitationOnly: "true"
     secrets:
-      - source: ConnectionStrings__Sangam
+      # rc.16 (ASVS V1.2.2): each host signs in to the database as its own role (postgres/roles.sql).
+      - { source: ConnectionStrings__Sangam__identity, target: ConnectionStrings__Sangam }
       - source: Sangam__Anjal__ApiKey
       - source: Sangam__PasswordHashing__Pepper
       - source: Sangam__Certificates__Signing__0__Password
@@ -128,7 +129,16 @@ services:
       Sangam__Monitoring__HostName: portal
       # rc.8 (ASVS V14.1.3): answer only for this host's public name; "portal" for Caddy's health checks, localhost for Docker's.
       AllowedHosts: "account.sangamid.in;portal;localhost"
-    secrets: [ConnectionStrings__Sangam, Sangam__Portal__ClientSecret, Sangam__Anjal__ApiKey, Sangam__PasswordHashing__Pepper, keyring_current.pfx, Sangam__DataProtection__Certificates__0__Password]
+      # rc.16 (ASVS V1.2.2, V1.11.2): the maintenance sweep, the audit archive and the reset applier run on the identity
+      # server only; this host's database role may not delete audit events, which the archive needs.
+      Sangam__Maintenance__Enabled: "false"
+    secrets:
+      - { source: ConnectionStrings__Sangam__portal, target: ConnectionStrings__Sangam }
+      - Sangam__Portal__ClientSecret
+      - Sangam__Anjal__ApiKey
+      - Sangam__PasswordHashing__Pepper
+      - keyring_current.pfx
+      - Sangam__DataProtection__Certificates__0__Password
 
   admin:
     <<: *host
@@ -138,7 +148,16 @@ services:
       Sangam__Monitoring__HostName: admin
       # rc.8 (ASVS V14.1.3): answer only for this host's public name; "admin" for Caddy's health checks, localhost for Docker's.
       AllowedHosts: "admin.sangamid.in;admin;localhost"
-    secrets: [ConnectionStrings__Sangam, Sangam__Admin__ClientSecret, Sangam__Anjal__ApiKey, Sangam__PasswordHashing__Pepper, keyring_current.pfx, Sangam__DataProtection__Certificates__0__Password]
+      # rc.16 (ASVS V1.2.2, V1.11.2): the maintenance sweep, the audit archive and the reset applier run on the identity
+      # server only; this host's database role may not delete audit events, which the archive needs.
+      Sangam__Maintenance__Enabled: "false"
+    secrets:
+      - { source: ConnectionStrings__Sangam__admin, target: ConnectionStrings__Sangam }
+      - Sangam__Admin__ClientSecret
+      - Sangam__Anjal__ApiKey
+      - Sangam__PasswordHashing__Pepper
+      - keyring_current.pfx
+      - Sangam__DataProtection__Certificates__0__Password
 
   partner:
     <<: *host
@@ -148,7 +167,16 @@ services:
       Sangam__Monitoring__HostName: partner
       # rc.8 (ASVS V14.1.3): answer only for this host's public name; "partner" for Caddy's health checks, localhost for Docker's.
       AllowedHosts: "partners.sangamid.in;partner;localhost"
-    secrets: [ConnectionStrings__Sangam, Sangam__Partner__ClientSecret, Sangam__Anjal__ApiKey, Sangam__PasswordHashing__Pepper, keyring_current.pfx, Sangam__DataProtection__Certificates__0__Password]
+      # rc.16 (ASVS V1.2.2, V1.11.2): the maintenance sweep, the audit archive and the reset applier run on the identity
+      # server only; this host's database role may not delete audit events, which the archive needs.
+      Sangam__Maintenance__Enabled: "false"
+    secrets:
+      - { source: ConnectionStrings__Sangam__partner, target: ConnectionStrings__Sangam }
+      - Sangam__Partner__ClientSecret
+      - Sangam__Anjal__ApiKey
+      - Sangam__PasswordHashing__Pepper
+      - keyring_current.pfx
+      - Sangam__DataProtection__Certificates__0__Password
 
   # D-I: the imagiQa sample at demo.sangamid.in — bannered "Demo, not for real patient data" on every page; its
   # own database (imagiqa_demo) and role; registered with Sangam by the identity server's settings above.
@@ -228,7 +256,11 @@ services:
     networks: [edge]
 
 secrets:
-  ConnectionStrings__Sangam: { file: ./secrets/ConnectionStrings__Sangam }
+  # rc.16 (ASVS V1.2.2): one connection string per host, each with that host's own database role (postgres/roles.sql).
+  ConnectionStrings__Sangam__identity: { file: ./secrets/ConnectionStrings__Sangam__identity }
+  ConnectionStrings__Sangam__portal: { file: ./secrets/ConnectionStrings__Sangam__portal }
+  ConnectionStrings__Sangam__admin: { file: ./secrets/ConnectionStrings__Sangam__admin }
+  ConnectionStrings__Sangam__partner: { file: ./secrets/ConnectionStrings__Sangam__partner }
   Sangam__Anjal__ApiKey: { file: ./secrets/Sangam__Anjal__ApiKey }
   # rc.5 (ASVS V2.4.5): the password pepper — 32 random bytes in base64; one offline copy with the founder, never in a backup.
   Sangam__PasswordHashing__Pepper: { file: ./secrets/Sangam__PasswordHashing__Pepper }

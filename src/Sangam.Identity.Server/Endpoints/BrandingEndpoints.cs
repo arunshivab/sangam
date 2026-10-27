@@ -7,9 +7,9 @@ public static class BrandingEndpoints
 {
     /// <summary>
     /// Maps <c>/branding/logo/{id}</c>. A logo is served as a picture only: <c>nosniff</c>, and a
-    /// Content-Security-Policy that sandboxes it and forbids every script and outside load, so even an SVG opened
-    /// on its own cannot run anything in Sangam's origin. The address carries the image's hash, so it is cached for
-    /// a year.
+    /// Content-Security-Policy that sandboxes it and forbids every script and outside load. rc.16 (ASVS V1.12.2): every
+    /// logo is a PNG (SVGs are no longer accepted or served), so nothing scriptable comes from Sangam's origin. The
+    /// address carries the image's hash, so it is cached for a year.
     /// </summary>
     /// <param name="endpoints">Endpoints.</param>
     public static IEndpointRouteBuilder MapBrandingEndpoints(this IEndpointRouteBuilder endpoints)

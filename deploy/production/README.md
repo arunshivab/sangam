@@ -14,9 +14,46 @@ terminates TLS for the four Sangam hosts. Decisions still open are marked **FOUN
 
     docker compose -f postgres/docker-compose.yml up -d
 
-Create two roles: the **owner** (runs migrations, owns the tables) and the **application** role (used by
-the hosts; can read and write, cannot alter `audit_events`). The application role's connection string
-goes in `secrets/ConnectionStrings__Sangam` (go-live checklist, "Added by R0").
+**Database administrator (rc.16, ASVS V2.10.2):** the stack's superuser is `sangam_dba`, not the well-known `postgres`;
+its password is `secrets/postgres_password`. The name is set when the data volume is first created. On a volume made
+by an earlier release, add the new administrator once and keep `postgres` only until the scripts have run with it:
+
+    docker exec -it sangam-db-postgres-1 psql -U postgres -c "CREATE ROLE sangam_dba LOGIN SUPERUSER PASSWORD '<from secrets/postgres_password>';"
+    docker exec -it sangam-db-postgres-1 psql -U sangam_dba -d postgres -c "ALTER ROLE postgres NOLOGIN;"
+
+**Roles (rc.16, ASVS V1.2.2):** the database, its owner and one role per host are made once with `postgres/roles.sql`,
+as the administrator; then give each login role its password in the same `psql`:
+
+    docker exec -i sangam-db-postgres-1 psql -v ON_ERROR_STOP=1 -U sangam_dba -d postgres < postgres/roles.sql
+    docker exec -it sangam-db-postgres-1 psql -U sangam_dba -d postgres
+      \password sangam_owner
+      \password sangam_identity_app
+      \password sangam_portal_app
+      \password sangam_admin_app
+      \password sangam_partner_app
+
+| Role | Used by | May |
+|---|---|---|
+| `sangam_owner` | the migrator only | own the tables, run migrations |
+| `sangam_identity_app` | identity server | read and write every table; delete archived audit events; the identity server's own tables (`client_assertion_uses`, `saml_requests`) |
+| `sangam_portal_app`, `sangam_admin_app`, `sangam_partner_app` | portal, operator console, partner console | read and write the other tables; add to the audit log but never change it |
+
+No host may write the migration history or make tables. Each host's connection string goes in its own secret file,
+`secrets/ConnectionStrings__Sangam__<host>` (`secrets/README.md`); the owner's goes in `/etc/sangam/owner-connection`
+(root, mode 600), which no container reads. The rights themselves come with migration `Rc16HostRoles`; if the roles are
+made after that migration has run, apply them once with `postgres/grants.sql` as `sangam_owner`. The maintenance sweep,
+the audit archive and the reset applier run only on the identity server (`Sangam__Maintenance__Enabled: "false"` on the
+other three), because only its role may delete archived audit events.
+
+The development init script (`deploy/postgres/init.sql`, a role with a known password and the test databases) is not
+mounted in production any more. **A data volume made before rc.16** still has that role, `sangam_identity`, owning the
+database and every table. Before the first rc.16 deployment, as `sangam_dba`, after `roles.sql`:
+
+    docker exec -it sangam-db-postgres-1 psql -U sangam_dba -d sangam_identity \
+      -c "REASSIGN OWNED BY sangam_identity TO sangam_owner;" -c "ALTER ROLE sangam_identity NOLOGIN;"
+    docker exec -it sangam-db-postgres-1 psql -U sangam_dba -d postgres -c "ALTER DATABASE sangam_identity OWNER TO sangam_owner;"
+
+(then drop the test databases, which production never needs). A first deployment on a new volume needs none of this.
 
 D-I, the demo at demo.sangamid.in: a database and role of its own, which never touch Sangam's:
 
@@ -25,22 +62,32 @@ D-I, the demo at demo.sangamid.in: a database and role of its own, which never t
 
 Its connection string goes in `secrets/ConnectionStrings__Imagiqa`; the demo creates its tables when it starts.
 
-## 3. Migrations — once per release, as the owner
+## 3 and 4. Deploy a release (rc.16, ASVS V1.14.4, V14.1.1)
 
-    docker build --target migrator -t sangam/migrator ../..
-    docker run --rm --network sangam-db -e CONNECTION="<owner connection string>" sangam/migrator
+One command, as root on the VM, with the release tag:
 
-The bundle applies only migrations not yet applied; running it again does nothing.
+    sudo /opt/sangam/scripts/deploy.sh v1.0.0-rc.16                      # add --digilocker, --saml, --logs as used
+    sudo /opt/sangam/scripts/deploy.sh --check                           # the checks only, changing nothing
 
-## 4. Start
-
-    docker compose up -d --build
-    curl -fsS https://id.sangamid.in/health/ready
+It checks first and changes nothing if any check fails: the tag exists and the checkout has no local changes; the
+secrets folder is root's with mode 700 and every secret root's with mode 644 or 444, none missing or empty; no `SET-`
+placeholder is left in the settings; the owner's connection string file is root's; the database is healthy. Then it
+takes a backup (`scripts/backup-db.sh`), builds the images from the tag, runs the migrator as `sangam_owner`, starts the
+stack, waits for every host's health check, and writes the result to `/srv/sangam/status/deploy.json`. To roll back, run
+it with the previous tag; migrations only move forward, so a release whose database must go back is restored from the
+backup it took. CI checks the same Compose files and Caddyfile on every change (`tools/deploy/check-deploy-config.sh`).
 
 The identity server registers the portal, both consoles and the demo from its settings each time it starts
 (`Sangam__Clients__…` in `docker-compose.yml`; R4): exactly the production redirect addresses, and the same secret files
 the hosts use. A missing or short secret, or a non-https address, refuses the start. To rotate a client secret, replace
 its file and restart the identity server and that host.
+
+**One identity server (rc.16, ASVS V1.11.2):** the identity server holds a database lock while it runs; a second one
+against the same database refuses to start, because the sign-in rate limits are counted in memory. A restart is fine:
+the old container's lock goes with it. If the lock's connection breaks while the database still keeps the old session,
+the server ends that session of its own and takes the lock again; it stops only if another identity server holds it.
+(The client registration above runs before the lock is taken; a refused second server writes the same registrations
+again, which changes nothing.)
 
 **Containers (rc.9, ASVS V1.14.5, V1.2.1, V1.14.1).** Every container runs on a read-only filesystem with a private
 `/tmp`, without Linux capabilities, unable to gain privileges, with memory and process limits. Caddy is built here from
@@ -81,6 +128,10 @@ by invitation only (pilot), invite testers first. To give someone a role at a de
   page shows it, and Anjal's own watchdog is the alert path.
 - **Logs:** the `local` logging driver, rotated (50 MB × 20 per container). They stay on the server and go into the
   encrypted backups, kept one year (D-H; backup job in R4; one year from rc.6, SGM-910: CERT-In asks 180 days, the DPDP Rules' safeguards a year).
+  rc.16 (ASVS V1.7.2): to send them, as they are written, to a log store off the server as well, set the receiver in
+  `docker-compose.logs.yml` (syslog over TLS; its CA certificate in `secrets/log-receiver-ca.pem`) and deploy with
+  `--logs`. Docker keeps its local copy too, so nothing else changes. Until a receiver exists, the logs leave the server
+  only inside the nightly backups.
 - **Breached-password check (rc.5, D-J revised):** nothing to install. Every password set, and every password
   sign-in, is checked against the built-in list of the 10,000 most common passwords and then against Pwned Passwords
   by k-anonymity (only five characters of the password's SHA-1 leave the server; the full list, over 50 GB, is not
@@ -230,7 +281,9 @@ until the vault exists (decision A6).
 4. **Brute force:** `apt install fail2ban` with the default `sshd` jail.
 5. **Updates:** `apt install unattended-upgrades` and enable security updates; reboot in a quiet hour when a kernel
    update asks.
-6. **Secret files:** `secrets/` owned by root, mode 700; each file mode 600. `ls -l secrets` at every release.
+6. **Secret files:** `secrets/` owned by root, mode 700; each file owned by root, mode 644 (rc.16: readable, because
+   the containers run as a non-root user and Docker mounts the files as they are; the folder keeps other users out).
+   `scripts/deploy.sh` checks it at every release.
 7. **Docker:** only the admin user in the `docker` group (membership is equal to root); the Docker socket never
    mounted into a container.
 8. **Record it:** write the date and what was checked in the go-live checklist and, after go-live, in the release

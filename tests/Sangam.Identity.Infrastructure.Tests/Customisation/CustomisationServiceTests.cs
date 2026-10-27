@@ -154,14 +154,15 @@ public sealed class CustomisationServiceTests : IAsyncLifetime
     public async Task ANewLogo_ReplacesTheOldOne_AndIsServedUnderANewAddress()
     {
         ICustomisationService c = Service();
-        byte[] first = Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"4\" height=\"4\"/></svg>");
-        byte[] second = Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\"><circle r=\"4\"/></svg>");
-        Assert.True((await c.SaveLogoAsync(_partner, CustomisationScope.App, _appId, "image/svg+xml", first, null)).Succeeded);
+        byte[] first = Png(1);
+        byte[] second = Png(2);
+        Assert.True((await c.SaveLogoAsync(_partner, CustomisationScope.App, _appId, "image/png", first, null)).Succeeded);
         string url1 = (await c.ResolveLoginBrandingAsync(_appId, null, "en-IN")).LogoUrl!;
-        Assert.True((await c.SaveLogoAsync(_partner, CustomisationScope.App, _appId, "image/svg+xml", second, null)).Succeeded);
+        Assert.True((await c.SaveLogoAsync(_partner, CustomisationScope.App, _appId, "image/png", second, null)).Succeeded);
         string url2 = (await c.ResolveLoginBrandingAsync(_appId, null, "en-IN")).LogoUrl!;
         Assert.NotEqual(url1, url2);
-        Assert.False((await c.SaveLogoAsync(_partner, CustomisationScope.App, _appId, "image/svg+xml", Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\" onload=\"x()\"/>"), null)).Succeeded);
+        // rc.16 (ASVS V1.12.2): an SVG is refused, however plain.
+        Assert.False((await c.SaveLogoAsync(_partner, CustomisationScope.App, _appId, "image/svg+xml", Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"4\" height=\"4\"/></svg>"), null)).Succeeded);
 
         await using SangamDbContext db = _pg.CreateContext();
         BrandingAsset only = await db.BrandingAssets.SingleAsync();
@@ -169,6 +170,35 @@ public sealed class CustomisationServiceTests : IAsyncLifetime
         Assert.True((await c.RemoveLogoAsync(_partner, CustomisationScope.App, _appId, null)).Succeeded);
         Assert.Null((await c.ResolveLoginBrandingAsync(_appId, null, "en-IN")).LogoUrl);
     }
+
+    [PostgresFact]
+    public async Task AnSvgKeptFromBefore_IsNotServed()
+    {
+        // rc.16 (ASVS V1.12.2): a logo stored as SVG before rc.16 stays in the database but is never served.
+        Guid id = Guid.NewGuid();
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            byte[] svg = Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"4\" height=\"4\"/></svg>");
+            db.BrandingAssets.Add(new BrandingAsset { Id = id, Scope = CustomisationScope.App, ScopeId = _appId, ContentType = "image/svg+xml", Content = svg, Sha256 = "old", CreatedBy = _partner, CreatedAt = DateTimeOffset.UtcNow });
+            await db.SaveChangesAsync();
+        }
+
+        Assert.Null(await Service().GetLogoAsync(id));
+
+        // A logo the application's branding points at that turns out to be an SVG gives no address at all, so the sign-in
+        // page never shows a broken image.
+        ICustomisationService c = Service();
+        Assert.True((await c.SaveLogoAsync(_partner, CustomisationScope.App, _appId, "image/png", Png(3), null)).Succeeded);
+        Assert.NotNull((await c.ResolveLoginBrandingAsync(_appId, null, "en-IN")).LogoUrl);
+        await using (SangamDbContext db = _pg.CreateContext())
+        {
+            await db.BrandingAssets.Where(a => a.Id != id).ExecuteUpdateAsync(u => u.SetProperty(a => a.ContentType, "image/svg+xml"));
+        }
+
+        Assert.Null((await c.ResolveLoginBrandingAsync(_appId, null, "en-IN")).LogoUrl);
+    }
+
+    private static byte[] Png(byte seed) => [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, (byte)'I', (byte)'H', (byte)'D', (byte)'R', 0, 0, 0, 8, 0, 0, 0, 8, 8, 6, 0, 0, 0, seed];
 
     [PostgresFact]
     public async Task AnApplicationsOwnWording_IsUsed_ButTheReadersLanguageComesFirst()

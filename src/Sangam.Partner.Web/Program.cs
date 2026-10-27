@@ -151,6 +151,8 @@ app.UseSangamRequestCulture();
 app.UseAuthentication();
 // PR-18: the signed-in person's profile language, unless they picked one for this browser.
 app.UseSangamProfileCulture();
+// rc.16: an address that does not exist shows Sangam's 404 page, in the visitor's language.
+app.UseSangamNotFoundPage();
 app.UseAuthorization();
 app.UseRateLimiter();
 app.UseAntiforgery();

@@ -1,5 +1,3 @@
-using System.Runtime.CompilerServices;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Sangam.Identity.Application.Abstractions;
@@ -24,10 +22,12 @@ public sealed partial class EfAdminService : IAdminService
     private readonly EfMfaResetService _resets;
     private readonly IPlatformAlerts _alerts;
     private readonly Provisioning.OutboundSettings _outbound;
+    private readonly OperatorAccess _access;
 
     /// <summary>Initialises the service.</summary>
-    public EfAdminService(SangamDbContext db, IPortalService portal, IAuditWriter audit, IClock clock, EfMfaResetService resets, IPlatformAlerts alerts, Provisioning.OutboundSettings outbound)
+    public EfAdminService(SangamDbContext db, IPortalService portal, IAuditWriter audit, IClock clock, EfMfaResetService resets, IPlatformAlerts alerts, Provisioning.OutboundSettings outbound, OperatorAccess access)
     {
+        _access = access ?? throw new ArgumentNullException(nameof(access));
         _resets = resets ?? throw new ArgumentNullException(nameof(resets));
         _alerts = alerts ?? throw new ArgumentNullException(nameof(alerts));
         _outbound = outbound ?? throw new ArgumentNullException(nameof(outbound));
@@ -38,17 +38,13 @@ public sealed partial class EfAdminService : IAdminService
     }
 
     /// <inheritdoc />
-    public async Task<PlatformRole?> GetRoleAsync(Guid operatorUserId, CancellationToken cancellationToken = default)
-    {
-        PlatformOperator? op = await _db.PlatformOperators.AsNoTracking()
-            .FirstOrDefaultAsync(o => o.UserId == operatorUserId && o.RevokedAt == null, cancellationToken).ConfigureAwait(false);
-        return op?.Role;
-    }
+    public Task<PlatformRole?> GetRoleAsync(Guid operatorUserId, CancellationToken cancellationToken = default)
+        => _access.RankAsync(operatorUserId, cancellationToken);
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<AdminUserRow>> SearchUsersAsync(Guid operatorUserId, string? query, int take, CancellationToken cancellationToken = default)
     {
-        if (await RequireAsync(operatorUserId, PlatformRole.Viewer, cancellationToken).ConfigureAwait(false) is not null)
+        if (await _access.RequireAsync(operatorUserId, OperatorRight.SearchUsers, cancellationToken).ConfigureAwait(false) is not null)
         {
             return [];
         }
@@ -106,7 +102,7 @@ public sealed partial class EfAdminService : IAdminService
     /// <inheritdoc />
     public async Task<AdminUserDetail?> OpenUserAsync(Guid operatorUserId, Guid userId, string? ipAddress, CancellationToken cancellationToken = default)
     {
-        if (await RequireAsync(operatorUserId, PlatformRole.Viewer, cancellationToken).ConfigureAwait(false) is not null)
+        if (await _access.RequireAsync(operatorUserId, OperatorRight.OpenUserRecord, cancellationToken).ConfigureAwait(false) is not null)
         {
             return null;
         }
@@ -172,7 +168,7 @@ public sealed partial class EfAdminService : IAdminService
     public async Task<AdminResult> SuspendUserAsync(Guid operatorUserId, Guid userId, string reason, string? ipAddress, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
-        AdminResult? refusal = await RequireAsync(operatorUserId, PlatformRole.Support, cancellationToken).ConfigureAwait(false);
+        AdminResult? refusal = await _access.RequireAsync(operatorUserId, OperatorRight.SuspendAccounts, cancellationToken).ConfigureAwait(false);
         if (refusal is not null)
         {
             return refusal;
@@ -205,7 +201,7 @@ public sealed partial class EfAdminService : IAdminService
     /// <inheritdoc />
     public async Task<AdminResult> ReinstateUserAsync(Guid operatorUserId, Guid userId, string? ipAddress, CancellationToken cancellationToken = default)
     {
-        AdminResult? refusal = await RequireAsync(operatorUserId, PlatformRole.Support, cancellationToken).ConfigureAwait(false);
+        AdminResult? refusal = await _access.RequireAsync(operatorUserId, OperatorRight.SuspendAccounts, cancellationToken).ConfigureAwait(false);
         if (refusal is not null)
         {
             return refusal;
@@ -230,7 +226,7 @@ public sealed partial class EfAdminService : IAdminService
     /// <inheritdoc />
     public async Task<AdminResult> ForceSignOutAsync(Guid operatorUserId, Guid userId, string? ipAddress, CancellationToken cancellationToken = default)
     {
-        AdminResult? refusal = await RequireAsync(operatorUserId, PlatformRole.Support, cancellationToken).ConfigureAwait(false);
+        AdminResult? refusal = await _access.RequireAsync(operatorUserId, OperatorRight.SignOutEverywhere, cancellationToken).ConfigureAwait(false);
         if (refusal is not null)
         {
             return refusal;
@@ -252,7 +248,7 @@ public sealed partial class EfAdminService : IAdminService
     public async Task<AdminResult> PlaceHoldAsync(Guid operatorUserId, Guid userId, string reason, string? ipAddress, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
-        AdminResult? refusal = await RequireAsync(operatorUserId, PlatformRole.Support, cancellationToken).ConfigureAwait(false);
+        AdminResult? refusal = await _access.RequireAsync(operatorUserId, OperatorRight.HoldDeletion, cancellationToken).ConfigureAwait(false);
         if (refusal is not null)
         {
             return refusal;
@@ -278,7 +274,7 @@ public sealed partial class EfAdminService : IAdminService
     /// <inheritdoc />
     public async Task<AdminResult> ClearHoldAsync(Guid operatorUserId, Guid userId, string? ipAddress, CancellationToken cancellationToken = default)
     {
-        AdminResult? refusal = await RequireAsync(operatorUserId, PlatformRole.Support, cancellationToken).ConfigureAwait(false);
+        AdminResult? refusal = await _access.RequireAsync(operatorUserId, OperatorRight.HoldDeletion, cancellationToken).ConfigureAwait(false);
         if (refusal is not null)
         {
             return refusal;
@@ -304,7 +300,7 @@ public sealed partial class EfAdminService : IAdminService
     public async Task<AdminResult> DeleteNowAsync(Guid operatorUserId, Guid userId, string reason, string? ipAddress, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
-        AdminResult? refusal = await RequireAsync(operatorUserId, PlatformRole.Owner, cancellationToken).ConfigureAwait(false);
+        AdminResult? refusal = await _access.RequireAsync(operatorUserId, OperatorRight.DeleteAccounts, cancellationToken).ConfigureAwait(false);
         if (refusal is not null)
         {
             return refusal;
@@ -341,7 +337,7 @@ public sealed partial class EfAdminService : IAdminService
     /// <inheritdoc />
     public async Task<IReadOnlyList<AdminAppRow>> ListAppsAsync(Guid operatorUserId, CancellationToken cancellationToken = default)
     {
-        if (await RequireAsync(operatorUserId, PlatformRole.Viewer, cancellationToken).ConfigureAwait(false) is not null)
+        if (await _access.RequireAsync(operatorUserId, OperatorRight.ListApplications, cancellationToken).ConfigureAwait(false) is not null)
         {
             return [];
         }
@@ -379,7 +375,7 @@ public sealed partial class EfAdminService : IAdminService
     /// <inheritdoc />
     public async Task<AdminResult> SetAppStatusAsync(Guid operatorUserId, Guid appId, AppStatus status, string? ipAddress, CancellationToken cancellationToken = default)
     {
-        AdminResult? refusal = await RequireAsync(operatorUserId, PlatformRole.AppManager, cancellationToken).ConfigureAwait(false);
+        AdminResult? refusal = await _access.RequireAsync(operatorUserId, OperatorRight.ManageApplications, cancellationToken).ConfigureAwait(false);
         if (refusal is not null)
         {
             return refusal;
@@ -412,7 +408,7 @@ public sealed partial class EfAdminService : IAdminService
     /// <inheritdoc />
     public async Task<AdminResult> SetAppLogoutUrisAsync(Guid operatorUserId, Guid appId, string? backChannelLogoutUri, string? frontChannelLogoutUri, string? ipAddress, CancellationToken cancellationToken = default)
     {
-        AdminResult? refusal = await RequireAsync(operatorUserId, PlatformRole.AppManager, cancellationToken).ConfigureAwait(false);
+        AdminResult? refusal = await _access.RequireAsync(operatorUserId, OperatorRight.ManageApplications, cancellationToken).ConfigureAwait(false);
         if (refusal is not null)
         {
             return refusal;
@@ -459,7 +455,7 @@ public sealed partial class EfAdminService : IAdminService
     /// <inheritdoc />
     public async Task<AdminResult> SetAddWithoutDigiLockerAsync(Guid operatorUserId, Guid appId, DateOnly? until, string? ipAddress, CancellationToken cancellationToken = default)
     {
-        AdminResult? refusal = await RequireAsync(operatorUserId, PlatformRole.AppManager, cancellationToken).ConfigureAwait(false);
+        AdminResult? refusal = await _access.RequireAsync(operatorUserId, OperatorRight.ManageApplications, cancellationToken).ConfigureAwait(false);
         if (refusal is not null)
         {
             return refusal;
@@ -533,7 +529,7 @@ public sealed partial class EfAdminService : IAdminService
     public async Task<AdminResult> AssignAppOwnerAsync(Guid operatorUserId, Guid appId, string email, string? ipAddress, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(email);
-        AdminResult? refusal = await RequireAsync(operatorUserId, PlatformRole.AppManager, cancellationToken).ConfigureAwait(false);
+        AdminResult? refusal = await _access.RequireAsync(operatorUserId, OperatorRight.ManageApplications, cancellationToken).ConfigureAwait(false);
         if (refusal is not null)
         {
             return refusal;
@@ -583,7 +579,7 @@ public sealed partial class EfAdminService : IAdminService
     /// <inheritdoc />
     public async Task<IReadOnlyList<OperatorRow>> ListOperatorsAsync(Guid operatorUserId, CancellationToken cancellationToken = default)
     {
-        if (await RequireAsync(operatorUserId, PlatformRole.Owner, cancellationToken).ConfigureAwait(false) is not null)
+        if (await _access.RequireAsync(operatorUserId, OperatorRight.ManageOperators, cancellationToken).ConfigureAwait(false) is not null)
         {
             return [];
         }
@@ -626,7 +622,7 @@ public sealed partial class EfAdminService : IAdminService
     public async Task<AdminResult> GrantOperatorAsync(Guid operatorUserId, string email, PlatformRole role, string? ipAddress, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(email);
-        AdminResult? refusal = await RequireAsync(operatorUserId, PlatformRole.Owner, cancellationToken).ConfigureAwait(false);
+        AdminResult? refusal = await _access.RequireAsync(operatorUserId, OperatorRight.ManageOperators, cancellationToken).ConfigureAwait(false);
         if (refusal is not null)
         {
             return refusal;
@@ -675,7 +671,7 @@ public sealed partial class EfAdminService : IAdminService
     /// <inheritdoc />
     public async Task<AdminResult> RevokeOperatorAsync(Guid operatorUserId, Guid userId, string? ipAddress, CancellationToken cancellationToken = default)
     {
-        AdminResult? refusal = await RequireAsync(operatorUserId, PlatformRole.Owner, cancellationToken).ConfigureAwait(false);
+        AdminResult? refusal = await _access.RequireAsync(operatorUserId, OperatorRight.ManageOperators, cancellationToken).ConfigureAwait(false);
         if (refusal is not null)
         {
             return refusal;
@@ -704,43 +700,11 @@ public sealed partial class EfAdminService : IAdminService
         return AdminResult.Ok("Console access is revoked.");
     }
 
-    /// <summary>
-    /// Returns a refusal when the operator lacks <paramref name="minimum"/>, else <see langword="null"/>. rc.8 (ASVS V7.1.3,
-    /// V7.2.2): every refusal is written to the audit log as <c>access.denied</c>, naming the operation and the rank it needed.
-    /// </summary>
-    private async Task<AdminResult?> RequireAsync(Guid operatorUserId, PlatformRole minimum, CancellationToken cancellationToken, [CallerMemberName] string operation = "")
-    {
-        PlatformRole? role = await GetRoleAsync(operatorUserId, cancellationToken).ConfigureAwait(false);
-        if (role is not null && role >= minimum)
-        {
-            return null;
-        }
-
-        await _audit.WriteAsync(
-            new AuditEntry(
-                AuditActions.AccessDenied,
-                AuditActorType.Admin,
-                operatorUserId,
-                TargetType: "console",
-                Metadata: JsonSerializer.Serialize(new Dictionary<string, string?>
-                {
-                    ["console"] = "admin",
-                    ["operation"] = operation,
-                    ["reason"] = role is null ? "not_operator" : "rank_too_low",
-                    ["needed"] = minimum.ToString(),
-                    ["held"] = role?.ToString(),
-                })),
-            cancellationToken).ConfigureAwait(false);
-        return role is null
-            ? AdminResult.Refused("You do not have console access.")
-            : AdminResult.Refused($"That needs {PlatformRanks.Label(minimum)} access.");
-    }
-
     /// <inheritdoc />
     public async Task<AdminResult> ApplyTwoStepResetNowAsync(Guid operatorUserId, Guid userId, string reason, string? ipAddress, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(reason);
-        AdminResult? refusal = await RequireAsync(operatorUserId, PlatformRole.Owner, cancellationToken).ConfigureAwait(false);
+        AdminResult? refusal = await _access.RequireAsync(operatorUserId, OperatorRight.ApplyTwoStepResetNow, cancellationToken).ConfigureAwait(false);
         if (refusal is not null)
         {
             return refusal;
@@ -793,7 +757,7 @@ public sealed partial class EfAdminService : IAdminService
     /// <inheritdoc />
     public async Task<AdminResult> WithdrawTwoStepResetAsync(Guid operatorUserId, Guid userId, string? ipAddress, CancellationToken cancellationToken = default)
     {
-        AdminResult? refusal = await RequireAsync(operatorUserId, PlatformRole.Support, cancellationToken).ConfigureAwait(false);
+        AdminResult? refusal = await _access.RequireAsync(operatorUserId, OperatorRight.WithdrawTwoStepReset, cancellationToken).ConfigureAwait(false);
         if (refusal is not null)
         {
             return refusal;

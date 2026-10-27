@@ -15,14 +15,21 @@ public sealed record ConsoleContext(Guid UserId, PlatformRole Role, string Name)
     /// <summary>When the session ends at the latest; <see langword="null"/> when the cookie does not say.</summary>
     public DateTimeOffset? SessionEndsAt { get; init; }
 
+    /// <summary>
+    /// rc.16 (ASVS V1.4.5): whether they hold a named right. What a page shows follows the same rights the services check;
+    /// hiding a button is only a courtesy, never the check.
+    /// </summary>
+    /// <param name="right">The right.</param>
+    public bool Has(OperatorRight right) => OperatorRights.Allows(Role, right);
+
     /// <summary>Whether they may act on a user account.</summary>
-    public bool CanAct => Role >= PlatformRole.Support;
+    public bool CanAct => Has(OperatorRight.SuspendAccounts);
 
     /// <summary>Whether they may register and configure applications.</summary>
-    public bool CanManageApps => Role >= PlatformRole.AppManager;
+    public bool CanManageApps => Has(OperatorRight.ManageApplications);
 
     /// <summary>Whether they may manage operators and delete accounts outright.</summary>
-    public bool IsOwner => Role == PlatformRole.Owner;
+    public bool IsOwner => Has(OperatorRight.ManageOperators);
 
     /// <summary>The rank as a word for the sidebar.</summary>
     public string RoleLabel => PlatformRanks.Label(Role);

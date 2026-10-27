@@ -1,10 +1,11 @@
 ## What this PR delivers
 
-Release: 1.0.0-rc.N · Answers: DEF-nnn, SGM-nnn, ASVS Vx.y.z
+Release: 1.0.0-rc.N · Answers: #nn, OI-nnn, DEF-nnn, SGM-nnn, ASVS Vx.y.z
 
 <!-- Required (decision 6; the pr-description check fails without it): keep the line above, starting "Release:", with the
-release this belongs to and at least one defect (DEF-nnn), policy (SGM-nnn) or ASVS requirement it answers — or
-"Answers: none" for a change that answers none. Then one paragraph: what changes and why. -->
+release this belongs to ("none" if it ships in none) and at least one reason it was made: a GitHub issue (#nn), an open
+item (OI-nnn), a defect (DEF-nnn), a policy (SGM-nnn) or an ASVS requirement. rc.16 (ASVS V1.10.1): "Answers: none" is
+refused. Then one paragraph: what changes and why. -->
 
 ## Checked by the build
 

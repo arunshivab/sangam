@@ -67,6 +67,9 @@ builder.Services.AddSingleton<Sangam.Identity.Application.Signatures.ISignatureT
 builder.Services.AddHttpClient(Sangam.Identity.Server.Logout.BackChannelLogoutSender.HttpClientName, c => c.Timeout = TimeSpan.FromSeconds(5))
     .ConfigurePrimaryHttpMessageHandler(sp => Sangam.Identity.Infrastructure.Provisioning.OutboundHttp.CreateHandler(sp.GetRequiredService<Sangam.Identity.Infrastructure.Provisioning.OutboundSettings>().AllowPrivate));
 builder.Services.AddSingleton<Sangam.Identity.Server.Logout.BackChannelLogoutSender>();
+// rc.16 (ASVS V1.11.2): exactly one identity server per database; a second refuses to start.
+builder.Services.AddSingleton<Sangam.Identity.Infrastructure.Maintenance.SingleInstanceGuard>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<Sangam.Identity.Infrastructure.Maintenance.SingleInstanceGuard>());
 // rc.8 (SGM-911, A6 workaround): a key that changed since the last start stops the start, and alerts.
 builder.Services.AddHostedService<KeyFingerprintCheck>();
 builder.Services.AddScoped<Sangam.Identity.Server.Pages.ValidationFailureLog>();
@@ -302,7 +305,8 @@ if (clients.Count > 0)
 
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Error");
+    // rc.16: the same self-contained error page as the other hosts, with a reference to quote.
+    app.UseSangamErrorPage();
     app.UseHsts();
 }
 
@@ -316,6 +320,8 @@ app.UseSangamDuplicateParameterGuard();
 app.UseAuthentication();
 // PR-18: the signed-in person's profile language, unless they picked one for this browser.
 app.UseSangamProfileCulture();
+// rc.16: an address that does not exist shows Sangam's 404 page, in the visitor's language.
+app.UseSangamNotFoundPage();
 app.UseAuthorization();
 app.MapStaticAssets();
 app.MapRazorPages().WithStaticAssets().RequireRateLimiting(AuthRateLimiting.PolicyName);

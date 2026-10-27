@@ -1,0 +1,35 @@
+# rc.16 (ASVS V1.7.2): sends every container's log, as it is written, to a log store off this server, over TLS.
+# Use together with docker-compose.yml once a receiver exists (a syslog server that accepts RFC 5424 over TLS on 6514;
+# the same machine that receives the audit stream, docs/siem.md, is the natural one):
+#   docker compose -f docker-compose.yml -f docker-compose.logs.yml up -d
+#   (scripts/deploy.sh: add --logs)
+# Docker keeps its local copy as well (dual logging, sized here like the local logs: 50 MB x 20 per container), so
+# `docker compose logs`, the nightly log backup (scripts/backup-db.sh) and the monitoring page work as before. Non-blocking: if the receiver is away, a host keeps
+# running and up to 4 MB of lines wait in memory; lines beyond that are lost on the remote side only.
+# Before use: set the receiver's address below, and put its CA certificate in secrets/log-receiver-ca.pem
+# (it is read by Docker on the host, not by the containers).
+x-remote-logs: &remote-logs
+  driver: syslog
+  options:
+    syslog-address: "tcp+tls://SET-LOG-RECEIVER:6514"
+    syslog-tls-ca-cert: /opt/sangam/deploy/production/secrets/log-receiver-ca.pem
+    syslog-format: rfc5424micro
+    tag: "sangam/{{.Name}}"
+    mode: non-blocking
+    max-buffer-size: 4m
+    cache-max-size: 50m
+    cache-max-file: "20"
+
+services:
+  identity:
+    logging: *remote-logs
+  portal:
+    logging: *remote-logs
+  admin:
+    logging: *remote-logs
+  partner:
+    logging: *remote-logs
+  demo:
+    logging: *remote-logs
+  caddy:
+    logging: *remote-logs
