@@ -31,7 +31,8 @@ flowchart LR
     S[/Secret files<br/>/run/secrets/]
     ST[/Status files<br/>/srv/sangam/status/]
     AR[/Audit archive<br/>/srv/sangam/audit-archive/]
-    AN[Anjal<br/>mail, SMS, ClamAV]
+    AN[Anjal<br/>mail]
+    CV[Sangam's ClamAV<br/>clamav service]
   end
 
   subgraph Outside["Other services"]
@@ -49,8 +50,8 @@ flowchart LR
   ID & PO & AD & PA -- TCP 5432 --> PG
   DE -- TCP 5432 --> PG
   ID & PO & AD & PA -. read at start .-> S
-  ID & PO & AD & PA -- HTTP API, API key --> AN
-  PA & AD -- clamd 3310, network anjal-clamav --> AN
+  ID & PO & AD & PA -- HTTPS API, API key, rc.17 signature --> AN
+  PA & AD -- clamd 3310, network sangam-clamav --> CV
   ID & PO -- HTTPS --> DL
   ID & PO -- HTTPS, k-anonymity --> PW
   ID -- HTTPS --> PS
@@ -70,7 +71,7 @@ flowchart LR
 | Partner console | An application's administrators: roles, organisations, members, attributes, settings, policies, webhooks, evidence packs | non-root | Key-ring certificate, pepper, its client secret |
 | imagiQa demo | A sample partner application (D-I), its own database, reached on its own network (rc.9) | non-root | Its client secret, its own data-protection keys |
 | PostgreSQL 18 | All of Sangam's data: accounts, credentials (hashed or encrypted), grants, tenancy, audit log (hash-chained, append-only for the application role), data-protection key ring (encrypted), metrics, host reports | its image's user | Everything in SGM-910's Confidential and the Restricted credentials |
-| Anjal | imagiQa's mail server: sends Sangam's e-mail (and later SMS) through its API; runs ClamAV for uploaded logos | separate stack and repository | Messages in its own queue |
+| Anjal | imagiQa's mail server: sends Sangam's e-mail through its API (`https://mail.anjal.co.in`; SMS off for now, D-182) | separate stack and repository | Messages in its own queue |
 | Backup job (cron) | Nightly `pg_dump`, container logs and new audit-archive files, encrypted with `age` for the founder's offline key, uploaded under Object Lock | root on the VM | The `age` public key only |
 
 rc.9 (ASVS V1.14.5, V1.2.1): every container — the hosts, the demo, Caddy and PostgreSQL — runs on a read-only filesystem
@@ -88,7 +89,7 @@ user), unable to gain privileges, and with memory and process limits. The Kubern
 | F5 | Consoles | Browser → consoles (Blazor Server) | Operator and partner actions | OIDC sign-in with an authenticator; rank checks in the services; every refusal audited |
 | F6 | Database | Hosts → PostgreSQL | All data | Private Docker network; a separate application role that cannot alter the audit table; plain TCP inside the VM (decision 2) |
 | F7 | Mail and SMS | Hosts → Anjal API | Message text, the recipient | API key; https, or http only to a private host; Anjal sends outbound mail with STARTTLS always (decision 4) |
-| F8 | Virus scan | Consoles → Anjal's ClamAV | Uploaded logo bytes | Private network `anjal-clamav` only |
+| F8 | Virus scan | Consoles → Sangam's own ClamAV (rc.17) | Uploaded logo bytes | Network `sangam-clamav` only; no port published |
 | F9 | DigiLocker | Identity server, portal ↔ DigiLocker | Authorization code; name, date of birth, gender; the DigiLocker id (hashed at once) | HTTPS with revocation checks; PKCE; the id kept only as HMAC-SHA-256 |
 | F10 | Breach check | Hosts → Pwned Passwords | Five characters of a password's SHA-1 | k-anonymity; HTTPS with revocation checks |
 | F11 | SCIM and webhooks | Identity server → partner endpoints | Account and membership changes | `OutboundHttp`: https only, no redirects, private addresses refused, revocation checked; webhooks signed; partner-registered destinations accepted (decision 9) |
@@ -116,7 +117,7 @@ user), unable to gain privileges, and with memory and process limits. The Kubern
 | Service | What Sangam trusts it with | If it is compromised or down | Controls |
 |---|---|---|---|
 | Anjal (mail, SMS) | The text of every message, including sign-in codes and links | An attacker could read codes in transit through Anjal; when down, no codes or alerts are sent | API key per sender; Anjal on the same VM today; codes short-lived and single-use; STARTTLS always outbound; monitoring watches Anjal and Anjal's watchdog watches Sangam |
-| Anjal's ClamAV | Logo bytes | A missed virus in a logo; when down, uploads are refused | Private network only; uploads refused while the scanner does not answer; logos served with a strict content policy |
+| Sangam's ClamAV (rc.17; Anjal's before) | Logo bytes | A missed virus in a logo; when down, uploads are refused | Private network only; uploads refused while the scanner does not answer; logos served with a strict content policy |
 | DigiLocker | Identity attributes for verification and recovery | False verification would bind a wrong identity; when down, verification and recovery wait | PKCE; https with revocation; the id hashed with a key never changed; records that do not match wait for operator review |
 | Pwned Passwords | Five hex characters of a SHA-1 | Nothing about the password; when down, the built-in list is the check and the founder is alerted after an hour | k-anonymity; https with revocation |
 | Partner SCIM and webhook endpoints | Account and membership changes for that partner's own people | The partner's own data only; when down, deliveries retry and the partner is alerted | Destinations registered by the partner (decision 9); https only; private networks refused; signed webhooks; firewall allows outbound 443 only |

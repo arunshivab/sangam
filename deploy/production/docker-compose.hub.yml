@@ -1,0 +1,32 @@
+# rc.17 (founder decision of 10 and 13 November 2026): the Sthraas Hub, the admin console for all of Arun's websites,
+# signs in through Sangam. One client per environment, both on this pilot:
+#   sthraas-hub       https://hub.sthraas.com/
+#   sthraas-hub-test  https://hub-test.sthraas.com/
+# Each gets Sangam's standard callbacks, <BaseUrl>signin-sangam and <BaseUrl>signout-sangam, and its own pairwise
+# subject ids (a person has a different sub in each). A local Hub (https://localhost:5001/) never registers here; it
+# runs against a Sangam started on the developer's own machine.
+# Use it once the Hub is ready to sign in:
+#   docker compose -f docker-compose.yml -f docker-compose.hub.yml up -d
+#   (or: scripts/deploy.sh <tag> --hub)
+# The two secrets are made on the server (openssl rand -base64 32 > secrets/<name>) and given to the Hub's own
+# deployment by the founder himself, never by chat or e-mail.
+services:
+  identity:
+    environment:
+      Sangam__Clients__hub__ClientId: sthraas-hub
+      Sangam__Clients__hub__Kind: application
+      Sangam__Clients__hub__BaseUrl: https://hub.sthraas.com/
+      Sangam__Clients__hub__DisplayName: Sthraas Hub
+      Sangam__Clients__hub__OwnerCompanyName: Sthraas Intelligence Pvt Ltd
+      Sangam__Clients__hubtest__ClientId: sthraas-hub-test
+      Sangam__Clients__hubtest__Kind: application
+      Sangam__Clients__hubtest__BaseUrl: https://hub-test.sthraas.com/
+      Sangam__Clients__hubtest__DisplayName: Sthraas Hub (test)
+      Sangam__Clients__hubtest__OwnerCompanyName: Sthraas Intelligence Pvt Ltd
+    secrets:
+      - { source: Sthraas__Hub__ClientSecret, target: Sangam__Clients__hub__Secret }
+      - { source: Sthraas__HubTest__ClientSecret, target: Sangam__Clients__hubtest__Secret }
+
+secrets:
+  Sthraas__Hub__ClientSecret: { file: ./secrets/Sthraas__Hub__ClientSecret }
+  Sthraas__HubTest__ClientSecret: { file: ./secrets/Sthraas__HubTest__ClientSecret }

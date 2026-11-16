@@ -156,7 +156,7 @@ Staged go-live (D-I):
 
 Checks:
 
-- [ ] D-B: `Sangam__Anjal__BaseUrl` is Anjal's API (https, or `http://anjal:<port>` on the server's own network);
+- [ ] D-B: `Sangam__Anjal__BaseUrl` is Anjal's API (rc.17: `https://mail.anjal.co.in/`, set in `docker-compose.yml`);
       `Sangam__Anjal__ApiKey` is a secret file given to **all four** hosts; `Sangam__Anjal__AllowedRecipients` is
       **empty** in production (set it on staging). Anjal's endpoints match `docs/anjal-messaging-contract.md`, or
       `EmailPath`/`SmsPath`/`ApiKeyHeader` are set to Anjal's. One real code received through Anjal.
@@ -168,8 +168,9 @@ Checks:
 - [ ] D-H: `Sangam__Monitoring__Evaluate=true` on the identity server only; `ExpectedHosts`, `TlsHosts`,
       `AnjalHealthUrl` set; `Sangam__Alerts__Emails` and `Sangam__Alerts__Mobiles` are the founder's (or left empty
       to use every Owner operator's address and verified mobile). `/srv/sangam/status` exists and the backup and
-      restore-drill scripts write to it; the monitoring page shows both. The outside watchdog on Anjal's server calls
-      `https://id.sangamid.in/health/ready` every minute (Anjal project). Thresholds reviewed
+      restore-drill scripts write to it; the monitoring page shows both. An outside watchdog calls
+      `https://id.sangamid.in/health/ready` every minute (rc.17, M9 (b): the Pezhai witness VM or an uptime service,
+      not a timer on the Anjal VM). Thresholds reviewed
       (`Sangam__Monitoring__Alerts__*`).
 - [ ] *(Superseded by rc.5, D-J revised: nothing to download; see "Added by rc.5".)* D-J: the Pwned Passwords list downloaded with the official downloader, imported on the server
       (`docker compose run --rm identity breach-list import --source … --output /var/lib/sangam/pwned/pwned-passwords.bin --date YYYY-MM-DD`,
@@ -240,7 +241,7 @@ Security (docs/security/, SGM-503):
   - [x] A pepper for password hashes (V2.4.5). Built in rc.5; see "Added by rc.5".
   - [x] Keys: files on the VM for the pilot and controlled launch, accepted with compensating controls (V6.4.2). Review
         before the public launch (see "Added by rc.5").
-  - [x] Antivirus on logo uploads, with Anjal's ClamAV (V12.4.2). Built in rc.5.
+  - [x] Antivirus on logo uploads (V12.4.2). Built in rc.5 with Anjal's ClamAV; Sangam's own ClamAV from rc.17.
   - [x] `__Host-` cookie names, now rather than at the cut-over (V3.4.4). Built in rc.5.
   - [x] Linking people through the management API: consent first (V4.2.1). Built in rc.5. Pairwise ids: built in rc.14 (ADR-0017).
 - [ ] Confirm volume encryption on the E2E VM, and NTP on it (V6.1.1, V7.3.4).
@@ -353,9 +354,8 @@ The founder's ASVS decisions A1 to A6 (10 October 2026), built in rc.5:
 - [ ] **Pepper (A2):** `openssl rand -base64 32 > secrets/Sangam__PasswordHashing__Pepper` on the server, before the
       first start. Keep **one offline copy** with the audit-archive key and the backup key, never on the server's
       backup path. Every host refuses to start without it.
-- [ ] **Virus scanner (A5):** `docker network create anjal-clamav`; attach Anjal's ClamAV container to it (Anjal
-      project); set `Sangam__Antivirus__Host` (and the port if not 3310). Upload one logo on the partner console and see
-      the monitoring page's *Virus scanner* panel say it is answering.
+- [ ] **Virus scanner (A5):** *(rc.17, M8 (a): Sangam's own ClamAV; see "Added by rc.17".)* Upload one logo on the
+      partner console and see the monitoring page's *Virus scanner* panel say it is answering.
 - [ ] **Breached-password check (A1, D-J revised):** confirm the server reaches `https://api.pwnedpasswords.com`; the
       monitoring page shows the service *answering* after the first password is set.
 - [ ] **Keys (A6):** before the public launch, review whether the signing, encryption and key-ring keys and the pepper
@@ -498,3 +498,56 @@ Batches 2 and 3 of the ASVS round, with the founder's decisions of 26 October 20
 - [ ] **Old sign-in tokens:** after a day, the identity log's hourly sweep runs without error; tokens and
       authorizations finished more than 30 days ago are gone (`select count(*) from openiddict_tokens where creation_date
       < now() - interval '30 days' and status <> 'valid'` returns 0).
+
+## Added by rc.17 (v1.0.0-rc.17)
+
+Sangam and Anjal, on the founder's decisions of 13 November 2026 (Anjal's answers M1 to M10; `docs/anjal-messaging-contract.md`):
+
+- [ ] **Deploy:** `sudo scripts/deploy.sh v1.0.0-rc.17` (with `--digilocker` and the other files in use; `--hub` once
+      the Sthraas Hub is ready; `--anjal-signing` before the first customer).
+- [ ] **Clock (NTP):** `timedatectl` shows "System clock synchronized: yes". Anjal refuses a signature more than 300 s
+      off its clock.
+- [ ] **Anjal organisation (Arun, on Anjal):** the `sangamid` organisation exists with Arun as its administrator, and
+      `sangamid.in` is proved on its Domains page (the `_anjal` TXT record; Anjal then makes the DKIM key, selector
+      `anjal`).
+- [ ] **The Sangam app on Anjal:** Organisation settings → Sending systems → Sangam; allowed sender
+      `no-reply@sangamid.in`; limits 2,000 an hour and 20,000 a day (M4); its live key (`ak_live_…`) copied by Arun into
+      `secrets/Sangam__Anjal__ApiKey`, never through chat.
+- [ ] **Organisation daily limit (Arun, as server operator):** on Anjal's Ops page, "Sending: up to N a day" for
+      `sangamid` set to 20,000 (at least the app's daily limit, or the app's limit buys nothing above the default 2,000).
+- [ ] **"Allowed from":** leave it empty on the Sangam app; send one real sign-in code; read `app.api.new-address` in the
+      organisation's Activity log; enter that exact address (its /16 only for a Docker bridge address with nothing
+      untrusted on that bridge); send one more code and see it arrive.
+- [ ] **Staging (M5 (a)):** a second app on Anjal, "Sangam staging", with its own live key and low limits; staging sets
+      `Sangam__Anjal__AllowedRecipients`. Anjal's `ak_test_` sandbox key is for automated tests only (it delivers nothing).
+- [ ] **DNS for sangamid.in (GoDaddy, Arun), after looking at what is there** (`Resolve-DnsName` for the MX, TXT,
+      `_dmarc` and `anjal._domainkey` records; replace an SPF or DMARC record, never add a second):
+      `MX @ → 10 mail.anjal.co.in`; `TXT @ → v=spf1 include:_spf.anjal.co.in -all` (M10 (b): Anjal publishes
+      `_spf.anjal.co.in = v=spf1 ip4:151.185.43.171 -all` first); `TXT anjal._domainkey →` the value Anjal shows;
+      `TXT _dmarc → v=DMARC1; p=none; rua=mailto:dmarc-reports@sangamid.in` for the first two weeks, then
+      `v=DMARC1; p=reject; adkim=s; aspf=s; sp=reject; rua=mailto:dmarc-reports@sangamid.in`; `TXT _smtp._tls` as Anjal
+      shows. Every line passes on Anjal's Domains page and mxtoolbox agrees.
+- [ ] **Mail check:** `.\scripts\check-mail-dns.ps1 -Domain sangamid.in -DkimSelector anjal -AnjalSpf include:_spf.anjal.co.in`
+      passes, and one real sign-in code arrives with `spf=pass`, `dkim=pass` and `dmarc=pass` in its headers.
+- [ ] **Mailboxes on Anjal:** `grievance@sangamid.in`, `dmarc-reports@sangamid.in` and `tls-reports@sangamid.in`.
+- [ ] **MTA-STS, in this order:** on Anjal, read `ANJAL_ACME_DOMAINS` and `ANJAL_MTA_STS_DOMAINS`, then add
+      `mta-sts.sangamid.in` and `sangamid.in`; add `A mta-sts → 151.185.43.171` (or `CNAME mta-sts → mail.anjal.co.in`);
+      restart Anjal and renew its certificate; check `https://mta-sts.sangamid.in/.well-known/mta-sts.txt` answers; only
+      then publish `_mta-sts`. The certificate is shared: take the name out of `ANJAL_ACME_DOMAINS` before its DNS ever
+      moves, or renewal fails for `mail.anjal.co.in` too.
+- [ ] **Anjal health (M7 (a)):** the monitoring page shows Anjal *answering* (`AnjalHealthUrl` is
+      `https://mail.anjal.co.in/api/v1/health`, asked with Sangam's key).
+- [ ] **Sangam's own virus scanner (M8 (a)):** the `clamav` service is healthy (`docker compose ps clamav`; its first
+      start downloads the signatures, a few minutes); the server allows it outbound HTTPS for signature updates; it
+      uses about 1 GB of memory. The old `anjal-clamav` network is no longer used (`docker network rm anjal-clamav` once
+      nothing is attached to it).
+- [ ] **Signing (M1 (b), before the first customer):** make the key and register its public half as
+      `docker-compose.anjal-signing.yml` says; deploy with `--anjal-signing`; each host's log shows "Requests to Anjal are
+      signed with key sk_…", the same id Anjal shows; then switch on "Signing required" for the Sangam app and send one
+      real code.
+- [ ] **Token certificates:** RSA 3072 (RS256), made as `deploy/production/secrets/README.md` shows.
+- [ ] **Sthraas Hub (when ready):** `secrets/Sthraas__Hub__ClientSecret` and `secrets/Sthraas__HubTest__ClientSecret`
+      made on the server and given by Arun to the Hub's deployment; deploy with `--hub`; the Hub signs in with
+      `sthraas-hub` at `https://hub.sthraas.com/` and `sthraas-hub-test` at `https://hub-test.sthraas.com/`.
+- [ ] **SMS (D-182):** stays off (`Sangam__Sms__Enabled=false`); mobile numbers are still collected. When SMS returns,
+      decide whether Anjal or a direct SMS provider sends it.

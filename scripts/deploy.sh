@@ -6,6 +6,8 @@
 #   sudo /opt/sangam/scripts/deploy.sh v1.0.0-rc.16 --saml     # also docker-compose.saml.yml
 #   sudo /opt/sangam/scripts/deploy.sh v1.0.0-rc.16 --digilocker
 #   sudo /opt/sangam/scripts/deploy.sh v1.0.0-rc.16 --logs       # also docker-compose.logs.yml (logs off the server)
+#   sudo /opt/sangam/scripts/deploy.sh v1.0.0-rc.17 --anjal-signing   # also docker-compose.anjal-signing.yml (rc.17)
+#   sudo /opt/sangam/scripts/deploy.sh v1.0.0-rc.17 --hub        # also docker-compose.hub.yml (the Sthraas Hub, rc.17)
 #   sudo /opt/sangam/scripts/deploy.sh --check                 # the checks only, on what is checked out now
 #
 # In order, stopping at the first problem:
@@ -44,6 +46,8 @@ for arg in "$@"; do
     --saml) files+=(-f docker-compose.saml.yml) ;;
     --digilocker) files+=(-f docker-compose.digilocker.yml) ;;
     --logs) files+=(-f docker-compose.logs.yml) ;;
+    --anjal-signing) files+=(-f docker-compose.anjal-signing.yml) ;;
+    --hub) files+=(-f docker-compose.hub.yml) ;;
     v*) tag="$arg" ;;
     *) echo "Unknown argument: $arg"; exit 2 ;;
   esac

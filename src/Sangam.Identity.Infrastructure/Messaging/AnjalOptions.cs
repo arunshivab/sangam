@@ -3,10 +3,11 @@ using Microsoft.Extensions.Configuration;
 namespace Sangam.Identity.Infrastructure.Messaging;
 
 /// <summary>
-/// Settings for Anjal's messaging API under <c>Sangam:Anjal</c> (D-B, D-M). Anjal sends all of Sangam's e-mail
-/// and, once DLT is registered, its SMS. Anjal's API details follow its own testing, so the address, the paths,
-/// how the key is presented and the retry rules are all settings; the request bodies are the contract proposed
-/// in <c>docs/anjal-messaging-contract.md</c>. Sangam to Anjal is machine-to-machine: an API key, no user.
+/// Settings for Anjal's messaging API under <c>Sangam:Anjal</c> (D-B, D-M). Anjal sends all of Sangam's e-mail; SMS
+/// is off for now (D-182: SMS returns later, and who sends it is decided then). Anjal's API details follow its own
+/// testing, so the address, the paths, how the key is presented and the retry rules are all settings; the request
+/// bodies are the contract in <c>docs/anjal-messaging-contract.md</c>. Sangam to Anjal is machine-to-machine: an API
+/// key, no user, and from rc.17 a request signature as well (<see cref="SigningKey"/>).
 /// </summary>
 public sealed class AnjalOptions
 {
@@ -18,6 +19,13 @@ public sealed class AnjalOptions
 
     /// <summary>The API key. A secret: from a secret file in production, never a settings file.</summary>
     public string? ApiKey { get; set; }
+
+    /// <summary>
+    /// rc.17 (M1 (b)): the P-256 private key, in PEM, that signs every request to Anjal beside the API key. A secret:
+    /// from the secret file <c>Sangam__Anjal__SigningKey</c>, never a settings file. Unset: requests carry the API key
+    /// only (the pilot); set it before the first customer. The key id Anjal shows is worked out from the key.
+    /// </summary>
+    public string? SigningKey { get; set; }
 
     /// <summary>The header that carries the key (default <c>Authorization</c>).</summary>
     public string ApiKeyHeader { get; set; } = "Authorization";

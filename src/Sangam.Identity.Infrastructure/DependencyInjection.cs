@@ -152,7 +152,7 @@ public static class DependencyInjection
         services.AddScoped<ISignatureService, EfSignatureService>();
         // PR-19: branding and message templates by level.
         services.AddScoped<Application.Customisation.CurrentApplication>();
-        // rc.5 (ASVS V12.4.2): every uploaded logo goes through the server's ClamAV (shared with Anjal).
+        // rc.5 (ASVS V12.4.2): every uploaded logo goes through ClamAV (rc.17: Sangam's own, the clamav service).
         services.AddSingleton<Customisation.IFileScanner>(sp => new Customisation.ClamAvScanner(configuration, sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Customisation.ClamAvScanner>>()));
         services.AddScoped<Customisation.EfCustomisationService>();
         services.AddScoped<Application.Customisation.ICustomisationService>(sp => sp.GetRequiredService<Customisation.EfCustomisationService>());
@@ -183,14 +183,32 @@ public static class DependencyInjection
         services.AddSingleton(anjal);
         if (anjal.Configured)
         {
+            // rc.17 (M1 (b)): with a signing key, every request is signed too; a key that is not P-256 stops the host.
+            if (!string.IsNullOrWhiteSpace(anjal.SigningKey))
+            {
+                string signingKey = anjal.SigningKey;
+                using (AnjalRequestSigner.FromPem(signingKey))
+                {
+                    // Read once here so a wrong key stops the host at start-up, not at the first send.
+                }
+
+                services.AddSingleton(_ => AnjalRequestSigner.FromPem(signingKey));
+            }
+
+            // rc.17 review: never follow a redirect, so neither the key nor the signature can be carried to another host.
             services.AddSingleton(sp => new AnjalClient(
-                new HttpClient(Security.TlsRevocation.CreateHandler())
+                new HttpClient(NoRedirects(Security.TlsRevocation.CreateHandler()))
                 {
                     BaseAddress = new Uri(anjal.BaseUrl!.EndsWith('/') ? anjal.BaseUrl : anjal.BaseUrl + "/"),
                     Timeout = TimeSpan.FromSeconds(Math.Max(1, anjal.TimeoutSeconds)),
                 },
                 anjal,
-                sp.GetRequiredService<ILogger<AnjalClient>>()));
+                sp.GetRequiredService<ILogger<AnjalClient>>(),
+                sp.GetService<AnjalRequestSigner>()));
+
+            // Made at start-up, not at the first send, so every host logs the key id it signs with when it starts.
+            services.AddSingleton(sp => new AnjalStartup(sp.GetRequiredService<AnjalClient>()));
+            services.AddHostedService(sp => sp.GetRequiredService<AnjalStartup>());
         }
 
         if (configuration.GetValue<bool>("Sangam:Email:UseOutbox") && configuration.GetValue<bool>(DevOutboxStore.SharedKey))
@@ -336,5 +354,11 @@ public static class DependencyInjection
         {
             services.AddSingleton<ISmsSender, UnavailableSmsSender>();
         }
+    }
+
+    private static SocketsHttpHandler NoRedirects(SocketsHttpHandler handler)
+    {
+        handler.AllowAutoRedirect = false;
+        return handler;
     }
 }

@@ -45,8 +45,8 @@ public interface IFileScanner
 }
 
 /// <summary>
-/// ClamAV over its own network protocol (<c>clamd</c>, <c>INSTREAM</c>), with no package added: the server's ClamAV,
-/// shared with Anjal's mail scanning, on the server's private network only (rc.5, ASVS V12.4.2). Settings under
+/// ClamAV over its own network protocol (<c>clamd</c>, <c>INSTREAM</c>), with no package added (rc.5, ASVS V12.4.2):
+/// from rc.17 (M8 (a)) Sangam's own ClamAV, the <c>clamav</c> service, on its own network only. Settings under
 /// <c>Sangam:Antivirus</c>: <c>Host</c>, <c>Port</c> (default 3310) and <c>TimeoutSeconds</c> (default 10). A file is
 /// never kept unscanned: when the scanner cannot be reached the caller refuses the upload.
 /// </summary>

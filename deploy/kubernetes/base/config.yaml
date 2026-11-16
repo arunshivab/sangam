@@ -16,7 +16,7 @@ data:
   Sangam__PortalUrl: https://account.sangamid.in
   Sangam__DataProtection__Certificates__0__Path: /run/secrets/keyring_current.pfx
   Sangam__Sms__Enabled: "false"
-  Sangam__Anjal__BaseUrl: SET-ANJAL-API-URL
+  Sangam__Anjal__BaseUrl: https://mail.anjal.co.in/
   Sangam__Anjal__FromAddress: no-reply@sangamid.in
   # rc.5: the built-in list, then Pwned Passwords by k-anonymity (outbound HTTPS to api.pwnedpasswords.com).
   Sangam__Passwords__BreachCheck__Enabled: "true"
@@ -41,7 +41,7 @@ data:
   Sangam__Monitoring__Evaluate: "true"
   Sangam__Monitoring__ExpectedHosts: identity,portal,admin,partner
   Sangam__Monitoring__TlsHosts: id.sangamid.in,account.sangamid.in,admin.sangamid.in,partners.sangamid.in
-  Sangam__Monitoring__AnjalHealthUrl: SET-ANJAL-HEALTH-URL
+  Sangam__Monitoring__AnjalHealthUrl: https://mail.anjal.co.in/api/v1/health
   Sangam__Alerts__Emails: SET-FOUNDER-ALERT-EMAIL
   Sangam__Alerts__Mobiles: SET-FOUNDER-ALERT-MOBILE
   Sangam__Passkeys__RpId: id.sangamid.in
