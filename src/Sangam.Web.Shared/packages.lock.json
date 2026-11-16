@@ -11,6 +11,7 @@
       "sangam.identity.application": {
         "type": "Project",
         "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "[11.0.0, )",
           "Sangam.Identity.Domain": "[1.0.0-rc.16, )",
           "Sangam.Shared": "[1.0.0-rc.16, )"
         }
@@ -18,11 +19,18 @@
       "sangam.identity.domain": {
         "type": "Project",
         "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "[11.0.0, )",
           "Sangam.Shared": "[1.0.0-rc.16, )"
         }
       },
       "sangam.shared": {
         "type": "Project"
+      },
+      "Microsoft.Extensions.DependencyInjection.Abstractions": {
+        "type": "CentralTransitive",
+        "requested": "[11.0.0, )",
+        "resolved": "11.0.0",
+        "contentHash": "a2c4Kp55miXT6G+DSb75pczXQJHgNMzPyZEyMxrrKxuQrgvctcDWJWD9fVe/uGbQdu4Z0c3B7AVKp1DXmD64nQ=="
       }
     }
   }
