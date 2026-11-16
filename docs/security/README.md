@@ -96,7 +96,7 @@ The founder decided the six requirements that were Not met on 10 October 2026 (A
 | A2: a pepper, as Argon2id's secret input, in a secret file; one offline copy with the founder | V2.4.5 | Met |
 | A3: `__Host-` session and anti-forgery cookies, now | V3.4.4 | Met |
 | A4: consent first — the API adds only existing users; others are invited; every application has its own ids for people (rc.14, ADR-0017) | V4.2.1 | Met |
-| A5: logos scanned by Anjal's ClamAV; refused while it does not answer | V12.4.2 | Met |
+| A5: logos scanned by ClamAV (rc.17: Sangam's own, not Anjal's); refused while it does not answer | V12.4.2 | Met |
 | A6: keys as files on the VM for the pilot and controlled launch, compensating controls in SGM-908 | V6.4.2, V6.4.1 | Accepted; review before the public launch |
 
 rc.6 (SGM-914): a lost second step is recovered with the person's first step and DigiLocker, with the 24/72-hour

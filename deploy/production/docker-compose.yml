@@ -13,8 +13,8 @@ x-host: &host
   security_opt: ["no-new-privileges:true"]
   mem_limit: 1g
   pids_limit: 256
-  # rc.5: anjal-clamav is the private network on which Anjal's ClamAV listens (README: "Virus scanner").
-  networks: [edge, sangam-db, anjal-clamav]
+  # rc.17 (M8 (a)): sangam-clamav is the network on which Sangam's own ClamAV (the clamav service) listens.
+  networks: [edge, sangam-db, sangam-clamav]
   # D-H: the backup and restore-drill scripts write their status here for the monitoring page.
   volumes:
     - /srv/sangam/status:/var/lib/sangam/status:ro
@@ -35,16 +35,18 @@ x-host: &host
     # SMS stays off until the founder picks a DLT provider, header and templates (SGM-206); the identity
     # server and the portal must agree, so it is set here for every host (PR-15).
     Sangam__Sms__Enabled: "false"
-    # D-B / D-M: Anjal sends all of Sangam's e-mail (and later its SMS) through its API; every host sends e-mail.
-    # The address and paths are confirmed after Anjal's own testing (docs/anjal-messaging-contract.md).
-    Sangam__Anjal__BaseUrl: "SET-ANJAL-API-URL"
+    # D-B / D-M: Anjal sends all of Sangam's e-mail through its API; every host sends e-mail. Anjal confirmed the
+    # address, the path and the Bearer key on 13 November 2026 (docs/anjal-messaging-contract.md); the path, header and
+    # scheme stay at Sangam's defaults. SMS is off for now (D-182).
+    Sangam__Anjal__BaseUrl: https://mail.anjal.co.in/
     Sangam__Anjal__FromAddress: no-reply@sangamid.in
     # rc.5 (D-J revised): the breached-password check is on for everyone — the built-in list, then Pwned Passwords by
     # k-anonymity (only five characters of a password's SHA-1 leave the server). Nothing to download or import. It
     # needs outbound HTTPS to api.pwnedpasswords.com; without it the built-in list is the check and /monitoring says so.
     Sangam__Passwords__BreachCheck__Enabled: "true"
-    # rc.5 (ASVS V12.4.2): every uploaded logo is scanned by Anjal's ClamAV, on the private anjal-clamav network only.
-    Sangam__Antivirus__Host: "SET-ANJAL-CLAMAV-HOST"
+    # rc.5 (ASVS V12.4.2): every uploaded logo is scanned. rc.17 (M8 (a)): by Sangam's own ClamAV (the clamav service
+    # below), not Anjal's, so the two products share no scanner and no outage.
+    Sangam__Antivirus__Host: clamav
     Sangam__Antivirus__Port: "3310"
     # D-H: self-hosted monitoring; no third party. Every host records its metrics into the database.
     Sangam__Monitoring__StatusDirectory: /var/lib/sangam/status
@@ -68,7 +70,8 @@ services:
       Sangam__Monitoring__ExpectedHosts: identity,portal,admin,partner
       # OI-059: admin.sangamid.in is not reachable from here (loopback only); Caddy renews its certificate with the others.
       Sangam__Monitoring__TlsHosts: id.sangamid.in,account.sangamid.in,partners.sangamid.in,demo.sangamid.in
-      Sangam__Monitoring__AnjalHealthUrl: "SET-ANJAL-HEALTH-URL"
+      # rc.17 (M7 (a)): asked with Sangam's key (and signature), so it also shows whether Sangam can send.
+      Sangam__Monitoring__AnjalHealthUrl: https://mail.anjal.co.in/api/v1/health
       Sangam__Alerts__Emails: "SET-FOUNDER-ALERT-EMAIL"
       Sangam__Alerts__Mobiles: "SET-FOUNDER-ALERT-MOBILE"
       # Passkeys are bound to this host for good: changing the RP ID later breaks every passkey (PR-14).
@@ -213,6 +216,30 @@ services:
       - { source: Imagiqa__ClientSecret, target: Sangam__ClientSecret }
       - ConnectionStrings__Imagiqa
 
+  # rc.17 (M8 (a)): Sangam's own virus scanner for uploaded logos (clamd on 3310, freshclam updating its signatures
+  # from the internet). It answers only on sangam-clamav and publishes no port. Its start-up script runs as root to
+  # own its signature volume and then drops to the clamav user, so it keeps only the capabilities that needs. About
+  # 1 GB of memory once the signatures are loaded; database reloads are not concurrent, so memory does not double
+  # (scans wait a few seconds while it reloads, and an upload in that moment is refused and can be retried).
+  clamav:
+    image: clamav/clamav:1.4@sha256:cbc30de94b6e9b33ac14136ff45306cee02a1f9ae522394a3cc5b9215d1affe9
+    restart: unless-stopped
+    networks: [sangam-clamav]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 1536m
+    pids_limit: 256
+    environment:
+      CLAMD_CONF_ConcurrentDatabaseReload: "no"
+    volumes:
+      - clamav_db:/var/lib/clamav
+    logging:
+      driver: local
+      options:
+        max-size: "20m"
+        max-file: "5"
+
   # rc.9 (ASVS V1.14.5): Caddy runs as an ordinary user (1000), not root. Ports below 1024 are opened to unprivileged users
   # inside its own network namespace only (the sysctl), so it needs no capability at all. This one-off step gives its two
   # volumes to that user before it starts (volumes made by an earlier release belong to root), with only the rights
@@ -280,6 +307,8 @@ secrets:
 volumes:
   caddy_data:
   caddy_config:
+  # rc.17: ClamAV's signatures, kept across restarts so a restart does not download them again.
+  clamav_db:
 
 networks:
   edge:
@@ -291,6 +320,6 @@ networks:
   # rc.9: the demo's own way to the database, created by the database stack (postgres/docker-compose.yml).
   sangam-demo-db:
     external: true
-  # rc.5: created once (docker network create anjal-clamav) and joined by Anjal's ClamAV container only.
-  anjal-clamav:
-    external: true
+  # rc.17 (M8 (a)): Sangam's hosts and its own ClamAV only. Not internal, because freshclam must reach the internet
+  # for signature updates; nothing is published on it.
+  sangam-clamav: {}

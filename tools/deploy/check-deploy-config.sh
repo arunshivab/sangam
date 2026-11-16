@@ -20,6 +20,9 @@ compose -f docker-compose.yml -f docker-compose.saml.yml
 compose -f docker-compose.yml -f docker-compose.digilocker.yml
 compose -f docker-compose.yml -f docker-compose.saml.yml -f docker-compose.digilocker.yml
 compose -f docker-compose.yml -f docker-compose.logs.yml
+compose -f docker-compose.yml -f docker-compose.anjal-signing.yml
+compose -f docker-compose.yml -f docker-compose.hub.yml
+compose -f docker-compose.yml -f docker-compose.saml.yml -f docker-compose.digilocker.yml -f docker-compose.anjal-signing.yml -f docker-compose.hub.yml
 compose -f postgres/docker-compose.yml
 echo "valid"
 
@@ -36,7 +39,7 @@ echo "== Secrets"
 readme="$prod/secrets/README.md"
 secret_files() { python3 -c 'import json,sys; [print(v.get("file","").rsplit("/",1)[-1]) for v in (json.load(sys.stdin).get("secrets") or {}).values()]'; }
 names="$(cd "$prod" && {
-  docker compose -f docker-compose.yml -f docker-compose.saml.yml -f docker-compose.digilocker.yml config --format json | secret_files
+  docker compose -f docker-compose.yml -f docker-compose.saml.yml -f docker-compose.digilocker.yml -f docker-compose.anjal-signing.yml -f docker-compose.hub.yml config --format json | secret_files
   docker compose -f postgres/docker-compose.yml config --format json | secret_files
 } | sort -u)"
 for name in $names; do

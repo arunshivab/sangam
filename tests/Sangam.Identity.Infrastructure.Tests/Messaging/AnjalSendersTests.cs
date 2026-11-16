@@ -167,11 +167,12 @@ public sealed class AnjalSendersTests
 
     [Theory]
     [InlineData(HttpStatusCode.RequestTimeout, true)]
+    [InlineData(HttpStatusCode.Conflict, true)]
     [InlineData(HttpStatusCode.TooManyRequests, true)]
     [InlineData(HttpStatusCode.BadGateway, true)]
     [InlineData(HttpStatusCode.BadRequest, false)]
     [InlineData(HttpStatusCode.Unauthorized, false)]
-    public void OnlyTimeoutsThrottlingAndServerErrors_AreRetried(HttpStatusCode status, bool transient)
+    public void OnlyTimeoutsInProgressThrottlingAndServerErrors_AreRetried(HttpStatusCode status, bool transient)
         => Assert.Equal(transient, AnjalClient.IsTransient(status));
 
     private static AnjalOptions Configure(AnjalOptions options)

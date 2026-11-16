@@ -7,7 +7,7 @@ terminates TLS for the four Sangam hosts. Decisions still open are marked **FOUN
 ## 1. Prepare
 
 1. DNS: `id`, `account`, `admin`, `partners` and `demo.sangamid.in` point at the VM.
-2. Mail: `scripts/check-mail-dns.ps1 -Domain sangamid.in -DkimSelector <Anjal's selector>` passes. **FOUNDER (OI-027)**
+2. Mail: `scripts/check-mail-dns.ps1 -Domain sangamid.in -DkimSelector anjal -AnjalSpf include:_spf.anjal.co.in` passes (rc.17: the records are in the go-live checklist, "Added by rc.17"). **FOUNDER (OI-027)**
 3. Secrets: create every file listed in `secrets/README.md`.
 
 ## 2. Database
@@ -66,7 +66,7 @@ Its connection string goes in `secrets/ConnectionStrings__Imagiqa`; the demo cre
 
 One command, as root on the VM, with the release tag:
 
-    sudo /opt/sangam/scripts/deploy.sh v1.0.0-rc.16                      # add --digilocker, --saml, --logs as used
+    sudo /opt/sangam/scripts/deploy.sh v1.0.0-rc.17                      # add --digilocker, --saml, --logs, --anjal-signing, --hub as used
     sudo /opt/sangam/scripts/deploy.sh --check                           # the checks only, changing nothing
 
 It checks first and changes nothing if any check fails: the tag exists and the checkout has no local changes; the
@@ -123,9 +123,11 @@ by invitation only (pilot), invite testers first. To give someone a role at a de
   monitoring page alerts when a backup did not go off-site, failed, or is overdue.
 - **Monitoring (D-H):** no third party. Every host records its metrics into the database; the operator console's
   *Monitoring* page shows them; the identity server (`Sangam__Monitoring__Evaluate=true`) alerts the founder by
-  e-mail and SMS through Anjal. Anjal's server runs the outside watchdog against `/health/ready`; Sangam watches
-  Anjal through `Sangam__Monitoring__AnjalHealthUrl`. When Anjal itself is down, Sangam cannot send through it: the
-  page shows it, and Anjal's own watchdog is the alert path.
+  e-mail through Anjal (SMS is off for now, D-182). An outside watchdog calls `/health/ready` every minute (rc.17,
+  M9 (b): the Pezhai witness VM or an uptime service, never a timer on this VM, which would go quiet with it). Sangam
+  watches Anjal through `Sangam__Monitoring__AnjalHealthUrl` (`https://mail.anjal.co.in/api/v1/health`, asked with
+  Sangam's key from rc.17). When Anjal itself is down, Sangam cannot send through it: the page shows it, and the
+  outside watchdog is the alert path.
 - **Logs:** the `local` logging driver, rotated (50 MB × 20 per container). They stay on the server and go into the
   encrypted backups, kept one year (D-H; backup job in R4; one year from rc.6, SGM-910: CERT-In asks 180 days, the DPDP Rules' safeguards a year).
   rc.16 (ASVS V1.7.2): to send them, as they are written, to a log store off the server as well, set the receiver in
@@ -146,10 +148,15 @@ by invitation only (pilot), invite testers first. To give someone a role at a de
   code or a passkey and set a new password — but every password stops working, so keep the offline copy safe. To
   replace it: give the old value as `Sangam__PasswordHashing__PreviousPeppers__1`, the new one as the pepper and
   `Sangam__PasswordHashing__PepperVersion: "2"`; hashes move to the new pepper as people sign in.
-- **Virus scanner (rc.5, ASVS V12.4.2):** uploaded logos are scanned by Anjal's ClamAV. Once:
-  `docker network create anjal-clamav`, attach Anjal's ClamAV container to it (Anjal project), and set
-  `Sangam__Antivirus__Host` to its name on that network. The partner and operator consoles refuse to start without a
-  scanner; an upload is refused while the scanner does not answer, and the monitoring page shows it.
+- **Virus scanner (rc.5, ASVS V12.4.2; rc.17, M8 (a)):** uploaded logos are scanned by Sangam's own ClamAV, the
+  `clamav` service in `docker-compose.yml`, on the `sangam-clamav` network, with no port published. Nothing to set up:
+  its first start downloads the signatures (a few minutes; it needs outbound HTTPS), and it keeps them in the
+  `clamav_db` volume. About 1 GB of memory. The partner and operator consoles refuse to start without a scanner; an
+  upload is refused while the scanner does not answer (for a few seconds while it reloads its signatures, too), and the
+  monitoring page shows it. Before rc.17 this was Anjal's ClamAV on the `anjal-clamav` network; once nothing is attached
+  to that network, `docker network rm anjal-clamav`.
+- **Anjal signing (rc.17, M1 (b)) and the Sthraas Hub (rc.17):** `docker-compose.anjal-signing.yml` and
+  `docker-compose.hub.yml` say how to make their secrets; deploy with `--anjal-signing` and `--hub`.
 - **Audit archive (D-A):** once, on the founder's own computer (never on the server):
 
       docker run --rm -v "$PWD/keys:/keys" sangam/identity audit-archive keygen --out /keys --password '<long passphrase>'
@@ -276,7 +283,8 @@ until the vault exists (decision A6).
    else. Docker's published ports bypass `ufw`, so any port that must not be public is published on `127.0.0.1` in
    `docker-compose.yml` (the operator console's 8443 is); check with `ss -tlnp` that only 22, 80 and 443 listen on
    the public address. Outgoing (decision 9): 443; 80 for certificate revocation checks (OCSP and CRL, rc.8 — without it every
-   check soft-fails); DNS; mail only from Anjal. `ufw default deny incoming && ufw default deny outgoing`, then allow
+   check soft-fails); DNS; mail only from Anjal. The `clamav` service needs outbound 443 for its signature updates
+   (rc.17). `ufw default deny incoming && ufw default deny outgoing`, then allow
    each.
 4. **Brute force:** `apt install fail2ban` with the default `sshd` jail.
 5. **Updates:** `apt install unattended-upgrades` and enable security updates; reboot in a quiet hour when a kernel
@@ -289,7 +297,7 @@ until the vault exists (decision A6).
 8. **Record it:** write the date and what was checked in the go-live checklist and, after go-live, in the release
    notes (SGM-605).
 
-Not verified in Claude's environment: Anjal's real API and DigiLocker's real service. The Caddyfile runs under the
+Not verified in Claude's environment: Anjal's real API (its spec was checked against Anjal's written answers of 13 November 2026) and DigiLocker's real service. rc.17: the `clamav` service was started with these settings in Docker; it downloaded its signatures, found the EICAR test file and passed a clean one. The Caddyfile runs under the
 production Caddy image in CI (the path check) and was tried with the hardened stack in Docker (rc.9, OI-059). The
 images build and the identity server starts in Production in Docker (release evidence); certificates, secret files,
 health checks and the migration bundle against an empty database are covered by tests.

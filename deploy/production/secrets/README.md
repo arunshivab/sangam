@@ -11,9 +11,11 @@ secret files are never committed: `.gitignore` excludes everything here except t
 | `ConnectionStrings__Sangam__admin` | The same for the operator console, as `sangam_admin_app`, with `Maximum Pool Size=10` |
 | `ConnectionStrings__Sangam__partner` | The same for the partner console, as `sangam_partner_app`, with `Maximum Pool Size=25` |
 | `Sangam__Portal__ClientSecret`, `Sangam__Admin__ClientSecret`, `Sangam__Partner__ClientSecret` | Fresh client secrets, 32+ characters. The identity server registers the three clients with these same files (R4), so they always match. |
-| `Sangam__Anjal__ApiKey` | Sangam's API key on Anjal, for sending e-mail and SMS (D-B, D-M). Every host needs it. |
+| `Sangam__Anjal__ApiKey` | Sangam's live API key on Anjal (`ak_live_` and 32 characters), made in Anjal under Organisation settings → Sending systems → Sangam (D-B, D-M). Every host needs it. The founder copies it in himself; it never goes through chat or e-mail. |
+| `Sangam__Anjal__SigningKey` | rc.17 (M1 (b)), only with `docker-compose.anjal-signing.yml`: the P-256 private key every host signs its requests to Anjal with, `openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -out secrets/Sangam__Anjal__SigningKey`. Its public half (`openssl pkey -in secrets/Sangam__Anjal__SigningKey -pubout`) goes into Anjal. One offline copy with the founder's other keys. |
+| `Sthraas__Hub__ClientSecret`, `Sthraas__HubTest__ClientSecret` | rc.17, only with `docker-compose.hub.yml`: the Sthraas Hub's two client secrets (`sthraas-hub` and `sthraas-hub-test`), `openssl rand -base64 32` each. The founder gives each to the Hub's own deployment himself. |
 | `Sangam__PasswordHashing__Pepper` | rc.5 (ASVS V2.4.5): the password pepper, `openssl rand -base64 32`. Every host needs it and refuses to start without it. One offline copy with the founder; never in a backup. |
-| `signing_current.pfx`, `encryption_current.pfx` | Token certificates (SGM-803) |
+| `signing_current.pfx`, `encryption_current.pfx` | Token certificates (SGM-803). rc.17: RSA 3072, so tokens are signed RS256 (the founder's decision of 13 November 2026), made as shown below "Token certificates". |
 | `Sangam__Certificates__Signing__0__Password`, `Sangam__Certificates__Encryption__0__Password` | Their passwords |
 | `keyring_current.pfx`, `Sangam__DataProtection__Certificates__0__Password` | Certificate that encrypts the data-protection key ring, and its password (V-01). Every host needs it. |
 | `Imagiqa__ClientSecret` | D-I: the demo's client secret (32+ random characters). The identity server registers the demo with it; the demo signs in with it. |
@@ -22,6 +24,17 @@ secret files are never committed: `.gitignore` excludes everything here except t
 | `saml_signing_current.pfx`, `Sangam__Saml__Certificates__0__Password` | PR-22, only when SAML is switched on (`docker-compose.saml.yml`): a SAML-only signing certificate and its password. Identity server only. (rc.14: the pairwise key is gone; NameIDs are the applications' own ids, ADR-0017.) |
 | `Sangam__DigiLocker__ClientId`, `Sangam__DigiLocker__ClientSecret`, `Sangam__DigiLocker__SubjectKey` | PR-26, required from rc.6 (`docker-compose.digilocker.yml`): the client id and secret DigiLocker issues at onboarding, and the subject key (32+ random characters, `openssl rand -base64 48`, never changed) DigiLocker ids are hashed with. The portal and the identity server share the same three files. One offline copy of the subject key with the founder. |
 | `log-receiver-ca.pem` | rc.16 (ASVS V1.7.2), only with `docker-compose.logs.yml`: the CA certificate of the log receiver. Read by Docker on the host for the syslog-over-TLS logging driver and mounted into no container; not a secret, but kept here with the rest of the deployment's files. |
+
+Token certificates (rc.17): made on the server, RSA 3072, valid two years, each with its own password file:
+
+    openssl req -x509 -newkey rsa:3072 -sha256 -days 730 -nodes -subj "/CN=Sangam token signing" -keyout signing.key -out signing.crt
+    openssl pkcs12 -export -inkey signing.key -in signing.crt -out secrets/signing_current.pfx -passout file:secrets/Sangam__Certificates__Signing__0__Password
+    openssl req -x509 -newkey rsa:3072 -sha256 -days 730 -nodes -subj "/CN=Sangam token encryption" -keyout encryption.key -out encryption.crt
+    openssl pkcs12 -export -inkey encryption.key -in encryption.crt -out secrets/encryption_current.pfx -passout file:secrets/Sangam__Certificates__Encryption__0__Password
+    shred -u signing.key encryption.key
+
+(make each password file first, `openssl rand -base64 32 > secrets/<name>`). Applications read the keys from Sangam's
+JWKS by `kid`, so a new certificate is published beside the old one during a rotation.
 
 Each pool stays below its role's connection limit in `roles.sql` (60, 30, 15 and 30), leaving room for the connections a
 host opens outside its pool (the single-instance and cluster locks).

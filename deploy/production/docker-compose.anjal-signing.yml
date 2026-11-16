@@ -1,0 +1,31 @@
+# rc.17 (M1 (b), founder decision of 13 November 2026): every host signs its requests to Anjal as well as sending the
+# API key. Use it before the first customer (the pilot may run without it):
+#   docker compose -f docker-compose.yml -f docker-compose.anjal-signing.yml up -d
+#   (or: scripts/deploy.sh <tag> --anjal-signing)
+#
+# The key is a P-256 private key in PEM, made on the server and never copied off it except to the offline backup:
+#   openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -out secrets/Sangam__Anjal__SigningKey
+#   openssl pkey -in secrets/Sangam__Anjal__SigningKey -pubout
+# Paste the public key (the second command's output) into Anjal: Organisation settings -> Sending systems -> Sangam.
+# Anjal then shows a key id (sk_...); each host logs the same id when it starts ("Requests to Anjal are signed with key
+# ..."). Only when the two match, switch on "Signing required" in Anjal and send one real sign-in code.
+#
+# Rotating (Anjal keeps at most two live keys): make a new key beside the old one, paste its public half into Anjal,
+# replace this secret file and restart the four hosts, check one code arrives, then retire the old key in Anjal.
+# A host refuses to start when the file is not a P-256 private key.
+services:
+  identity:
+    secrets:
+      - source: Sangam__Anjal__SigningKey
+  portal:
+    secrets:
+      - source: Sangam__Anjal__SigningKey
+  admin:
+    secrets:
+      - source: Sangam__Anjal__SigningKey
+  partner:
+    secrets:
+      - source: Sangam__Anjal__SigningKey
+
+secrets:
+  Sangam__Anjal__SigningKey: { file: ./secrets/Sangam__Anjal__SigningKey }

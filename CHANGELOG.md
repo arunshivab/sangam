@@ -6,6 +6,52 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0-rc.17] - seventeenth release candidate
+
+Sangam 1.0.0-rc.17 settles how Sangam and Anjal work together, on Anjal's written answers and the founder's decisions of
+13 November 2026 (M1 to M10, D-182), and writes down what every application receives.
+
+### Anjal
+- **Signed requests (M1 (b)).** With `Sangam:Anjal:SigningKey` (a P-256 private key, the secret file
+  `Sangam__Anjal__SigningKey`, `docker-compose.anjal-signing.yml`), every request to Anjal is signed as Anjal verifies
+  it: ECDSA P-256 over the method, the raw target, the timestamp and the body's SHA-256, in `Anjal-Key-Id`,
+  `Anjal-Timestamp` and `Anjal-Signature`, beside the API key. Each attempt is signed afresh over the same body bytes
+  (Anjal refuses a repeated signature); the key id is worked out from the key and logged at start-up; a host refuses to
+  start with a key that is not P-256. On a refused signature the log says how far the server's clock is from Anjal's.
+  The pilot may run without it; it is switched on before the first customer.
+- **Anjal's "still sending" (M2).** A `409` (`idempotency_in_progress`) is now waited for and asked again with the same
+  idempotency key, so a code that is on its way is no longer counted as failed.
+- **Health with the key (M7 (a)).** The monitor asks `https://mail.anjal.co.in/api/v1/health` through the Anjal client,
+  with the key (and the signature, when set), which also shows whether Sangam can send. The key goes to Anjal's host only.
+- **Settings:** `Sangam__Anjal__BaseUrl` is `https://mail.anjal.co.in/` and `AnjalHealthUrl` its health endpoint.
+  `docs/anjal-messaging-contract.md` is now the contract as Anjal confirmed it (the 202 answer, the 409, limits,
+  "Allowed from", bounces), with SMS marked off for now (D-182: it returns later; who sends it is decided then).
+
+### Sangam's own virus scanner (M8 (a))
+- Uploaded logos are scanned by a `clamav` service in Sangam's own stack, on its own network (`sangam-clamav`), with no
+  port published and only the capabilities its start-up needs, instead of Anjal's ClamAV. The `anjal-clamav` network is
+  no longer used.
+
+### The Sthraas Hub
+- `docker-compose.hub.yml` registers the Hub's two clients, `sthraas-hub` (`https://hub.sthraas.com/`) and
+  `sthraas-hub-test` (`https://hub-test.sthraas.com/`), with Sangam's standard callbacks; `scripts/deploy.sh --hub`.
+
+### Documentation
+- **`docs/claims-contract.md`:** every scope and claim, the lifetimes, step-up, logout and roles, with decoded ID,
+  access and logout tokens from a real sign-in.
+- **Go-live checklist, "Added by rc.17":** NTP; the Anjal organisation, app, limits and organisation daily limit; how to
+  find the address for "Allowed from"; staging; the sangamid.in records (MX, SPF include, DKIM selector `anjal`, DMARC
+  `p=none` then `p=reject`, TLS reporting) and MTA-STS in order; the mailboxes; signing; RSA 3072 token certificates;
+  the Hub; SMS.
+- The outside watchdog is the Pezhai witness VM or an uptime service, not a timer on the Anjal VM (M9 (b)).
+
+### Security
+- .NET 10.0.15 (released 10 November 2026; CVE-2026-114146, CVE-2026-114147 and CVE-2026-114149, ASP.NET Core): the
+  SDK is pinned to 10.0.404, the build and runtime images move to their 10.0.15 digests, and the Microsoft.AspNetCore,
+  Microsoft.Extensions and Microsoft.EntityFrameworkCore packages and `dotnet-ef` move to 10.0.15 (not 11.0).
+
+All packages move to 1.0.0-rc.17.
+
 ## [1.0.0-rc.16] - sixteenth release candidate
 
 Sangam 1.0.0-rc.16 is the second and third batches of the ASVS Level 2 follow-up, on the founder's decisions of

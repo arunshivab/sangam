@@ -22,7 +22,7 @@ public static class AntivirusGuard
         }
 
         return string.IsNullOrWhiteSpace(configuration[ClamAvScanner.HostKey])
-            ? $"No virus scanner is configured ({ClamAvScanner.HostKey}: the server's ClamAV, shared with Anjal) in the '{environmentName}' environment. Uploaded logos could not be scanned. Refusing to start."
+            ? $"No virus scanner is configured ({ClamAvScanner.HostKey}: Sangam's own ClamAV, the clamav service) in the '{environmentName}' environment. Uploaded logos could not be scanned. Refusing to start."
             : null;
     }
 }

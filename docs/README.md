@@ -101,6 +101,11 @@
   operator action asks for a named right through one check; exactly one identity server runs per database; logos are
   PNG only; a release is deployed with `scripts/deploy.sh`. See
   [`decisions/0019-host-roles-operator-rights-one-identity-server.md`](decisions/0019-host-roles-operator-rights-one-identity-server.md).
+- **Anjal's answers and the claims contract (rc.17).** Requests to Anjal can be signed as Anjal verifies them; Anjal's
+  "still sending" answer is waited for; Anjal's health is asked with Sangam's key; Sangam runs its own virus scanner;
+  the Sthraas Hub's two clients come in an overlay. What every application receives is written down, with real sample
+  tokens, in [`claims-contract.md`](claims-contract.md); Anjal's API as confirmed is in
+  [`anjal-messaging-contract.md`](anjal-messaging-contract.md).
 - **SDK family and the shared audit event (R6).** JavaScript/TypeScript (`@sangam/client`, `@sangam/node`,
   `@sangam/react`), Python (`sangam-client`, FastAPI and Flask) and Java (`sangam-client`, `sangam-spring`) SDKs next to
   .NET's `Sangam.Client`, with one sample each; the shared audit event schema 1.0 and its helper in every SDK; shared

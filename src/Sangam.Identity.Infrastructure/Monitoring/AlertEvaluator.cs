@@ -6,6 +6,7 @@ using Sangam.Identity.Application.Abstractions;
 using Sangam.Identity.Application.Monitoring;
 using Sangam.Identity.Domain.Entities;
 using Sangam.Identity.Infrastructure.Maintenance;
+using Sangam.Identity.Infrastructure.Messaging;
 using Sangam.Identity.Infrastructure.Persistence;
 
 namespace Sangam.Identity.Infrastructure.Monitoring;
@@ -19,17 +20,20 @@ public sealed partial class AlertEvaluator : BackgroundService
 {
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(10) };
     private readonly IServiceScopeFactory _scopes;
+    private readonly IServiceProvider _services;
     private readonly MonitoringOptions _options;
     private readonly ILogger<AlertEvaluator> _logger;
     private DateTimeOffset _prunedAt = DateTimeOffset.MinValue;
 
     /// <summary>Initialises the evaluator.</summary>
     /// <param name="scopes">Scope factory.</param>
+    /// <param name="services">The root services, for the Anjal client when one is configured.</param>
     /// <param name="options">Monitoring settings.</param>
     /// <param name="logger">Logger.</param>
-    public AlertEvaluator(IServiceScopeFactory scopes, MonitoringOptions options, ILogger<AlertEvaluator> logger)
+    public AlertEvaluator(IServiceScopeFactory scopes, IServiceProvider services, MonitoringOptions options, ILogger<AlertEvaluator> logger)
     {
         _scopes = scopes ?? throw new ArgumentNullException(nameof(scopes));
+        _services = services ?? throw new ArgumentNullException(nameof(services));
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -177,15 +181,27 @@ public sealed partial class AlertEvaluator : BackgroundService
             return;
         }
 
+        Uri url = new(_options.AnjalHealthUrl, UriKind.Absolute);
         bool up;
-        try
+
+        // rc.17 (M7 (a)): Anjal's health endpoint needs Sangam's key (and signature), so it goes through the Anjal
+        // client when one is configured; that also tells us whether Sangam can send. Without one, a plain call.
+        AnjalClient? anjal = _services.GetService<AnjalClient>();
+        if (anjal is not null)
         {
-            using HttpResponseMessage response = await Http.GetAsync(new Uri(_options.AnjalHealthUrl, UriKind.Absolute), cancellationToken).ConfigureAwait(false);
-            up = response.IsSuccessStatusCode;
+            up = await anjal.CheckHealthAsync(url, cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        else
         {
-            up = false;
+            try
+            {
+                using HttpResponseMessage response = await Http.GetAsync(url, cancellationToken).ConfigureAwait(false);
+                up = response.IsSuccessStatusCode;
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+            {
+                up = false;
+            }
         }
 
         SangamMetrics.AnjalCheckCount.Add(1, new KeyValuePair<string, object?>("status", up ? "up" : "down"));

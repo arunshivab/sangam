@@ -114,7 +114,7 @@ public static class AlertRules
         // rc.5: the virus scanner not answering — logo uploads are refused until it does.
         if (s.Antivirus.Configured && s.Antivirus.Up == false)
         {
-            open.Add(new("antivirus_down", "virus scanner not answering", "The virus scanner (the server's ClamAV, shared with Anjal) is not answering. Logo uploads are refused until it does."));
+            open.Add(new("antivirus_down", "virus scanner not answering", "The virus scanner (Sangam's own ClamAV, the clamav service) is not answering. Logo uploads are refused until it does."));
         }
 
         // rc.5: the online breached-password service unreachable for a while; the built-in list is checked meanwhile.
