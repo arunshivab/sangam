@@ -45,6 +45,11 @@ Sangam 1.0.0-rc.17 settles how Sangam and Anjal work together, on Anjal's writte
   the Hub; SMS.
 - The outside watchdog is the Pezhai witness VM or an uptime service, not a timer on the Anjal VM (M9 (b)).
 
+### Security
+- .NET 10.0.15 (released 10 November 2026; CVE-2026-114146, CVE-2026-114147 and CVE-2026-114149, ASP.NET Core): the
+  SDK is pinned to 10.0.404, the build and runtime images move to their 10.0.15 digests, and the Microsoft.AspNetCore,
+  Microsoft.Extensions and Microsoft.EntityFrameworkCore packages and `dotnet-ef` move to 10.0.15 (not 11.0).
+
 All packages move to 1.0.0-rc.17.
 
 ## [1.0.0-rc.16] - sixteenth release candidate
