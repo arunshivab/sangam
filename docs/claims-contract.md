@@ -2,7 +2,7 @@
 
 What an application receives from Sangam when a person signs in: the tokens, every claim in them, and the samples
 an application (or its mock issuer, for tests) can be built against. Written for rc.17 (founder's decision of
-13 November 2026), updated for rc.18.
+13 November 2026), updated for rc.19.
 
 The samples below were **taken from a real sign-in** (15 November 2026, Sangam's in-process test host with the
 development sample client `sangam-dev-sample`, which is why the issuer reads `http://localhost/`), decoded and shown as
@@ -207,6 +207,9 @@ The organisation's admin gives them to people, per organisation; the application
 (or the temporary operator exception until DigiLocker is live). Custom claims are not the place for roles: they are for
 extra details and never appear in the ID token.
 
+On a Sangam running on your laptop, [Set up roles locally](local-roles.md) takes you through registering your
+application, defining its roles and giving a test person one, by the consoles or by the API.
+
 ## Asking for more (step-up)
 
 Send `acr_values=urn:sangam:acr:2` or `urn:sangam:acr:3` (and `max_age=<seconds>` for a recent sign-in) on the
@@ -231,6 +234,13 @@ suspends the account, the password is reset, the e-mail changes, two-step sign-i
 asks for a full sign-in again. A person who is only locked out for a while after wrong passwords keeps their existing
 sessions. An access token already issued lives until it expires (at most 15 minutes); an application that must know
 sooner asks `introspect`.
+
+To hand a shared device to the next person, lock the session (`POST /api/v1/sessions/lock` with the person's own access
+token, which carries `sid`), then send a normal authorize request. Where the device does not allow a PIN unlock, Sangam
+ends the earlier session as that request arrives, before the next person signs in. On an enrolled ward device where the
+person may unlock with a PIN, the locked session lives on for the PIN, and so does its refresh token. Since rc.19,
+`prompt=login` on a locked session that no PIN can unlock also ends it first. On an unlocked session, `prompt=login` and
+`max_age=0` only ask for a sign-in again and end nothing, so neither is the way to hand a device over: lock first.
 
 ## For .NET applications
 

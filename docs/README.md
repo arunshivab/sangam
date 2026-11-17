@@ -106,6 +106,10 @@
   the Sthraas Hub's two clients come in an overlay. What every application receives is written down, with real sample
   tokens, in [`claims-contract.md`](claims-contract.md); Anjal's API as confirmed is in
   [`anjal-messaging-contract.md`](anjal-messaging-contract.md).
+- **`prompt=login` ends a locked session; roles on a laptop (rc.19).** A locked session that no PIN can unlock is
+  ended before the sign-in page when an application sends `prompt=login`, so the earlier person's refresh token stops
+  at once. How any
+  application sets up its roles and a test person on a local Sangam is in [`local-roles.md`](local-roles.md).
 - **SDK family and the shared audit event (R6).** JavaScript/TypeScript (`@sangam/client`, `@sangam/node`,
   `@sangam/react`), Python (`sangam-client`, FastAPI and Flask) and Java (`sangam-client`, `sangam-spring`) SDKs next to
   .NET's `Sangam.Client`, with one sample each; the shared audit event schema 1.0 and its helper in every SDK; shared

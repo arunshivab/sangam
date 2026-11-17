@@ -101,6 +101,21 @@ public static class ConnectEndpoints
                 return Forbid(Errors.LoginRequired, "The user is not signed in.");
             }
 
+            // rc.19: prompt=login on a session that can only go on after a full sign-in (a locked one that no PIN can
+            // unlock here, or one on a shared ward device past its full-sign-in hours) ends that session first, exactly as
+            // step 1b does, so the earlier person's refresh tokens are refused before the next person signs in. A locked
+            // session the person may still unlock with their PIN on this ward device lives on for the PIN, as it does when
+            // someone else signs in from the device's tiles; any other session is left alone, since prompt=login there is
+            // usually the same person proving themselves again.
+            if (user is not null && SangamAuthentication.SessionId(session.Principal!) is Guid waitingRow)
+            {
+                SharedDeviceInfo? here = await SharedDeviceCookie.CurrentAsync(httpContext, cancellationToken).ConfigureAwait(false);
+                if (await devices.GateAsync(waitingRow, here?.Id, cancellationToken).ConfigureAwait(false) == DeviceGate.SignInAgain)
+                {
+                    await sessions.EndAsync(waitingRow, "locked", cancellationToken).ConfigureAwait(false);
+                }
+            }
+
             await httpContext.SignOutAsync(IdentityConstants.ApplicationScheme).ConfigureAwait(false);
             return Results.Redirect("/login?returnUrl=" + Uri.EscapeDataString(StripPrompt(returnUrl)));
         }

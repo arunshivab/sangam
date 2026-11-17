@@ -6,6 +6,26 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0-rc.19] - nineteenth release candidate
+
+### Shared ward devices
+- **`prompt=login` on a locked session ends it first.** Before, `prompt=login` dropped Sangam's cookie and asked for a
+  sign-in but left a locked session alive, so the earlier person's refresh token kept working after someone else signed
+  in. Now a session that can only go on after a full sign-in (a locked one that no PIN can unlock there, or one on a
+  shared ward device past its full-sign-in hours) is ended before the sign-in page, exactly as a normal authorize
+  request already did, and its refresh tokens are refused at once. A locked session the person may still unlock with
+  their PIN on an enrolled ward device lives on for the PIN, as it does when someone else signs in from the device's
+  tiles. Any other session is left alone: `prompt=login` there is usually the same person proving themselves again
+  (founder's decision of 17 November 2026). The way to hand a device over is still to lock the session, then send a
+  normal authorize request.
+
+### Documentation
+- **Set up roles locally** (`docs/local-roles.md`): for any application, the steps on a Sangam running on a laptop —
+  register the application, make yourself its owner, define its roles, add a test organisation and give a test person a
+  role — by the consoles or by the management API, as in production. Linked from the claims contract.
+
+All packages move to 1.0.0-rc.19.
+
 ## [1.0.0-rc.18] - eighteenth release candidate
 
 ### Tokens
