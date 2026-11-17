@@ -24,6 +24,7 @@ namespace Sangam.Identity.Server.Tests.Oidc;
 public sealed partial class SharedDeviceTests
 {
     private const string Pin = "482916";
+    private const string OfflineScope = "openid profile offline_access";
     private readonly SangamServerFactory _factory;
 
     public SharedDeviceTests(SangamServerFactory factory)
@@ -118,6 +119,93 @@ public sealed partial class SharedDeviceTests
         (_, string at, _) = await s.FollowAsync(Authorize(c2));
         Assert.StartsWith("/login", at, StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.NotFound, await LockAsync(access));
+    }
+
+    [PostgresFact]
+    public async Task PromptLogin_OnALockedSession_EndsIt_SoTheEarlierRefreshTokenIsRefused()
+    {
+        // rc.19: prompt=login used to drop Sangam's cookie but leave a locked session alive, so the earlier person's
+        // refresh token kept working after someone else signed in. Now it ends the locked session first.
+        using BrowserSession s = new(_factory);
+        await RegisterAndVerifyAsync(s, "Kavya");
+        (string verifier, string challenge) = Pkce();
+        (_, string consent, _) = await s.FollowAsync(Authorize(challenge, OfflineScope));
+        JsonElement tokens = await ExchangeAsync(s, consent, verifier);
+        string access = tokens.GetProperty("access_token").GetString()!;
+        string refresh = tokens.GetProperty("refresh_token").GetString()!;
+        Assert.Equal(HttpStatusCode.NoContent, await LockAsync(access));
+
+        (_, string c2) = Pkce();
+        (_, string at, _) = await s.FollowAsync(Authorize(c2, OfflineScope) + "&prompt=login");
+        Assert.StartsWith("/login", at, StringComparison.Ordinal);
+        (HttpStatusCode refreshed, string body) = await RefreshAsync(refresh);
+        Assert.Equal(HttpStatusCode.BadRequest, refreshed);
+        Assert.Contains("invalid_grant", body, StringComparison.Ordinal);
+    }
+
+    [PostgresFact]
+    public async Task PromptLogin_OnALockedSessionAPinCanUnlock_KeepsItForThePin()
+    {
+        // rc.19: on an enrolled ward device a locked session the person may unlock with their PIN lives on, as it does
+        // when someone else signs in from the tiles; prompt=login must not end it.
+        using BrowserSession s = new(_factory);
+        (Guid app, Guid ward) = await SeedWardAsync();
+        string admin = await RegisterAndVerifyAsync(s, "Arjun");
+        Guid adminId = await UserIdAsync(admin);
+        await PlaceAsync(app, ward, adminId, admin: true);
+        string token = await StartEnrolAsync(app, adminId, ward);
+        await s.PostFormAsync("/shared-device/enrol?token=" + token, new Dictionary<string, string> { ["Token"] = token });
+        await s.GetAsync("/login?switch=true");
+
+        string nurse = await RegisterAndVerifyAsync(s, "Divya");
+        await PlaceAsync(app, ward, await UserIdAsync(nurse), admin: false);
+        (string verifier, string challenge) = Pkce();
+        (_, string at, _) = await s.FollowAsync(Authorize(challenge, OfflineScope));
+        Assert.StartsWith("/shared-device/pin", at, StringComparison.Ordinal);
+        (_, string? back, _) = await s.PostFormAsync(at, new Dictionary<string, string> { ["Pin"] = Pin, ["Confirm"] = Pin });
+        (_, string consent, _) = await s.FollowAsync(back!);
+        JsonElement tokens = await ExchangeAsync(s, consent, verifier);
+        string refresh = tokens.GetProperty("refresh_token").GetString()!;
+        Assert.Equal(HttpStatusCode.NoContent, await LockAsync(tokens.GetProperty("access_token").GetString()!));
+
+        (_, string c2) = Pkce();
+        (_, string toLogin, _) = await s.FollowAsync(Authorize(c2, OfflineScope) + "&prompt=login");
+        Assert.StartsWith("/login", toLogin, StringComparison.Ordinal);
+        Assert.Contains("Locked · PIN", WebUtility.HtmlDecode((await s.GetAsync("/login")).Html), StringComparison.Ordinal);
+        (HttpStatusCode refreshed, string body) = await RefreshAsync(refresh);
+        Assert.True(refreshed == HttpStatusCode.OK, body);
+    }
+
+    [PostgresFact]
+    public async Task PromptLogin_OnAnUnlockedSession_LeavesItAlone()
+    {
+        // rc.19 (decision of 17 Nov 2026, option A): an unlocked session is usually the same person proving themselves
+        // again, so prompt=login there does not sign them out of their other applications.
+        using BrowserSession s = new(_factory);
+        await RegisterAndVerifyAsync(s, "Leela");
+        (string verifier, string challenge) = Pkce();
+        (_, string consent, _) = await s.FollowAsync(Authorize(challenge, OfflineScope));
+        string refresh = (await ExchangeAsync(s, consent, verifier)).GetProperty("refresh_token").GetString()!;
+
+        (_, string c2) = Pkce();
+        (_, string at, _) = await s.FollowAsync(Authorize(c2, OfflineScope) + "&prompt=login");
+        Assert.StartsWith("/login", at, StringComparison.Ordinal);
+        (HttpStatusCode refreshed, string body) = await RefreshAsync(refresh);
+        Assert.True(refreshed == HttpStatusCode.OK, body);
+    }
+
+    private async Task<(HttpStatusCode Status, string Body)> RefreshAsync(string refreshToken)
+    {
+        using HttpClient api = _factory.CreateClient();
+        using FormUrlEncodedContent form = new(new Dictionary<string, string>
+        {
+            ["grant_type"] = "refresh_token",
+            ["refresh_token"] = refreshToken,
+            ["client_id"] = DevelopmentSeeder.SampleClientId,
+            ["client_secret"] = DevelopmentSeeder.SampleClientSecret,
+        });
+        using HttpResponseMessage response = await api.PostAsync(new Uri("/connect/token", UriKind.Relative), form);
+        return (response.StatusCode, await response.Content.ReadAsStringAsync());
     }
 
     private async Task<HttpStatusCode> LockAsync(string accessToken)
@@ -237,10 +325,10 @@ public sealed partial class SharedDeviceTests
         return JsonDocument.Parse(body).RootElement;
     }
 
-    private static string Authorize(string challenge)
+    private static string Authorize(string challenge, string scope = "openid profile")
         => "/connect/authorize?client_id=" + DevelopmentSeeder.SampleClientId
         + "&redirect_uri=" + Uri.EscapeDataString(DevelopmentSeeder.SampleRedirectUri)
-        + "&response_type=code&scope=" + Uri.EscapeDataString("openid profile")
+        + "&response_type=code&scope=" + Uri.EscapeDataString(scope)
         + "&state=xyz&code_challenge=" + challenge + "&code_challenge_method=S256";
 
     private static (string Verifier, string Challenge) Pkce()
