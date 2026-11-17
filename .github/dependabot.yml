@@ -12,6 +12,25 @@ updates:
     # test project). Transitive packages move with the direct ones; vulnerable ones are caught by CI/security.
     allow:
       - dependency-type: direct
+    # rc.18 (16 Nov 2026): a new .NET major version (Microsoft.AspNetCore.*, Microsoft.Extensions.*,
+    # Microsoft.EntityFrameworkCore.*, dotnet-ef) is the founder's decision, not a weekly pull request: Sangam stays on
+    # the .NET 10 line (global.json) until he decides. Security releases inside .NET 10 still come as minor and patch.
+    # If a pull request still adds a PackageReference or VersionOverride to a project file (PR #74 did, to the domain
+    # project), close it and make the update by hand.
+    ignore:
+      - dependency-name: "Microsoft.AspNetCore.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.Extensions.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.EntityFrameworkCore*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "dotnet-ef"
+        update-types: ["version-update:semver-major"]
+      # Their major version follows EF Core's, so a new major would bring EF Core 11 with it.
+      - dependency-name: "Npgsql.EntityFrameworkCore.PostgreSQL"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "EFCore.NamingConventions"
+        update-types: ["version-update:semver-major"]
     schedule:
       interval: weekly
       day: monday
@@ -77,6 +96,13 @@ updates:
   - package-ecosystem: docker
     # rc.9: the application image and the non-root Caddy image (deploy/production/caddy).
     directories: ["/", "/deploy/production/caddy"]
+    # rc.18: the .NET images stay on the 10.0 tag (new digests, which carry .NET 10 security releases, still come);
+    # moving to 11.0 is the founder's decision (PR #66 proposed it on its own).
+    ignore:
+      - dependency-name: "*dotnet/sdk"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "*dotnet/aspnet"
+        update-types: ["version-update:semver-major"]
     schedule:
       interval: weekly
       day: monday

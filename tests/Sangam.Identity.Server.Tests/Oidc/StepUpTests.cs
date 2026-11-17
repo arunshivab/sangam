@@ -51,6 +51,38 @@ public sealed partial class StepUpTests
     }
 
     [PostgresFact]
+    public async Task Amr_IsAnArray_InTheIdToken_TheAccessToken_AndAfterARefresh()
+    {
+        using BrowserSession s = new(_factory);
+        await RegisterAsync(s);
+        (string verifier, string challenge) = Pkce();
+        string authorize = Authorize(challenge).Replace("openid%20profile%20email", "openid%20profile%20email%20offline_access", StringComparison.Ordinal);
+        JsonElement tokens = await ConsentAndExchangeAllAsync(s, authorize, verifier);
+
+        // rc.18: a single method is still an array (RFC 8176), in both tokens; before, the access token had "amr": "pwd".
+        Assert.Equal(JsonValueKind.Array, Payload(tokens.GetProperty("id_token").GetString()!).GetProperty("amr").ValueKind);
+        JsonElement access = Payload(tokens.GetProperty("access_token").GetString()!);
+        Assert.Equal(JsonValueKind.Array, access.GetProperty("amr").ValueKind);
+        Assert.Equal(["pwd"], Methods(access));
+
+        using HttpClient api = _factory.CreateClient();
+        using FormUrlEncodedContent form = new(new Dictionary<string, string>
+        {
+            ["grant_type"] = "refresh_token",
+            ["refresh_token"] = tokens.GetProperty("refresh_token").GetString()!,
+            ["client_id"] = DevelopmentSeeder.SampleClientId,
+            ["client_secret"] = DevelopmentSeeder.SampleClientSecret,
+        });
+        using HttpResponseMessage response = await api.PostAsync(new Uri("/connect/token", UriKind.Relative), form);
+        string body = await response.Content.ReadAsStringAsync();
+        Assert.True(response.IsSuccessStatusCode, body);
+        JsonElement refreshed = Payload(JsonDocument.Parse(body).RootElement.GetProperty("access_token").GetString()!);
+        Assert.Equal(JsonValueKind.Array, refreshed.GetProperty("amr").ValueKind);
+        Assert.Equal(["pwd"], Methods(refreshed));
+        Assert.Equal(AuthenticationAssurance.Acr1, refreshed.GetProperty("acr").GetString());
+    }
+
+    [PostgresFact]
     public async Task AskingForLevel2_SendsAPasswordSessionBackToSignIn_WhichAddsTheCodeStep()
     {
         using BrowserSession s = new(_factory);
@@ -108,7 +140,17 @@ public sealed partial class StepUpTests
             ? [.. token.GetProperty("amr").EnumerateArray().Select(e => e.GetString()!)]
             : [token.GetProperty("amr").GetString()!];
 
+    private static JsonElement Payload(string jwt)
+    {
+        string payload = jwt.Split('.')[1].Replace('-', '+').Replace('_', '/');
+        payload = payload.PadRight(payload.Length + ((4 - (payload.Length % 4)) % 4), '=');
+        return JsonDocument.Parse(Convert.FromBase64String(payload)).RootElement;
+    }
+
     private async Task<JsonElement> ConsentAndExchangeAsync(BrowserSession s, string authorize, string verifier)
+        => Payload((await ConsentAndExchangeAllAsync(s, authorize, verifier)).GetProperty("id_token").GetString()!);
+
+    private async Task<JsonElement> ConsentAndExchangeAllAsync(BrowserSession s, string authorize, string verifier)
     {
         (_, string path, _) = await s.FollowAsync(authorize);
         string redirect = path;
@@ -132,10 +174,7 @@ public sealed partial class StepUpTests
         using HttpResponseMessage response = await api.PostAsync(new Uri("/connect/token", UriKind.Relative), form);
         string body = await response.Content.ReadAsStringAsync();
         Assert.True(response.IsSuccessStatusCode, body);
-        string jwt = JsonDocument.Parse(body).RootElement.GetProperty("id_token").GetString()!;
-        string payload = jwt.Split('.')[1].Replace('-', '+').Replace('_', '/');
-        payload = payload.PadRight(payload.Length + ((4 - (payload.Length % 4)) % 4), '=');
-        return JsonDocument.Parse(Convert.FromBase64String(payload)).RootElement;
+        return JsonDocument.Parse(body).RootElement.Clone();
     }
 
     private static string Authorize(string challenge)
