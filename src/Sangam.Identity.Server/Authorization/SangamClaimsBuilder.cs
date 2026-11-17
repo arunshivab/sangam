@@ -18,6 +18,9 @@ namespace Sangam.Identity.Server.Authorization;
 /// </summary>
 public static class SangamClaimsBuilder
 {
+    /// <summary>The claim value type that makes a token write the value as a JSON array (Microsoft.IdentityModel's).</summary>
+    internal const string JsonArrayValueType = "JSON_ARRAY";
+
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>Creates the identity for a user-facing token.</summary>
@@ -129,7 +132,10 @@ public static class SangamClaimsBuilder
         if (proof is not null)
         {
             identity.SetClaim(Claims.AuthenticationContextReference, proof.Acr);
-            identity.SetClaims(Claims.AuthenticationMethodReference, [.. proof.Methods]);
+            // rc.18: one JSON-array claim, so amr is an array in every token (RFC 8176), even with a single method.
+            // As separate claims, OpenIddict wrote a single method as a plain string in the access token.
+            identity.RemoveClaims(Claims.AuthenticationMethodReference);
+            identity.AddClaim(new Claim(Claims.AuthenticationMethodReference, JsonSerializer.Serialize(proof.Methods), JsonArrayValueType));
             if (proof.AuthenticatedAt is DateTimeOffset at)
             {
                 identity.SetClaim(Claims.AuthenticationTime, at.ToUnixTimeSeconds());
@@ -257,6 +263,41 @@ public sealed record AuthenticationProof(string Acr, IReadOnlyList<string> Metho
         DateTimeOffset? at = long.TryParse(principal.GetClaim(Claims.AuthenticationTime), NumberStyles.None, CultureInfo.InvariantCulture, out long seconds)
             ? DateTimeOffset.FromUnixTimeSeconds(seconds)
             : null;
-        return new AuthenticationProof(acr, [.. principal.GetClaims(Claims.AuthenticationMethodReference)], at);
+        return new AuthenticationProof(acr, MethodsIn(principal), at);
+    }
+
+    /// <summary>
+    /// The sign-in methods in a principal, whether they are one JSON-array claim (rc.18 on) or one claim per method
+    /// (tokens issued before rc.18, which a refresh may still carry).
+    /// </summary>
+    /// <param name="principal">The principal.</param>
+    public static string[] MethodsIn(ClaimsPrincipal principal)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        List<string> methods = [];
+        foreach (Claim claim in principal.FindAll(Claims.AuthenticationMethodReference))
+        {
+            if (claim.ValueType == SangamClaimsBuilder.JsonArrayValueType || claim.Value.StartsWith('['))
+            {
+                try
+                {
+                    using JsonDocument document = JsonDocument.Parse(claim.Value);
+                    if (document.RootElement.ValueKind == JsonValueKind.Array)
+                    {
+                        methods.AddRange(document.RootElement.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.String).Select(e => e.GetString()!));
+                    }
+                }
+                catch (JsonException)
+                {
+                    // Not an array after all: no methods from this claim (never a server error).
+                }
+            }
+            else
+            {
+                methods.Add(claim.Value);
+            }
+        }
+
+        return [.. methods.Distinct(StringComparer.Ordinal)];
     }
 }

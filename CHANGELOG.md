@@ -6,6 +6,27 @@ All notable changes to Sangam are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0-rc.18] - eighteenth release candidate
+
+### Tokens
+- **`amr` is always an array** (RFC 8176): one method now reads `"amr": ["pwd"]` in the access token too, as it already
+  did in the ID token, and stays so after a refresh. A refresh token issued before rc.18 still carries its methods.
+  `docs/claims-contract.md` updated.
+
+### Dependencies
+- OpenIddict 7.9.0 (from 7.7.2), Microsoft.NET.Test.Sdk 18.12.0, coverlet.collector 10.1.1, made by hand: Dependabot's
+  pull request (#74) also pinned a library to 8.0.2 in the domain project.
+- Dependabot no longer proposes a new .NET major version (the Microsoft.AspNetCore, Microsoft.Extensions and
+  Microsoft.EntityFrameworkCore packages, `dotnet-ef`, Npgsql's EF Core provider and EFCore.NamingConventions, and the
+  `dotnet/sdk` and `dotnet/aspnet` images): moving to
+  .NET 11 is the founder's decision. Security releases inside .NET 10 still come.
+
+### Virus scanner
+- The scanner's ping waits as long as a scan (`Sangam:Antivirus:TimeoutSeconds`), at most 5 seconds, not a fixed 3
+  seconds, which a busy host could miss (a Windows CI run did).
+
+All packages move to 1.0.0-rc.18.
+
 ## [1.0.0-rc.17] - seventeenth release candidate
 
 Sangam 1.0.0-rc.17 settles how Sangam and Anjal work together, on Anjal's written answers and the founder's decisions of

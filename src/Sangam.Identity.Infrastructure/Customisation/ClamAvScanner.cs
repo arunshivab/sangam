@@ -56,6 +56,7 @@ public sealed partial class ClamAvScanner : IFileScanner
     public const string HostKey = "Sangam:Antivirus:Host";
 
     private const int ChunkBytes = 64 * 1024;
+    private static readonly TimeSpan PingLimit = TimeSpan.FromSeconds(5);
     private readonly string? _host;
     private readonly int _port;
     private readonly TimeSpan _timeout;
@@ -131,8 +132,10 @@ public sealed partial class ClamAvScanner : IFileScanner
             return null;
         }
 
+        // rc.18: the scan's limit (Sangam:Antivirus:TimeoutSeconds), capped at 5 s so the monitoring page never waits
+        // long; the fixed 3 s before was missed by a busy host.
         using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(TimeSpan.FromSeconds(3));
+        timeout.CancelAfter(_timeout < PingLimit ? _timeout : PingLimit);
         try
         {
             using TcpClient tcp = new();

@@ -1,12 +1,14 @@
 # Claims contract
 
 What an application receives from Sangam when a person signs in: the tokens, every claim in them, and the samples
-an application (or its mock issuer, for tests) can be built against. rc.17, founder's decision of 13 November 2026.
+an application (or its mock issuer, for tests) can be built against. Written for rc.17 (founder's decision of
+13 November 2026), updated for rc.18.
 
-The samples below were **taken from a real sign-in** on Sangam rc.17 (15 November 2026, Sangam's in-process test
-host with the development sample client `sangam-dev-sample`, which is why the issuer reads `http://localhost/`),
-decoded and shown as they came out; only the e-mail address was replaced. A Sangam run locally with `dotnet run` has
-the issuer `http://localhost:5100/`; in production it is `https://id.sangamid.in/`, and the `aud` is your own client id.
+The samples below were **taken from a real sign-in** (15 November 2026, Sangam's in-process test host with the
+development sample client `sangam-dev-sample`, which is why the issuer reads `http://localhost/`), decoded and shown as
+they came out; only the e-mail address was replaced, and the access token's `amr` is shown as rc.18 writes it (an
+array). A Sangam run locally with `dotnet run` has the issuer `http://localhost:5100/`; in production it is
+`https://id.sangamid.in/`, and the `aud` is your own client id.
 
 ## Discovery and keys
 
@@ -132,7 +134,7 @@ Lifetime one hour. Check `iss`, `aud`, `exp`, the signature and your `nonce`, as
   },
   "sid": "20d51af9-594e-8c12-9348-119a70a81e45",
   "acr": "urn:sangam:acr:1",
-  "amr": "pwd",
+  "amr": ["pwd"],
   "auth_time": 1794698994,
   "oi_au_id": "f6eaafa2-67b8-4527-88cc-ff9caef6cba2",
   "oi_prst": "sangam-dev-sample",
@@ -181,7 +183,7 @@ signed-out page) together with short access tokens.
 | `sub` | all | The person, **as this application knows them** (pairwise: every application, and every client registered as its own application, gets a different `sub` for the same person). A GUID. Never changes for this application. |
 | `sid` | ID, access, logout | This application's own id for the Sangam session; matches the logout token. |
 | `acr` | ID, access | How strongly the person signed in: `urn:sangam:acr:1` (password only, or an e-mailed code), `urn:sangam:acr:2` (two steps: password and authenticator app), `urn:sangam:acr:3` (a passkey). `urn:sangam:acr:sign` is only for signature tokens. |
-| `amr` | ID, access | How: `pwd` (password), `otp` (an authenticator app or e-mailed code), `pop` (a passkey: only a passkey gives `pop`), `mfa` (more than one factor). A passkey sign-in gives `["pop","mfa"]`; password and authenticator app give `["pwd","otp","mfa"]`. **In the ID token it is always an array; in the access token a single value is a plain string** (as in the sample) — read both forms. |
+| `amr` | ID, access | How: `pwd` (password), `otp` (an authenticator app or e-mailed code), `pop` (a passkey: only a passkey gives `pop`), `mfa` (more than one factor). A passkey sign-in gives `["pop","mfa"]`; password and authenticator app give `["pwd","otp","mfa"]`. **Always an array** (RFC 8176), even with one method, in the ID token and the access token, and after a refresh (from rc.18; rc.17 wrote a single method as a plain string in the access token, so code written then may read both forms). |
 | `auth_time` | ID, access | When the person last actually signed in (Unix seconds). |
 | `name`, `given_name`, `family_name` | ID (`name`), access, userinfo | The name the person gave. |
 | `birthdate`, `gender`, `locale`, `zoneinfo`, `updated_at` | access, userinfo | With `profile`. |
