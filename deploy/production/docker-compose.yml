@@ -222,7 +222,7 @@ services:
   # 1 GB of memory once the signatures are loaded; database reloads are not concurrent, so memory does not double
   # (scans wait a few seconds while it reloads, and an upload in that moment is refused and can be retried).
   clamav:
-    image: clamav/clamav:1.4@sha256:cbc30de94b6e9b33ac14136ff45306cee02a1f9ae522394a3cc5b9215d1affe9
+    image: clamav/clamav:1.5@sha256:12177441d1b40cef3c47b44c4090d59d4babc4c67bedd5af0fa315e603aa6dd8
     restart: unless-stopped
     networks: [sangam-clamav]
     cap_drop: [ALL]
@@ -245,7 +245,7 @@ services:
   # volumes to that user before it starts (volumes made by an earlier release belong to root), with only the rights
   # chown needs.
   caddy-volumes:
-    image: caddy:2@sha256:504a44d7d74bd2bc28a66afc4774912fc21223ca8a67734af1c54ab2f999b489
+    image: caddy:2@sha256:4851e54a46b206517c574821bb5cc67f170d2156041e9fbc4c9193b45e84a75b
     user: "0:0"
     entrypoint: ["chown", "-R", "1000:1000", "/data", "/config"]
     network_mode: none
